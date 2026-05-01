@@ -70,8 +70,10 @@ jobs:
           rm -f "$TLS_CERT_FILE" "$TLS_KEY_FILE"
           helm upgrade --install "$RELEASE" "$REMOTE_DIR/codecafe" \
             --namespace "$NAMESPACE" \
+            --set frontend.replicaCount=1 \
             --set frontend.image.repository="$REGISTRY/$IMAGE_NAMESPACE/frontend" \
             --set frontend.image.tag="$IMAGE_TAG" \
+            --set api.replicaCount=1 \
             --set api.image.repository="$REGISTRY/$IMAGE_NAMESPACE/api" \
             --set api.image.tag="$IMAGE_TAG" \
             --set frontend.env.apiBaseUrl="https://$API_HOST" \
