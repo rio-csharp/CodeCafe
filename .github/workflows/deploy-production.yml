@@ -103,17 +103,19 @@ jobs:
 
       - name: Deploy production environment
         run: |
-          tar -czf codecafe-chart.tgz -C deploy/helm codecafe
-          scp -P "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new codecafe-chart.tgz "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:/tmp/codecafe-chart.tgz"
+          CHART_ARCHIVE="codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
+          REMOTE_DIR="/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          tar -czf "$CHART_ARCHIVE" -C deploy/helm codecafe
+          ssh -p "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" "mkdir -p '$REMOTE_DIR'"
+          scp -P "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "$CHART_ARCHIVE" "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
           ssh -p "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
-            "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' PRODUCTION_FRONTEND_HOST='${{ secrets.PRODUCTION_FRONTEND_HOST }}' PRODUCTION_API_HOST='${{ secrets.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' bash -s" <<'REMOTE'
+            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' PRODUCTION_FRONTEND_HOST='${{ secrets.PRODUCTION_FRONTEND_HOST }}' PRODUCTION_API_HOST='${{ secrets.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' bash -s" <<'REMOTE'
           set -euo pipefail
+          trap 'rm -rf "$REMOTE_DIR"' EXIT
           export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
           KUBECTL="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl"
           HELM="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/helm"
-          rm -rf /tmp/codecafe-chart
-          mkdir -p /tmp/codecafe-chart
-          tar -xzf /tmp/codecafe-chart.tgz -C /tmp/codecafe-chart
+          tar -xzf "$REMOTE_DIR/codecafe-chart.tgz" -C "$REMOTE_DIR"
           $KUBECTL create namespace "$NAMESPACE" --dry-run=client -o yaml | $KUBECTL apply -f -
           TLS_CERT_FILE="$(mktemp)"
           TLS_KEY_FILE="$(mktemp)"
@@ -125,7 +127,7 @@ jobs:
             --namespace "$NAMESPACE" \
             --dry-run=client -o yaml | $KUBECTL apply -f -
           rm -f "$TLS_CERT_FILE" "$TLS_KEY_FILE"
-          $HELM upgrade --install "$RELEASE" /tmp/codecafe-chart/codecafe \
+          $HELM upgrade --install "$RELEASE" "$REMOTE_DIR/codecafe" \
             --namespace "$NAMESPACE" \
             --set frontend.image.repository="$REGISTRY/$IMAGE_NAMESPACE/frontend" \
             --set frontend.image.tag="$IMAGE_TAG" \
