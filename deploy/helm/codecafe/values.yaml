@@ -4,7 +4,12 @@ fullnameOverride: ""
 imagePullSecrets: []
 
 frontend:
-  replicaCount: 1
+  replicaCount: 2
+  terminationGracePeriodSeconds: 30
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   image:
     repository: ghcr.io/example/codecafe/frontend
     tag: latest
@@ -14,6 +19,19 @@ frontend:
     targetPort: 8080
   env:
     apiBaseUrl: http://localhost:5000
+  probes:
+    readiness:
+      path: /
+      initialDelaySeconds: 3
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    liveness:
+      path: /
+      initialDelaySeconds: 10
+      periodSeconds: 20
+      timeoutSeconds: 2
+      failureThreshold: 3
   ingress:
     enabled: true
     className: traefik
@@ -30,7 +48,12 @@ frontend:
       memory: 128Mi
 
 api:
-  replicaCount: 1
+  replicaCount: 2
+  terminationGracePeriodSeconds: 60
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   image:
     repository: ghcr.io/example/codecafe/api
     tag: latest
@@ -41,6 +64,19 @@ api:
   cors:
     allowedOrigins:
       - https://frontend.example.local
+  probes:
+    readiness:
+      path: /health/ready
+      initialDelaySeconds: 3
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    liveness:
+      path: /health/live
+      initialDelaySeconds: 10
+      periodSeconds: 20
+      timeoutSeconds: 2
+      failureThreshold: 3
   ingress:
     enabled: true
     className: traefik

@@ -7,6 +7,11 @@ metadata:
     app.kubernetes.io/component: frontend
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ .Values.frontend.strategy.rollingUpdate.maxUnavailable }}
+      maxSurge: {{ .Values.frontend.strategy.rollingUpdate.maxSurge }}
   selector:
     matchLabels:
       {{- include "codecafe.selectorLabels" . | nindent 6 }}
@@ -17,6 +22,7 @@ spec:
         {{- include "codecafe.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
     spec:
+      terminationGracePeriodSeconds: {{ .Values.frontend.terminationGracePeriodSeconds }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -33,11 +39,19 @@ spec:
               containerPort: {{ .Values.frontend.service.targetPort }}
           readinessProbe:
             httpGet:
-              path: /
+              path: {{ .Values.frontend.probes.readiness.path }}
               port: http
+            initialDelaySeconds: {{ .Values.frontend.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.probes.readiness.failureThreshold }}
           livenessProbe:
             httpGet:
-              path: /
+              path: {{ .Values.frontend.probes.liveness.path }}
               port: http
+            initialDelaySeconds: {{ .Values.frontend.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.probes.liveness.failureThreshold }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}

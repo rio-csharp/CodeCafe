@@ -16,6 +16,18 @@ public sealed class SystemEndpointsTests(ApiFactory factory) : IClassFixture<Api
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("/health/live")]
+    [InlineData("/health/ready")]
+    public async Task Kubernetes_health_endpoints_return_success(string path)
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
     [Fact]
     public async Task System_info_returns_application_metadata()
     {
