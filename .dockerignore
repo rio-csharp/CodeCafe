@@ -1,0 +1,10 @@
+.git
+.github
+**/.vs
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.env
+**/appsettings.Development.json
+**/appsettings.*.local.json

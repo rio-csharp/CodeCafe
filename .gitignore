@@ -5,6 +5,10 @@
 
 # dotenv files
 .env
+deploy/secrets.env
+deploy/cloudflare/*.private.*
+.local-keys/
+.artifacts/
 
 # Local development configuration can contain secrets.
 appsettings.Development.json

@@ -59,3 +59,7 @@ The frontend runs on `http://localhost:5173` and expects the API base URL from
 Issue #1 establishes the platform skeleton: Clean Architecture backend projects,
 logging, global error handling, health checks, API documentation, and a React app
 structure that can grow into Notes, Workspaces, Audit, and AI/MAF features.
+
+## Deployment
+
+Kubernetes deployment notes live in `docs/deployment.md`.
