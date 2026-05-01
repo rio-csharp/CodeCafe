@@ -1,0 +1,41 @@
+using System.Net;
+using System.Net.Http.Json;
+using CodeCafe.Contracts.System;
+
+namespace CodeCafe.IntegrationTests;
+
+public sealed class SystemEndpointsTests(ApiFactory factory) : IClassFixture<ApiFactory>
+{
+    [Fact]
+    public async Task Health_returns_success()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/health");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task System_info_returns_application_metadata()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetFromJsonAsync<SystemInfoResponse>("/api/system/info");
+
+        Assert.NotNull(response);
+        Assert.Equal("CodeCafe", response.Name);
+        Assert.Equal("Testing", response.Environment);
+        Assert.True(response.ServerTimeUtc <= DateTimeOffset.UtcNow);
+    }
+
+    [Fact]
+    public async Task Swagger_document_is_available()
+    {
+        var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/swagger/v1/swagger.json");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+}
