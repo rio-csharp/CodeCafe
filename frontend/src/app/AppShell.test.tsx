@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AiPanel } from '../features/ai/AiPanel'
 import { ActivityPanel } from '../features/audit/ActivityPanel'
 import { NotesPanel } from '../features/notes/NotesPanel'
@@ -30,7 +30,13 @@ function renderRoute(initialPath = '/') {
 }
 
 describe('AppShell', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
   it('renders the platform shell and dashboard modules', () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Healthy', { status: 200 }))
     renderRoute()
 
     expect(screen.getByText('CodeCafe')).toBeInTheDocument()
@@ -43,11 +49,39 @@ describe('AppShell', () => {
 
   it('navigates to feature routes', async () => {
     const user = userEvent.setup()
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Healthy', { status: 200 }))
     renderRoute()
 
     await user.click(screen.getByRole('link', { name: 'AI' }))
 
     expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument()
+  })
+
+  it('shows backend health and refreshes it every five seconds', async () => {
+    const setIntervalSpy = vi.spyOn(window, 'setInterval')
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response('Healthy', { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+
+    renderRoute()
+
+    expect(screen.getByText('Checking')).toBeInTheDocument()
+    expect(await screen.findByText('Online')).toBeInTheDocument()
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 5_000)
+
+    const refreshHealth = setIntervalSpy.mock.calls[0][0]
+
+    if (typeof refreshHealth !== 'function') {
+      throw new Error('Expected the health refresh callback to be a function.')
+    }
+
+    await act(async () => {
+      await refreshHealth()
+    })
+
+    expect(await screen.findByText('Offline')).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

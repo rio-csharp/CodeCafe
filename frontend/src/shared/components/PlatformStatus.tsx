@@ -1,7 +1,7 @@
 type PlatformStatusProps = {
   label: string
   value: string
-  tone?: 'ready' | 'planned'
+  tone?: 'ready' | 'planned' | 'checking' | 'offline'
 }
 
 export function PlatformStatus({

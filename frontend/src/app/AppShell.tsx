@@ -3,6 +3,7 @@ import { AuthPanel } from '../features/auth/AuthPanel'
 import { AiPanel } from '../features/ai/AiPanel'
 import { NotesPanel } from '../features/notes/NotesPanel'
 import { WorkspacePanel } from '../features/workspaces/WorkspacePanel'
+import { BackendHealthStatus } from '../shared/components/BackendHealthStatus'
 import { PlatformStatus } from '../shared/components/PlatformStatus'
 import { NavLink, Outlet } from 'react-router-dom'
 
@@ -45,7 +46,7 @@ export function AppShell() {
         </header>
 
         <section className="status-grid" aria-label="Platform status">
-          <PlatformStatus label="Backend" value="API skeleton" tone="ready" />
+          <BackendHealthStatus />
           <PlatformStatus label="Frontend" value="React shell" tone="ready" />
           <PlatformStatus label="MAF" value="Planned" />
         </section>
