@@ -1,0 +1,25 @@
+name: Cleanup PR Preview
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    name: Delete PR namespace
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+
+      - name: Delete preview namespace
+        run: |
+          ssh -p "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+            "kubectl delete namespace codecafe-pr-${{ github.event.pull_request.number }} --ignore-not-found=true"

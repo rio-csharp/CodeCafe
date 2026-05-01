@@ -1,0 +1,232 @@
+name: CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+  push:
+
+permissions:
+  actions: write
+  contents: read
+  packages: write
+  pull-requests: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
+
+jobs:
+  detect-pr:
+    name: Detect PR
+    runs-on: ubuntu-latest
+    outputs:
+      has_pr: ${{ steps.detect.outputs.has_pr }}
+      pr_number: ${{ steps.detect.outputs.pr_number }}
+      ref_name: ${{ steps.detect.outputs.ref_name }}
+    steps:
+      - name: Detect associated pull request
+        id: detect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "has_pr=true" >> "$GITHUB_OUTPUT"
+            echo "pr_number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+            echo "ref_name=${{ github.head_ref }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          pr_number="$(gh pr list --repo "${{ github.repository }}" --state open --head "${{ github.ref_name }}" --json number --jq '.[0].number // ""')"
+          if [ -n "$pr_number" ]; then
+            echo "has_pr=true" >> "$GITHUB_OUTPUT"
+            echo "pr_number=$pr_number" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_pr=false" >> "$GITHUB_OUTPUT"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+          fi
+          echo "ref_name=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    needs:
+      - detect-pr
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test backend
+        run: dotnet test backend/CodeCafe.slnx --configuration Release
+
+      - name: Publish API artifact
+        if: needs.detect-pr.outputs.has_pr == 'true'
+        run: >
+          dotnet publish backend/src/CodeCafe.Api/CodeCafe.Api.csproj
+          --configuration Release
+          --output .artifacts/api
+          /p:UseAppHost=false
+
+      - name: Upload API artifact
+        if: needs.detect-pr.outputs.has_pr == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: codecafe-api
+          path: .artifacts/api
+          if-no-files-found: error
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    needs:
+      - detect-pr
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Test frontend
+        working-directory: frontend
+        run: npm run test
+
+      - name: Lint frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload frontend artifact
+        if: needs.detect-pr.outputs.has_pr == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: codecafe-frontend
+          path: frontend/dist
+          if-no-files-found: error
+
+  prepare-pr-image:
+    name: Prepare PR image metadata
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - detect-pr
+      - frontend
+    if: needs.detect-pr.outputs.has_pr == 'true'
+    outputs:
+      image_tag: ${{ steps.image-tag.outputs.image_tag }}
+    steps:
+      - name: Set image tag
+        id: image-tag
+        run: echo "image_tag=pr-${{ needs.detect-pr.outputs.pr_number }}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+  publish-pr-api-image:
+    name: Publish PR API image
+    runs-on: ubuntu-latest
+    needs:
+      - detect-pr
+      - prepare-pr-image
+    if: needs.detect-pr.outputs.has_pr == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download API artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: codecafe-api
+          path: .artifacts/api
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: backend/src/CodeCafe.Api/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/api:${{ needs.prepare-pr-image.outputs.image_tag }}
+          cache-from: type=gha,scope=codecafe-api
+          cache-to: type=gha,mode=max,scope=codecafe-api
+
+  publish-pr-frontend-image:
+    name: Publish PR frontend image
+    runs-on: ubuntu-latest
+    needs:
+      - detect-pr
+      - prepare-pr-image
+    if: needs.detect-pr.outputs.has_pr == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: codecafe-frontend
+          path: .artifacts/frontend
+
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/frontend:${{ needs.prepare-pr-image.outputs.image_tag }}
+          cache-from: type=gha,scope=codecafe-frontend
+          cache-to: type=gha,mode=max,scope=codecafe-frontend
+
+  trigger-pr-deploy:
+    name: Trigger PR deploy
+    runs-on: ubuntu-latest
+    needs:
+      - detect-pr
+      - prepare-pr-image
+      - publish-pr-api-image
+      - publish-pr-frontend-image
+    if: needs.detect-pr.outputs.has_pr == 'true'
+    steps:
+      - name: Trigger Deploy PR Preview workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run deploy-pr.yml \
+            --repo "${{ github.repository }}" \
+            --ref "${{ needs.detect-pr.outputs.ref_name }}" \
+            -f pr_number="${{ needs.detect-pr.outputs.pr_number }}" \
+            -f image_tag="${{ needs.prepare-pr-image.outputs.image_tag }}"

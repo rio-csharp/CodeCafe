@@ -1,0 +1,13 @@
+@CodeCafe.Api_HostAddress = http://localhost:5000
+
+### Health check
+GET {{CodeCafe.Api_HostAddress}}/health
+Accept: application/json
+
+### System info
+GET {{CodeCafe.Api_HostAddress}}/api/system/info
+Accept: application/json
+
+### OpenAPI document
+GET {{CodeCafe.Api_HostAddress}}/swagger/v1/swagger.json
+Accept: application/json

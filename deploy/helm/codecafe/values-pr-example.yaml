@@ -1,0 +1,16 @@
+frontend:
+  env:
+    apiBaseUrl: https://api-pr-0.example.local
+  ingress:
+    host: pr-0.example.local
+    tls:
+      secretName: codecafe-pr-0-frontend-tls
+
+api:
+  cors:
+    allowedOrigins:
+      - https://pr-0.example.local
+  ingress:
+    host: api-pr-0.example.local
+    tls:
+      secretName: codecafe-pr-0-api-tls

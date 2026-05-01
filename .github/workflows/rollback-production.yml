@@ -1,0 +1,53 @@
+name: Rollback Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Optional Helm revision to roll back to. Leave empty to roll back one revision.
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  NAMESPACE: codecafe-prod
+  RELEASE: codecafe-prod
+
+jobs:
+  rollback:
+    name: Rollback production environment
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
+
+      - name: Roll back Helm release
+        run: |
+          ssh -p "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
+            "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' REVISION='${{ inputs.revision }}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+          HELM="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/helm"
+          KUBECTL="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl"
+
+          $HELM history "$RELEASE" --namespace "$NAMESPACE"
+          if [ -n "$REVISION" ]; then
+            $HELM rollback "$RELEASE" "$REVISION" --namespace "$NAMESPACE" --wait --timeout 180s
+          else
+            $HELM rollback "$RELEASE" --namespace "$NAMESPACE" --wait --timeout 180s
+          fi
+          $KUBECTL rollout status deployment --selector app.kubernetes.io/instance="$RELEASE",app.kubernetes.io/component=frontend --namespace "$NAMESPACE" --timeout=180s
+          $KUBECTL rollout status deployment --selector app.kubernetes.io/instance="$RELEASE",app.kubernetes.io/component=api --namespace "$NAMESPACE" --timeout=180s
+          $HELM history "$RELEASE" --namespace "$NAMESPACE"
+          REMOTE
+
+      - name: Smoke test
+        run: |
+          curl --fail --retry 10 --retry-delay 6 https://${{ secrets.PRODUCTION_FRONTEND_HOST }}
+          curl --fail --retry 10 --retry-delay 6 https://${{ secrets.PRODUCTION_API_HOST }}/health

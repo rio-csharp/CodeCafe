@@ -1,0 +1,142 @@
+name: Deploy PR Preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number used for namespace and host names.
+        required: true
+      image_tag:
+        description: Existing image tag to deploy.
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
+  HELM_CHART: deploy/helm/codecafe
+
+jobs:
+  deploy:
+    name: Deploy PR preview
+    runs-on: ubuntu-latest
+    environment:
+      name: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set deployment variables
+        run: |
+          echo "IMAGE_TAG=${{ inputs.image_tag }}" >> "$GITHUB_ENV"
+          echo "NAMESPACE=codecafe-pr-${{ inputs.pr_number }}" >> "$GITHUB_ENV"
+          echo "RELEASE=codecafe-pr-${{ inputs.pr_number }}" >> "$GITHUB_ENV"
+          echo "FRONTEND_HOST=pr-${{ inputs.pr_number }}.${{ secrets.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
+          echo "API_HOST=api-pr-${{ inputs.pr_number }}.${{ secrets.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
+          echo "TLS_SECRET=codecafe-test-wildcard-tls" >> "$GITHUB_ENV"
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+
+      - name: Deploy preview
+        run: |
+          tar -czf codecafe-chart.tgz -C deploy/helm codecafe
+          scp -P "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new codecafe-chart.tgz "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:/tmp/codecafe-chart.tgz"
+          ssh -p "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+            "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='$FRONTEND_HOST' API_HOST='$API_HOST' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+          rm -rf /tmp/codecafe-chart
+          mkdir -p /tmp/codecafe-chart
+          tar -xzf /tmp/codecafe-chart.tgz -C /tmp/codecafe-chart
+          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+          TLS_CERT_FILE="$(mktemp)"
+          TLS_KEY_FILE="$(mktemp)"
+          kubectl get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TLS_CERT_FILE"
+          kubectl get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.key}' | base64 -d > "$TLS_KEY_FILE"
+          kubectl create secret tls "$TLS_SECRET" \
+            --cert="$TLS_CERT_FILE" \
+            --key="$TLS_KEY_FILE" \
+            --namespace "$NAMESPACE" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          rm -f "$TLS_CERT_FILE" "$TLS_KEY_FILE"
+          helm upgrade --install "$RELEASE" /tmp/codecafe-chart/codecafe \
+            --namespace "$NAMESPACE" \
+            --set frontend.image.repository="$REGISTRY/$IMAGE_NAMESPACE/frontend" \
+            --set frontend.image.tag="$IMAGE_TAG" \
+            --set api.image.repository="$REGISTRY/$IMAGE_NAMESPACE/api" \
+            --set api.image.tag="$IMAGE_TAG" \
+            --set frontend.env.apiBaseUrl="https://$API_HOST" \
+            --set frontend.ingress.host="$FRONTEND_HOST" \
+            --set frontend.ingress.tls.secretName="$TLS_SECRET" \
+            --set api.cors.allowedOrigins[0]="https://$FRONTEND_HOST" \
+            --set api.ingress.host="$API_HOST" \
+            --set api.ingress.tls.secretName="$TLS_SECRET"
+          REMOTE
+
+      - name: Wait for rollout
+        run: |
+          ssh -p "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+            "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin; kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=frontend --namespace $NAMESPACE --timeout=180s && kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=api --namespace $NAMESPACE --timeout=180s"
+
+      - name: Summarize preview format
+        run: |
+          {
+            echo "## PR Preview"
+            echo
+            echo "| Service | Format |"
+            echo "| --- | --- |"
+            echo "| Frontend | \`https://pr-${{ inputs.pr_number }}.<PREVIEW_BASE_DOMAIN>\` |"
+            echo "| API health | \`https://api-pr-${{ inputs.pr_number }}.<PREVIEW_BASE_DOMAIN>/health\` |"
+            echo
+            echo "Namespace: \`$NAMESPACE\`"
+            echo "Image tag: \`$IMAGE_TAG\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment preview format
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const marker = '<!-- codecafe-pr-preview-format -->';
+            const prNumber = Number('${{ inputs.pr_number }}');
+            const body = `${marker}
+            ## PR Preview
+
+            | Service | Format |
+            | --- | --- |
+            | Frontend | \`https://pr-${prNumber}.<PREVIEW_BASE_DOMAIN>\` |
+            | API health | \`https://api-pr-${prNumber}.<PREVIEW_BASE_DOMAIN>/health\` |
+
+            Namespace: \`${process.env.NAMESPACE}\`
+            Image tag: \`${process.env.IMAGE_TAG}\`
+            `;
+
+            const { owner, repo } = context.repo;
+            const comments = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+            });
+            const existing = comments.data.find(comment => comment.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
