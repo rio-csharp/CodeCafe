@@ -395,12 +395,14 @@ h2 {
 
 .note-reader-pagination {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: minmax(110px, 150px) auto minmax(110px, 150px);
   gap: 10px;
   align-items: center;
+  justify-content: space-between;
 }
 
 .note-reader-pagination button {
+  width: 100%;
   min-height: 38px;
   padding: 0 12px;
   color: var(--text);
@@ -415,10 +417,11 @@ h2 {
 }
 
 .note-reader-pagination button:disabled {
-  color: rgba(147, 163, 184, 0.54);
-  border-color: rgba(137, 160, 190, 0.12);
-  background: rgba(7, 10, 18, 0.34);
+  color: var(--text);
+  border-color: rgba(56, 189, 248, 0.22);
+  background: rgba(56, 189, 248, 0.08);
   cursor: default;
+  opacity: 0.42;
 }
 
 .note-reader-pagination span {
