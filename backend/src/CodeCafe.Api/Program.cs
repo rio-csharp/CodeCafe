@@ -61,6 +61,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = healthCheck => healthCheck.Tags.Contains("ready"),
 });
+app.MapAiProviderEndpoints();
 app.MapSystemEndpoints();
 
 app.Run();

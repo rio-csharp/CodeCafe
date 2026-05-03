@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
-import { SettingsPage } from '../features/settings/SettingsPage'
+import { AiSettingsPage, SettingsPage } from '../features/settings/SettingsPage'
 import { AppShell } from './AppShell'
 
 function renderRoute(initialPath = '/') {
@@ -16,6 +16,7 @@ function renderRoute(initialPath = '/') {
           { index: true, element: <ChatWorkbench /> },
           { path: 'chat', element: <ChatWorkbench /> },
           { path: 'settings', element: <SettingsPage /> },
+          { path: 'settings/ai', element: <AiSettingsPage /> },
         ],
       },
     ],
@@ -25,6 +26,43 @@ function renderRoute(initialPath = '/') {
   render(<RouterProvider router={router} />)
 }
 
+const aiProviders = [
+  {
+    apiKey: null,
+    baseUrl: 'https://api.openai.com/v1',
+    builtIn: true,
+    enabled: false,
+    id: 'openai',
+    models: [],
+    name: 'OpenAI',
+  },
+  {
+    apiKey: null,
+    baseUrl: 'https://api.deepseek.com',
+    builtIn: true,
+    enabled: false,
+    id: 'deepseek',
+    models: [],
+    name: 'DeepSeek',
+  },
+]
+
+function mockApiFetch(providers: unknown[] = aiProviders) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+    const url = String(input)
+
+    if (url.endsWith('/health')) {
+      return Promise.resolve(new Response('Healthy', { status: 200 }))
+    }
+
+    if (url.endsWith('/api/ai/providers')) {
+      return Promise.resolve(Response.json(providers))
+    }
+
+    return Promise.resolve(new Response(null, { status: 404 }))
+  })
+}
+
 describe('AppShell', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -32,12 +70,13 @@ describe('AppShell', () => {
   })
 
   it('renders the platform shell and chat workbench', () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Healthy', { status: 200 }))
+    mockApiFetch()
     renderRoute()
 
     expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'AI' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Deployment review/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /API design/i })).toBeInTheDocument()
     expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
@@ -49,7 +88,7 @@ describe('AppShell', () => {
 
   it('opens and closes a chat session', async () => {
     const user = userEvent.setup()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Healthy', { status: 200 }))
+    mockApiFetch()
     renderRoute()
 
     await user.click(screen.getByRole('button', { name: /Deployment review/i }))
@@ -66,11 +105,27 @@ describe('AppShell', () => {
 
   it('navigates to settings', async () => {
     const user = userEvent.setup()
+    mockApiFetch()
     renderRoute()
 
     await user.click(screen.getByRole('link', { name: 'Settings' }))
 
     expect(screen.getByRole('heading', { name: 'Application settings' })).toBeInTheDocument()
+    expect(screen.getByText('Select a settings section from the sidebar.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'AI' }))
+
+    expect(screen.getByRole('navigation', { name: 'Providers' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'OpenAI' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'DeepSeek' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('https://api.openai.com/v1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add provider' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'DeepSeek' }))
+
+    expect(screen.getByDisplayValue('https://api.deepseek.com')).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Providers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Models' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Chat' })).not.toBeInTheDocument()
     expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
   })
