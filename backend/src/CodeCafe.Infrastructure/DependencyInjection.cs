@@ -18,6 +18,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IAiProviderRepository, InMemoryAiProviderRepository>();
         services.AddSingleton<INotesSettingsRepository, InMemoryNotesSettingsRepository>();
+        services.AddScoped<INotesRepository, FileSystemNotesRepository>();
 
         return services;
     }

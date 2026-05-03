@@ -11,6 +11,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IAiProviderConfigurationService, AiProviderConfigurationService>();
         services.AddScoped<INotesSettingsService, NotesSettingsService>();
+        services.AddScoped<INotesService, NotesService>();
 
         return services;
     }

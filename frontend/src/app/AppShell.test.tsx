@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -64,6 +64,27 @@ function mockApiFetch(providers: unknown[] = aiProviders) {
 
     if (url.endsWith('/api/notes/settings')) {
       return Promise.resolve(Response.json({ rootPath: '/srv/codecafe/notes' }))
+    }
+
+    if (url.endsWith('/api/notes')) {
+      return Promise.resolve(Response.json([
+        {
+          path: '01-dotnet-platform/01-dotnet-overview.md',
+          title: '01-dotnet-overview',
+          updatedAt: '2026-05-03T00:00:00Z',
+          sizeBytes: 128,
+        },
+      ]))
+    }
+
+    if (url.includes('/api/notes/content?path=')) {
+      return Promise.resolve(Response.json({
+        path: '01-dotnet-platform/01-dotnet-overview.md',
+        title: '01-dotnet-overview',
+        updatedAt: '2026-05-03T00:00:00Z',
+        sizeBytes: 128,
+        content: '# .NET Platform Overview\n\n## Core Idea\n\nRead-only note.\n\n## .NET Components\n\nRuntime and SDK.',
+      }))
     }
 
     return Promise.resolve(new Response(null, { status: 404 }))
@@ -144,8 +165,21 @@ describe('AppShell', () => {
 
     await user.click(screen.getAllByRole('link', { name: 'Notes' })[0])
 
-    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'No notes yet' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Search notes' })).toBeInTheDocument()
+    expect(await screen.findByText('Dotnet Platform')).toBeInTheDocument()
+    expect(within(screen.getByRole('complementary', { name: 'Notes list' })).getByRole('button', { name: 'Dotnet Overview' })).toBeInTheDocument()
+    expect(await screen.findByRole('article', { name: 'Markdown preview' })).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Note outline' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '.NET Platform Overview', level: 2 })).toBeInTheDocument()
+    expect(within(screen.getByRole('article', { name: 'Markdown preview' })).queryByRole('heading', { name: '.NET Platform Overview' })).not.toBeInTheDocument()
+    expect(within(screen.getByRole('complementary', { name: 'Note outline' })).queryByRole('link', { name: '.NET Platform Overview' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Core Idea' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '.NET Components' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Core Idea', level: 2 })).toHaveAttribute('id', 'core-idea')
+    expect(screen.getByRole('heading', { name: '.NET Components', level: 2 })).toHaveAttribute('id', 'net-components')
+    expect(screen.queryByText('01-dotnet-platform/01-dotnet-overview.md')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Read-only note')).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Markdown editor' })).not.toBeInTheDocument()
 
     await user.click(screen.getAllByRole('link', { name: 'Notes' })[1])
 
