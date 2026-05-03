@@ -42,6 +42,12 @@ export function NotesPage() {
   const headingIdPlugin = useMemo(() => createHeadingIdPlugin(outline), [outline])
   const readerTitle = headingInfo.title ?? toDisplayName(activeNote?.title ?? '')
   const readerContent = removeLine(activeNote?.content ?? '', headingInfo.titleLineIndex)
+  const activeNoteIndex = filteredNotes.findIndex((note) => note.path === activePath)
+  const previousNote = activeNoteIndex > 0 ? filteredNotes[activeNoteIndex - 1] : null
+  const nextNote =
+    activeNoteIndex >= 0 && activeNoteIndex < filteredNotes.length - 1
+      ? filteredNotes[activeNoteIndex + 1]
+      : null
 
   useEffect(() => {
     let ignore = false
@@ -83,6 +89,18 @@ export function NotesPage() {
   }, [isMobileReaderOpen])
 
   useEffect(() => {
+    function handlePopState() {
+      setIsMobileReaderOpen(false)
+    }
+
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+    }
+  }, [])
+
+  useEffect(() => {
     let ignore = false
 
     async function loadNote() {
@@ -120,8 +138,21 @@ export function NotesPage() {
 
   function selectNote(path: string) {
     setActivePath(path)
+    openMobileReader()
+    scrollPreviewToTop(previewRef.current)
+  }
+
+  function openMobileReader() {
+    if (isMobileViewport() && !isMobileReaderOpen) {
+      window.history.pushState({ codecafeNotesReader: true }, '', window.location.href)
+    }
+
     setIsMobileReaderOpen(true)
-    previewRef.current?.scrollTo({ top: 0 })
+  }
+
+  function moveToNote(path: string) {
+    setActivePath(path)
+    scrollPreviewToTop(previewRef.current)
   }
 
   return (
@@ -170,6 +201,18 @@ export function NotesPage() {
                 <ReactMarkdown rehypePlugins={[headingIdPlugin]} remarkPlugins={[remarkGfm]}>
                   {readerContent}
                 </ReactMarkdown>
+
+                <nav className="note-reader-pagination" aria-label="Note pagination">
+                  <button disabled={!previousNote} onClick={() => previousNote && moveToNote(previousNote.path)} type="button">
+                    Previous
+                  </button>
+                  <span>
+                    {activeNoteIndex + 1 > 0 ? activeNoteIndex + 1 : 0} / {filteredNotes.length}
+                  </span>
+                  <button disabled={!nextNote} onClick={() => nextNote && moveToNote(nextNote.path)} type="button">
+                    Next
+                  </button>
+                </nav>
               </div>
             </article>
           </>
@@ -228,4 +271,14 @@ function scrollToHeading(event: MouseEvent<HTMLAnchorElement>, id: string, scrol
 
 function escapeCssIdentifier(value: string) {
   return globalThis.CSS?.escape(value) ?? value.replace(/["\\]/g, '\\$&')
+}
+
+function isMobileViewport() {
+  return globalThis.matchMedia?.('(max-width: 820px)').matches ?? false
+}
+
+function scrollPreviewToTop(scrollContainer: HTMLElement | null) {
+  if (typeof scrollContainer?.scrollTo === 'function') {
+    scrollContainer.scrollTo({ top: 0 })
+  }
 }

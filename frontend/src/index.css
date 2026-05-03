@@ -393,6 +393,43 @@ h2 {
   position: relative;
 }
 
+.note-reader-pagination {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.note-reader-pagination button {
+  min-height: 38px;
+  padding: 0 12px;
+  color: var(--text);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.08);
+  cursor: pointer;
+}
+
+.note-reader-pagination button:last-child {
+  justify-self: end;
+}
+
+.note-reader-pagination button:disabled {
+  color: rgba(147, 163, 184, 0.54);
+  border-color: rgba(137, 160, 190, 0.12);
+  background: rgba(7, 10, 18, 0.34);
+  cursor: default;
+}
+
+.note-reader-pagination span {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .note-outline {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -1271,35 +1308,30 @@ h2 {
   }
 
   .note-editor-header {
-    display: grid;
-    min-height: 68px;
-    grid-template-columns: 64px minmax(0, 1fr);
-    gap: 4px 10px;
+    display: flex;
+    min-height: 44px;
     align-items: center;
-    padding: 10px 12px;
+    padding: 8px 12px;
   }
 
   .note-reader-back-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 36px;
-    padding: 0 12px;
-    color: var(--text);
-    border: 1px solid rgba(137, 160, 190, 0.24);
-    border-radius: 8px;
-    background: rgba(7, 10, 18, 0.66);
-    cursor: pointer;
+    display: none;
   }
 
   .note-editor-header h2 {
-    font-size: 17px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    font-size: 16px;
+    text-overflow: clip;
+    scrollbar-width: none;
+  }
+
+  .note-editor-header h2::-webkit-scrollbar {
+    display: none;
   }
 
   .note-editor-header span {
-    grid-column: 2;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: none;
   }
 
   .note-preview-pane {
@@ -1334,6 +1366,21 @@ h2 {
 
   .note-preview-pane pre {
     margin-inline: -4px;
+  }
+
+  .note-reader-pagination {
+    position: sticky;
+    bottom: 0;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    margin: 24px -16px -16px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: rgba(9, 14, 25, 0.96);
+  }
+
+  .note-reader-pagination button {
+    min-height: 36px;
+    padding: 0 10px;
   }
 
   .note-outline {
