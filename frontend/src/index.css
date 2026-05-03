@@ -432,8 +432,14 @@ h2 {
 
 .desktop-pagination {
   padding: 10px 14px;
+  grid-template-columns: 180px auto 180px;
   border-top: 1px solid var(--border);
   background: rgba(13, 19, 32, 0.92);
+}
+
+.desktop-pagination button {
+  min-height: 42px;
+  font-size: 14px;
 }
 
 .mobile-pagination {
