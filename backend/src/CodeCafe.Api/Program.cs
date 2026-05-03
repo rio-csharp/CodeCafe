@@ -1,4 +1,3 @@
-using CodeCafe.Api.Endpoints;
 using CodeCafe.Api.Infrastructure;
 using CodeCafe.Application;
 using CodeCafe.Infrastructure;
@@ -22,6 +21,7 @@ builder.Services.AddCodeCafeInfrastructure(builder.Configuration);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddControllers();
 builder.Services
     .AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["ready"])
@@ -61,10 +61,7 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = healthCheck => healthCheck.Tags.Contains("ready"),
 });
-app.MapAiProviderEndpoints();
-app.MapNotesEndpoints();
-app.MapNotesSettingsEndpoints();
-app.MapSystemEndpoints();
+app.MapControllers();
 
 app.Run();
 
