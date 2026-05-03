@@ -1,6 +1,6 @@
+using CodeCafe.Contracts.Notes;
 using System.Net;
 using System.Net.Http.Json;
-using CodeCafe.Contracts.Notes;
 
 namespace CodeCafe.IntegrationTests;
 

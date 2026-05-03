@@ -1,6 +1,6 @@
+using CodeCafe.Contracts.Ai;
 using System.Net;
 using System.Net.Http.Json;
-using CodeCafe.Contracts.Ai;
 
 namespace CodeCafe.IntegrationTests;
 
