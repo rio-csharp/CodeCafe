@@ -335,7 +335,7 @@ h2 {
 .note-workspace {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
 }
@@ -398,9 +398,6 @@ h2 {
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 10px;
   align-items: center;
-  margin-top: 30px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
 }
 
 .note-reader-pagination button {
@@ -428,6 +425,19 @@ h2 {
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
+}
+
+.desktop-pagination {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: rgba(13, 19, 32, 0.92);
+}
+
+.mobile-pagination {
+  display: none;
+  margin-top: 30px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
 }
 
 .note-outline {
@@ -1368,17 +1378,20 @@ h2 {
     margin-inline: -4px;
   }
 
-  .note-reader-pagination {
-    position: sticky;
-    bottom: 0;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    margin: 24px -16px -16px;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-    border-top: 1px solid var(--border);
-    background: rgba(9, 14, 25, 0.96);
+  .desktop-pagination {
+    display: none;
   }
 
-  .note-reader-pagination button {
+  .mobile-pagination {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    margin: 28px 0 0;
+    padding: 14px 0 calc(18px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--border);
+    background: transparent;
+  }
+
+  .mobile-pagination button {
     min-height: 36px;
     padding: 0 10px;
   }

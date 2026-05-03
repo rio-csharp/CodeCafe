@@ -202,19 +202,27 @@ export function NotesPage() {
                   {readerContent}
                 </ReactMarkdown>
 
-                <nav className="note-reader-pagination" aria-label="Note pagination">
-                  <button disabled={!previousNote} onClick={() => previousNote && moveToNote(previousNote.path)} type="button">
-                    Previous
-                  </button>
-                  <span>
-                    {activeNoteIndex + 1 > 0 ? activeNoteIndex + 1 : 0} / {filteredNotes.length}
-                  </span>
-                  <button disabled={!nextNote} onClick={() => nextNote && moveToNote(nextNote.path)} type="button">
-                    Next
-                  </button>
-                </nav>
+                <NotePagination
+                  activeIndex={activeNoteIndex}
+                  className="note-reader-pagination mobile-pagination"
+                  label="Mobile note pagination"
+                  noteCount={filteredNotes.length}
+                  nextNote={nextNote}
+                  onMove={moveToNote}
+                  previousNote={previousNote}
+                />
               </div>
             </article>
+
+            <NotePagination
+              activeIndex={activeNoteIndex}
+              className="note-reader-pagination desktop-pagination"
+              label="Note pagination"
+              noteCount={filteredNotes.length}
+              nextNote={nextNote}
+              onMove={moveToNote}
+              previousNote={previousNote}
+            />
           </>
         ) : (
           <section className="notes-empty-panel">
@@ -243,6 +251,38 @@ export function NotesPage() {
         )}
       </aside>
     </section>
+  )
+}
+
+function NotePagination({
+  activeIndex,
+  className,
+  label,
+  noteCount,
+  nextNote,
+  onMove,
+  previousNote,
+}: {
+  activeIndex: number
+  className: string
+  label: string
+  noteCount: number
+  nextNote: NoteSummary | null
+  onMove: (path: string) => void
+  previousNote: NoteSummary | null
+}) {
+  return (
+    <nav className={className} aria-label={label}>
+      <button disabled={!previousNote} onClick={() => previousNote && onMove(previousNote.path)} type="button">
+        Previous
+      </button>
+      <span>
+        {activeIndex + 1 > 0 ? activeIndex + 1 : 0} / {noteCount}
+      </span>
+      <button disabled={!nextNote} onClick={() => nextNote && onMove(nextNote.path)} type="button">
+        Next
+      </button>
+    </nav>
   )
 }
 

@@ -193,15 +193,19 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: '.NET Components' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Core Idea', level: 2 })).toHaveAttribute('id', 'core-idea')
     expect(screen.getByRole('heading', { name: '.NET Components', level: 2 })).toHaveAttribute('id', 'net-components')
-    expect(screen.getByRole('navigation', { name: 'Note pagination' })).toBeInTheDocument()
-    expect(screen.getByText('1 / 2')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+    const pagination = screen.getByRole('navigation', { name: 'Note pagination' })
 
-    await user.click(screen.getByRole('button', { name: 'Next' }))
+    expect(pagination).toBeInTheDocument()
+    expect(within(pagination).getByText('1 / 2')).toBeInTheDocument()
+    expect(within(pagination).getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+    await user.click(within(pagination).getByRole('button', { name: 'Next' }))
 
     expect(await screen.findByRole('heading', { name: 'Common Language Runtime', level: 2 })).toBeInTheDocument()
-    expect(screen.getByText('2 / 2')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+    const updatedPagination = screen.getByRole('navigation', { name: 'Note pagination' })
+
+    expect(within(updatedPagination).getByText('2 / 2')).toBeInTheDocument()
+    expect(within(updatedPagination).getByRole('button', { name: 'Next' })).toBeDisabled()
     expect(screen.queryByText('01-dotnet-platform/01-dotnet-overview.md')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Read-only note')).toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Markdown editor' })).not.toBeInTheDocument()
