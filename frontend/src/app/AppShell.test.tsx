@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
-import { AiSettingsPage, SettingsPage } from '../features/settings/SettingsPage'
+import { NotesPage } from '../features/notes/NotesPage'
+import { AiSettingsPage, NotesSettingsPage, SettingsPage } from '../features/settings/SettingsPage'
 import { AppShell } from './AppShell'
 
 function renderRoute(initialPath = '/') {
@@ -15,8 +16,10 @@ function renderRoute(initialPath = '/') {
         children: [
           { index: true, element: <ChatWorkbench /> },
           { path: 'chat', element: <ChatWorkbench /> },
+          { path: 'notes', element: <NotesPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/ai', element: <AiSettingsPage /> },
+          { path: 'settings/notes', element: <NotesSettingsPage /> },
         ],
       },
     ],
@@ -59,6 +62,10 @@ function mockApiFetch(providers: unknown[] = aiProviders) {
       return Promise.resolve(Response.json(providers))
     }
 
+    if (url.endsWith('/api/notes/settings')) {
+      return Promise.resolve(Response.json({ rootPath: '/srv/codecafe/notes' }))
+    }
+
     return Promise.resolve(new Response(null, { status: 404 }))
   })
 }
@@ -75,13 +82,13 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Notes' })).toHaveLength(2)
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'AI' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Deployment review/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /API design/i })).toBeInTheDocument()
     expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
     expect(screen.queryByText('CodeCafe')).not.toBeInTheDocument()
-    expect(screen.queryByText('Notes')).not.toBeInTheDocument()
     expect(screen.queryByText('Guest preview')).not.toBeInTheDocument()
     expect(screen.queryByText('Backend')).not.toBeInTheDocument()
   })
@@ -128,5 +135,22 @@ describe('AppShell', () => {
     expect(screen.queryByRole('tab', { name: 'Models' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Chat' })).not.toBeInTheDocument()
     expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
+  })
+
+  it('navigates to notes and notes settings', async () => {
+    const user = userEvent.setup()
+    mockApiFetch()
+    renderRoute()
+
+    await user.click(screen.getAllByRole('link', { name: 'Notes' })[0])
+
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'No notes yet' })).toBeInTheDocument()
+
+    await user.click(screen.getAllByRole('link', { name: 'Notes' })[1])
+
+    expect(screen.getByRole('heading', { name: 'Notes settings' })).toBeInTheDocument()
+    expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save notes settings' })).toBeInTheDocument()
   })
 })

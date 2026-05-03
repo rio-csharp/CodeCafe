@@ -4,7 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace CodeCafe.Infrastructure;
 
 using CodeCafe.Application.Ai;
+using CodeCafe.Application.Notes;
 using CodeCafe.Infrastructure.Ai;
+using CodeCafe.Infrastructure.Notes;
 
 public static class DependencyInjection
 {
@@ -15,6 +17,7 @@ public static class DependencyInjection
         _ = configuration;
 
         services.AddSingleton<IAiProviderRepository, InMemoryAiProviderRepository>();
+        services.AddSingleton<INotesSettingsRepository, InMemoryNotesSettingsRepository>();
 
         return services;
     }

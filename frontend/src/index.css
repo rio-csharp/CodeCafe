@@ -186,6 +186,44 @@ h2 {
     0 0 42px rgba(56, 189, 248, 0.08);
 }
 
+.notes-page {
+  display: grid;
+  gap: 16px;
+  width: min(100%, 960px);
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(17, 26, 44, 0.92), rgba(9, 14, 25, 0.96)),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.notes-header h2 {
+  margin: 0;
+}
+
+.notes-empty-panel {
+  display: grid;
+  min-height: 320px;
+  place-content: center;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+    rgba(7, 10, 18, 0.42);
+  background-size: 24px 24px;
+}
+
+.notes-empty-panel h3 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+}
+
 .session-list {
   position: relative;
   z-index: 1;
@@ -724,6 +762,10 @@ h2 {
   background: rgba(56, 189, 248, 0.14);
 }
 
+.notes-settings-form {
+  gap: 14px;
+}
+
 .settings-checkbox-field {
   display: inline-flex;
   align-items: center;
@@ -837,6 +879,14 @@ h2 {
   .chat-workbench {
     width: 100%;
     max-width: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .notes-page {
+    width: auto;
+    min-height: calc(100vh - 76px);
+    margin: 0;
     border: 0;
     border-radius: 0;
   }
