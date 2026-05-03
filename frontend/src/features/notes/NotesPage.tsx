@@ -2,35 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { formatFileSize, formatReadingTime, toDisplayName } from './noteDisplay'
+import { buildOutline, createHeadingIdPlugin, getNoteHeadingInfo, removeLine } from './noteMarkdown'
+import { NoteTree } from './noteTree'
+import { buildNoteTree } from './noteTreeBuilder'
 import { listNotes, readNote } from './notesApi'
 import type { NoteContent, NoteSummary } from './notesApi'
-
-type NoteTreeNode = {
-  children: NoteTreeNode[]
-  name: string
-  note?: NoteSummary
-  path: string
-  sortName: string
-  type: 'directory' | 'note'
-}
-
-type NoteOutlineItem = {
-  depth: number
-  id: string
-  text: string
-}
-
-type NoteHeadingInfo = {
-  title: string | null
-  titleLineIndex: number | null
-}
-
-type HastNode = {
-  children?: HastNode[]
-  properties?: Record<string, unknown>
-  tagName?: string
-  type?: string
-}
 
 export function NotesPage() {
   const previewRef = useRef<HTMLElement | null>(null)
@@ -57,7 +34,10 @@ export function NotesPage() {
   }, [notes, query])
   const noteTree = useMemo(() => buildNoteTree(filteredNotes), [filteredNotes])
   const headingInfo = useMemo(() => getNoteHeadingInfo(activeNote?.content ?? ''), [activeNote?.content])
-  const outline = useMemo(() => buildOutline(activeNote?.content ?? '', headingInfo.titleLineIndex), [activeNote?.content, headingInfo.titleLineIndex])
+  const outline = useMemo(
+    () => buildOutline(activeNote?.content ?? '', headingInfo.titleLineIndex),
+    [activeNote?.content, headingInfo.titleLineIndex],
+  )
   const headingIdPlugin = useMemo(() => createHeadingIdPlugin(outline), [outline])
   const readerTitle = headingInfo.title ?? toDisplayName(activeNote?.title ?? '')
   const readerContent = removeLine(activeNote?.content ?? '', headingInfo.titleLineIndex)
@@ -205,198 +185,6 @@ export function NotesPage() {
   )
 }
 
-function NoteTree({
-  activePath,
-  nodes,
-  onSelect,
-}: {
-  activePath: string
-  nodes: NoteTreeNode[]
-  onSelect: (path: string) => void
-}) {
-  return (
-    <ul className="note-tree">
-      {nodes.map((node) => (
-        <li key={node.path}>
-          {node.type === 'directory' ? (
-            <details>
-              <summary>{node.name}</summary>
-              <NoteTree activePath={activePath} nodes={node.children} onSelect={onSelect} />
-            </details>
-          ) : (
-            <button
-              aria-current={node.path === activePath ? 'true' : undefined}
-              className="note-list-item"
-              onClick={() => onSelect(node.path)}
-              type="button"
-            >
-              <span>
-                <strong>{toDisplayName(node.note?.title ?? '')}</strong>
-              </span>
-            </button>
-          )}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
-function buildNoteTree(notes: NoteSummary[]) {
-  const root: NoteTreeNode[] = []
-
-  for (const note of notes) {
-    const segments = note.path.split('/').filter(Boolean)
-    let siblings = root
-
-    segments.forEach((segment, index) => {
-      const isLast = index === segments.length - 1
-      const nodePath = segments.slice(0, index + 1).join('/')
-
-      if (isLast) {
-        siblings.push({
-          children: [],
-          name: toDisplayName(note.title),
-          note,
-          path: note.path,
-          sortName: segment,
-          type: 'note',
-        })
-        return
-      }
-
-      let directory = siblings.find((node) => node.type === 'directory' && node.path === nodePath)
-
-      if (!directory) {
-        directory = {
-          children: [],
-          name: toDisplayName(segment),
-          path: nodePath,
-          sortName: segment,
-          type: 'directory',
-        }
-        siblings.push(directory)
-      }
-
-      siblings = directory.children
-    })
-  }
-
-  return sortTree(root)
-}
-
-function sortTree(nodes: NoteTreeNode[]): NoteTreeNode[] {
-  return nodes
-    .map((node) => ({
-      ...node,
-      children: sortTree(node.children),
-    }))
-    .sort((left, right) => {
-      if (left.type !== right.type) {
-        return left.type === 'directory' ? -1 : 1
-      }
-
-      return left.sortName.localeCompare(right.sortName, undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      })
-    })
-}
-
-function getNoteHeadingInfo(content: string): NoteHeadingInfo {
-  let isInCodeBlock = false
-  const lines = content.split('\n')
-
-  for (const [index, line] of lines.entries()) {
-    if (line.trim().startsWith('```')) {
-      isInCodeBlock = !isInCodeBlock
-      continue
-    }
-
-    if (isInCodeBlock) {
-      continue
-    }
-
-    const match = /^#\s+(.+?)\s*#*$/.exec(line)
-
-    if (match) {
-      return {
-        title: toDisplayName(match[1].replace(/[`*_~[\]()]/g, '').trim()),
-        titleLineIndex: index,
-      }
-    }
-  }
-
-  return {
-    title: null,
-    titleLineIndex: null,
-  }
-}
-
-function removeLine(content: string, lineIndex: number | null) {
-  if (lineIndex === null) {
-    return content
-  }
-
-  return content
-    .split('\n')
-    .filter((_, index) => index !== lineIndex)
-    .join('\n')
-    .replace(/^\s+/, '')
-}
-
-function buildOutline(content: string, hiddenLineIndex: number | null) {
-  const usedIds = new Map<string, number>()
-  const outline: NoteOutlineItem[] = []
-  let isInCodeBlock = false
-
-  for (const [index, line] of content.split('\n').entries()) {
-    if (line.trim().startsWith('```')) {
-      isInCodeBlock = !isInCodeBlock
-      continue
-    }
-
-    if (isInCodeBlock || index === hiddenLineIndex) {
-      continue
-    }
-
-    const match = /^(#{1,6})\s+(.+?)\s*#*$/.exec(line)
-
-    if (!match) {
-      continue
-    }
-
-    const depth = match[1].length
-
-    if (depth === 1) {
-      continue
-    }
-
-    const text = toDisplayName(match[2].replace(/[`*_~[\]()]/g, '').trim())
-    const baseId = slugify(text)
-    const duplicateCount = usedIds.get(baseId) ?? 0
-    const id = duplicateCount === 0 ? baseId : `${baseId}-${duplicateCount + 1}`
-
-    usedIds.set(baseId, duplicateCount + 1)
-    outline.push({
-      depth,
-      id,
-      text,
-    })
-  }
-
-  return outline
-}
-
-function slugify(value: string) {
-  return (
-    value
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
-      .replace(/^-+|-+$/g, '') || 'heading'
-  )
-}
-
 function scrollToHeading(event: MouseEvent<HTMLAnchorElement>, id: string, scrollContainer: HTMLElement | null) {
   event.preventDefault()
 
@@ -420,78 +208,6 @@ function scrollToHeading(event: MouseEvent<HTMLAnchorElement>, id: string, scrol
   })
 }
 
-function createHeadingIdPlugin(outline: NoteOutlineItem[]) {
-  return () => (tree: HastNode) => {
-    let headingIndex = 0
-
-    visitHast(tree, (node) => {
-      if (node.type !== 'element' || !isHeadingTag(node.tagName)) {
-        return
-      }
-
-      const item = outline[headingIndex]
-      headingIndex += 1
-
-      if (!item) {
-        return
-      }
-
-      node.properties = {
-        ...node.properties,
-        dataOutlineId: item.id,
-        id: item.id,
-      }
-    })
-  }
-}
-
-function visitHast(node: HastNode, visitor: (node: HastNode) => void) {
-  visitor(node)
-
-  for (const child of node.children ?? []) {
-    visitHast(child, visitor)
-  }
-}
-
-function isHeadingTag(tagName: string | undefined) {
-  return (
-    tagName === 'h1' ||
-    tagName === 'h2' ||
-    tagName === 'h3' ||
-    tagName === 'h4' ||
-    tagName === 'h5' ||
-    tagName === 'h6'
-  )
-}
-
 function escapeCssIdentifier(value: string) {
   return globalThis.CSS?.escape(value) ?? value.replace(/["\\]/g, '\\$&')
-}
-
-function toDisplayName(value: string) {
-  const withoutExtension = value.replace(/\.(md|markdown|txt)$/i, '')
-  const withoutOrderPrefix = withoutExtension.replace(/^\d+[\s._-]+/, '')
-
-  return withoutOrderPrefix
-    .replace(/[-_]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .replace(/\b\w/g, (letter) => letter.toUpperCase())
-}
-
-function formatFileSize(sizeBytes: number) {
-  if (sizeBytes < 1024) {
-    return `${sizeBytes} B`
-  }
-
-  return `${(sizeBytes / 1024).toFixed(1)} KB`
-}
-
-function formatReadingTime(content: string) {
-  const latinWordCount = content.match(/[A-Za-z0-9]+(?:[-'][A-Za-z0-9]+)*/g)?.length ?? 0
-  const cjkCharacterCount = content.match(/[\u4e00-\u9fff]/g)?.length ?? 0
-  const estimatedWords = latinWordCount + cjkCharacterCount / 2
-  const minutes = Math.max(1, Math.ceil(estimatedWords / 240))
-
-  return `${minutes} min read`
 }
