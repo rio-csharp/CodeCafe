@@ -1,12 +1,10 @@
-import { act, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AiPanel } from '../features/ai/AiPanel'
-import { ActivityPanel } from '../features/audit/ActivityPanel'
-import { NotesPanel } from '../features/notes/NotesPanel'
-import { WorkspacePanel } from '../features/workspaces/WorkspacePanel'
-import { AppShell, DashboardPage } from './AppShell'
+import { ChatWorkbench } from '../features/chat/ChatWorkbench'
+import { AiSettingsPage, SettingsPage } from '../features/settings/SettingsPage'
+import { AppShell } from './AppShell'
 
 function renderRoute(initialPath = '/') {
   const router = createMemoryRouter(
@@ -15,11 +13,10 @@ function renderRoute(initialPath = '/') {
         path: '/',
         element: <AppShell />,
         children: [
-          { index: true, element: <DashboardPage /> },
-          { path: 'notes', element: <NotesPanel /> },
-          { path: 'workspace', element: <WorkspacePanel /> },
-          { path: 'ai', element: <AiPanel /> },
-          { path: 'audit', element: <ActivityPanel /> },
+          { index: true, element: <ChatWorkbench /> },
+          { path: 'chat', element: <ChatWorkbench /> },
+          { path: 'settings', element: <SettingsPage /> },
+          { path: 'settings/ai', element: <AiSettingsPage /> },
         ],
       },
     ],
@@ -29,59 +26,107 @@ function renderRoute(initialPath = '/') {
   render(<RouterProvider router={router} />)
 }
 
+const aiProviders = [
+  {
+    apiKey: null,
+    baseUrl: 'https://api.openai.com/v1',
+    builtIn: true,
+    enabled: false,
+    id: 'openai',
+    models: [],
+    name: 'OpenAI',
+  },
+  {
+    apiKey: null,
+    baseUrl: 'https://api.deepseek.com',
+    builtIn: true,
+    enabled: false,
+    id: 'deepseek',
+    models: [],
+    name: 'DeepSeek',
+  },
+]
+
+function mockApiFetch(providers: unknown[] = aiProviders) {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+    const url = String(input)
+
+    if (url.endsWith('/health')) {
+      return Promise.resolve(new Response('Healthy', { status: 200 }))
+    }
+
+    if (url.endsWith('/api/ai/providers')) {
+      return Promise.resolve(Response.json(providers))
+    }
+
+    return Promise.resolve(new Response(null, { status: 404 }))
+  })
+}
+
 describe('AppShell', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.useRealTimers()
   })
 
-  it('renders the platform shell and dashboard modules', () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Healthy', { status: 200 }))
+  it('renders the platform shell and chat workbench', () => {
+    mockApiFetch()
     renderRoute()
 
-    expect(screen.getByText('CodeCafe')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /developer knowledge workspace/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Workspace' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Audit' })).toBeInTheDocument()
+    expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'AI' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Deployment review/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /API design/i })).toBeInTheDocument()
+    expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
+    expect(screen.queryByText('CodeCafe')).not.toBeInTheDocument()
+    expect(screen.queryByText('Notes')).not.toBeInTheDocument()
+    expect(screen.queryByText('Guest preview')).not.toBeInTheDocument()
+    expect(screen.queryByText('Backend')).not.toBeInTheDocument()
   })
 
-  it('navigates to feature routes', async () => {
+  it('opens and closes a chat session', async () => {
     const user = userEvent.setup()
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Healthy', { status: 200 }))
+    mockApiFetch()
     renderRoute()
+
+    await user.click(screen.getByRole('button', { name: /Deployment review/i }))
+
+    expect(screen.getByRole('heading', { name: 'Deployment review' })).toBeInTheDocument()
+    expect(screen.getByText(/Review the deployment workflow/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+
+    expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Deployment review' })).not.toBeInTheDocument()
+  })
+
+  it('navigates to settings', async () => {
+    const user = userEvent.setup()
+    mockApiFetch()
+    renderRoute()
+
+    await user.click(screen.getByRole('link', { name: 'Settings' }))
+
+    expect(screen.getByRole('heading', { name: 'Application settings' })).toBeInTheDocument()
+    expect(screen.getByText('Select a settings section from the sidebar.')).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: 'AI' }))
 
-    expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument()
-  })
+    expect(screen.getByRole('navigation', { name: 'Providers' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'OpenAI' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'DeepSeek' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('https://api.openai.com/v1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add provider' })).toBeInTheDocument()
 
-  it('shows backend health and refreshes it every five seconds', async () => {
-    const setIntervalSpy = vi.spyOn(window, 'setInterval')
-    const fetchMock = vi
-      .spyOn(globalThis, 'fetch')
-      .mockResolvedValueOnce(new Response('Healthy', { status: 200 }))
-      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+    await user.click(screen.getByRole('button', { name: 'DeepSeek' }))
 
-    renderRoute()
-
-    expect(screen.getByText('Checking')).toBeInTheDocument()
-    expect(await screen.findByText('Online')).toBeInTheDocument()
-    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 5_000)
-
-    const refreshHealth = setIntervalSpy.mock.calls[0][0]
-
-    if (typeof refreshHealth !== 'function') {
-      throw new Error('Expected the health refresh callback to be a function.')
-    }
-
-    await act(async () => {
-      await refreshHealth()
-    })
-
-    expect(await screen.findByText('Offline')).toBeInTheDocument()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(screen.getByDisplayValue('https://api.deepseek.com')).toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Providers' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('tab', { name: 'Models' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Chat' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
   })
 })
