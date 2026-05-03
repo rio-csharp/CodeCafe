@@ -18,6 +18,7 @@ export function NotesPage() {
   const [status, setStatus] = useState('')
   const [isLoadingList, setIsLoadingList] = useState(true)
   const [isLoadingNote, setIsLoadingNote] = useState(false)
+  const [isMobileReaderOpen, setIsMobileReaderOpen] = useState(false)
 
   const filteredNotes = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -74,6 +75,14 @@ export function NotesPage() {
   }, [])
 
   useEffect(() => {
+    document.body.classList.toggle('notes-reader-open', isMobileReaderOpen)
+
+    return () => {
+      document.body.classList.remove('notes-reader-open')
+    }
+  }, [isMobileReaderOpen])
+
+  useEffect(() => {
     let ignore = false
 
     async function loadNote() {
@@ -109,8 +118,14 @@ export function NotesPage() {
     }
   }, [activePath])
 
+  function selectNote(path: string) {
+    setActivePath(path)
+    setIsMobileReaderOpen(true)
+    previewRef.current?.scrollTo({ top: 0 })
+  }
+
   return (
-    <section className="notes-page" aria-label="Notes">
+    <section className={`notes-page${isMobileReaderOpen ? ' mobile-reader-open' : ''}`} aria-label="Notes">
       <aside className="notes-sidebar" aria-label="Notes list">
         <div className="notes-sidebar-header">
           <input
@@ -123,7 +138,7 @@ export function NotesPage() {
         </div>
 
         <div className="note-list">
-          <NoteTree nodes={noteTree} activePath={activePath} onSelect={setActivePath} />
+          <NoteTree nodes={noteTree} activePath={activePath} onSelect={selectNote} />
 
           {!isLoadingList && filteredNotes.length === 0 ? (
             <p className="empty-settings-copy note-list-empty">No notes found.</p>
@@ -141,6 +156,9 @@ export function NotesPage() {
         ) : activeNote ? (
           <>
             <header className="note-editor-header">
+              <button className="note-reader-back-button" onClick={() => setIsMobileReaderOpen(false)} type="button">
+                Back
+              </button>
               <h2>{readerTitle}</h2>
               <span aria-label="Read-only note">
                 {formatFileSize(activeNote.sizeBytes)} - Read-only - {formatReadingTime(activeNote.content)}
