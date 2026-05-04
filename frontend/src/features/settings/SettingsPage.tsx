@@ -10,6 +10,7 @@ import {
   updateAiProviderModel,
 } from './aiProviderApi'
 import type { AiProvider, AiProviderModel } from './aiProviderApi'
+import { getNotesSettings, updateNotesSettings } from './notesSettingsApi'
 
 export function SettingsPage() {
   return (
@@ -25,6 +26,83 @@ export function SettingsPage() {
           <p>Select a settings section from the sidebar.</p>
         </div>
       </section>
+    </section>
+  )
+}
+
+export function NotesSettingsPage() {
+  const [rootPath, setRootPath] = useState('')
+  const [status, setStatus] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    let ignore = false
+
+    async function load() {
+      try {
+        const settings = await getNotesSettings()
+
+        if (!ignore) {
+          setRootPath(settings.rootPath)
+        }
+      } catch {
+        if (!ignore) {
+          setStatus('Unable to load notes settings.')
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void load()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  async function saveSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    try {
+      setStatus('')
+      const settings = await updateNotesSettings({ rootPath })
+      setRootPath(settings.rootPath)
+      setStatus('Notes settings saved.')
+    } catch {
+      setStatus('Save failed.')
+    }
+  }
+
+  return (
+    <section className="settings-page" aria-label="Notes settings">
+      <header>
+        <p className="eyebrow">Notes</p>
+        <h2>Notes settings</h2>
+      </header>
+
+      {status ? <p className="settings-status">{status}</p> : null}
+
+      <form className="settings-panel notes-settings-form" onSubmit={(event) => void saveSettings(event)}>
+        <label className="settings-field">
+          <span>Root path</span>
+          <input
+            disabled={isLoading}
+            name="rootPath"
+            onChange={(event) => setRootPath(event.target.value)}
+            placeholder="/srv/codecafe/notes"
+            value={rootPath}
+          />
+        </label>
+
+        <div className="settings-actions">
+          <button disabled={isLoading} type="submit">
+            Save notes settings
+          </button>
+        </div>
+      </form>
     </section>
   )
 }

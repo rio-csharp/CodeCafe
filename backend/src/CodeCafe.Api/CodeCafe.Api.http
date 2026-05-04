@@ -1,11 +1,107 @@
 @CodeCafe.Api_HostAddress = http://localhost:5000
+@providerId = 00000000-0000-0000-0000-000000000001
+@modelId = 00000000-0000-0000-0000-000000000001
+@notePath = 01-dotnet-platform/01-dotnet-overview.md
 
-### Health check
+### Health
 GET {{CodeCafe.Api_HostAddress}}/health
+Accept: application/json
+
+### Liveness
+GET {{CodeCafe.Api_HostAddress}}/health/live
+Accept: application/json
+
+### Readiness
+GET {{CodeCafe.Api_HostAddress}}/health/ready
 Accept: application/json
 
 ### System info
 GET {{CodeCafe.Api_HostAddress}}/api/system/info
+Accept: application/json
+
+### Get notes settings
+GET {{CodeCafe.Api_HostAddress}}/api/notes/settings
+Accept: application/json
+
+### Update notes settings
+PUT {{CodeCafe.Api_HostAddress}}/api/notes/settings
+Content-Type: application/json
+Accept: application/json
+
+{
+  "rootPath": "D:/Notes"
+}
+
+### List notes
+GET {{CodeCafe.Api_HostAddress}}/api/notes
+Accept: application/json
+
+### Read note content
+GET {{CodeCafe.Api_HostAddress}}/api/notes/content?path={{notePath}}
+Accept: application/json
+
+### List AI providers
+GET {{CodeCafe.Api_HostAddress}}/api/ai/providers
+Accept: application/json
+
+### Get AI provider
+GET {{CodeCafe.Api_HostAddress}}/api/ai/providers/{{providerId}}
+Accept: application/json
+
+### Create AI provider
+POST {{CodeCafe.Api_HostAddress}}/api/ai/providers
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "OpenAI",
+  "baseUrl": "https://api.openai.com/v1",
+  "apiKey": "sk-placeholder",
+  "enabled": true
+}
+
+### Update AI provider
+PUT {{CodeCafe.Api_HostAddress}}/api/ai/providers/{{providerId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "OpenAI",
+  "baseUrl": "https://api.openai.com/v1",
+  "apiKey": "sk-updated-placeholder",
+  "enabled": true
+}
+
+### Delete AI provider
+DELETE {{CodeCafe.Api_HostAddress}}/api/ai/providers/{{providerId}}
+Accept: application/json
+
+### Create AI provider model
+POST {{CodeCafe.Api_HostAddress}}/api/ai/providers/{{providerId}}/models
+Content-Type: application/json
+Accept: application/json
+
+{
+  "modelId": "gpt-4.1",
+  "displayName": "GPT-4.1",
+  "enabled": true,
+  "kind": "Chat"
+}
+
+### Update AI provider model
+PUT {{CodeCafe.Api_HostAddress}}/api/ai/providers/{{providerId}}/models/{{modelId}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "modelId": "gpt-4.1",
+  "displayName": "GPT-4.1 Updated",
+  "enabled": true,
+  "kind": "Chat"
+}
+
+### Delete AI provider model
+DELETE {{CodeCafe.Api_HostAddress}}/api/ai/providers/{{providerId}}/models/{{modelId}}
 Accept: application/json
 
 ### OpenAPI document

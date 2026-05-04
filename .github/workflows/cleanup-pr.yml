@@ -4,6 +4,11 @@ on:
   pull_request:
     types:
       - closed
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number whose preview namespace should be deleted.
+        required: true
 
 permissions:
   contents: read
@@ -21,5 +26,11 @@ jobs:
 
       - name: Delete preview namespace
         run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="${{ inputs.pr_number }}"
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+          fi
+
           ssh -p "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-            "kubectl delete namespace codecafe-pr-${{ github.event.pull_request.number }} --ignore-not-found=true"
+            "kubectl delete namespace codecafe-pr-$PR_NUMBER --ignore-not-found=true"
