@@ -1,12 +1,8 @@
 name: CI
 
 on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - ready_for_review
   push:
+  workflow_dispatch:
 
 permissions:
   actions: write
