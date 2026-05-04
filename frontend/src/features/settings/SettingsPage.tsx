@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { isLocalEnvironment } from '../../app/runtimeEnvironment'
-import { useTheme } from '../../app/theme'
+import { useTheme } from '../../app/useTheme'
 import { getNotesSettings, updateNotesSettings } from './notesSettingsApi'
 
 export function SettingsPage() {
