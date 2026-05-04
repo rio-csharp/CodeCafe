@@ -14,10 +14,9 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        _ = configuration;
-
         services.AddSingleton<IAiProviderRepository, InMemoryAiProviderRepository>();
-        services.AddSingleton<INotesSettingsRepository, InMemoryNotesSettingsRepository>();
+        services.AddSingleton<INotesSettingsRepository>(_ =>
+            new InMemoryNotesSettingsRepository(configuration["Notes:RootPath"] ?? string.Empty));
         services.AddScoped<INotesRepository, FileSystemNotesRepository>();
 
         return services;

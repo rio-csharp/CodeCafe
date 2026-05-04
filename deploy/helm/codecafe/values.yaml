@@ -64,6 +64,9 @@ api:
   cors:
     allowedOrigins:
       - https://frontend.example.local
+  notes:
+    rootPath: /data/notes
+    hostPath: /home/deploy/codecafe/notes
   probes:
     readiness:
       path: /health/ready

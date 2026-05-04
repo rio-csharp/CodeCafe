@@ -4,6 +4,9 @@ This runbook documents how to configure the CodeCafe test environment from a
 clean CentOS Stream 9 or Rocky Linux 9 server to a GitHub Actions deployment
 target that supports PR previews and the permanent test environment.
 
+For the separate notes content sync flow, also see
+[`docs/notes-content-sync.md`](notes-content-sync.md).
+
 Do not commit real IP addresses, domain names, SSH private keys, certificate
 private keys, or local secrets. Keep them in ignored local files such as
 `deploy/secrets.env`, `deploy/cloudflare/*.private.*`, or GitHub Secrets.
@@ -372,6 +375,19 @@ them from Cloudflare's official list.
 Do not expose the Kubernetes API on `6443` to the public internet. The current
 deployment model connects over SSH and runs `kubectl` on the target server, so
 GitHub Actions does not need direct Kubernetes API access.
+
+## 11.5 Prepare the Notes Content Directory
+
+Create the host directory that will be mounted into the API pods:
+
+```bash
+mkdir -p /home/deploy/codecafe/notes
+chmod 755 /home/deploy/codecafe/notes
+```
+
+The Helm chart mounts this directory into the API container as `/data/notes`.
+The separate `Notes` repository sync workflow mirrors Markdown files into this
+directory over SSH.
 
 ## 12. Verify the Deployment Path
 

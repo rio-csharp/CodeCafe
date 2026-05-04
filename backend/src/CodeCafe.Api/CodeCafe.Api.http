@@ -29,7 +29,7 @@ Content-Type: application/json
 Accept: application/json
 
 {
-  "rootPath": "D:/interviews"
+  "rootPath": "D:/Notes"
 }
 
 ### List notes

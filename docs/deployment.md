@@ -6,6 +6,9 @@ preview environments. Production uses a separate Kubernetes cluster/server.
 For the full test server runbook, see
 [`docs/test-environment-setup.md`](test-environment-setup.md).
 
+For note content sync from the separate `Notes` repository, see
+[`docs/notes-content-sync.md`](notes-content-sync.md).
+
 ## Test Server Prerequisites
 
 - k3s installed and healthy
@@ -72,6 +75,22 @@ Keep local copies in `deploy/secrets.env`. That file is ignored by Git. Use
 The test and production workflows use SSH to connect to the target server and
 run `kubectl` and `helm` there. Do not expose the Kubernetes API publicly for
 GitHub Actions.
+
+## Notes Content
+
+The deployed API reads notes from a mounted server directory instead of from the
+application image.
+
+Default paths:
+
+```text
+server host path:   /home/deploy/codecafe/notes
+container path:     /data/notes
+```
+
+The separate `Notes` repository is responsible for syncing Markdown files into
+that server path. This keeps note updates independent from CodeCafe application
+deploys.
 
 ## TLS
 

@@ -6,7 +6,12 @@ using CodeCafe.Domain.Notes;
 public sealed class InMemoryNotesSettingsRepository : INotesSettingsRepository
 {
     private readonly Lock syncRoot = new();
-    private NotesSettings settings = new(string.Empty);
+    private NotesSettings settings;
+
+    public InMemoryNotesSettingsRepository(string initialRootPath = "")
+    {
+        settings = new NotesSettings(initialRootPath);
+    }
 
     public Task<NotesSettings> GetAsync(CancellationToken cancellationToken)
     {
