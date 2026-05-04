@@ -4,11 +4,12 @@ import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
-import { AiSettingsPage, NotesSettingsPage, SettingsPage } from '../features/settings/SettingsPage'
+import { SettingsPage } from '../features/settings/SettingsPage'
 import { AppShell } from './AppShell'
+import { ThemeProvider } from './theme'
 import * as runtimeEnvironment from './runtimeEnvironment'
 
-function renderRoute(initialPath = '/', showLocalOnlyRoutes = true) {
+function renderRoute(initialPath = '/') {
   const router = createMemoryRouter(
     [
       {
@@ -19,48 +20,25 @@ function renderRoute(initialPath = '/', showLocalOnlyRoutes = true) {
           { path: 'chat', element: <ChatWorkbench /> },
           { path: 'notes', element: <NotesPage /> },
           { path: 'settings', element: <SettingsPage /> },
-          { path: 'settings/ai', element: <AiSettingsPage /> },
-          ...(showLocalOnlyRoutes ? [{ path: 'settings/notes', element: <NotesSettingsPage /> }] : []),
         ],
       },
     ],
     { initialEntries: [initialPath] },
   )
 
-  render(<RouterProvider router={router} />)
+  render(
+    <ThemeProvider>
+      <RouterProvider router={router} />
+    </ThemeProvider>,
+  )
 }
 
-const aiProviders = [
-  {
-    apiKey: null,
-    baseUrl: 'https://api.openai.com/v1',
-    builtIn: true,
-    enabled: false,
-    id: 'openai',
-    models: [],
-    name: 'OpenAI',
-  },
-  {
-    apiKey: null,
-    baseUrl: 'https://api.deepseek.com',
-    builtIn: true,
-    enabled: false,
-    id: 'deepseek',
-    models: [],
-    name: 'DeepSeek',
-  },
-]
-
-function mockApiFetch(providers: unknown[] = aiProviders) {
+function mockApiFetch() {
   return vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
     const url = String(input)
 
     if (url.endsWith('/health')) {
       return Promise.resolve(new Response('Healthy', { status: 200 }))
-    }
-
-    if (url.endsWith('/api/ai/providers')) {
-      return Promise.resolve(Response.json(providers))
     }
 
     if (url.endsWith('/api/notes/settings')) {
@@ -112,6 +90,7 @@ describe('AppShell', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.useRealTimers()
+    window.localStorage.clear()
   })
 
   it('renders the platform shell and chat workbench', () => {
@@ -121,9 +100,8 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Notes' })).toHaveLength(2)
+    expect(screen.getByRole('link', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'AI' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Deployment review/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /API design/i })).toBeInTheDocument()
     expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
@@ -158,24 +136,13 @@ describe('AppShell', () => {
 
     await user.click(screen.getByRole('link', { name: 'Settings' }))
 
-    expect(screen.getByRole('heading', { name: 'Application settings' })).toBeInTheDocument()
-    expect(screen.getByText('Select a settings section from the sidebar.')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('link', { name: 'AI' }))
-
-    expect(screen.getByRole('navigation', { name: 'Providers' })).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'OpenAI' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'DeepSeek' })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('https://api.openai.com/v1')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Add provider' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'DeepSeek' }))
-
-    expect(screen.getByDisplayValue('https://api.deepseek.com')).toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Providers' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('tab', { name: 'Models' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Chat' })).not.toBeInTheDocument()
-    expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
+    expect(within(screen.getByLabelText('Settings')).getByText('Settings')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'false')
+    expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
   })
 
   it('navigates to notes and notes settings', async () => {
@@ -184,7 +151,7 @@ describe('AppShell', () => {
     mockApiFetch()
     renderRoute()
 
-    await user.click(screen.getAllByRole('link', { name: 'Notes' })[0])
+    await user.click(screen.getByRole('link', { name: 'Notes' }))
 
     expect(screen.getByRole('searchbox', { name: 'Search notes' })).toBeInTheDocument()
     expect(await screen.findByText('Dotnet Platform')).toBeInTheDocument()
@@ -215,24 +182,20 @@ describe('AppShell', () => {
     expect(screen.getByLabelText('Read-only note')).toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Markdown editor' })).not.toBeInTheDocument()
 
-    await user.click(screen.getAllByRole('link', { name: 'Notes' })[1])
-
-    expect(screen.getByRole('heading', { name: 'Notes settings' })).toBeInTheDocument()
-    expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save notes settings' })).toBeInTheDocument()
   })
 
-  it('hides notes settings outside local environments', async () => {
+  it('shows notes settings as read-only outside local environments', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(false)
     mockApiFetch()
-    renderRoute('/', false)
+    renderRoute()
 
     await user.click(screen.getByRole('link', { name: 'Settings' }))
 
-    expect(screen.getByRole('heading', { name: 'Application settings' })).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: 'Notes' })).toHaveLength(1)
-    expect(screen.queryByRole('link', { name: 'Notes settings' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: 'Notes' })?.getAttribute('href')).toBe('/notes')
+    expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeDisabled()
+    expect(screen.getByText('Read-only')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
 })
