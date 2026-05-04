@@ -7,7 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 [ApiController]
 [Route("api/notes/settings")]
 [Tags("Notes Settings")]
-public sealed class NotesSettingsController(INotesSettingsService service) : ControllerBase
+public sealed class NotesSettingsController(
+    IHostEnvironment environment,
+    INotesSettingsService service) : ControllerBase
 {
     [HttpGet(Name = "GetNotesSettings")]
     public async Task<ActionResult<NotesSettingsResponse>> GetAsync(CancellationToken cancellationToken)
@@ -22,6 +24,11 @@ public sealed class NotesSettingsController(INotesSettingsService service) : Con
         UpsertNotesSettingsRequest request,
         CancellationToken cancellationToken)
     {
+        if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
         var settings = await service.UpdateAsync(request, cancellationToken);
 
         return Ok(settings);

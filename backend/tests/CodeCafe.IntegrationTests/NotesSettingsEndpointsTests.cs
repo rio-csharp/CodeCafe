@@ -26,4 +26,16 @@ public sealed class NotesSettingsEndpointsTests(ApiFactory factory) : IClassFixt
         Assert.NotNull(updatedSettings);
         Assert.Equal("/srv/codecafe/notes", updatedSettings.RootPath);
     }
+
+    [Fact]
+    public async Task Notes_root_path_cannot_be_updated_outside_local_environments()
+    {
+        using var productionFactory = factory.WithEnvironment("Production");
+        var client = productionFactory.CreateClient();
+
+        var updateResponse = await client.PutAsJsonAsync("/api/notes/settings", new UpsertNotesSettingsRequest(
+            "/srv/codecafe/notes"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, updateResponse.StatusCode);
+    }
 }

@@ -1,19 +1,20 @@
 import { NavLink, Outlet } from 'react-router-dom'
-
-const navigationItems = [
-  { label: 'Chat', to: '/' },
-  { label: 'Notes', to: '/notes' },
-  {
-    children: [
-      { label: 'AI', to: '/settings/ai' },
-      { label: 'Notes', to: '/settings/notes' },
-    ],
-    label: 'Settings',
-    to: '/settings',
-  },
-]
+import { isLocalEnvironment } from './runtimeEnvironment'
 
 export function AppShell() {
+  const navigationItems = [
+    { label: 'Chat', to: '/' },
+    { label: 'Notes', to: '/notes' },
+    {
+      children: [
+        { label: 'AI', to: '/settings/ai' },
+        ...(isLocalEnvironment() ? [{ label: 'Notes', to: '/settings/notes' }] : []),
+      ],
+      label: 'Settings',
+      to: '/settings',
+    },
+  ]
+
   return (
     <main className="app-shell">
       <nav className="app-nav" aria-label="Primary navigation">

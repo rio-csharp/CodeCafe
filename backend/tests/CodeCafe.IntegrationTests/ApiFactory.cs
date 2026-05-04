@@ -9,4 +9,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     {
         builder.UseEnvironment("Testing");
     }
+
+    public WebApplicationFactory<Program> WithEnvironment(string environmentName)
+    {
+        return WithWebHostBuilder(builder => builder.UseEnvironment(environmentName));
+    }
 }

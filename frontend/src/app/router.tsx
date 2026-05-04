@@ -3,6 +3,11 @@ import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
 import { AiSettingsPage, NotesSettingsPage, SettingsPage } from '../features/settings/SettingsPage'
 import { AppShell } from './AppShell'
+import { isLocalEnvironment } from './runtimeEnvironment'
+
+const localSettingsRoutes = isLocalEnvironment()
+  ? [{ path: 'settings/notes', element: <NotesSettingsPage /> }]
+  : []
 
 export const router = createBrowserRouter([
   {
@@ -14,7 +19,7 @@ export const router = createBrowserRouter([
       { path: 'notes', element: <NotesPage /> },
       { path: 'settings', element: <SettingsPage /> },
       { path: 'settings/ai', element: <AiSettingsPage /> },
-      { path: 'settings/notes', element: <NotesSettingsPage /> },
+      ...localSettingsRoutes,
     ],
   },
 ])

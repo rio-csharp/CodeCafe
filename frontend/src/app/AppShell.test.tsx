@@ -6,8 +6,9 @@ import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
 import { AiSettingsPage, NotesSettingsPage, SettingsPage } from '../features/settings/SettingsPage'
 import { AppShell } from './AppShell'
+import * as runtimeEnvironment from './runtimeEnvironment'
 
-function renderRoute(initialPath = '/') {
+function renderRoute(initialPath = '/', showLocalOnlyRoutes = true) {
   const router = createMemoryRouter(
     [
       {
@@ -19,7 +20,7 @@ function renderRoute(initialPath = '/') {
           { path: 'notes', element: <NotesPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'settings/ai', element: <AiSettingsPage /> },
-          { path: 'settings/notes', element: <NotesSettingsPage /> },
+          ...(showLocalOnlyRoutes ? [{ path: 'settings/notes', element: <NotesSettingsPage /> }] : []),
         ],
       },
     ],
@@ -114,6 +115,7 @@ describe('AppShell', () => {
   })
 
   it('renders the platform shell and chat workbench', () => {
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
     renderRoute()
 
@@ -132,6 +134,7 @@ describe('AppShell', () => {
 
   it('opens and closes a chat session', async () => {
     const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
     renderRoute()
 
@@ -149,6 +152,7 @@ describe('AppShell', () => {
 
   it('navigates to settings', async () => {
     const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
     renderRoute()
 
@@ -176,6 +180,7 @@ describe('AppShell', () => {
 
   it('navigates to notes and notes settings', async () => {
     const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
     renderRoute()
 
@@ -215,5 +220,19 @@ describe('AppShell', () => {
     expect(screen.getByRole('heading', { name: 'Notes settings' })).toBeInTheDocument()
     expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Save notes settings' })).toBeInTheDocument()
+  })
+
+  it('hides notes settings outside local environments', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(false)
+    mockApiFetch()
+    renderRoute('/', false)
+
+    await user.click(screen.getByRole('link', { name: 'Settings' }))
+
+    expect(screen.getByRole('heading', { name: 'Application settings' })).toBeInTheDocument()
+    expect(screen.getAllByRole('link', { name: 'Notes' })).toHaveLength(1)
+    expect(screen.queryByRole('link', { name: 'Notes settings' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Notes' })?.getAttribute('href')).toBe('/notes')
   })
 })
