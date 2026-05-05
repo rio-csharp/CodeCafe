@@ -179,6 +179,7 @@ export function AiSettingsPage() {
                     <p>Display names are shown in chat. Model IDs are sent to the provider API.</p>
                   </div>
                   <button
+                    className="settings-secondary-button"
                     onClick={() => {
                       updateProvider(selectedProvider.id, (provider) => ({
                         ...provider,

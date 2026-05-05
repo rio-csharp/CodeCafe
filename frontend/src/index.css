@@ -1159,6 +1159,21 @@ h2 {
   color: var(--muted);
 }
 
+.settings-secondary-button {
+  min-height: 34px;
+  padding: 0 11px;
+  color: var(--text);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.08);
+  cursor: pointer;
+}
+
+.settings-secondary-button:hover {
+  border-color: rgba(56, 189, 248, 0.42);
+  background: rgba(56, 189, 248, 0.14);
+}
+
 .settings-field {
   display: grid;
   gap: 6px;
@@ -1685,7 +1700,8 @@ h2 {
 
 [data-theme="light"] .notes-sidebar,
 [data-theme="light"] .session-list,
-[data-theme="light"] .note-outline {
+[data-theme="light"] .note-outline,
+[data-theme="light"] .provider-menu {
   background: rgba(247, 250, 255, 0.96);
 }
 
@@ -1693,8 +1709,14 @@ h2 {
 [data-theme="light"] .console-header,
 [data-theme="light"] .chat-settings-bar,
 [data-theme="light"] .chat-composer,
+[data-theme="light"] .settings-table-head,
 [data-theme="light"] .desktop-pagination {
   background: rgba(255, 255, 255, 0.92);
+}
+
+[data-theme="light"] .provider-settings,
+[data-theme="light"] .settings-table-wrap {
+  background: rgba(255, 255, 255, 0.88);
 }
 
 [data-theme="light"] .note-preview-pane,
@@ -1714,13 +1736,14 @@ h2 {
 [data-theme="light"] .format-option,
 [data-theme="light"] .settings-panel,
 [data-theme="light"] .theme-option,
+[data-theme="light"] .table-badge,
 [data-theme="light"] .mobile-back-button,
 [data-theme="light"] .note-tree summary:hover,
 [data-theme="light"] .note-list-item:hover,
 [data-theme="light"] .note-list-item[aria-current="true"],
 [data-theme="light"] .session-item:hover,
 [data-theme="light"] .session-item[aria-current="true"] {
-  background: rgba(14, 165, 233, 0.08);
+  background: rgba(14, 165, 233, 0.05);
 }
 
 [data-theme="light"] .session-list-header input,
@@ -1735,6 +1758,32 @@ h2 {
 [data-theme="light"] .settings-table input,
 [data-theme="light"] .settings-table select {
   background: rgba(248, 251, 255, 0.96);
+}
+
+[data-theme="light"] .settings-secondary-button,
+[data-theme="light"] .settings-actions button,
+[data-theme="light"] .settings-table button {
+  background: rgba(14, 165, 233, 0.05);
+}
+
+[data-theme="light"] .settings-secondary-button:hover,
+[data-theme="light"] .settings-actions button:hover,
+[data-theme="light"] .settings-table button:hover {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+[data-theme="light"] .primary-button {
+  color: #0f172a;
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.78), rgba(103, 232, 249, 0.78));
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.12);
+}
+
+[data-theme="light"] .primary-button:hover {
+  filter: brightness(1.02);
+}
+
+[data-theme="light"] .ai-settings-back-link {
+  color: rgba(91, 107, 128, 0.76);
 }
 
 [data-theme="light"] .chat-composer button {
