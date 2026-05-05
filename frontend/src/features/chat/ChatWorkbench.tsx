@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { streamChatResponse, type ChatAttachment, testProviderConnection } from '../ai/aiClient'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { streamChatResponse, type ChatAttachment } from '../ai/aiClient'
 import {
   getDefaultModel,
   getDefaultProvider,
@@ -43,14 +45,17 @@ export function ChatWorkbench() {
   const [draftMessage, setDraftMessage] = useState('')
   const [draftAttachments, setDraftAttachments] = useState<ChatAttachment[]>([])
   const [isBackendHealthy, setIsBackendHealthy] = useState(false)
-  const [isTestingConnection, setIsTestingConnection] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(
-    () => getDefaultModel(loadAiSettings())?.id ?? null,
-  )
-  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(
-    () => getDefaultProvider(loadAiSettings())?.id ?? null,
+  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(
+    () => {
+      const settings = loadAiSettings()
+      const provider = getDefaultProvider(settings)
+      const model = getDefaultModel(settings)
+
+      return provider && model ? toModelOptionValue(provider.id, model.id) : null
+    },
   )
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<ChatSession[]>(() => loadChatSessions())
@@ -58,32 +63,49 @@ export function ChatWorkbench() {
   const abortControllerRef = useRef<AbortController | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  const selectedProvider = useMemo(() => {
-    if (!selectedProviderId) {
-      return getDefaultProvider(aiSettings)
-    }
-
-    return aiSettings.providers.find((provider) => provider.id === selectedProviderId) ?? null
-  }, [aiSettings, selectedProviderId])
-
-  const enabledProviders = useMemo(
-    () => aiSettings.providers.filter((provider) => provider.enabled),
+  const enabledModelOptions = useMemo(
+    () =>
+      aiSettings.providers
+        .filter((provider) => provider.enabled)
+        .flatMap((provider) =>
+          provider.models
+            .filter((model) => model.enabled)
+            .map((model) => ({
+              label: model.name,
+              model,
+              provider,
+              value: toModelOptionValue(provider.id, model.id),
+            })),
+        ),
     [aiSettings.providers],
   )
 
-  const enabledModels = useMemo(
-    () => selectedProvider?.models.filter((model) => model.enabled) ?? [],
-    [selectedProvider],
-  )
-
-  const selectedModel = useMemo(() => {
-    if (!selectedModelId) {
-      return getDefaultModel(aiSettings)
+  const defaultModelOption = useMemo(() => {
+    if (!aiSettings.defaultProviderId || !aiSettings.defaultModelId) {
+      return enabledModelOptions[0] ?? null
     }
 
-    return selectedProvider?.models.find((model) => model.id === selectedModelId) ?? null
-  }, [aiSettings, selectedModelId, selectedProvider])
+    return (
+      enabledModelOptions.find(
+        (option) =>
+          option.provider.id === aiSettings.defaultProviderId &&
+          option.model.id === aiSettings.defaultModelId,
+      ) ??
+      enabledModelOptions[0] ??
+      null
+    )
+  }, [aiSettings.defaultModelId, aiSettings.defaultProviderId, enabledModelOptions])
 
+  const selectedModelOption = useMemo(() => {
+    if (!selectedModelValue) {
+      return defaultModelOption
+    }
+
+    return enabledModelOptions.find((option) => option.value === selectedModelValue) ?? defaultModelOption
+  }, [defaultModelOption, enabledModelOptions, selectedModelValue])
+
+  const selectedProvider = selectedModelOption?.provider ?? null
+  const selectedModel = selectedModelOption?.model ?? null
   const selectedSession = sessions.find((session) => session.id === selectedSessionId) ?? null
 
   const filteredSessions = useMemo(() => {
@@ -127,36 +149,26 @@ export function ChatWorkbench() {
   useEffect(() => {
     const syncSettings = () => {
       const nextSettings = loadAiSettings()
-      const defaultProvider = getDefaultProvider(nextSettings)
-      const defaultModel = getDefaultModel(nextSettings)
+      const nextOptions = nextSettings.providers
+        .filter((provider) => provider.enabled)
+        .flatMap((provider) =>
+          provider.models
+            .filter((model) => model.enabled)
+            .map((model) => toModelOptionValue(provider.id, model.id)),
+        )
 
       setAiSettings(nextSettings)
-
-      setSelectedProviderId((currentProviderId) => {
-        if (
-          currentProviderId &&
-          nextSettings.providers.some((provider) => provider.id === currentProviderId && provider.enabled)
-        ) {
-          return currentProviderId
+      setSelectedModelValue((currentModelValue) => {
+        if (currentModelValue && nextOptions.includes(currentModelValue)) {
+          return currentModelValue
         }
 
-        return defaultProvider?.id ?? null
-      })
+        const defaultProvider = getDefaultProvider(nextSettings)
+        const defaultModel = getDefaultModel(nextSettings)
 
-      setSelectedModelId((currentModelId) => {
-        const provider =
-          nextSettings.providers.find((item) => item.id === (selectedProviderId ?? defaultProvider?.id)) ??
-          defaultProvider ??
-          null
-
-        if (
-          currentModelId &&
-          provider?.models.some((model) => model.id === currentModelId && model.enabled)
-        ) {
-          return currentModelId
-        }
-
-        return defaultModel?.id ?? provider?.models.find((model) => model.enabled)?.id ?? null
+        return defaultProvider && defaultModel
+          ? toModelOptionValue(defaultProvider.id, defaultModel.id)
+          : nextOptions[0] ?? null
       })
     }
 
@@ -168,7 +180,7 @@ export function ChatWorkbench() {
       window.removeEventListener('storage', syncSettings)
       window.removeEventListener('focus', syncSettings)
     }
-  }, [selectedProviderId])
+  }, [])
 
   useEffect(() => {
     window.localStorage.setItem(chatSessionsStorageKey, JSON.stringify(sessions))
@@ -199,7 +211,7 @@ export function ChatWorkbench() {
     const effectiveTopP = chatPreferences.topP ?? model?.defaultTopP ?? 1
 
     if (!provider || !model) {
-      setStatus('Configure an enabled provider and model in AI settings first.')
+      setStatus('Configure an enabled model in AI settings first.')
       return
     }
 
@@ -338,31 +350,15 @@ export function ChatWorkbench() {
     setStatus('')
   }
 
-  function stopGeneration() {
-    abortControllerRef.current?.abort()
+  function deleteSession(sessionId: string) {
+    setSessions((currentSessions) => currentSessions.filter((session) => session.id !== sessionId))
+    setSelectedSessionId((currentSelectedSessionId) =>
+      currentSelectedSessionId === sessionId ? null : currentSelectedSessionId,
+    )
   }
 
-  async function handleTestConnection() {
-    if (!selectedProvider) {
-      setStatus('Choose a provider first.')
-      return
-    }
-
-    if (!selectedProvider.baseUrl.trim() || !selectedProvider.apiKey.trim()) {
-      setStatus('Add a base URL and API key before testing the connection.')
-      return
-    }
-
-    setIsTestingConnection(true)
-    setStatus('Testing connection...')
-
-    const result = await testProviderConnection({
-      model: selectedModel,
-      provider: selectedProvider,
-    })
-
-    setStatus(result.message)
-    setIsTestingConnection(false)
+  function stopGeneration() {
+    abortControllerRef.current?.abort()
   }
 
   return (
@@ -395,23 +391,39 @@ export function ChatWorkbench() {
         <div className="session-items">
           {filteredSessions.length > 0 ? (
             filteredSessions.map((session) => (
-              <button
+              <div
                 aria-current={session.id === selectedSessionId ? 'true' : undefined}
                 className="session-item"
                 key={session.id}
-                onClick={() => {
-                  setSelectedSessionId(session.id)
-                  setSelectedProviderId(session.providerId)
-                  setSelectedModelId(session.modelId)
-                }}
-                type="button"
               >
-                <span>
-                  <strong>{session.title}</strong>
-                  <small>{session.messages.at(-1)?.text || 'No messages yet.'}</small>
-                </span>
-                <time>{formatRelativeTime(session.updatedAt)}</time>
-              </button>
+                <button
+                  aria-current={session.id === selectedSessionId ? 'true' : undefined}
+                  aria-label={`Open ${session.title}`}
+                  className="session-item-main"
+                  onClick={() => {
+                    setSelectedSessionId(session.id)
+                    if (session.providerId && session.modelId) {
+                      setSelectedModelValue(toModelOptionValue(session.providerId, session.modelId))
+                    }
+                  }}
+                  type="button"
+                >
+                  <span className="session-item-copy">
+                    <strong>{session.title}</strong>
+                    <small>{session.messages.at(-1)?.text || 'No messages yet.'}</small>
+                  </span>
+                  <time>{formatRelativeTime(session.updatedAt)}</time>
+                </button>
+
+                <button
+                  aria-label={`Delete ${session.title}`}
+                  className="icon-button session-delete-button"
+                  onClick={() => deleteSession(session.id)}
+                  type="button"
+                >
+                  ×
+                </button>
+              </div>
             ))
           ) : (
             <p className="empty-settings-copy session-list-empty">No conversations yet.</p>
@@ -432,43 +444,15 @@ export function ChatWorkbench() {
             <h2>{selectedSession?.title ?? 'New chat'}</h2>
             <div className="chat-console-meta">
               <select
-                aria-label="Provider"
-                className="chat-select"
-                onChange={(event) => {
-                  const nextProviderId = event.target.value || null
-                  const nextProvider =
-                    enabledProviders.find((provider) => provider.id === nextProviderId) ?? null
-                  const nextModel =
-                    nextProvider?.models.find((model) => model.id === aiSettings.defaultModelId && model.enabled) ??
-                    nextProvider?.models.find((model) => model.enabled) ??
-                    null
-
-                  setSelectedProviderId(nextProviderId)
-                  setSelectedModelId(nextModel?.id ?? null)
-                }}
-                value={selectedProvider?.id ?? ''}
-              >
-                {enabledProviders.length > 0 ? (
-                  enabledProviders.map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.name}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">No provider</option>
-                )}
-              </select>
-
-              <select
                 aria-label="Model"
                 className="chat-select"
-                onChange={(event) => setSelectedModelId(event.target.value || null)}
-                value={selectedModel?.id ?? ''}
+                onChange={(event) => setSelectedModelValue(event.target.value || null)}
+                value={selectedModelOption?.value ?? ''}
               >
-                {enabledModels.length > 0 ? (
-                  enabledModels.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
+                {enabledModelOptions.length > 0 ? (
+                  enabledModelOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))
                 ) : (
@@ -477,90 +461,104 @@ export function ChatWorkbench() {
               </select>
 
               <button
-                className="icon-button"
-                disabled={isTestingConnection}
-                onClick={() => void handleTestConnection()}
+                aria-expanded={isSettingsOpen}
+                aria-label="Chat settings"
+                className="icon-button toolbar-icon-button"
+                onClick={() => setIsSettingsOpen((currentValue) => !currentValue)}
                 type="button"
+                title="Chat settings"
               >
-                {isTestingConnection ? 'Testing' : 'Test'}
+                <span aria-hidden="true">⚙</span>
               </button>
             </div>
           </div>
         </header>
 
-        <section className="chat-settings-bar" aria-label="Chat controls">
-          <label className="chat-setting-field chat-setting-field-wide">
-            <span>System prompt</span>
-            <textarea
-              onChange={(event) =>
-                setChatPreferences((currentPreferences) => ({
-                  ...currentPreferences,
-                  systemPrompt: event.target.value,
-                }))
-              }
-              placeholder="Set the assistant behavior for this workspace..."
-              rows={2}
-              value={chatPreferences.systemPrompt}
+        {isSettingsOpen ? (
+          <>
+            <button
+              aria-label="Close chat settings"
+              className="chat-settings-backdrop"
+              onClick={() => setIsSettingsOpen(false)}
+              type="button"
             />
-          </label>
+            <section className="chat-settings-popover" aria-label="Chat controls">
+              <label className="chat-setting-field chat-setting-field-wide">
+                <span>System prompt</span>
+                <textarea
+                  onChange={(event) =>
+                    setChatPreferences((currentPreferences) => ({
+                      ...currentPreferences,
+                      systemPrompt: event.target.value,
+                    }))
+                  }
+                  placeholder="Set the assistant behavior for this workspace..."
+                  rows={3}
+                  value={chatPreferences.systemPrompt}
+                />
+              </label>
 
-          <label className="chat-setting-field">
-            <span>Temperature</span>
-            <input
-              max={2}
-              min={0}
-              onChange={(event) =>
-                setChatPreferences((currentPreferences) => ({
-                  ...currentPreferences,
-                  temperature: event.target.value ? Number(event.target.value) : null,
-                }))
-              }
-              step={0.1}
-              type="number"
-              value={chatPreferences.temperature ?? selectedModel?.defaultTemperature ?? 0.7}
-            />
-          </label>
+              <label className="chat-setting-field">
+                <span>Temperature</span>
+                <input
+                  max={2}
+                  min={0}
+                  onChange={(event) =>
+                    setChatPreferences((currentPreferences) => ({
+                      ...currentPreferences,
+                      temperature: event.target.value ? Number(event.target.value) : null,
+                    }))
+                  }
+                  step={0.1}
+                  type="number"
+                  value={chatPreferences.temperature ?? selectedModel?.defaultTemperature ?? 0.7}
+                />
+              </label>
 
-          <label className="chat-setting-field">
-            <span>Top-p</span>
-            <input
-              max={1}
-              min={0}
-              onChange={(event) =>
-                setChatPreferences((currentPreferences) => ({
-                  ...currentPreferences,
-                  topP: event.target.value ? Number(event.target.value) : null,
-                }))
-              }
-              step={0.05}
-              type="number"
-              value={chatPreferences.topP ?? selectedModel?.defaultTopP ?? 1}
-            />
-          </label>
+              <label className="chat-setting-field">
+                <span>Top-p</span>
+                <input
+                  max={1}
+                  min={0}
+                  onChange={(event) =>
+                    setChatPreferences((currentPreferences) => ({
+                      ...currentPreferences,
+                      topP: event.target.value ? Number(event.target.value) : null,
+                    }))
+                  }
+                  step={0.05}
+                  type="number"
+                  value={chatPreferences.topP ?? selectedModel?.defaultTopP ?? 1}
+                />
+              </label>
 
-          <label className="chat-setting-field">
-            <span>Max tokens</span>
-            <input
-              max={32768}
-              min={1}
-              onChange={(event) =>
-                setChatPreferences((currentPreferences) => ({
-                  ...currentPreferences,
-                  maxOutputTokens: event.target.value ? Number(event.target.value) : null,
-                }))
-              }
-              step={1}
-              type="number"
-              value={chatPreferences.maxOutputTokens ?? selectedModel?.defaultMaxOutputTokens ?? 2048}
-            />
-          </label>
-        </section>
+              <label className="chat-setting-field">
+                <span>Max tokens</span>
+                <input
+                  max={32768}
+                  min={1}
+                  onChange={(event) =>
+                    setChatPreferences((currentPreferences) => ({
+                      ...currentPreferences,
+                      maxOutputTokens: event.target.value ? Number(event.target.value) : null,
+                    }))
+                  }
+                  step={1}
+                  type="number"
+                  value={chatPreferences.maxOutputTokens ?? selectedModel?.defaultMaxOutputTokens ?? 2048}
+                />
+              </label>
+            </section>
+          </>
+        ) : null}
 
         {selectedSession ? (
           <div className="message-thread" aria-label={`${selectedSession.title} messages`}>
             {selectedSession.messages.map((message) => (
               <article className={`message-bubble ${message.role}`} key={message.id}>
-                {message.text ? <p>{message.text}</p> : null}
+                {message.text ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+                ) : null}
                 {message.attachments.length > 0 ? (
                   <div className="message-attachments">
                     {message.attachments.map((attachment) => (
@@ -580,8 +578,8 @@ export function ChatWorkbench() {
           <div className="empty-thread" aria-label="Empty conversation">
             <h3>Start a chat.</h3>
             <p>
-              Pick a provider and model, then ask about code, notes, architecture, or anything
-              else you want the workspace to help with.
+              Pick a model, then ask about code, notes, architecture, or anything else you want
+              the workspace to help with.
             </p>
             {!selectedProvider || !selectedModel ? (
               <p>
@@ -644,21 +642,39 @@ export function ChatWorkbench() {
             type="file"
           />
 
-          <button
-            disabled={!selectedModel?.supportsImages}
-            onClick={() => fileInputRef.current?.click()}
-            type="button"
-          >
-            Image
-          </button>
-
-          {isSending ? (
-            <button onClick={stopGeneration} type="button">
-              Stop
+          <div className="chat-composer-actions">
+            <button
+              aria-label="Attach image"
+              className="chat-composer-secondary"
+              disabled={!selectedModel?.supportsImages}
+              onClick={() => fileInputRef.current?.click()}
+              type="button"
+              title="Attach image"
+            >
+              <span aria-hidden="true">🖼</span>
             </button>
-          ) : (
-            <button type="submit">Send</button>
-          )}
+
+            {isSending ? (
+              <button
+                aria-label="Stop generation"
+                className="chat-composer-primary"
+                onClick={stopGeneration}
+                title="Stop generation"
+                type="button"
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                aria-label="Send message"
+                className="chat-composer-primary"
+                title="Send message"
+                type="submit"
+              >
+                <span aria-hidden="true">➤</span>
+              </button>
+            )}
+          </div>
         </form>
 
         {status ? <p className="chat-status">{status}</p> : null}
@@ -831,6 +847,10 @@ function getDefaultChatPreferences(): ChatPreferences {
     temperature: null,
     topP: null,
   }
+}
+
+function toModelOptionValue(providerId: string, modelId: string) {
+  return `${providerId}:${modelId}`
 }
 
 function fileToAttachment(file: File) {

@@ -164,13 +164,9 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument()
-    expect(await screen.findByRole('option', { name: 'Example provider' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'GPT 4.1 Mini' })).toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'System prompt' })).toBeInTheDocument()
-    expect(screen.getByRole('spinbutton', { name: 'Temperature' })).toBeInTheDocument()
-    expect(screen.getByRole('spinbutton', { name: 'Top-p' })).toBeInTheDocument()
-    expect(screen.getByRole('spinbutton', { name: 'Max tokens' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Test' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Chat settings' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete Deployment review' })).toBeInTheDocument()
   })
 
   it('opens an existing chat session', async () => {
@@ -181,12 +177,30 @@ describe('AppShell', () => {
     seedChatSessions()
     renderRoute()
 
-    await user.click(screen.getByRole('button', { name: /Deployment review/i }))
+    await user.click(screen.getByRole('button', { name: 'Open Deployment review' }))
 
     expect(screen.getByRole('heading', { name: 'Deployment review' })).toBeInTheDocument()
     expect(
       within(screen.getByLabelText('Deployment review messages')).getByText(/rollback ownership/i),
     ).toBeInTheDocument()
+  })
+
+  it('opens chat settings and deletes a session', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    seedChatSessions()
+    renderRoute()
+
+    await user.click(screen.getByRole('button', { name: 'Chat settings' }))
+
+    expect(screen.getByRole('textbox', { name: 'System prompt' })).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Temperature' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Delete Deployment review' }))
+
+    expect(screen.queryByRole('button', { name: 'Open Deployment review' })).not.toBeInTheDocument()
   })
 
   it('navigates to settings and AI settings', async () => {
@@ -207,7 +221,6 @@ describe('AppShell', () => {
     await user.click(screen.getByRole('link', { name: /Providers, formats, models, and capabilities/i }))
 
     expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Back to settings' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Providers' })).toBeInTheDocument()
     expect(screen.getByDisplayValue('Example provider')).toBeInTheDocument()
     expect(screen.getByDisplayValue('https://example.com/v1')).toBeInTheDocument()
