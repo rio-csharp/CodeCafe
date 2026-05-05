@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom'
+import { AiSettingsPage } from '../features/ai/AiSettingsPage'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
       { path: 'chat', element: <ChatWorkbench /> },
       { path: 'notes', element: <NotesPage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'settings/ai', element: <AiSettingsPage /> },
     ],
   },
 ])

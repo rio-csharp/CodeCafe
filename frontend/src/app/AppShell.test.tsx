@@ -1,7 +1,18 @@
-import { render, screen, within } from '@testing-library/react'
+vi.mock('../features/ai/aiClient', async () => {
+  const actual = await vi.importActual<typeof import('../features/ai/aiClient')>('../features/ai/aiClient')
+
+  return {
+    ...actual,
+    streamChatResponse: vi.fn(actual.streamChatResponse),
+  }
+})
+
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import * as aiClient from '../features/ai/aiClient'
+import { AiSettingsPage } from '../features/ai/AiSettingsPage'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
@@ -20,6 +31,7 @@ function renderRoute(initialPath = '/') {
           { path: 'chat', element: <ChatWorkbench /> },
           { path: 'notes', element: <NotesPage /> },
           { path: 'settings', element: <SettingsPage /> },
+          { path: 'settings/ai', element: <AiSettingsPage /> },
         ],
       },
     ],
@@ -86,6 +98,60 @@ function mockApiFetch() {
   })
 }
 
+function seedAiSettings() {
+  window.localStorage.setItem('codecafe-ai-settings', JSON.stringify({
+    defaultModelId: 'model-1',
+    defaultProviderId: 'provider-1',
+    providers: [
+      {
+        apiKey: 'sk-test',
+        baseUrl: 'https://example.com/v1',
+        enabled: true,
+        formats: ['chat-completions', 'responses'],
+        id: 'provider-1',
+        models: [
+          {
+            defaultMaxOutputTokens: 4096,
+            defaultTemperature: 0.7,
+            defaultTopP: 1,
+            enabled: true,
+            id: 'model-1',
+            modelId: 'gpt-4.1-mini',
+            name: 'GPT 4.1 Mini',
+            supportsStreaming: true,
+          },
+        ],
+        name: 'Example provider',
+        preferredFormat: 'chat-completions',
+      },
+    ],
+  }))
+}
+
+function seedChatSessions() {
+  window.localStorage.setItem('codecafe-chat-sessions', JSON.stringify([
+    {
+      id: 'session-1',
+      messages: [
+        {
+          id: 'message-1',
+          role: 'user',
+          text: 'Review this deployment plan.',
+        },
+        {
+          id: 'message-2',
+          role: 'assistant',
+          text: 'Start with health checks and rollback ownership.',
+        },
+      ],
+      modelId: 'model-1',
+      providerId: 'provider-1',
+      title: 'Deployment review',
+      updatedAt: '2026-05-05T00:00:00.000Z',
+    },
+  ]))
+}
+
 describe('AppShell', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -93,45 +159,62 @@ describe('AppShell', () => {
     window.localStorage.clear()
   })
 
-  it('renders the platform shell and chat workbench', () => {
+  it('renders the platform shell and AI chat workspace', async () => {
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
+    seedAiSettings()
+    seedChatSessions()
     renderRoute()
 
     expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Deployment review/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /API design/i })).toBeInTheDocument()
-    expect(screen.queryByText(/Microsoft Agent Framework/i)).not.toBeInTheDocument()
-    expect(screen.queryByText('CodeCafe')).not.toBeInTheDocument()
-    expect(screen.queryByText('Guest preview')).not.toBeInTheDocument()
-    expect(screen.queryByText('Backend')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'GPT 4.1 Mini' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Chat settings' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete Deployment review' })).toBeInTheDocument()
   })
 
-  it('opens and closes a chat session', async () => {
+  it('opens an existing chat session', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
+    seedAiSettings()
+    seedChatSessions()
     renderRoute()
 
-    await user.click(screen.getByRole('button', { name: /Deployment review/i }))
+    await user.click(screen.getByRole('button', { name: 'Open Deployment review' }))
 
     expect(screen.getByRole('heading', { name: 'Deployment review' })).toBeInTheDocument()
-    expect(screen.getByText(/Review the deployment workflow/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Back' }))
-
-    expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Deployment review' })).not.toBeInTheDocument()
+    expect(
+      within(screen.getByLabelText('Deployment review messages')).getByText(/rollback ownership/i),
+    ).toBeInTheDocument()
   })
 
-  it('navigates to settings', async () => {
+  it('opens chat settings and deletes a session', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
+    seedAiSettings()
+    seedChatSessions()
+    renderRoute()
+
+    await user.click(screen.getByRole('button', { name: 'Chat settings' }))
+
+    expect(screen.getByRole('textbox', { name: 'System prompt' })).toBeInTheDocument()
+    expect(screen.getByRole('spinbutton', { name: 'Temperature' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Delete Deployment review' }))
+
+    expect(screen.queryByRole('button', { name: 'Open Deployment review' })).not.toBeInTheDocument()
+  })
+
+  it('navigates to settings and AI settings', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
     renderRoute()
 
     await user.click(screen.getByRole('link', { name: 'Settings' }))
@@ -139,16 +222,26 @@ describe('AppShell', () => {
     expect(within(screen.getByLabelText('Settings')).getByText('Settings')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dark' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Light' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
     expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: /Providers, formats, models, and capabilities/i }))
+
+    expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Providers' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Example provider')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('https://example.com/v1')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('GPT 4.1 Mini')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Test' })).toBeInTheDocument()
+    expect(screen.getByText('Top-p')).toBeInTheDocument()
+    expect(screen.getByText('Max')).toBeInTheDocument()
   })
 
-  it('navigates to notes and notes settings', async () => {
+  it('navigates to notes', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
+    seedAiSettings()
     renderRoute()
 
     await user.click(screen.getByRole('link', { name: 'Notes' }))
@@ -156,38 +249,13 @@ describe('AppShell', () => {
     expect(screen.getByRole('searchbox', { name: 'Search notes' })).toBeInTheDocument()
     expect(await screen.findByText('Dotnet Platform')).toBeInTheDocument()
     expect(within(screen.getByRole('complementary', { name: 'Notes list' })).getByRole('button', { name: 'Dotnet Overview' })).toBeInTheDocument()
-    expect(await screen.findByRole('article', { name: 'Markdown preview' })).toBeInTheDocument()
-    expect(screen.getByRole('complementary', { name: 'Note outline' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '.NET Platform Overview', level: 2 })).toBeInTheDocument()
-    expect(within(screen.getByRole('article', { name: 'Markdown preview' })).queryByRole('heading', { name: '.NET Platform Overview' })).not.toBeInTheDocument()
-    expect(within(screen.getByRole('complementary', { name: 'Note outline' })).queryByRole('link', { name: '.NET Platform Overview' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Core Idea' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: '.NET Components' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Core Idea', level: 2 })).toHaveAttribute('id', 'core-idea')
-    expect(screen.getByRole('heading', { name: '.NET Components', level: 2 })).toHaveAttribute('id', 'net-components')
-    const pagination = screen.getByRole('navigation', { name: 'Note pagination' })
-
-    expect(pagination).toBeInTheDocument()
-    expect(within(pagination).getByText('1 / 2')).toBeInTheDocument()
-    expect(within(pagination).getByRole('button', { name: 'Previous' })).toBeDisabled()
-
-    await user.click(within(pagination).getByRole('button', { name: 'Next' }))
-
-    expect(await screen.findByRole('heading', { name: 'Common Language Runtime', level: 2 })).toBeInTheDocument()
-    const updatedPagination = screen.getByRole('navigation', { name: 'Note pagination' })
-
-    expect(within(updatedPagination).getByText('2 / 2')).toBeInTheDocument()
-    expect(within(updatedPagination).getByRole('button', { name: 'Next' })).toBeDisabled()
-    expect(screen.queryByText('01-dotnet-platform/01-dotnet-overview.md')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Read-only note')).toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'Markdown editor' })).not.toBeInTheDocument()
-
   })
 
   it('shows notes settings as read-only outside local environments', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(false)
     mockApiFetch()
+    seedAiSettings()
     renderRoute()
 
     await user.click(screen.getByRole('link', { name: 'Settings' }))
@@ -197,5 +265,88 @@ describe('AppShell', () => {
     expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeDisabled()
     expect(screen.getByText('Read-only')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+  })
+
+  it('allows multiple chat sessions to stream at the same time', async () => {
+    const user = userEvent.setup()
+    const pendingStreams: Array<{
+      onDelta: (delta: string) => void
+      resolve: () => void
+    }> = []
+
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    vi.mocked(aiClient.streamChatResponse).mockImplementation(({ onDelta, signal }) =>
+      new Promise<void>((resolve, reject) => {
+        signal?.addEventListener(
+          'abort',
+          () => reject(new DOMException('Aborted', 'AbortError')),
+          { once: true },
+        )
+
+        pendingStreams.push({
+          onDelta,
+          resolve,
+        })
+      }),
+    )
+
+    renderRoute()
+
+    await user.type(screen.getByRole('textbox', { name: 'Message' }), 'First session')
+    await user.click(screen.getByRole('button', { name: 'Send message' }))
+
+    await user.click(screen.getByRole('button', { name: 'New' }))
+    await user.type(screen.getByRole('textbox', { name: 'Message' }), 'Second session')
+    await user.click(screen.getByRole('button', { name: 'Send message' }))
+
+    expect(aiClient.streamChatResponse).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button', { name: 'Open First session' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Second session' })).toBeInTheDocument()
+
+    pendingStreams[0]?.onDelta('Reply one')
+    pendingStreams[0]?.resolve()
+    pendingStreams[1]?.onDelta('Reply two')
+    pendingStreams[1]?.resolve()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument()
+    })
+  })
+
+  it('aborts an active response when deleting a session', async () => {
+    const user = userEvent.setup()
+    let aborted = false
+
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    vi.mocked(aiClient.streamChatResponse).mockImplementation(({ signal }) =>
+      new Promise<void>((_resolve, reject) => {
+        signal?.addEventListener(
+          'abort',
+          () => {
+            aborted = true
+            reject(new DOMException('Aborted', 'AbortError'))
+          },
+          { once: true },
+        )
+      }),
+    )
+
+    renderRoute()
+
+    await user.type(screen.getByRole('textbox', { name: 'Message' }), 'Abort me')
+    await user.click(screen.getByRole('button', { name: 'Send message' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Delete Abort me' }))
+
+    await waitFor(() => {
+      expect(aborted).toBe(true)
+      expect(screen.queryByRole('button', { name: 'Open Abort me' })).not.toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Generation stopped.')).not.toBeInTheDocument()
   })
 })

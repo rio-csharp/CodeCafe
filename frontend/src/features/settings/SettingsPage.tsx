@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { isLocalEnvironment } from '../../app/runtimeEnvironment'
 import { useTheme } from '../../app/useTheme'
 import { getNotesSettings, updateNotesSettings } from './notesSettingsApi'
@@ -95,6 +96,11 @@ export function SettingsPage() {
             )}
           </div>
         </form>
+
+        <Link className="settings-inline-row settings-link-row" to="/settings/ai">
+          <h2>AI</h2>
+          <span className="settings-link-copy">Providers, formats, models, and capabilities</span>
+        </Link>
       </section>
     </section>
   )
