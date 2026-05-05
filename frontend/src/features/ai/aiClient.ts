@@ -4,15 +4,7 @@ import type {
 } from 'openai/resources'
 import { getPreferredFormat, type AiProvider, type AiProviderModel } from './aiSettingsStore'
 
-export type ChatAttachment = {
-  dataUrl: string
-  id: string
-  mediaType: string
-  name: string
-}
-
 export type ChatMessage = {
-  attachments?: ChatAttachment[]
   role: 'assistant' | 'system' | 'user'
   text: string
 }
@@ -217,26 +209,13 @@ function toChatCompletionMessages(messages: ChatMessage[]): ChatCompletionMessag
       }
     }
 
-    const content: ChatCompletionContentPart[] = []
-
-    if (message.text.trim().length > 0) {
-      content.push({
-        text: message.text,
-        type: 'text',
-      })
-    }
-
-    for (const attachment of message.attachments ?? []) {
-      content.push({
-        image_url: {
-          url: attachment.dataUrl,
-        },
-        type: 'image_url',
-      })
-    }
+    const content: ChatCompletionContentPart[] = [{
+      text: message.text,
+      type: 'text',
+    }]
 
     return {
-      content: content.length > 0 ? content : message.text,
+      content,
       role: 'user',
     }
   })
@@ -265,18 +244,10 @@ function toResponsesInput(messages: ChatMessage[]) {
     }
 
     return {
-      content: [
-        ...(message.text.trim().length > 0
-          ? [{
-              text: message.text,
-              type: 'input_text' as const,
-            }]
-          : []),
-        ...((message.attachments ?? []).map((attachment) => ({
-          image_url: attachment.dataUrl,
-          type: 'input_image' as const,
-        }))),
-      ],
+      content: [{
+        text: message.text,
+        type: 'input_text' as const,
+      }],
       role: 'user',
     }
   })

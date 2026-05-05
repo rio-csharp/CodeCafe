@@ -8,7 +8,6 @@ export type AiProviderModel = {
   id: string
   modelId: string
   name: string
-  supportsImages: boolean
   supportsStreaming: boolean
 }
 
@@ -80,7 +79,6 @@ export function createModel(): AiProviderModel {
     id: crypto.randomUUID(),
     modelId: '',
     name: 'New model',
-    supportsImages: false,
     supportsStreaming: true,
   }
 }
@@ -225,7 +223,6 @@ function normalizeModel(value: unknown): AiProviderModel | null {
     id: typeof value.id === 'string' ? value.id : crypto.randomUUID(),
     modelId: typeof value.modelId === 'string' ? value.modelId : '',
     name: typeof value.name === 'string' ? value.name : 'Model',
-    supportsImages: typeof value.supportsImages === 'boolean' ? value.supportsImages : false,
     supportsStreaming: typeof value.supportsStreaming === 'boolean' ? value.supportsStreaming : true,
   }
 }

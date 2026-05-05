@@ -1,7 +1,17 @@
-import { render, screen, within } from '@testing-library/react'
+vi.mock('../features/ai/aiClient', async () => {
+  const actual = await vi.importActual<typeof import('../features/ai/aiClient')>('../features/ai/aiClient')
+
+  return {
+    ...actual,
+    streamChatResponse: vi.fn(actual.streamChatResponse),
+  }
+})
+
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import * as aiClient from '../features/ai/aiClient'
 import { AiSettingsPage } from '../features/ai/AiSettingsPage'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
@@ -108,7 +118,6 @@ function seedAiSettings() {
             id: 'model-1',
             modelId: 'gpt-4.1-mini',
             name: 'GPT 4.1 Mini',
-            supportsImages: true,
             supportsStreaming: true,
           },
         ],
@@ -125,13 +134,11 @@ function seedChatSessions() {
       id: 'session-1',
       messages: [
         {
-          attachments: [],
           id: 'message-1',
           role: 'user',
           text: 'Review this deployment plan.',
         },
         {
-          attachments: [],
           id: 'message-2',
           role: 'assistant',
           text: 'Start with health checks and rollback ownership.',
@@ -258,5 +265,88 @@ describe('AppShell', () => {
     expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeDisabled()
     expect(screen.getByText('Read-only')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+  })
+
+  it('allows multiple chat sessions to stream at the same time', async () => {
+    const user = userEvent.setup()
+    const pendingStreams: Array<{
+      onDelta: (delta: string) => void
+      resolve: () => void
+    }> = []
+
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    vi.mocked(aiClient.streamChatResponse).mockImplementation(({ onDelta, signal }) =>
+      new Promise<void>((resolve, reject) => {
+        signal?.addEventListener(
+          'abort',
+          () => reject(new DOMException('Aborted', 'AbortError')),
+          { once: true },
+        )
+
+        pendingStreams.push({
+          onDelta,
+          resolve,
+        })
+      }),
+    )
+
+    renderRoute()
+
+    await user.type(screen.getByRole('textbox', { name: 'Message' }), 'First session')
+    await user.click(screen.getByRole('button', { name: 'Send message' }))
+
+    await user.click(screen.getByRole('button', { name: 'New' }))
+    await user.type(screen.getByRole('textbox', { name: 'Message' }), 'Second session')
+    await user.click(screen.getByRole('button', { name: 'Send message' }))
+
+    expect(aiClient.streamChatResponse).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('button', { name: 'Open First session' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Second session' })).toBeInTheDocument()
+
+    pendingStreams[0]?.onDelta('Reply one')
+    pendingStreams[0]?.resolve()
+    pendingStreams[1]?.onDelta('Reply two')
+    pendingStreams[1]?.resolve()
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Send message' })).toBeInTheDocument()
+    })
+  })
+
+  it('aborts an active response when deleting a session', async () => {
+    const user = userEvent.setup()
+    let aborted = false
+
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    vi.mocked(aiClient.streamChatResponse).mockImplementation(({ signal }) =>
+      new Promise<void>((_resolve, reject) => {
+        signal?.addEventListener(
+          'abort',
+          () => {
+            aborted = true
+            reject(new DOMException('Aborted', 'AbortError'))
+          },
+          { once: true },
+        )
+      }),
+    )
+
+    renderRoute()
+
+    await user.type(screen.getByRole('textbox', { name: 'Message' }), 'Abort me')
+    await user.click(screen.getByRole('button', { name: 'Send message' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Delete Abort me' }))
+
+    await waitFor(() => {
+      expect(aborted).toBe(true)
+      expect(screen.queryByRole('button', { name: 'Open Abort me' })).not.toBeInTheDocument()
+    })
+
+    expect(screen.queryByText('Generation stopped.')).not.toBeInTheDocument()
   })
 })

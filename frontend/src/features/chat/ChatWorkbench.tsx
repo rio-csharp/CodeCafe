@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ChangeEvent } from 'react'
 import { Link } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { streamChatResponse, type ChatAttachment } from '../ai/aiClient'
+import { streamChatResponse } from '../ai/aiClient'
 import {
   getDefaultModel,
   getDefaultProvider,
@@ -24,7 +23,6 @@ type ChatPreferences = {
 }
 
 type SessionMessage = {
-  attachments: ChatAttachment[]
   id: string
   role: 'assistant' | 'user'
   text: string
@@ -43,11 +41,10 @@ export function ChatWorkbench() {
   const [aiSettings, setAiSettings] = useState<AiSettings>(() => loadAiSettings())
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(() => loadChatPreferences())
   const [draftMessage, setDraftMessage] = useState('')
-  const [draftAttachments, setDraftAttachments] = useState<ChatAttachment[]>([])
   const [isBackendHealthy, setIsBackendHealthy] = useState(false)
-  const [isSending, setIsSending] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [sendingSessionIds, setSendingSessionIds] = useState<string[]>([])
   const [selectedModelValue, setSelectedModelValue] = useState<string | null>(
     () => {
       const settings = loadAiSettings()
@@ -60,8 +57,8 @@ export function ChatWorkbench() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [sessions, setSessions] = useState<ChatSession[]>(() => loadChatSessions())
   const [status, setStatus] = useState('')
-  const abortControllerRef = useRef<AbortController | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
+  const silentAbortSessionIdsRef = useRef<Set<string>>(new Set())
 
   const enabledModelOptions = useMemo(
     () =>
@@ -107,6 +104,9 @@ export function ChatWorkbench() {
   const selectedProvider = selectedModelOption?.provider ?? null
   const selectedModel = selectedModelOption?.model ?? null
   const selectedSession = sessions.find((session) => session.id === selectedSessionId) ?? null
+  const isSelectedSessionSending = selectedSession
+    ? sendingSessionIds.includes(selectedSession.id)
+    : false
 
   const filteredSessions = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase()
@@ -198,11 +198,21 @@ export function ChatWorkbench() {
     }
   }, [selectedSession])
 
-  async function handleSendMessage() {
-    if (isSending) {
-      return
-    }
+  useEffect(() => {
+    const abortControllers = abortControllersRef.current
+    const silentAbortSessionIds = silentAbortSessionIdsRef.current
 
+    return () => {
+      for (const controller of abortControllers.values()) {
+        controller.abort()
+      }
+
+      abortControllers.clear()
+      silentAbortSessionIds.clear()
+    }
+  }, [])
+
+  async function handleSendMessage() {
     const provider = selectedProvider
     const model = selectedModel
     const trimmedMessage = draftMessage.trim()
@@ -220,24 +230,27 @@ export function ChatWorkbench() {
       return
     }
 
-    if (!trimmedMessage && draftAttachments.length === 0) {
+    if (!trimmedMessage) {
       return
     }
 
     const now = new Date().toISOString()
+    const targetSessionId = selectedSession?.id ?? crypto.randomUUID()
+
+    if (sendingSessionIds.includes(targetSessionId)) {
+      return
+    }
+
     const userMessage: SessionMessage = {
-      attachments: [...draftAttachments],
       id: crypto.randomUUID(),
       role: 'user',
       text: trimmedMessage,
     }
     const assistantMessage: SessionMessage = {
-      attachments: [],
       id: crypto.randomUUID(),
       role: 'assistant',
       text: '',
     }
-    const targetSessionId = selectedSession?.id ?? crypto.randomUUID()
     const nextSession = selectedSession
       ? {
           ...selectedSession,
@@ -259,12 +272,11 @@ export function ChatWorkbench() {
     setSessions((currentSessions) => upsertSession(currentSessions, nextSession))
     setSelectedSessionId(targetSessionId)
     setDraftMessage('')
-    setDraftAttachments([])
     setStatus('')
-    setIsSending(true)
+    setSendingSessionIds((currentSessionIds) => [...currentSessionIds, targetSessionId])
 
     const controller = new AbortController()
-    abortControllerRef.current = controller
+    abortControllersRef.current.set(targetSessionId, controller)
 
     try {
       await streamChatResponse({
@@ -298,6 +310,10 @@ export function ChatWorkbench() {
         topP: effectiveTopP,
       })
     } catch (error) {
+      const shouldSuppressAbortStatus =
+        error instanceof Error &&
+        error.name === 'AbortError' &&
+        silentAbortSessionIdsRef.current.has(targetSessionId)
       const message =
         error instanceof Error && error.name === 'AbortError'
           ? 'Generation stopped.'
@@ -323,42 +339,49 @@ export function ChatWorkbench() {
             : session,
         ),
       )
-      setStatus(message)
+
+      if (!shouldSuppressAbortStatus) {
+        setStatus(message)
+      }
     } finally {
-      abortControllerRef.current = null
-      setIsSending(false)
+      abortControllersRef.current.delete(targetSessionId)
+      silentAbortSessionIdsRef.current.delete(targetSessionId)
+      setSendingSessionIds((currentSessionIds) =>
+        currentSessionIds.filter((sessionId) => sessionId !== targetSessionId),
+      )
     }
-  }
-
-  async function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-
-    if (!file) {
-      return
-    }
-
-    const attachment = await fileToAttachment(file)
-
-    setDraftAttachments((currentAttachments) => [...currentAttachments, attachment])
-    event.target.value = ''
   }
 
   function startNewChat() {
     setSelectedSessionId(null)
     setDraftMessage('')
-    setDraftAttachments([])
     setStatus('')
   }
 
   function deleteSession(sessionId: string) {
+    const controller = abortControllersRef.current.get(sessionId)
+
+    if (controller) {
+      silentAbortSessionIdsRef.current.add(sessionId)
+      controller.abort()
+      abortControllersRef.current.delete(sessionId)
+    }
+
     setSessions((currentSessions) => currentSessions.filter((session) => session.id !== sessionId))
+    setSendingSessionIds((currentSessionIds) =>
+      currentSessionIds.filter((currentSessionId) => currentSessionId !== sessionId),
+    )
     setSelectedSessionId((currentSelectedSessionId) =>
       currentSelectedSessionId === sessionId ? null : currentSelectedSessionId,
     )
   }
 
   function stopGeneration() {
-    abortControllerRef.current?.abort()
+    if (!selectedSession) {
+      return
+    }
+
+    abortControllersRef.current.get(selectedSession.id)?.abort()
   }
 
   return (
@@ -410,7 +433,7 @@ export function ChatWorkbench() {
                 >
                   <span className="session-item-copy">
                     <strong>{session.title}</strong>
-                    <small>{session.messages.at(-1)?.text || 'No messages yet.'}</small>
+                    <small>{summarizePreview(session.messages.at(-1)?.text ?? 'No messages yet.')}</small>
                   </span>
                   <time>{formatRelativeTime(session.updatedAt)}</time>
                 </button>
@@ -559,18 +582,6 @@ export function ChatWorkbench() {
                 {message.text ? (
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
                 ) : null}
-                {message.attachments.length > 0 ? (
-                  <div className="message-attachments">
-                    {message.attachments.map((attachment) => (
-                      <img
-                        alt={attachment.name}
-                        className="message-attachment-preview"
-                        key={attachment.id}
-                        src={attachment.dataUrl}
-                      />
-                    ))}
-                  </div>
-                ) : null}
               </article>
             ))}
           </div>
@@ -600,24 +611,6 @@ export function ChatWorkbench() {
             Message
           </label>
           <div className="chat-composer-inputs">
-            {draftAttachments.length > 0 ? (
-              <div className="draft-attachment-strip">
-                {draftAttachments.map((attachment) => (
-                  <button
-                    className="draft-attachment-chip"
-                    key={attachment.id}
-                    onClick={() =>
-                      setDraftAttachments((currentAttachments) =>
-                        currentAttachments.filter((item) => item.id !== attachment.id),
-                      )
-                    }
-                    type="button"
-                  >
-                    {attachment.name}
-                  </button>
-                ))}
-              </div>
-            ) : null}
             <textarea
               id="chat-message"
               name="message"
@@ -634,27 +627,8 @@ export function ChatWorkbench() {
             />
           </div>
 
-          <input
-            accept="image/*"
-            className="sr-only"
-            onChange={(event) => void handleAttachmentChange(event)}
-            ref={fileInputRef}
-            type="file"
-          />
-
           <div className="chat-composer-actions">
-            <button
-              aria-label="Attach image"
-              className="chat-composer-secondary"
-              disabled={!selectedModel?.supportsImages}
-              onClick={() => fileInputRef.current?.click()}
-              type="button"
-              title="Attach image"
-            >
-              <span aria-hidden="true">🖼</span>
-            </button>
-
-            {isSending ? (
+            {isSelectedSessionSending ? (
               <button
                 aria-label="Stop generation"
                 className="chat-composer-primary"
@@ -780,28 +754,10 @@ function normalizeMessage(value: unknown): SessionMessage | null {
   }
 
   return {
-    attachments: Array.isArray(message.attachments)
-      ? message.attachments.filter(isAttachment)
-      : [],
     id: message.id,
     role: message.role,
     text: message.text,
   }
-}
-
-function isAttachment(value: unknown): value is ChatAttachment {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-
-  const attachment = value as Record<string, unknown>
-
-  return (
-    typeof attachment.id === 'string' &&
-    typeof attachment.dataUrl === 'string' &&
-    typeof attachment.mediaType === 'string' &&
-    typeof attachment.name === 'string'
-  )
 }
 
 function summarizeTitle(message: string) {
@@ -812,6 +768,16 @@ function summarizeTitle(message: string) {
   }
 
   return trimmed.length > 36 ? `${trimmed.slice(0, 36)}...` : trimmed
+}
+
+function summarizePreview(message: string) {
+  const normalized = message.replace(/\s+/g, ' ').trim()
+
+  if (!normalized) {
+    return 'No messages yet.'
+  }
+
+  return normalized.length > 56 ? `${normalized.slice(0, 56)}...` : normalized
 }
 
 function upsertSession(sessions: ChatSession[], session: ChatSession) {
@@ -851,30 +817,4 @@ function getDefaultChatPreferences(): ChatPreferences {
 
 function toModelOptionValue(providerId: string, modelId: string) {
   return `${providerId}:${modelId}`
-}
-
-function fileToAttachment(file: File) {
-  return new Promise<ChatAttachment>((resolve, reject) => {
-    const reader = new FileReader()
-
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        reject(new Error('Unable to read file.'))
-        return
-      }
-
-      resolve({
-        dataUrl: reader.result,
-        id: crypto.randomUUID(),
-        mediaType: file.type,
-        name: file.name,
-      })
-    }
-
-    reader.onerror = () => {
-      reject(new Error('Unable to read file.'))
-    }
-
-    reader.readAsDataURL(file)
-  })
 }

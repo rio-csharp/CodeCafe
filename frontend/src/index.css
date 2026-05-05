@@ -971,18 +971,6 @@ h2 {
   border-left: 2px solid var(--accent);
 }
 
-.message-attachments {
-  display: grid;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.message-attachment-preview {
-  width: min(100%, 240px);
-  border: 1px solid rgba(137, 160, 190, 0.22);
-  border-radius: 8px;
-}
-
 .empty-thread h3,
 .empty-thread p {
   margin: 0;
@@ -1057,8 +1045,7 @@ h2 {
   gap: 10px;
 }
 
-.chat-composer-primary,
-.chat-composer-secondary {
+.chat-composer-primary {
   min-height: 42px;
   min-width: 42px;
   padding: 0;
@@ -1079,42 +1066,6 @@ h2 {
 
 .chat-composer-primary:hover {
   filter: brightness(1.08);
-}
-
-.chat-composer-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  color: var(--text);
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  background: rgba(56, 189, 248, 0.08);
-  font-size: 16px;
-}
-
-.chat-composer-secondary:hover {
-  border-color: rgba(56, 189, 248, 0.42);
-  background: rgba(56, 189, 248, 0.14);
-}
-
-.draft-attachment-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.draft-attachment-chip {
-  min-height: 32px;
-  padding: 0 10px;
-  color: var(--text);
-  border: 1px solid rgba(56, 189, 248, 0.22);
-  border-radius: 999px;
-  background: rgba(56, 189, 248, 0.08);
-  cursor: pointer;
-}
-
-.draft-attachment-chip:hover {
-  background: rgba(56, 189, 248, 0.14);
 }
 
 .chat-status {
@@ -1177,22 +1128,6 @@ h2 {
 
 .ai-settings-header-title h1 {
   font-size: 26px;
-}
-
-.ai-settings-back-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  color: rgba(147, 163, 184, 0.72);
-  text-decoration: none;
-  font-size: 20px;
-  line-height: 1;
-}
-
-.ai-settings-back-link:hover {
-  color: var(--text);
 }
 
 .settings-back-link {
@@ -1922,16 +1857,8 @@ h2 {
   filter: brightness(1.02);
 }
 
-[data-theme="light"] .ai-settings-back-link {
-  color: rgba(91, 107, 128, 0.76);
-}
-
 [data-theme="light"] .chat-settings-backdrop {
   background: rgba(148, 163, 184, 0.18);
-}
-
-[data-theme="light"] .chat-composer-secondary {
-  color: var(--text);
 }
 
 [data-theme="light"] .chat-composer {
@@ -2295,8 +2222,7 @@ h2 {
     gap: 8px;
   }
 
-  .chat-composer-primary,
-  .chat-composer-secondary {
+  .chat-composer-primary {
     min-height: 40px;
     min-width: 40px;
     padding: 0 12px;

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import {
   createModel,
   createProvider,
@@ -126,9 +125,6 @@ export function AiSettingsPage() {
   return (
     <section className="settings-page ai-settings-page" aria-label="AI settings">
       <header className="settings-page-header ai-settings-header">
-        <Link aria-label="Back to settings" className="ai-settings-back-link" to="/settings">
-          ←
-        </Link>
         <div className="settings-page-header-title ai-settings-header-title">
           <h1>AI</h1>
         </div>
@@ -201,7 +197,6 @@ export function AiSettingsPage() {
                       <span>Model ID</span>
                       <span>Format</span>
                       <span>Stream</span>
-                      <span>Image</span>
                       <span>Temp</span>
                       <span>Top-p</span>
                       <span>Max</span>
@@ -506,14 +501,6 @@ function ProviderModelRow({
         <input
           checked={model.supportsStreaming}
           onChange={(event) => updateField('supportsStreaming', event.target.checked)}
-          type="checkbox"
-        />
-      </label>
-
-      <label className="table-checkbox">
-        <input
-          checked={model.supportsImages}
-          onChange={(event) => updateField('supportsImages', event.target.checked)}
           type="checkbox"
         />
       </label>
