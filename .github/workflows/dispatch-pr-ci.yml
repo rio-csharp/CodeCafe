@@ -40,7 +40,9 @@ jobs:
             state="${{ github.event.pull_request.state }}"
           fi
 
-          if [ "$state" != "OPEN" ]; then
+          state="$(echo "$state" | tr '[:upper:]' '[:lower:]')"
+
+          if [ "$state" != "open" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
