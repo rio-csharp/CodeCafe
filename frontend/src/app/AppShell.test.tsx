@@ -7,7 +7,7 @@ vi.mock('../features/ai/aiClient', async () => {
   }
 })
 
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -100,28 +100,48 @@ function mockApiFetch() {
 
 function seedAiSettings() {
   window.localStorage.setItem('codecafe-ai-settings', JSON.stringify({
-    defaultModelId: 'model-1',
-    defaultProviderId: 'provider-1',
+    defaultModelId: 'deepseek-v4-pro',
+    defaultProviderId: 'deepseek',
     providers: [
       {
         apiKey: 'sk-test',
-        baseUrl: 'https://example.com/v1',
+        baseUrl: 'https://api.deepseek.com',
         enabled: true,
-        formats: ['chat-completions', 'responses'],
-        id: 'provider-1',
+        formats: ['chat-completions', 'anthropic-messages'],
+        id: 'deepseek',
         models: [
           {
-            defaultMaxOutputTokens: 4096,
+            defaultMaxOutputTokens: 8192,
             defaultTemperature: 0.7,
             defaultTopP: 1,
             enabled: true,
-            id: 'model-1',
-            modelId: 'gpt-4.1-mini',
-            name: 'GPT 4.1 Mini',
+            id: 'deepseek-v4-pro',
+            maxContextTokens: 1000000,
+            maxOutputTokens: 384000,
+            modelId: 'deepseek-v4-pro',
+            name: 'DeepSeek V4 Pro',
+            supportsJsonOutput: true,
             supportsStreaming: true,
+            supportsThinking: true,
+            supportsToolCalls: true,
+          },
+          {
+            defaultMaxOutputTokens: 8192,
+            defaultTemperature: 0.7,
+            defaultTopP: 1,
+            enabled: true,
+            id: 'deepseek-v4-flash',
+            maxContextTokens: 1000000,
+            maxOutputTokens: 384000,
+            modelId: 'deepseek-v4-flash',
+            name: 'DeepSeek V4 Flash',
+            supportsJsonOutput: true,
+            supportsStreaming: true,
+            supportsThinking: true,
+            supportsToolCalls: true,
           },
         ],
-        name: 'Example provider',
+        name: 'DeepSeek',
         preferredFormat: 'chat-completions',
       },
     ],
@@ -144,8 +164,8 @@ function seedChatSessions() {
           text: 'Start with health checks and rollback ownership.',
         },
       ],
-      modelId: 'model-1',
-      providerId: 'provider-1',
+      modelId: 'deepseek-v4-pro',
+      providerId: 'deepseek',
       title: 'Deployment review',
       updatedAt: '2026-05-05T00:00:00.000Z',
     },
@@ -171,7 +191,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'GPT 4.1 Mini' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'DeepSeek V4 Pro' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Chat settings' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete Deployment review' })).toBeInTheDocument()
   })
@@ -226,16 +246,22 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: 'E-ink' })).toBeInTheDocument()
     expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: /Providers, formats, models, and capabilities/i }))
+    await user.click(screen.getByRole('link', { name: /Provider and model access/i }))
 
     expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Providers' })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('Example provider')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('https://example.com/v1')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('GPT 4.1 Mini')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Test' })).toBeInTheDocument()
-    expect(screen.getByText('Top-p')).toBeInTheDocument()
-    expect(screen.getByText('Max')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('DeepSeek')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('https://api.deepseek.com')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('DeepSeek V4 Pro')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Chat Completions, Anthropic Messages')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Test' }).length).toBeGreaterThan(0)
+    expect(screen.getByText('Context')).toBeInTheDocument()
+    expect(screen.getByText('Max output')).toBeInTheDocument()
+    expect(screen.getByText('JSON')).toBeInTheDocument()
+    expect(screen.getByText('Tools')).toBeInTheDocument()
+    expect(screen.getByText('Thinking')).toBeInTheDocument()
+    expect(screen.getByText('Stream')).toBeInTheDocument()
+    expect(screen.getAllByText('Enabled').length).toBeGreaterThan(0)
   })
 
   it('navigates to notes', async () => {
@@ -258,6 +284,146 @@ describe('AppShell', () => {
       'href',
       'https://github.com/rio-csharp/Notes/releases/download/latest/notes.epub',
     )
+    expect(screen.getByRole('button', { name: 'Open notes AI assistant' })).toBeInTheDocument()
+  })
+
+  it('opens the notes AI assistant from the notes reader', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    renderRoute('/notes')
+
+    await user.click(screen.getByRole('button', { name: 'Open notes AI assistant' }))
+
+    expect(screen.getByRole('region', { name: 'Notes AI assistant' })).toBeInTheDocument()
+    expect(screen.getByText('Ask about this note.')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Ask AI about this note' })).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Notes AI model' })).toBeInTheDocument()
+  })
+
+  it('restores the notes workspace selection, directory state, and initial scroll position', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    window.localStorage.setItem('codecafe-notes-workspace', JSON.stringify({
+      activePath: '01-dotnet-platform/02-clr.md',
+      expandedDirectories: ['01-dotnet-platform'],
+      scrollTopByPath: {
+        '01-dotnet-platform/02-clr.md': 180,
+      },
+    }))
+
+    renderRoute('/notes')
+
+    const clrButton = await screen.findByRole('button', { name: 'Clr' })
+    const directory = screen.getByText('Dotnet Platform').closest('details')
+
+    expect(directory).toHaveAttribute('open')
+    expect(clrButton).toHaveAttribute('aria-current', 'true')
+    expect(await screen.findByRole('heading', { name: 'Common Language Runtime' })).toBeInTheDocument()
+
+    const preview = screen.getByRole('article', { name: 'Markdown preview' })
+    Object.defineProperty(preview, 'scrollTop', {
+      configurable: true,
+      value: 180,
+      writable: true,
+    })
+
+    await waitFor(() => {
+      expect(preview.scrollTop).toBe(180)
+    })
+
+    Object.defineProperty(preview, 'scrollTop', {
+      configurable: true,
+      value: 264,
+      writable: true,
+    })
+    fireEvent.scroll(preview)
+
+    await user.click(screen.getByRole('button', { name: 'Dotnet Overview' }))
+
+    expect(JSON.parse(window.localStorage.getItem('codecafe-notes-workspace') ?? '{}')).toMatchObject({
+      activePath: '01-dotnet-platform/01-dotnet-overview.md',
+      expandedDirectories: ['01-dotnet-platform'],
+    })
+  })
+
+  it('keeps current note context available for notes AI follow-up', async () => {
+    const user = userEvent.setup()
+    seedAiSettings()
+    window.localStorage.setItem('codecafe-ai-settings', JSON.stringify({
+      defaultModelId: 'deepseek-v4-pro',
+      defaultProviderId: 'deepseek',
+      providers: [
+        {
+          apiKey: 'sk-test',
+          baseUrl: 'https://api.deepseek.com',
+          enabled: true,
+          formats: ['chat-completions', 'anthropic-messages'],
+          id: 'deepseek',
+          models: [
+            {
+              defaultMaxOutputTokens: 8192,
+              defaultTemperature: 0.7,
+              defaultTopP: 1,
+              enabled: true,
+              id: 'deepseek-v4-pro',
+              maxContextTokens: 1000000,
+              maxOutputTokens: 384000,
+              modelId: 'deepseek-v4-pro',
+              name: 'DeepSeek V4 Pro',
+              supportsJsonOutput: true,
+              supportsStreaming: true,
+              supportsThinking: true,
+              supportsToolCalls: true,
+            },
+          ],
+          name: 'DeepSeek',
+          preferredFormat: 'chat-completions',
+        },
+      ],
+    }))
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    vi.mocked(aiClient.streamChatResponse)
+      .mockResolvedValueOnce({ responseId: 'resp_1' })
+      .mockResolvedValueOnce({ responseId: 'resp_2' })
+
+    renderRoute('/notes')
+
+    await user.click(screen.getByRole('button', { name: 'Open notes AI assistant' }))
+    await user.type(screen.getByRole('textbox', { name: 'Ask AI about this note' }), 'Summarize this note')
+    await user.click(screen.getByRole('button', { name: 'Send notes AI message' }))
+
+    await waitFor(() => {
+      expect(aiClient.streamChatResponse).toHaveBeenCalledTimes(1)
+    })
+
+    await user.type(screen.getByRole('textbox', { name: 'Ask AI about this note' }), 'What are the components?')
+    await user.click(screen.getByRole('button', { name: 'Send notes AI message' }))
+
+    await waitFor(() => {
+      expect(aiClient.streamChatResponse).toHaveBeenCalledTimes(2)
+    })
+
+    const firstCall = vi.mocked(aiClient.streamChatResponse).mock.calls[0]?.[0]
+    const secondCall = vi.mocked(aiClient.streamChatResponse).mock.calls[1]?.[0]
+
+    expect(firstCall?.previousResponseId).toBeNull()
+    expect(firstCall?.messages[0]?.text).toContain('Current note title:')
+    expect(firstCall?.messages[0]?.text).toContain('Current note content:')
+    expect(secondCall?.previousResponseId).toBeNull()
+    expect(secondCall?.messages?.[0]?.text).toContain('Current note title:')
+    expect(secondCall?.messages?.[0]?.text).toContain('Current note content:')
+    expect(secondCall?.messages?.[1]?.text).toBe('Summarize this note')
+    expect(secondCall?.messages?.[2]?.role).toBe('assistant')
+    expect(secondCall?.messages?.[2]?.text).toBe('')
+    expect(secondCall?.messages?.at(-1)).toEqual({
+      role: 'user',
+      text: 'What are the components?',
+    })
   })
 
   it('shows notes settings as read-only outside local environments', async () => {
@@ -286,8 +452,9 @@ describe('AppShell', () => {
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
     seedAiSettings()
+    vi.mocked(aiClient.streamChatResponse).mockReset()
     vi.mocked(aiClient.streamChatResponse).mockImplementation(({ onDelta, signal }) =>
-      new Promise<void>((resolve, reject) => {
+      new Promise<{ responseId: null }>((resolve, reject) => {
         signal?.addEventListener(
           'abort',
           () => reject(new DOMException('Aborted', 'AbortError')),
@@ -296,7 +463,7 @@ describe('AppShell', () => {
 
         pendingStreams.push({
           onDelta,
-          resolve,
+          resolve: () => resolve({ responseId: null }),
         })
       }),
     )
@@ -332,7 +499,7 @@ describe('AppShell', () => {
     mockApiFetch()
     seedAiSettings()
     vi.mocked(aiClient.streamChatResponse).mockImplementation(({ signal }) =>
-      new Promise<void>((_resolve, reject) => {
+      new Promise<{ responseId: null }>((_resolve, reject) => {
         signal?.addEventListener(
           'abort',
           () => {

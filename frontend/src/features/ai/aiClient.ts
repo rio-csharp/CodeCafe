@@ -2,11 +2,15 @@ import type {
   ChatCompletionContentPart,
   ChatCompletionMessageParam,
 } from 'openai/resources'
-import { getPreferredFormat, type AiProvider, type AiProviderModel } from './aiSettingsStore'
+import type { AiProvider, AiProviderModel } from './aiSettingsStore'
 
 export type ChatMessage = {
   role: 'assistant' | 'system' | 'user'
   text: string
+}
+
+export type StreamChatResponseResult = {
+  responseId: string | null
 }
 
 type StreamChatResponseParams = {
@@ -16,6 +20,7 @@ type StreamChatResponseParams = {
   onComplete?: () => void
   onDelta: (delta: string) => void
   provider: AiProvider
+  previousResponseId?: string | null
   signal?: AbortSignal
   systemPrompt?: string
   temperature?: number | null
@@ -29,6 +34,7 @@ export async function streamChatResponse({
   onComplete,
   onDelta,
   provider,
+  previousResponseId,
   signal,
   systemPrompt,
   temperature,
@@ -42,44 +48,6 @@ export async function streamChatResponse({
     maxRetries: 0,
   })
   const requestMessages = buildRequestMessages(messages, systemPrompt)
-  const preferredFormat = getPreferredFormat(provider)
-
-  if (preferredFormat === 'anthropic' || preferredFormat === 'gemini') {
-    throw new Error('This format is not wired into the chat runtime yet. Use Chat Completions or Responses for now.')
-  }
-
-  if (preferredFormat === 'responses') {
-    if (model.supportsStreaming) {
-      const stream = await client.responses.create({
-        input: toResponsesInput(requestMessages) as never,
-        max_output_tokens: maxOutputTokens ?? undefined,
-        model: model.modelId,
-        stream: true,
-        temperature: temperature ?? undefined,
-        top_p: topP ?? undefined,
-      }, { signal })
-
-      for await (const event of stream) {
-        if (event.type === 'response.output_text.delta') {
-          onDelta(event.delta)
-        }
-      }
-    } else {
-      const response = await client.responses.create({
-        input: toResponsesInput(requestMessages) as never,
-        max_output_tokens: maxOutputTokens ?? undefined,
-        model: model.modelId,
-        temperature: temperature ?? undefined,
-        top_p: topP ?? undefined,
-      }, { signal })
-
-      onDelta(response.output_text)
-    }
-
-    onComplete?.()
-    return
-  }
-
   if (model.supportsStreaming) {
     const stream = await client.chat.completions.create({
       max_completion_tokens: maxOutputTokens ?? undefined,
@@ -114,6 +82,9 @@ export async function streamChatResponse({
   }
 
   onComplete?.()
+  return {
+    responseId: previousResponseId ?? null,
+  }
 }
 
 export async function testProviderConnection({
@@ -216,38 +187,6 @@ function toChatCompletionMessages(messages: ChatMessage[]): ChatCompletionMessag
 
     return {
       content,
-      role: 'user',
-    }
-  })
-}
-
-function toResponsesInput(messages: ChatMessage[]) {
-  return messages.map((message) => {
-    if (message.role === 'assistant') {
-      return {
-        content: [{
-          text: message.text,
-          type: 'input_text',
-        }],
-        role: 'assistant',
-      }
-    }
-
-    if (message.role === 'system') {
-      return {
-        content: [{
-          text: message.text,
-          type: 'input_text',
-        }],
-        role: 'system',
-      }
-    }
-
-    return {
-      content: [{
-        text: message.text,
-        type: 'input_text' as const,
-      }],
       role: 'user',
     }
   })

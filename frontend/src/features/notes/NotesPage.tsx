@@ -1,37 +1,46 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { MouseEvent } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { useTheme } from '../../app/useTheme'
-import { formatFileSize, formatReadingTime, toDisplayName } from './noteDisplay'
+import { NoteOutline } from './NoteOutline'
+import { NoteReaderPane } from './NoteReaderPane'
+import { NotesAiAssistant } from './NotesAiAssistant'
+import { toDisplayName } from './noteDisplay'
 import { buildOutline, createHeadingIdPlugin, getNoteHeadingInfo, removeLine } from './noteMarkdown'
-import { NoteTree } from './noteTree'
+import { NotesSidebar } from './NotesSidebar'
 import { buildNoteTree } from './noteTreeBuilder'
+import {
+  getAncestorPaths,
+  loadNotesWorkspaceState,
+  mergeExpandedDirectories,
+  persistWorkspaceBeforeNavigation,
+  rememberScrollPosition,
+  saveNotesWorkspaceState,
+  type NotesWorkspaceState,
+} from './notesWorkspaceState'
 import { listNotes, readNote } from './notesApi'
 import type { NoteContent, NoteSummary } from './notesApi'
 
-const bookDownloadLinks = [
-  {
-    href: 'https://github.com/rio-csharp/Notes/releases/download/latest/notes.pdf',
-    label: 'PDF',
-  },
-  {
-    href: 'https://github.com/rio-csharp/Notes/releases/download/latest/notes.epub',
-    label: 'EPUB',
-  },
-] as const
-
 export function NotesPage() {
   const { theme } = useTheme()
+  const initialWorkspaceState = useMemo(() => loadNotesWorkspaceState(), [])
   const previewRef = useRef<HTMLElement | null>(null)
+  const isRestoringScrollRef = useRef(false)
+  const [workspaceState, setWorkspaceState] = useState<NotesWorkspaceState>(initialWorkspaceState)
+  const scrollTopByPathRef = useRef<Record<string, number>>(initialWorkspaceState.scrollTopByPath)
   const [notes, setNotes] = useState<NoteSummary[]>([])
-  const [activePath, setActivePath] = useState('')
+  const [savedActivePath] = useState(() => initialWorkspaceState.activePath)
+  const [initialRestorePath, setInitialRestorePath] = useState(() => initialWorkspaceState.activePath)
+  const [activePath, setActivePath] = useState(() => initialWorkspaceState.activePath ?? '')
   const [activeNote, setActiveNote] = useState<NoteContent | null>(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
   const [isLoadingList, setIsLoadingList] = useState(true)
   const [isLoadingNote, setIsLoadingNote] = useState(false)
+  const [isNotesAiOpen, setIsNotesAiOpen] = useState(false)
   const [isMobileReaderOpen, setIsMobileReaderOpen] = useState(false)
+  const expandedPaths = useMemo(
+    () => new Set(workspaceState.expandedDirectories),
+    [workspaceState.expandedDirectories],
+  )
 
   const filteredNotes = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -64,6 +73,13 @@ export function NotesPage() {
       : null
 
   useEffect(() => {
+    saveNotesWorkspaceState({
+      ...workspaceState,
+      scrollTopByPath: scrollTopByPathRef.current,
+    })
+  }, [workspaceState])
+
+  useEffect(() => {
     let ignore = false
 
     async function loadNotes() {
@@ -75,7 +91,26 @@ export function NotesPage() {
         }
 
         setNotes(nextNotes)
-        setActivePath(nextNotes[0]?.path ?? '')
+        setActivePath((currentPath) => {
+          const preferredPath = currentPath || savedActivePath || ''
+
+          if (preferredPath && nextNotes.some((note) => note.path === preferredPath)) {
+            setWorkspaceState((currentState) => ({
+              ...currentState,
+              expandedDirectories: mergeExpandedDirectories(
+                currentState.expandedDirectories,
+                getAncestorPaths(preferredPath),
+              ),
+            }))
+            return preferredPath
+          }
+
+          setWorkspaceState((currentState) => ({
+            ...currentState,
+            activePath: nextNotes[0]?.path ?? null,
+          }))
+          return nextNotes[0]?.path ?? ''
+        })
       } catch {
         if (!ignore) {
           setStatus('Unable to load notes. Check the notes root path in Settings.')
@@ -92,7 +127,7 @@ export function NotesPage() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [savedActivePath])
 
   useEffect(() => {
     document.body.classList.toggle('notes-reader-open', isMobileReaderOpen)
@@ -150,10 +185,108 @@ export function NotesPage() {
     }
   }, [activePath])
 
+  useEffect(() => {
+    if (!activeNote || !previewRef.current) {
+      return
+    }
+
+    if (!initialRestorePath || activeNote.path !== initialRestorePath) {
+      return
+    }
+
+    const preview = previewRef.current
+    const scrollTop = scrollTopByPathRef.current[activeNote.path] ?? 0
+    isRestoringScrollRef.current = true
+    const restoreId = window.requestAnimationFrame(() => {
+      scrollPreviewToPosition(preview, scrollTop)
+      setInitialRestorePath(null)
+      isRestoringScrollRef.current = false
+    })
+
+    return () => {
+      window.cancelAnimationFrame(restoreId)
+      isRestoringScrollRef.current = false
+    }
+  }, [activeNote, initialRestorePath])
+
+  useEffect(() => {
+    const preview = previewRef.current
+
+    if (!preview || !activePath) {
+      return
+    }
+
+    const handleScroll = () => {
+      if (isRestoringScrollRef.current) {
+        return
+      }
+
+      scrollTopByPathRef.current = {
+        ...scrollTopByPathRef.current,
+        [activePath]: preview.scrollTop,
+      }
+    }
+
+    preview.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      preview.removeEventListener('scroll', handleScroll)
+    }
+  }, [activePath, activeNote])
+
+  useEffect(() => {
+    const flushWorkspaceState = () => {
+      saveNotesWorkspaceState({
+        ...workspaceState,
+        scrollTopByPath: scrollTopByPathRef.current,
+      })
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushWorkspaceState()
+      }
+    }
+
+    window.addEventListener('pagehide', flushWorkspaceState)
+    window.addEventListener('beforeunload', flushWorkspaceState)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('pagehide', flushWorkspaceState)
+      window.removeEventListener('beforeunload', flushWorkspaceState)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [workspaceState])
+
   function selectNote(path: string) {
+    const nextExpandedDirectories = mergeExpandedDirectories(
+      workspaceState.expandedDirectories,
+      getAncestorPaths(path),
+    )
+    persistWorkspaceBeforeNavigation({
+      activePath: path,
+      currentPath: activePath,
+      expandedDirectories: nextExpandedDirectories,
+      scrollContainer: previewRef.current,
+      scrollTopByPathRef,
+      workspaceState,
+    })
+    rememberScrollPosition(
+      activePath,
+      previewRef.current,
+      scrollTopByPathRef,
+      workspaceState,
+    )
+    setInitialRestorePath(null)
+    setWorkspaceState((currentState) => ({
+      ...currentState,
+      activePath: path,
+      expandedDirectories: nextExpandedDirectories,
+    }))
     setActivePath(path)
     openMobileReader()
-    scrollPreviewToTop(previewRef.current)
+    scrollPreviewToPosition(previewRef.current, 0)
   }
 
   function openMobileReader() {
@@ -165,8 +298,49 @@ export function NotesPage() {
   }
 
   function moveToNote(path: string) {
+    const nextExpandedDirectories = mergeExpandedDirectories(
+      workspaceState.expandedDirectories,
+      getAncestorPaths(path),
+    )
+    persistWorkspaceBeforeNavigation({
+      activePath: path,
+      currentPath: activePath,
+      expandedDirectories: nextExpandedDirectories,
+      scrollContainer: previewRef.current,
+      scrollTopByPathRef,
+      workspaceState,
+    })
+    rememberScrollPosition(
+      activePath,
+      previewRef.current,
+      scrollTopByPathRef,
+      workspaceState,
+    )
+    setInitialRestorePath(null)
+    setWorkspaceState((currentState) => ({
+      ...currentState,
+      activePath: path,
+      expandedDirectories: nextExpandedDirectories,
+    }))
     setActivePath(path)
-    scrollPreviewToTop(previewRef.current)
+    scrollPreviewToPosition(previewRef.current, 0)
+  }
+
+  function toggleDirectory(path: string, isOpen: boolean) {
+    setWorkspaceState((currentState) => {
+      const nextExpandedDirectories = isOpen
+        ? Array.from(new Set([...currentState.expandedDirectories, path]))
+        : currentState.expandedDirectories.filter((entry) => entry !== path)
+
+      if (nextExpandedDirectories === currentState.expandedDirectories) {
+        return currentState
+      }
+
+      return {
+        ...currentState,
+        expandedDirectories: nextExpandedDirectories,
+      }
+    })
   }
 
   function turnReaderPage(direction: 'next' | 'previous') {
@@ -206,188 +380,71 @@ export function NotesPage() {
     })
   }
 
-  return (
-    <section className={`notes-page${isMobileReaderOpen ? ' mobile-reader-open' : ''}`} aria-label="Notes">
-      <aside className="notes-sidebar" aria-label="Notes list">
-        <div className="notes-sidebar-header">
-          <input
-            aria-label="Search notes"
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search notes"
-            type="search"
-            value={query}
-          />
-        </div>
+  function handleOutlineItemClick(id: string) {
+    const scrollContainer = previewRef.current
+    const heading = scrollContainer?.querySelector<HTMLElement>(`#${escapeCssIdentifier(id)}`)
 
-        <div className="note-list">
-          <NoteTree nodes={noteTree} activePath={activePath} onSelect={selectNote} />
+    if (!heading || !scrollContainer) {
+      return
+    }
 
-          {!isLoadingList && filteredNotes.length === 0 ? (
-            <p className="empty-settings-copy note-list-empty">No notes found.</p>
-          ) : null}
-        </div>
-
-        <div className="notes-downloads" aria-label="Download notes book">
-          {bookDownloadLinks.map((link) => (
-            <a
-              className="notes-download-link"
-              href={link.href}
-              key={link.label}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-      </aside>
-
-      <section className="note-workspace" aria-label="Note reader">
-        {status ? <p className="settings-status note-status">{status}</p> : null}
-
-        {isLoadingNote ? (
-          <section className="notes-empty-panel">
-            <h3>Loading note</h3>
-          </section>
-        ) : activeNote ? (
-          <>
-            <header className="note-editor-header">
-              <button className="note-reader-back-button" onClick={() => setIsMobileReaderOpen(false)} type="button">
-                Back
-              </button>
-              <h2>{readerTitle}</h2>
-              <span aria-label="Read-only note">
-                {formatFileSize(activeNote.sizeBytes)} - Read-only - {formatReadingTime(activeNote.content)}
-              </span>
-            </header>
-
-            <article className="note-preview-pane note-preview-pane-full" aria-label="Markdown preview" ref={previewRef}>
-              {isEinkMode ? (
-                <div className="note-page-turn-zones" aria-hidden="true">
-                  <button
-                    className="note-page-turn-zone previous"
-                    onClick={() => turnReaderPage('previous')}
-                    tabIndex={-1}
-                    type="button"
-                  />
-                  <button
-                    className="note-page-turn-zone next"
-                    onClick={() => turnReaderPage('next')}
-                    tabIndex={-1}
-                    type="button"
-                  />
-                </div>
-              ) : null}
-              <div className="note-preview-content">
-                <ReactMarkdown rehypePlugins={[headingIdPlugin]} remarkPlugins={[remarkGfm]}>
-                  {readerContent}
-                </ReactMarkdown>
-
-                <NotePagination
-                  activeIndex={activeNoteIndex}
-                  className="note-reader-pagination mobile-pagination"
-                  label="Mobile note pagination"
-                  noteCount={filteredNotes.length}
-                  nextNote={nextNote}
-                  onMove={moveToNote}
-                  previousNote={previousNote}
-                />
-              </div>
-            </article>
-
-            <NotePagination
-              activeIndex={activeNoteIndex}
-              className="note-reader-pagination desktop-pagination"
-              label="Note pagination"
-              noteCount={filteredNotes.length}
-              nextNote={nextNote}
-              onMove={moveToNote}
-              previousNote={previousNote}
-            />
-          </>
-        ) : (
-          <section className="notes-empty-panel">
-            <h3>{isLoadingList ? 'Loading notes' : 'No note selected'}</h3>
-          </section>
-        )}
-      </section>
-
-      <aside className="note-outline" aria-label="Note outline">
-        <div className="note-outline-header">Outline</div>
-        {outline.length > 0 ? (
-          <nav className="note-outline-list">
-            {outline.map((item) => (
-              <a
-                className={`note-outline-item depth-${Math.min(item.depth, 3)}`}
-                href={`#${item.id}`}
-                key={item.id}
-                onClick={(event) => scrollToHeading(event, item.id, previewRef.current)}
-              >
-                {item.text}
-              </a>
-            ))}
-          </nav>
-        ) : (
-          <p className="empty-settings-copy note-outline-empty">No headings found.</p>
-        )}
-      </aside>
-    </section>
-  )
-}
-
-function NotePagination({
-  activeIndex,
-  className,
-  label,
-  noteCount,
-  nextNote,
-  onMove,
-  previousNote,
-}: {
-  activeIndex: number
-  className: string
-  label: string
-  noteCount: number
-  nextNote: NoteSummary | null
-  onMove: (path: string) => void
-  previousNote: NoteSummary | null
-}) {
-  return (
-    <nav className={className} aria-label={label}>
-      <button disabled={!previousNote} onClick={() => previousNote && onMove(previousNote.path)} type="button">
-        Previous
-      </button>
-      <span>
-        {activeIndex + 1 > 0 ? activeIndex + 1 : 0} / {noteCount}
-      </span>
-      <button disabled={!nextNote} onClick={() => nextNote && onMove(nextNote.path)} type="button">
-        Next
-      </button>
-    </nav>
-  )
-}
-
-function scrollToHeading(event: MouseEvent<HTMLAnchorElement>, id: string, scrollContainer: HTMLElement | null) {
-  event.preventDefault()
-
-  const heading = scrollContainer?.querySelector<HTMLElement>(`#${escapeCssIdentifier(id)}`)
-
-  if (!heading || !scrollContainer) {
-    return
+    const headingRect = heading.getBoundingClientRect()
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const computedStyle = globalThis.getComputedStyle(scrollContainer)
+    const scrollOffset =
+      Number.parseFloat(computedStyle.scrollPaddingTop) ||
+      Number.parseFloat(computedStyle.paddingTop) ||
+      0
+    const targetTop = scrollContainer.scrollTop + headingRect.top - containerRect.top - scrollOffset
+    scrollContainer.scrollTo({
+      behavior: 'auto',
+      top: Math.max(0, targetTop),
+    })
   }
 
-  const headingRect = heading.getBoundingClientRect()
-  const containerRect = scrollContainer.getBoundingClientRect()
-  const computedStyle = globalThis.getComputedStyle(scrollContainer)
-  const scrollOffset =
-    Number.parseFloat(computedStyle.scrollPaddingTop) ||
-    Number.parseFloat(computedStyle.paddingTop) ||
-    0
-  const targetTop = scrollContainer.scrollTop + headingRect.top - containerRect.top - scrollOffset
-  scrollContainer.scrollTo({
-    behavior: 'auto',
-    top: Math.max(0, targetTop),
-  })
+  return (
+    <section className={`notes-page${isMobileReaderOpen ? ' mobile-reader-open' : ''}`} aria-label="Notes">
+      <NotesSidebar
+        activePath={activePath}
+        expandedPaths={expandedPaths}
+        isLoadingList={isLoadingList}
+        nodes={noteTree}
+        onQueryChange={setQuery}
+        onSelect={selectNote}
+        onToggleDirectory={toggleDirectory}
+        query={query}
+      />
+
+      <NoteReaderPane
+        activeNote={activeNote}
+        activeNoteIndex={activeNoteIndex}
+        headingIdPlugin={headingIdPlugin}
+        isEinkMode={isEinkMode}
+        isLoadingList={isLoadingList}
+        isLoadingNote={isLoadingNote}
+        nextNote={nextNote}
+        noteCount={filteredNotes.length}
+        onCloseMobileReader={() => setIsMobileReaderOpen(false)}
+        onMove={moveToNote}
+        onTurnReaderPage={turnReaderPage}
+        previousNote={previousNote}
+        previewRef={previewRef}
+        readerContent={readerContent}
+        readerTitle={readerTitle}
+        status={status}
+      />
+
+      <NoteOutline items={outline} onItemClick={handleOutlineItemClick} />
+
+      <NotesAiAssistant
+        currentNote={activeNote}
+        currentNoteTitle={readerTitle}
+        isOpen={isNotesAiOpen}
+        onClose={() => setIsNotesAiOpen(false)}
+        onOpen={() => setIsNotesAiOpen(true)}
+      />
+    </section>
+  )
 }
 
 function escapeCssIdentifier(value: string) {
@@ -398,8 +455,15 @@ function isMobileViewport() {
   return globalThis.matchMedia?.('(max-width: 820px)').matches ?? false
 }
 
-function scrollPreviewToTop(scrollContainer: HTMLElement | null) {
-  if (typeof scrollContainer?.scrollTo === 'function') {
-    scrollContainer.scrollTo({ top: 0 })
+function scrollPreviewToPosition(scrollContainer: HTMLElement | null, top: number) {
+  if (!scrollContainer) {
+    return
   }
+
+  if (typeof scrollContainer.scrollTo === 'function') {
+    scrollContainer.scrollTo({ top })
+    return
+  }
+
+  scrollContainer.scrollTop = top
 }
