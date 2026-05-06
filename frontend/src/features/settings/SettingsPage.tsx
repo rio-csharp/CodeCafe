@@ -69,6 +69,7 @@ export function SettingsPage() {
           <div className="theme-segmented-control" role="group" aria-label="Theme">
             <ThemeButton active={theme === 'dark'} label="Dark" onClick={() => setTheme('dark')} />
             <ThemeButton active={theme === 'light'} label="Light" onClick={() => setTheme('light')} />
+            <ThemeButton active={theme === 'e-ink'} label="E-ink" onClick={() => setTheme('e-ink')} />
           </div>
         </div>
 
