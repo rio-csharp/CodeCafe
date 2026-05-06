@@ -223,6 +223,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'E-ink' })).toBeInTheDocument()
     expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeInTheDocument()
 
     await user.click(screen.getByRole('link', { name: /Providers, formats, models, and capabilities/i }))

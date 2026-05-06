@@ -31,6 +31,18 @@
   --shadow: 0 22px 70px rgba(15, 23, 42, 0.12);
 }
 
+[data-theme="e-ink"] {
+  --bg: #f3f1ea;
+  --surface: #fffdf7;
+  --text: #111111;
+  --muted: #5f5a52;
+  --border: rgba(17, 17, 17, 0.16);
+  --border-strong: rgba(17, 17, 17, 0.28);
+  --accent: #111111;
+  --accent-strong: #111111;
+  --shadow: none;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -373,6 +385,10 @@ h2 {
 
 .note-preview-content {
   position: relative;
+}
+
+.note-page-turn-zones {
+  display: none;
 }
 
 .note-reader-pagination {
@@ -1567,9 +1583,9 @@ h2 {
 
 .theme-segmented-control {
   display: inline-grid;
-  grid-template-columns: repeat(2, minmax(110px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  width: min(100%, 240px);
+  width: min(100%, 360px);
 }
 
 .theme-option {
@@ -1876,6 +1892,154 @@ h2 {
 [data-theme="light"] .chat-composer-primary {
   color: #0f172a;
   box-shadow: 0 10px 22px rgba(14, 165, 233, 0.12);
+}
+
+[data-theme="e-ink"] * {
+  scrollbar-color: rgba(17, 17, 17, 0.22) transparent;
+}
+
+[data-theme="e-ink"] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="e-ink"] *::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  background: rgba(17, 17, 17, 0.22);
+}
+
+[data-theme="e-ink"] body {
+  background: var(--bg);
+}
+
+[data-theme="e-ink"] .app-nav,
+[data-theme="e-ink"] .chat-workbench,
+[data-theme="e-ink"] .notes-page,
+[data-theme="e-ink"] .settings-page,
+[data-theme="e-ink"] .provider-settings,
+[data-theme="e-ink"] .settings-table-wrap,
+[data-theme="e-ink"] .note-preview-pane,
+[data-theme="e-ink"] .notes-empty-panel,
+[data-theme="e-ink"] .message-thread,
+[data-theme="e-ink"] .empty-thread {
+  background: var(--surface);
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .notes-sidebar,
+[data-theme="e-ink"] .note-outline,
+[data-theme="e-ink"] .session-list,
+[data-theme="e-ink"] .provider-menu,
+[data-theme="e-ink"] .note-editor-header,
+[data-theme="e-ink"] .desktop-pagination,
+[data-theme="e-ink"] .console-header,
+[data-theme="e-ink"] .chat-composer,
+[data-theme="e-ink"] .chat-settings-popover,
+[data-theme="e-ink"] .settings-panel,
+[data-theme="e-ink"] .settings-table-head,
+[data-theme="e-ink"] .format-option,
+[data-theme="e-ink"] .theme-option,
+[data-theme="e-ink"] .table-badge,
+[data-theme="e-ink"] .message-bubble,
+[data-theme="e-ink"] .message-bubble pre,
+[data-theme="e-ink"] .note-preview-pane pre,
+[data-theme="e-ink"] .note-preview-pane code {
+  background: var(--surface);
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .theme-option,
+[data-theme="e-ink"] .settings-secondary-button,
+[data-theme="e-ink"] .settings-actions button,
+[data-theme="e-ink"] .settings-table button,
+[data-theme="e-ink"] .note-reader-pagination button,
+[data-theme="e-ink"] .chat-composer-primary {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.24);
+  background: #f0ede4;
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .theme-option:hover,
+[data-theme="e-ink"] .theme-option[aria-pressed="true"],
+[data-theme="e-ink"] .settings-secondary-button:hover,
+[data-theme="e-ink"] .settings-actions button:hover,
+[data-theme="e-ink"] .settings-table button:hover,
+[data-theme="e-ink"] .note-list-item:hover,
+[data-theme="e-ink"] .note-list-item[aria-current="true"],
+[data-theme="e-ink"] .note-tree summary:hover,
+[data-theme="e-ink"] .note-outline-item:hover,
+[data-theme="e-ink"] .session-item:hover,
+[data-theme="e-ink"] .session-item[aria-current="true"] {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.26);
+  background: #ece8de;
+}
+
+[data-theme="e-ink"] .notes-sidebar-header input,
+[data-theme="e-ink"] .session-list-header input,
+[data-theme="e-ink"] .settings-inline-field input,
+[data-theme="e-ink"] .settings-field input,
+[data-theme="e-ink"] .settings-field textarea,
+[data-theme="e-ink"] .settings-table input,
+[data-theme="e-ink"] .settings-table select,
+[data-theme="e-ink"] .chat-setting-field input,
+[data-theme="e-ink"] .chat-setting-field textarea,
+[data-theme="e-ink"] .chat-composer-inputs,
+[data-theme="e-ink"] .chat-composer textarea,
+[data-theme="e-ink"] .chat-select,
+[data-theme="e-ink"] .message-bubble code {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.22);
+  background: #fffdf8;
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .note-preview-pane a,
+[data-theme="e-ink"] .message-bubble a {
+  color: var(--text);
+  text-decoration-thickness: 1px;
+}
+
+[data-theme="e-ink"] .note-preview-pane blockquote,
+[data-theme="e-ink"] .message-bubble blockquote {
+  border-left-color: rgba(17, 17, 17, 0.42);
+}
+
+[data-theme="e-ink"] .note-page-turn-zones {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  height: calc(100vh - 160px);
+  min-height: 360px;
+  margin-bottom: calc(-1 * (calc(100vh - 160px)));
+  pointer-events: none;
+}
+
+[data-theme="e-ink"] .note-page-turn-zone {
+  pointer-events: auto;
+  min-height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+[data-theme="e-ink"] .note-page-turn-zone:focus-visible {
+  outline: 2px solid rgba(17, 17, 17, 0.32);
+  outline-offset: -2px;
+}
+
+[data-theme="e-ink"] .note-preview-pane {
+  padding-inline: 28px;
+}
+
+[data-theme="e-ink"] .note-preview-content {
+  max-width: 76ch;
+  margin: 0 auto;
 }
 
 @media (max-width: 820px) {

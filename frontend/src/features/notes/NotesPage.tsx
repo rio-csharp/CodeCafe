@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { useTheme } from '../../app/useTheme'
 import { formatFileSize, formatReadingTime, toDisplayName } from './noteDisplay'
 import { buildOutline, createHeadingIdPlugin, getNoteHeadingInfo, removeLine } from './noteMarkdown'
 import { NoteTree } from './noteTree'
@@ -10,6 +11,7 @@ import { listNotes, readNote } from './notesApi'
 import type { NoteContent, NoteSummary } from './notesApi'
 
 export function NotesPage() {
+  const { theme } = useTheme()
   const previewRef = useRef<HTMLElement | null>(null)
   const [notes, setNotes] = useState<NoteSummary[]>([])
   const [activePath, setActivePath] = useState('')
@@ -43,6 +45,7 @@ export function NotesPage() {
   const readerTitle = headingInfo.title ?? toDisplayName(activeNote?.title ?? '')
   const readerContent = removeLine(activeNote?.content ?? '', headingInfo.titleLineIndex)
   const activeNoteIndex = filteredNotes.findIndex((note) => note.path === activePath)
+  const isEinkMode = theme === 'e-ink'
   const previousNote = activeNoteIndex > 0 ? filteredNotes[activeNoteIndex - 1] : null
   const nextNote =
     activeNoteIndex >= 0 && activeNoteIndex < filteredNotes.length - 1
@@ -155,6 +158,43 @@ export function NotesPage() {
     scrollPreviewToTop(previewRef.current)
   }
 
+  function turnReaderPage(direction: 'next' | 'previous') {
+    const preview = previewRef.current
+
+    if (!preview) {
+      return
+    }
+
+    const viewportHeight = preview.clientHeight
+    const currentTop = preview.scrollTop
+    const maxTop = Math.max(0, preview.scrollHeight - viewportHeight)
+    const pageStep = Math.max(120, viewportHeight - 48)
+    const targetTop =
+      direction === 'next'
+        ? Math.min(maxTop, currentTop + pageStep)
+        : Math.max(0, currentTop - pageStep)
+
+    const isAtBoundary =
+      direction === 'next'
+        ? currentTop >= maxTop - 4
+        : currentTop <= 4
+
+    if (isAtBoundary) {
+      const boundaryNote = direction === 'next' ? nextNote : previousNote
+
+      if (boundaryNote) {
+        moveToNote(boundaryNote.path)
+      }
+
+      return
+    }
+
+    preview.scrollTo({
+      behavior: 'auto',
+      top: targetTop,
+    })
+  }
+
   return (
     <section className={`notes-page${isMobileReaderOpen ? ' mobile-reader-open' : ''}`} aria-label="Notes">
       <aside className="notes-sidebar" aria-label="Notes list">
@@ -197,6 +237,22 @@ export function NotesPage() {
             </header>
 
             <article className="note-preview-pane note-preview-pane-full" aria-label="Markdown preview" ref={previewRef}>
+              {isEinkMode ? (
+                <div className="note-page-turn-zones" aria-hidden="true">
+                  <button
+                    className="note-page-turn-zone previous"
+                    onClick={() => turnReaderPage('previous')}
+                    tabIndex={-1}
+                    type="button"
+                  />
+                  <button
+                    className="note-page-turn-zone next"
+                    onClick={() => turnReaderPage('next')}
+                    tabIndex={-1}
+                    type="button"
+                  />
+                </div>
+              ) : null}
               <div className="note-preview-content">
                 <ReactMarkdown rehypePlugins={[headingIdPlugin]} remarkPlugins={[remarkGfm]}>
                   {readerContent}
