@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useTheme } from '../../app/useTheme'
+import { NotesAiAssistant } from './NotesAiAssistant'
 import { formatFileSize, formatReadingTime, toDisplayName } from './noteDisplay'
 import { buildOutline, createHeadingIdPlugin, getNoteHeadingInfo, removeLine } from './noteMarkdown'
 import { NoteTree } from './noteTree'
@@ -31,6 +32,7 @@ export function NotesPage() {
   const [status, setStatus] = useState('')
   const [isLoadingList, setIsLoadingList] = useState(true)
   const [isLoadingNote, setIsLoadingNote] = useState(false)
+  const [isNotesAiOpen, setIsNotesAiOpen] = useState(false)
   const [isMobileReaderOpen, setIsMobileReaderOpen] = useState(false)
 
   const filteredNotes = useMemo(() => {
@@ -331,6 +333,24 @@ export function NotesPage() {
           <p className="empty-settings-copy note-outline-empty">No headings found.</p>
         )}
       </aside>
+
+      <button
+        aria-expanded={isNotesAiOpen}
+        aria-label="Open notes AI assistant"
+        className="notes-ai-fab"
+        onClick={() => setIsNotesAiOpen(true)}
+        type="button"
+      >
+        AI
+      </button>
+
+      <NotesAiAssistant
+        currentNote={activeNote}
+        currentNoteTitle={readerTitle}
+        isOpen={isNotesAiOpen}
+        noteTree={noteTree}
+        onClose={() => setIsNotesAiOpen(false)}
+      />
     </section>
   )
 }

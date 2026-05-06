@@ -597,6 +597,116 @@ h2 {
   right: 12px;
 }
 
+.notes-ai-fab {
+  position: absolute;
+  z-index: 4;
+  right: 18px;
+  bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  color: var(--text);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(34, 211, 238, 0.14));
+  box-shadow:
+    0 16px 34px rgba(8, 145, 178, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.notes-ai-fab:hover {
+  border-color: rgba(34, 211, 238, 0.42);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.28), rgba(34, 211, 238, 0.18));
+}
+
+.notes-ai-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  border: 0;
+  background: rgba(3, 8, 18, 0.46);
+}
+
+.notes-ai-panel {
+  position: absolute;
+  z-index: 6;
+  right: 18px;
+  bottom: 82px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  width: min(520px, calc(100% - 36px));
+  height: min(720px, calc(100% - 108px));
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(17, 26, 44, 0.96), rgba(9, 14, 25, 0.98)),
+    var(--surface);
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px rgba(56, 189, 248, 0.06),
+    0 0 42px rgba(56, 189, 248, 0.08);
+}
+
+.notes-ai-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(13, 19, 32, 0.9);
+}
+
+.notes-ai-title {
+  min-width: 0;
+}
+
+.notes-ai-title h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.notes-ai-title span {
+  display: block;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notes-ai-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notes-ai-thread {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 16px;
+  background:
+    linear-gradient(rgba(56, 189, 248, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.045) 1px, transparent 1px),
+    rgba(7, 10, 18, 0.28);
+  background-size: 24px 24px;
+}
+
+.notes-ai-empty {
+  min-height: 100%;
+}
+
+.notes-ai-composer {
+  padding-top: 10px;
+}
+
 .note-list-empty {
   padding: 8px;
 }
@@ -1955,6 +2065,28 @@ h2 {
     0 12px 24px rgba(14, 165, 233, 0.14);
 }
 
+[data-theme="light"] .notes-ai-panel,
+[data-theme="light"] .notes-ai-header {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+[data-theme="light"] .notes-ai-thread {
+  background:
+    linear-gradient(rgba(14, 165, 233, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.06) 1px, transparent 1px),
+    rgba(255, 255, 255, 0.72);
+  background-size: 24px 24px;
+}
+
+[data-theme="light"] .notes-ai-fab {
+  color: #0f172a;
+  border-color: rgba(14, 165, 233, 0.22);
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.42), rgba(103, 232, 249, 0.28));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 24px rgba(14, 165, 233, 0.14);
+}
+
 [data-theme="light"] .settings-secondary-button:hover,
 [data-theme="light"] .settings-actions button:hover,
 [data-theme="light"] .settings-table button:hover {
@@ -2122,6 +2254,19 @@ h2 {
   background: #ece8de;
   box-shadow: none;
   transform: none;
+}
+
+[data-theme="e-ink"] .notes-ai-panel,
+[data-theme="e-ink"] .notes-ai-header,
+[data-theme="e-ink"] .notes-ai-thread,
+[data-theme="e-ink"] .notes-ai-fab {
+  background: var(--surface);
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .notes-ai-fab {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.24);
 }
 
 [data-theme="e-ink"] .app-nav-external-link:hover {
@@ -2366,6 +2511,22 @@ h2 {
 
   .note-outline {
     display: none;
+  }
+
+  .notes-ai-fab {
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    width: 48px;
+    height: 48px;
+  }
+
+  .notes-ai-panel {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
   }
 
   .session-list,

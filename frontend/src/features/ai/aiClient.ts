@@ -9,6 +9,10 @@ export type ChatMessage = {
   text: string
 }
 
+export type StreamChatResponseResult = {
+  responseId: string | null
+}
+
 type StreamChatResponseParams = {
   maxOutputTokens?: number | null
   messages: ChatMessage[]
@@ -16,6 +20,7 @@ type StreamChatResponseParams = {
   onComplete?: () => void
   onDelta: (delta: string) => void
   provider: AiProvider
+  previousResponseId?: string | null
   signal?: AbortSignal
   systemPrompt?: string
   temperature?: number | null
@@ -29,6 +34,7 @@ export async function streamChatResponse({
   onComplete,
   onDelta,
   provider,
+  previousResponseId,
   signal,
   systemPrompt,
   temperature,
@@ -54,6 +60,7 @@ export async function streamChatResponse({
         input: toResponsesInput(requestMessages) as never,
         max_output_tokens: maxOutputTokens ?? undefined,
         model: model.modelId,
+        previous_response_id: previousResponseId ?? undefined,
         stream: true,
         temperature: temperature ?? undefined,
         top_p: topP ?? undefined,
@@ -64,20 +71,27 @@ export async function streamChatResponse({
           onDelta(event.delta)
         }
       }
+
+      onComplete?.()
+      return {
+        responseId: null,
+      }
     } else {
       const response = await client.responses.create({
         input: toResponsesInput(requestMessages) as never,
         max_output_tokens: maxOutputTokens ?? undefined,
         model: model.modelId,
+        previous_response_id: previousResponseId ?? undefined,
         temperature: temperature ?? undefined,
         top_p: topP ?? undefined,
       }, { signal })
 
       onDelta(response.output_text)
+      onComplete?.()
+      return {
+        responseId: response.id ?? null,
+      }
     }
-
-    onComplete?.()
-    return
   }
 
   if (model.supportsStreaming) {
@@ -114,6 +128,9 @@ export async function streamChatResponse({
   }
 
   onComplete?.()
+  return {
+    responseId: null,
+  }
 }
 
 export async function testProviderConnection({

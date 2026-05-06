@@ -258,6 +258,21 @@ describe('AppShell', () => {
       'href',
       'https://github.com/rio-csharp/Notes/releases/download/latest/notes.epub',
     )
+    expect(screen.getByRole('button', { name: 'Open notes AI assistant' })).toBeInTheDocument()
+  })
+
+  it('opens the notes AI assistant from the notes reader', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    renderRoute('/notes')
+
+    await user.click(screen.getByRole('button', { name: 'Open notes AI assistant' }))
+
+    expect(screen.getByRole('region', { name: 'Notes AI assistant' })).toBeInTheDocument()
+    expect(screen.getByText('Ask about this note.')).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Ask AI about this note' })).toBeInTheDocument()
   })
 
   it('shows notes settings as read-only outside local environments', async () => {
@@ -287,7 +302,7 @@ describe('AppShell', () => {
     mockApiFetch()
     seedAiSettings()
     vi.mocked(aiClient.streamChatResponse).mockImplementation(({ onDelta, signal }) =>
-      new Promise<void>((resolve, reject) => {
+      new Promise<{ responseId: null }>((resolve, reject) => {
         signal?.addEventListener(
           'abort',
           () => reject(new DOMException('Aborted', 'AbortError')),
@@ -296,7 +311,7 @@ describe('AppShell', () => {
 
         pendingStreams.push({
           onDelta,
-          resolve,
+          resolve: () => resolve({ responseId: null }),
         })
       }),
     )
@@ -332,7 +347,7 @@ describe('AppShell', () => {
     mockApiFetch()
     seedAiSettings()
     vi.mocked(aiClient.streamChatResponse).mockImplementation(({ signal }) =>
-      new Promise<void>((_resolve, reject) => {
+      new Promise<{ responseId: null }>((_resolve, reject) => {
         signal?.addEventListener(
           'abort',
           () => {
