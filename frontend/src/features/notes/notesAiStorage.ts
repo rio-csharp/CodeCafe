@@ -61,8 +61,14 @@ export function loadFabPosition() {
     const parsed = JSON.parse(rawValue) as Partial<{ x: number; y: number }>
 
     return {
-      x: typeof parsed.x === 'number' ? parsed.x : defaultFabPosition.x,
-      y: typeof parsed.y === 'number' ? parsed.y : defaultFabPosition.y,
+      x:
+        typeof parsed.x === 'number' && Number.isFinite(parsed.x)
+          ? parsed.x
+          : defaultFabPosition.x,
+      y:
+        typeof parsed.y === 'number' && Number.isFinite(parsed.y)
+          ? parsed.y
+          : defaultFabPosition.y,
     }
   } catch {
     return defaultFabPosition

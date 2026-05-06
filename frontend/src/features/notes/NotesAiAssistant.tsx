@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { streamChatResponse, type ChatMessage } from '../ai/aiClient'
 import { MarkdownContent } from '../../components/MarkdownContent'
 import type { NoteContent } from './notesApi'
@@ -221,7 +222,11 @@ export function NotesAiAssistant({
     })
   }
 
-  return (
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal((
     <>
       <button
         aria-expanded={isOpen}
@@ -343,7 +348,7 @@ export function NotesAiAssistant({
         </section>
       ) : null}
     </>
-  )
+  ), document.body)
 }
 
 function buildRequestMessages({
