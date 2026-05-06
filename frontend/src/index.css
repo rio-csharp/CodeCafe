@@ -109,6 +109,7 @@ textarea {
   top: 0;
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   gap: 8px;
   height: 100vh;
   padding: 18px 14px;
@@ -116,6 +117,11 @@ textarea {
   background:
     linear-gradient(180deg, rgba(17, 26, 44, 0.94), rgba(9, 14, 25, 0.96));
   box-shadow: inset -1px 0 0 rgba(56, 189, 248, 0.08);
+}
+
+.app-nav-links {
+  display: grid;
+  gap: 8px;
 }
 
 .app-nav-group {
@@ -153,6 +159,30 @@ textarea {
   background: var(--accent-strong);
   box-shadow: 0 0 18px rgba(34, 211, 238, 0.75);
   content: "";
+}
+
+.app-nav-external-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--muted);
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid rgba(137, 160, 190, 0.18);
+  border-radius: 8px;
+  background: rgba(7, 10, 18, 0.24);
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease;
+}
+
+.app-nav-external-link:hover {
+  color: var(--text);
+  border-color: rgba(56, 189, 248, 0.24);
+  background: rgba(56, 189, 248, 0.08);
 }
 
 .workspace {
@@ -2005,6 +2035,17 @@ h2 {
   border-left-color: rgba(17, 17, 17, 0.42);
 }
 
+[data-theme="e-ink"] .app-nav-external-link {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.18);
+  background: #f0ede4;
+}
+
+[data-theme="e-ink"] .app-nav-external-link:hover {
+  border-color: rgba(17, 17, 17, 0.26);
+  background: #ece8de;
+}
+
 [data-theme="e-ink"] .note-page-turn-zones {
   position: sticky;
   top: 0;
@@ -2054,6 +2095,7 @@ h2 {
     inset: auto 0 0;
     z-index: 10;
     flex-direction: row;
+    justify-content: stretch;
     height: auto;
     padding: 10px;
     border-top: 1px solid var(--border);
@@ -2066,8 +2108,18 @@ h2 {
     flex: 1;
   }
 
+  .app-nav-links {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    flex: 1;
+  }
+
   .app-nav-item {
     padding: 10px 8px;
+  }
+
+  .app-nav-external-link {
+    display: none;
   }
 
   .app-nav-item.active::before {
