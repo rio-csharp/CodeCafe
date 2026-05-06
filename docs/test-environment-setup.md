@@ -9,7 +9,8 @@ For the separate notes content sync flow, also see
 
 Do not commit real IP addresses, domain names, SSH private keys, certificate
 private keys, or local secrets. Keep them in ignored local files such as
-`deploy/secrets.env`, `deploy/cloudflare/*.private.*`, or GitHub Secrets.
+`deploy/secrets.env`, `deploy/cloudflare/*.private.*`, GitHub Variables, or
+GitHub Secrets.
 
 ## Target Architecture
 
@@ -307,7 +308,7 @@ Repository variable:
 IMAGE_NAMESPACE
 ```
 
-Test environment repository secrets:
+Test environment repository variables:
 
 ```text
 TEST_FRONTEND_HOST
@@ -316,10 +317,15 @@ PREVIEW_BASE_DOMAIN
 TEST_SSH_HOST
 TEST_SSH_PORT
 TEST_SSH_USER
+```
+
+Repository secrets:
+
+```text
 TEST_SSH_PRIVATE_KEY
 ```
 
-Production uses the same SSH deployment model. Production repository secrets:
+Production uses the same SSH deployment model. Production repository variables:
 
 ```text
 PRODUCTION_FRONTEND_HOST
@@ -327,6 +333,11 @@ PRODUCTION_API_HOST
 PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PORT
 PRODUCTION_SSH_USER
+```
+
+Repository secrets:
+
+```text
 PRODUCTION_SSH_PRIVATE_KEY
 ```
 
@@ -335,19 +346,19 @@ Set them locally with `gh`:
 ```powershell
 gh variable set IMAGE_NAMESPACE --body "<owner-or-org>/codecafe"
 
-gh secret set TEST_FRONTEND_HOST --body "<test-frontend-host>"
-gh secret set TEST_API_HOST --body "<test-api-host>"
-gh secret set PREVIEW_BASE_DOMAIN --body "<preview-base-domain>"
-gh secret set TEST_SSH_HOST --body "<test-server-ip>"
-gh secret set TEST_SSH_PORT --body "<ssh-port>"
-gh secret set TEST_SSH_USER --body "deploy"
+gh variable set TEST_FRONTEND_HOST --body "<test-frontend-host>"
+gh variable set TEST_API_HOST --body "<test-api-host>"
+gh variable set PREVIEW_BASE_DOMAIN --body "<preview-base-domain>"
+gh variable set TEST_SSH_HOST --body "<test-server-ip>"
+gh variable set TEST_SSH_PORT --body "<ssh-port>"
+gh variable set TEST_SSH_USER --body "deploy"
 Get-Content .local-keys\codecafe_test_deploy_user_ed25519 | gh secret set TEST_SSH_PRIVATE_KEY
 
-gh secret set PRODUCTION_FRONTEND_HOST --body "<production-frontend-host>"
-gh secret set PRODUCTION_API_HOST --body "<production-api-host>"
-gh secret set PRODUCTION_SSH_HOST --body "<production-server-ip>"
-gh secret set PRODUCTION_SSH_PORT --body "<ssh-port>"
-gh secret set PRODUCTION_SSH_USER --body "deploy"
+gh variable set PRODUCTION_FRONTEND_HOST --body "<production-frontend-host>"
+gh variable set PRODUCTION_API_HOST --body "<production-api-host>"
+gh variable set PRODUCTION_SSH_HOST --body "<production-server-ip>"
+gh variable set PRODUCTION_SSH_PORT --body "<ssh-port>"
+gh variable set PRODUCTION_SSH_USER --body "deploy"
 Get-Content .local-keys\codecafe_production_deploy_user_ed25519 | gh secret set PRODUCTION_SSH_PRIVATE_KEY
 ```
 
@@ -411,8 +422,8 @@ status. If the pushed branch has an open PR, CI uploads API and frontend build
 artifacts after those checks pass. The PR image jobs download those artifacts
 and package them into thin runtime images in parallel. After image publishing
 finishes, CI triggers a separate PR preview deployment workflow run. The
-deployment workflow updates a PR comment with preview URL formats only; it does
-not expose the real preview base domain.
+deployment workflow updates a PR comment with the concrete preview URLs so you
+can open them directly from the pull request.
 
 Expected result:
 

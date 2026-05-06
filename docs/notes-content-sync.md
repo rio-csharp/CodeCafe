@@ -74,25 +74,30 @@ backend/src/CodeCafe.Api/appsettings.Development.local.json
 
 That file is ignored by Git.
 
-## Notes Repository Secrets
+## Notes Repository Variables and Secrets
 
-The `Notes` repository should have its own GitHub secrets for the target
-servers, even if they match the CodeCafe repository values.
+The `Notes` repository should have its own GitHub variables and secrets for the
+target servers, even if they match the CodeCafe repository values.
 
-Recommended secrets:
+Recommended variables:
 
 ```text
 TEST_SSH_HOST
 TEST_SSH_PORT
 TEST_SSH_USER
-TEST_SSH_PRIVATE_KEY
 PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PORT
 PRODUCTION_SSH_USER
+```
+
+Recommended secrets:
+
+```text
+TEST_SSH_PRIVATE_KEY
 PRODUCTION_SSH_PRIVATE_KEY
 ```
 
-Recommended variables:
+Additional recommended variables:
 
 ```text
 NOTES_CONTENT_PATH=/home/deploy/codecafe/notes

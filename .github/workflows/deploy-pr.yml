@@ -35,8 +35,8 @@ jobs:
           echo "IMAGE_TAG=${{ inputs.image_tag }}" >> "$GITHUB_ENV"
           echo "NAMESPACE=codecafe-pr-${{ inputs.pr_number }}" >> "$GITHUB_ENV"
           echo "RELEASE=codecafe-pr-${{ inputs.pr_number }}" >> "$GITHUB_ENV"
-          echo "FRONTEND_HOST=pr-${{ inputs.pr_number }}.${{ secrets.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
-          echo "API_HOST=api-pr-${{ inputs.pr_number }}.${{ secrets.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
+          echo "FRONTEND_HOST=pr-${{ inputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
+          echo "API_HOST=api-pr-${{ inputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
           echo "TLS_SECRET=codecafe-test-wildcard-tls" >> "$GITHUB_ENV"
 
       - name: Configure SSH
@@ -49,9 +49,9 @@ jobs:
           CHART_ARCHIVE="codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
           REMOTE_DIR="/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           tar -czf "$CHART_ARCHIVE" -C deploy/helm codecafe
-          ssh -p "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR'"
-          scp -P "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "$CHART_ARCHIVE" "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
-          ssh -p "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ vars.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR'"
+          scp -P "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ vars.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ vars.TEST_SSH_HOST }}" \
             "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='$FRONTEND_HOST' API_HOST='$API_HOST' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' bash -s" <<'REMOTE'
           set -euo pipefail
           trap 'rm -rf "$REMOTE_DIR"' EXIT
@@ -86,36 +86,38 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          ssh -p "${{ secrets.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ vars.TEST_SSH_HOST }}" \
             "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin; kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=frontend --namespace $NAMESPACE --timeout=180s && kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=api --namespace $NAMESPACE --timeout=180s"
 
-      - name: Summarize preview format
+      - name: Summarize preview
         run: |
           {
             echo "## PR Preview"
             echo
-            echo "| Service | Format |"
+            echo "| Service | URL |"
             echo "| --- | --- |"
-            echo "| Frontend | \`https://pr-${{ inputs.pr_number }}.<PREVIEW_BASE_DOMAIN>\` |"
-            echo "| API health | \`https://api-pr-${{ inputs.pr_number }}.<PREVIEW_BASE_DOMAIN>/health\` |"
+            echo "| Frontend | \`https://$FRONTEND_HOST\` |"
+            echo "| API health | \`https://$API_HOST/health\` |"
             echo
             echo "Namespace: \`$NAMESPACE\`"
             echo "Image tag: \`$IMAGE_TAG\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Comment preview format
+      - name: Comment preview
         uses: actions/github-script@v9
         with:
           script: |
-            const marker = '<!-- codecafe-pr-preview-format -->';
+            const marker = '<!-- codecafe-pr-preview -->';
             const prNumber = Number('${{ inputs.pr_number }}');
+            const frontendHost = process.env.FRONTEND_HOST;
+            const apiHost = process.env.API_HOST;
             const body = `${marker}
             ## PR Preview
 
-            | Service | Format |
+            | Service | URL |
             | --- | --- |
-            | Frontend | \`https://pr-${prNumber}.<PREVIEW_BASE_DOMAIN>\` |
-            | API health | \`https://api-pr-${prNumber}.<PREVIEW_BASE_DOMAIN>/health\` |
+            | Frontend | \`https://${frontendHost}\` |
+            | API health | \`https://${apiHost}/health\` |
 
             Namespace: \`${process.env.NAMESPACE}\`
             Image tag: \`${process.env.IMAGE_TAG}\`

@@ -250,6 +250,14 @@ describe('AppShell', () => {
     expect(screen.getByRole('searchbox', { name: 'Search notes' })).toBeInTheDocument()
     expect(await screen.findByText('Dotnet Platform')).toBeInTheDocument()
     expect(within(screen.getByRole('complementary', { name: 'Notes list' })).getByRole('button', { name: 'Dotnet Overview' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'PDF' })).toHaveAttribute(
+      'href',
+      'https://github.com/rio-csharp/Notes/releases/download/latest/notes.pdf',
+    )
+    expect(screen.getByRole('link', { name: 'EPUB' })).toHaveAttribute(
+      'href',
+      'https://github.com/rio-csharp/Notes/releases/download/latest/notes.epub',
+    )
   })
 
   it('shows notes settings as read-only outside local environments', async () => {

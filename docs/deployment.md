@@ -34,9 +34,9 @@ pr-<number>.<PREVIEW_BASE_DOMAIN>
 api-pr-<number>.<PREVIEW_BASE_DOMAIN>
 ```
 
-## GitHub Secret
+## GitHub Variables and Secrets
 
-Create these repository secrets for the test cluster:
+Create these repository variables for the test cluster:
 
 ```text
 TEST_FRONTEND_HOST
@@ -45,10 +45,9 @@ PREVIEW_BASE_DOMAIN
 TEST_SSH_HOST
 TEST_SSH_PORT
 TEST_SSH_USER
-TEST_SSH_PRIVATE_KEY
 ```
 
-Create these repository secrets for the production cluster:
+Create these repository variables for the production cluster:
 
 ```text
 PRODUCTION_FRONTEND_HOST
@@ -56,18 +55,20 @@ PRODUCTION_API_HOST
 PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PORT
 PRODUCTION_SSH_USER
+```
+
+Create these repository secrets:
+
+```text
+TEST_SSH_PRIVATE_KEY
 PRODUCTION_SSH_PRIVATE_KEY
 ```
 
-Create this repository variable:
+Create this additional repository variable:
 
 ```text
 IMAGE_NAMESPACE
 ```
-
-`PREVIEW_BASE_DOMAIN` is the suffix used for PR preview hosts. Keep the real
-values private and share them only with people who should access the deployed
-app.
 
 Keep local copies in `deploy/secrets.env`. That file is ignored by Git. Use
 `deploy/secrets.example.env` as the committed format reference.

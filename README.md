@@ -4,6 +4,11 @@ CodeCafe is an AI-workbench-ready developer knowledge platform. Notes are the
 first domain module, with authentication, workspaces, audit, and deep MAF
 integration planned as platform capabilities.
 
+## Live demo
+
+- App: [https://codes.cafe](https://codes.cafe)
+- Test environment: [https://test.codes.cafe](https://test.codes.cafe)
+
 ## Repository layout
 
 ```text

@@ -10,6 +10,17 @@ import { buildNoteTree } from './noteTreeBuilder'
 import { listNotes, readNote } from './notesApi'
 import type { NoteContent, NoteSummary } from './notesApi'
 
+const bookDownloadLinks = [
+  {
+    href: 'https://github.com/rio-csharp/Notes/releases/download/latest/notes.pdf',
+    label: 'PDF',
+  },
+  {
+    href: 'https://github.com/rio-csharp/Notes/releases/download/latest/notes.epub',
+    label: 'EPUB',
+  },
+] as const
+
 export function NotesPage() {
   const { theme } = useTheme()
   const previewRef = useRef<HTMLElement | null>(null)
@@ -214,6 +225,20 @@ export function NotesPage() {
           {!isLoadingList && filteredNotes.length === 0 ? (
             <p className="empty-settings-copy note-list-empty">No notes found.</p>
           ) : null}
+        </div>
+
+        <div className="notes-downloads" aria-label="Download notes book">
+          {bookDownloadLinks.map((link) => (
+            <a
+              className="notes-download-link"
+              href={link.href}
+              key={link.label}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {link.label}
+            </a>
+          ))}
         </div>
       </aside>
 
