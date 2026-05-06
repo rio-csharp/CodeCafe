@@ -1,55 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { streamChatResponse, type ChatMessage } from '../ai/aiClient'
 import { MarkdownContent } from '../../components/MarkdownContent'
-import {
-  getEnabledModelOptions,
-  loadAiSettings,
-  resolveModelSelection,
-  type AiSettings,
-} from '../ai/aiSettingsStore'
 import type { NoteContent } from './notesApi'
 import {
   buildNotesAssistantContextPrompt,
   buildNotesAssistantSystemPrompt,
 } from './notesAiContext'
-
-const notesAssistantStorageKey = 'codecafe-notes-ai-session'
-const notesAssistantFabStorageKey = 'codecafe-notes-ai-fab-position'
-const defaultFabPosition = { x: 18, y: 18 }
-const desktopPanelWidth = 520
-const desktopPanelHeight = 680
-const mobilePanelWidth = 460
-const mobilePanelHeight = 620
-
-type AssistantMessage = {
-  id: string
-  role: 'assistant' | 'user'
-  text: string
-}
-
-type NotesAssistantSession = {
-  contextInjected: boolean
-  contextNotePath: string | null
-  messages: AssistantMessage[]
-  modelId: string | null
-  previousResponseId: string | null
-  providerId: string | null
-  requestMessages: ChatMessage[]
-}
-
-type DragState = {
-  didMove: boolean
-  initialX: number
-  initialY: number
-  pointerId: number
-  startX: number
-  startY: number
-}
-
-type PanelPosition = {
-  left: number
-  top: number
-}
+import { getFabStyle, getPanelStyle } from './notesAiLayout'
+import {
+  getEmptyNotesAssistantSession,
+  loadNotesAssistantSession,
+  saveNotesAssistantSession,
+} from './notesAiStorage'
+import type { AssistantMessage, NotesAssistantSession } from './notesAiTypes'
+import { useNotesAiModelSelection } from './useNotesAiModelSelection'
+import { useNotesAiPanelPosition } from './useNotesAiPanelPosition'
 
 export function NotesAiAssistant({
   currentNote,
@@ -68,38 +33,29 @@ export function NotesAiAssistant({
   const [isSending, setIsSending] = useState(false)
   const [session, setSession] = useState<NotesAssistantSession>(() => loadNotesAssistantSession())
   const [status, setStatus] = useState('')
-  const [fabPosition, setFabPosition] = useState(() => loadFabPosition())
-  const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(null)
-  const [aiSettings, setAiSettings] = useState<AiSettings>(() => loadAiSettings())
-  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(() =>
-    resolveModelSelection(loadAiSettings(), null),
-  )
+  const {
+    enabledModelOptions,
+    selectedModel,
+    selectedModelOption,
+    selectedProvider,
+    setSelectedModelValue,
+  } = useNotesAiModelSelection()
+  const {
+    effectivePanelPosition,
+    fabPosition,
+    handleFabPointerDown,
+    handleFabPointerMove,
+    handleFabPointerUp,
+    handlePanelPointerDown,
+    handlePanelPointerMove,
+    handlePanelPointerUp,
+    isMobile,
+  } = useNotesAiPanelPosition()
   const messageThreadRef = useRef<HTMLDivElement | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
-  const dragStateRef = useRef<DragState | null>(null)
-  const panelDragStateRef = useRef<{
-    initialLeft: number
-    initialTop: number
-    pointerId: number
-    startX: number
-    startY: number
-  } | null>(null)
-
-  const enabledModelOptions = useMemo(() => getEnabledModelOptions(aiSettings), [aiSettings])
-
-  const selectedModelOption = useMemo(() => {
-    const resolvedValue = resolveModelSelection(aiSettings, selectedModelValue)
-
-    return enabledModelOptions.find((option) => option.value === resolvedValue) ?? null
-  }, [aiSettings, enabledModelOptions, selectedModelValue])
-
-  const selectedProvider = selectedModelOption?.provider ?? null
-  const selectedModel = selectedModelOption?.model ?? null
-  const isMobile = isMobileViewport()
-  const effectivePanelPosition = panelPosition ?? getAnchoredPanelPosition(fabPosition, isMobile)
 
   useEffect(() => {
-    window.localStorage.setItem(notesAssistantStorageKey, JSON.stringify(session))
+    saveNotesAssistantSession(session)
   }, [session])
 
   useEffect(() => {
@@ -118,22 +74,6 @@ export function NotesAiAssistant({
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort()
-    }
-  }, [])
-
-  useEffect(() => {
-    const syncSettings = () => {
-      const nextSettings = loadAiSettings()
-      setAiSettings(nextSettings)
-      setSelectedModelValue((currentValue) => resolveModelSelection(nextSettings, currentValue))
-    }
-
-    window.addEventListener('storage', syncSettings)
-    window.addEventListener('focus', syncSettings)
-
-    return () => {
-      window.removeEventListener('storage', syncSettings)
-      window.removeEventListener('focus', syncSettings)
     }
   }, [])
 
@@ -275,112 +215,10 @@ export function NotesAiAssistant({
     abortControllerRef.current = null
     setStatus('')
     setSession({
-      contextInjected: false,
-      contextNotePath: null,
-      messages: [],
+      ...getEmptyNotesAssistantSession(),
       modelId: selectedModel?.id ?? null,
-      previousResponseId: null,
       providerId: selectedProvider?.id ?? null,
-      requestMessages: [],
     })
-  }
-
-  function handleFabPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
-    dragStateRef.current = {
-      didMove: false,
-      initialX: fabPosition.x,
-      initialY: fabPosition.y,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-    }
-
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
-
-  function handleFabPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    const dragState = dragStateRef.current
-
-    if (!dragState || dragState.pointerId !== event.pointerId) {
-      return
-    }
-
-    const deltaX = event.clientX - dragState.startX
-    const deltaY = event.clientY - dragState.startY
-
-    if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) {
-      dragState.didMove = true
-    }
-
-    const nextX = Math.max(12, dragState.initialX - deltaX)
-    const nextY = Math.max(12, dragState.initialY - deltaY)
-    setFabPosition({ x: nextX, y: nextY })
-  }
-
-  function handleFabPointerUp(event: React.PointerEvent<HTMLButtonElement>) {
-    const dragState = dragStateRef.current
-
-    if (!dragState || dragState.pointerId !== event.pointerId) {
-      return
-    }
-
-    saveFabPosition(fabPosition)
-
-    if (!dragState.didMove) {
-      onOpen()
-    }
-
-    dragStateRef.current = null
-    event.currentTarget.releasePointerCapture?.(event.pointerId)
-  }
-
-  function handlePanelPointerDown(event: React.PointerEvent<HTMLElement>) {
-    if (isMobile) {
-      return
-    }
-
-    const target = event.target
-
-    if (
-      target instanceof HTMLElement &&
-      target.closest('button, select, input, textarea, a')
-    ) {
-      return
-    }
-
-    const basePosition = effectivePanelPosition
-
-    panelDragStateRef.current = {
-      initialLeft: basePosition.left,
-      initialTop: basePosition.top,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-    }
-
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
-
-  function handlePanelPointerMove(event: React.PointerEvent<HTMLElement>) {
-    const dragState = panelDragStateRef.current
-
-    if (!dragState || dragState.pointerId !== event.pointerId || isMobile) {
-      return
-    }
-
-    const nextLeft = dragState.initialLeft + (event.clientX - dragState.startX)
-    const nextTop = dragState.initialTop + (event.clientY - dragState.startY)
-    setPanelPosition(clampPanelPosition({
-      left: nextLeft,
-      top: nextTop,
-    }, false))
-  }
-
-  function handlePanelPointerUp(event: React.PointerEvent<HTMLElement>) {
-    if (panelDragStateRef.current?.pointerId === event.pointerId) {
-      panelDragStateRef.current = null
-      event.currentTarget.releasePointerCapture?.(event.pointerId)
-    }
   }
 
   return (
@@ -391,7 +229,7 @@ export function NotesAiAssistant({
         className={`notes-ai-fab${isOpen ? ' is-hidden' : ''}`}
         onPointerDown={handleFabPointerDown}
         onPointerMove={handleFabPointerMove}
-        onPointerUp={handleFabPointerUp}
+        onPointerUp={(event) => handleFabPointerUp(event, onOpen)}
         style={getFabStyle(fabPosition)}
         type="button"
       >
@@ -538,160 +376,4 @@ function buildRequestMessages({
     role: 'user',
     text: userMessage,
   }]
-}
-
-function loadNotesAssistantSession(): NotesAssistantSession {
-  if (typeof window === 'undefined') {
-    return getEmptyNotesAssistantSession()
-  }
-
-  const rawValue = window.localStorage.getItem(notesAssistantStorageKey)
-
-  if (!rawValue) {
-    return getEmptyNotesAssistantSession()
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue) as Partial<NotesAssistantSession>
-
-    return {
-      contextInjected: parsed.contextInjected === true,
-      contextNotePath: typeof parsed.contextNotePath === 'string' ? parsed.contextNotePath : null,
-      messages: Array.isArray(parsed.messages)
-        ? parsed.messages.filter(isAssistantMessage)
-        : [],
-      modelId: typeof parsed.modelId === 'string' ? parsed.modelId : null,
-      previousResponseId: typeof parsed.previousResponseId === 'string' ? parsed.previousResponseId : null,
-      providerId: typeof parsed.providerId === 'string' ? parsed.providerId : null,
-      requestMessages: Array.isArray(parsed.requestMessages)
-        ? parsed.requestMessages.filter(isChatMessage)
-        : [],
-    }
-  } catch {
-    return getEmptyNotesAssistantSession()
-  }
-}
-
-function getEmptyNotesAssistantSession(): NotesAssistantSession {
-  return {
-    contextInjected: false,
-    contextNotePath: null,
-    messages: [],
-    modelId: null,
-    previousResponseId: null,
-    providerId: null,
-    requestMessages: [],
-  }
-}
-
-function isAssistantMessage(value: unknown): value is AssistantMessage {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-
-  const message = value as Record<string, unknown>
-
-  return (
-    typeof message.id === 'string' &&
-    typeof message.text === 'string' &&
-    (message.role === 'assistant' || message.role === 'user')
-  )
-}
-
-function isChatMessage(value: unknown): value is ChatMessage {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-
-  const message = value as Record<string, unknown>
-
-  return (
-    typeof message.text === 'string' &&
-    (message.role === 'assistant' || message.role === 'system' || message.role === 'user')
-  )
-}
-
-function getFabStyle(position: { x: number; y: number }) {
-  return {
-    bottom: `${position.y}px`,
-    right: `${position.x}px`,
-  }
-}
-
-function getPanelStyle(position: PanelPosition, isMobile: boolean) {
-  return {
-    left: `${position.left}px`,
-    top: `${position.top}px`,
-    ...(isMobile
-      ? {
-          height: `min(70vh, ${mobilePanelHeight}px)`,
-          width: `min(calc(100vw - 24px), ${mobilePanelWidth}px)`,
-        }
-      : {
-          height: `min(calc(100vh - 126px), ${desktopPanelHeight}px)`,
-          width: `min(calc(100vw - 36px), ${desktopPanelWidth}px)`,
-        }),
-  }
-}
-
-function getAnchoredPanelPosition(fabPosition: { x: number; y: number }, isMobile: boolean) {
-  const viewportWidth = typeof window === 'undefined' ? 1440 : window.innerWidth
-  const viewportHeight = typeof window === 'undefined' ? 900 : window.innerHeight
-  const panelWidth = Math.min(viewportWidth - (isMobile ? 24 : 36), isMobile ? mobilePanelWidth : desktopPanelWidth)
-  const panelHeight = Math.min(viewportHeight - (isMobile ? 96 : 126), isMobile ? mobilePanelHeight : desktopPanelHeight)
-  const left = viewportWidth - fabPosition.x - panelWidth
-  const top = viewportHeight - fabPosition.y - panelHeight - 64
-
-  return clampPanelPosition({
-    left,
-    top,
-  }, isMobile)
-}
-
-function clampPanelPosition(position: PanelPosition, isMobile: boolean) {
-  const viewportWidth = typeof window === 'undefined' ? 1440 : window.innerWidth
-  const viewportHeight = typeof window === 'undefined' ? 900 : window.innerHeight
-  const panelWidth = Math.min(viewportWidth - (isMobile ? 24 : 36), isMobile ? mobilePanelWidth : desktopPanelWidth)
-  const panelHeight = Math.min(viewportHeight - (isMobile ? 96 : 126), isMobile ? mobilePanelHeight : desktopPanelHeight)
-  const margin = isMobile ? 12 : 18
-
-  return {
-    left: Math.min(Math.max(margin, position.left), viewportWidth - panelWidth - margin),
-    top: Math.min(Math.max(margin, position.top), viewportHeight - panelHeight - margin),
-  }
-}
-
-function loadFabPosition() {
-  if (typeof window === 'undefined') {
-    return defaultFabPosition
-  }
-
-  const rawValue = window.localStorage.getItem(notesAssistantFabStorageKey)
-
-  if (!rawValue) {
-    return defaultFabPosition
-  }
-
-  try {
-    const parsed = JSON.parse(rawValue) as Partial<{ x: number; y: number }>
-
-    return {
-      x: typeof parsed.x === 'number' ? parsed.x : defaultFabPosition.x,
-      y: typeof parsed.y === 'number' ? parsed.y : defaultFabPosition.y,
-    }
-  } catch {
-    return defaultFabPosition
-  }
-}
-
-function saveFabPosition(position: { x: number; y: number }) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  window.localStorage.setItem(notesAssistantFabStorageKey, JSON.stringify(position))
-}
-
-function isMobileViewport() {
-  return globalThis.matchMedia?.('(max-width: 820px)').matches ?? false
 }

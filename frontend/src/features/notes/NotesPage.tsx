@@ -1,34 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { MouseEvent } from 'react'
-import type { MutableRefObject } from 'react'
 import { useTheme } from '../../app/useTheme'
-import { MarkdownContent } from '../../components/MarkdownContent'
+import { NoteOutline } from './NoteOutline'
+import { NoteReaderPane } from './NoteReaderPane'
 import { NotesAiAssistant } from './NotesAiAssistant'
-import { formatFileSize, formatReadingTime, toDisplayName } from './noteDisplay'
+import { toDisplayName } from './noteDisplay'
 import { buildOutline, createHeadingIdPlugin, getNoteHeadingInfo, removeLine } from './noteMarkdown'
-import { NoteTree } from './noteTree'
+import { NotesSidebar } from './NotesSidebar'
 import { buildNoteTree } from './noteTreeBuilder'
+import {
+  getAncestorPaths,
+  loadNotesWorkspaceState,
+  mergeExpandedDirectories,
+  persistWorkspaceBeforeNavigation,
+  rememberScrollPosition,
+  saveNotesWorkspaceState,
+  type NotesWorkspaceState,
+} from './notesWorkspaceState'
 import { listNotes, readNote } from './notesApi'
 import type { NoteContent, NoteSummary } from './notesApi'
-
-const notesWorkspaceStorageKey = 'codecafe-notes-workspace'
-
-const bookDownloadLinks = [
-  {
-    href: 'https://github.com/rio-csharp/Notes/releases/download/latest/notes.pdf',
-    label: 'PDF',
-  },
-  {
-    href: 'https://github.com/rio-csharp/Notes/releases/download/latest/notes.epub',
-    label: 'EPUB',
-  },
-] as const
-
-type NotesWorkspaceState = {
-  activePath: string | null
-  expandedDirectories: string[]
-  scrollTopByPath: Record<string, number>
-}
 
 export function NotesPage() {
   const { theme } = useTheme()
@@ -391,135 +380,61 @@ export function NotesPage() {
     })
   }
 
+  function handleOutlineItemClick(id: string) {
+    const scrollContainer = previewRef.current
+    const heading = scrollContainer?.querySelector<HTMLElement>(`#${escapeCssIdentifier(id)}`)
+
+    if (!heading || !scrollContainer) {
+      return
+    }
+
+    const headingRect = heading.getBoundingClientRect()
+    const containerRect = scrollContainer.getBoundingClientRect()
+    const computedStyle = globalThis.getComputedStyle(scrollContainer)
+    const scrollOffset =
+      Number.parseFloat(computedStyle.scrollPaddingTop) ||
+      Number.parseFloat(computedStyle.paddingTop) ||
+      0
+    const targetTop = scrollContainer.scrollTop + headingRect.top - containerRect.top - scrollOffset
+    scrollContainer.scrollTo({
+      behavior: 'auto',
+      top: Math.max(0, targetTop),
+    })
+  }
+
   return (
     <section className={`notes-page${isMobileReaderOpen ? ' mobile-reader-open' : ''}`} aria-label="Notes">
-      <aside className="notes-sidebar" aria-label="Notes list">
-        <div className="notes-sidebar-header">
-          <input
-            aria-label="Search notes"
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search notes"
-            type="search"
-            value={query}
-          />
-        </div>
+      <NotesSidebar
+        activePath={activePath}
+        expandedPaths={expandedPaths}
+        isLoadingList={isLoadingList}
+        nodes={noteTree}
+        onQueryChange={setQuery}
+        onSelect={selectNote}
+        onToggleDirectory={toggleDirectory}
+        query={query}
+      />
 
-        <div className="note-list">
-          <NoteTree
-            activePath={activePath}
-            expandedPaths={expandedPaths}
-            nodes={noteTree}
-            onSelect={selectNote}
-            onToggleDirectory={toggleDirectory}
-          />
+      <NoteReaderPane
+        activeNote={activeNote}
+        activeNoteIndex={activeNoteIndex}
+        headingIdPlugin={headingIdPlugin}
+        isEinkMode={isEinkMode}
+        isLoadingList={isLoadingList}
+        isLoadingNote={isLoadingNote}
+        nextNote={nextNote}
+        noteCount={filteredNotes.length}
+        onCloseMobileReader={() => setIsMobileReaderOpen(false)}
+        onMove={moveToNote}
+        onTurnReaderPage={turnReaderPage}
+        previousNote={previousNote}
+        previewRef={previewRef}
+        readerContent={readerContent}
+        readerTitle={readerTitle}
+        status={status}
+      />
 
-          {!isLoadingList && filteredNotes.length === 0 ? (
-            <p className="empty-settings-copy note-list-empty">No notes found.</p>
-          ) : null}
-        </div>
-
-        <div className="notes-downloads" aria-label="Download notes book">
-          {bookDownloadLinks.map((link) => (
-            <a
-              className="notes-download-link"
-              href={link.href}
-              key={link.label}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {link.label}
-            </a>
-          ))}
-        </div>
-      </aside>
-
-      <section className="note-workspace" aria-label="Note reader">
-        {status ? <p className="settings-status note-status">{status}</p> : null}
-
-        {isLoadingNote ? (
-          <section className="notes-empty-panel">
-            <h3>Loading note</h3>
-          </section>
-        ) : activeNote ? (
-          <>
-            <header className="note-editor-header">
-              <button className="note-reader-back-button" onClick={() => setIsMobileReaderOpen(false)} type="button">
-                Back
-              </button>
-              <h2>{readerTitle}</h2>
-              <span aria-label="Read-only note">
-                {formatFileSize(activeNote.sizeBytes)} - Read-only - {formatReadingTime(activeNote.content)}
-              </span>
-            </header>
-
-            <article className="note-preview-pane note-preview-pane-full" aria-label="Markdown preview" ref={previewRef}>
-              {isEinkMode ? (
-                <div className="note-page-turn-zones" aria-hidden="true">
-                  <button
-                    className="note-page-turn-zone previous"
-                    onClick={() => turnReaderPage('previous')}
-                    tabIndex={-1}
-                    type="button"
-                  />
-                  <button
-                    className="note-page-turn-zone next"
-                    onClick={() => turnReaderPage('next')}
-                    tabIndex={-1}
-                    type="button"
-                  />
-                </div>
-              ) : null}
-              <div className="note-preview-content">
-                <MarkdownContent rehypePlugins={[headingIdPlugin]}>{readerContent}</MarkdownContent>
-
-                <NotePagination
-                  activeIndex={activeNoteIndex}
-                  className="note-reader-pagination mobile-pagination"
-                  label="Mobile note pagination"
-                  noteCount={filteredNotes.length}
-                  nextNote={nextNote}
-                  onMove={moveToNote}
-                  previousNote={previousNote}
-                />
-              </div>
-            </article>
-
-            <NotePagination
-              activeIndex={activeNoteIndex}
-              className="note-reader-pagination desktop-pagination"
-              label="Note pagination"
-              noteCount={filteredNotes.length}
-              nextNote={nextNote}
-              onMove={moveToNote}
-              previousNote={previousNote}
-            />
-          </>
-        ) : (
-          <section className="notes-empty-panel">
-            <h3>{isLoadingList ? 'Loading notes' : 'No note selected'}</h3>
-          </section>
-        )}
-      </section>
-
-      <aside className="note-outline" aria-label="Note outline">
-        <div className="note-outline-header">Outline</div>
-        {outline.length > 0 ? (
-          <nav className="note-outline-list">
-            {outline.map((item) => (
-              <a
-                className={`note-outline-item depth-${Math.min(item.depth, 3)}`}
-                href={`#${item.id}`}
-                key={item.id}
-                onClick={(event) => scrollToHeading(event, item.id, previewRef.current)}
-              >
-                {item.text}
-              </a>
-            ))}
-          </nav>
-        ) : (
-          <p className="empty-settings-copy note-outline-empty">No headings found.</p>
-        )}
-      </aside>
+      <NoteOutline items={outline} onItemClick={handleOutlineItemClick} />
 
       <NotesAiAssistant
         currentNote={activeNote}
@@ -530,61 +445,6 @@ export function NotesPage() {
       />
     </section>
   )
-}
-
-function NotePagination({
-  activeIndex,
-  className,
-  label,
-  noteCount,
-  nextNote,
-  onMove,
-  previousNote,
-}: {
-  activeIndex: number
-  className: string
-  label: string
-  noteCount: number
-  nextNote: NoteSummary | null
-  onMove: (path: string) => void
-  previousNote: NoteSummary | null
-}) {
-  return (
-    <nav className={className} aria-label={label}>
-      <button disabled={!previousNote} onClick={() => previousNote && onMove(previousNote.path)} type="button">
-        Previous
-      </button>
-      <span>
-        {activeIndex + 1 > 0 ? activeIndex + 1 : 0} / {noteCount}
-      </span>
-      <button disabled={!nextNote} onClick={() => nextNote && onMove(nextNote.path)} type="button">
-        Next
-      </button>
-    </nav>
-  )
-}
-
-function scrollToHeading(event: MouseEvent<HTMLAnchorElement>, id: string, scrollContainer: HTMLElement | null) {
-  event.preventDefault()
-
-  const heading = scrollContainer?.querySelector<HTMLElement>(`#${escapeCssIdentifier(id)}`)
-
-  if (!heading || !scrollContainer) {
-    return
-  }
-
-  const headingRect = heading.getBoundingClientRect()
-  const containerRect = scrollContainer.getBoundingClientRect()
-  const computedStyle = globalThis.getComputedStyle(scrollContainer)
-  const scrollOffset =
-    Number.parseFloat(computedStyle.scrollPaddingTop) ||
-    Number.parseFloat(computedStyle.paddingTop) ||
-    0
-  const targetTop = scrollContainer.scrollTop + headingRect.top - containerRect.top - scrollOffset
-  scrollContainer.scrollTo({
-    behavior: 'auto',
-    top: Math.max(0, targetTop),
-  })
 }
 
 function escapeCssIdentifier(value: string) {
@@ -606,112 +466,4 @@ function scrollPreviewToPosition(scrollContainer: HTMLElement | null, top: numbe
   }
 
   scrollContainer.scrollTop = top
-}
-
-function loadNotesWorkspaceState(): NotesWorkspaceState {
-  if (typeof window === 'undefined') {
-    return createDefaultNotesWorkspaceState()
-  }
-
-  try {
-    const rawState = window.localStorage.getItem(notesWorkspaceStorageKey)
-
-    if (!rawState) {
-      return createDefaultNotesWorkspaceState()
-    }
-
-    const parsedState = JSON.parse(rawState) as Partial<NotesWorkspaceState>
-
-    return {
-      activePath: typeof parsedState.activePath === 'string' ? parsedState.activePath : null,
-      expandedDirectories: Array.isArray(parsedState.expandedDirectories)
-        ? parsedState.expandedDirectories.filter((entry): entry is string => typeof entry === 'string')
-        : [],
-      scrollTopByPath: isScrollTopMap(parsedState.scrollTopByPath) ? parsedState.scrollTopByPath : {},
-    }
-  } catch {
-    return createDefaultNotesWorkspaceState()
-  }
-}
-
-function saveNotesWorkspaceState(state: NotesWorkspaceState) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  window.localStorage.setItem(notesWorkspaceStorageKey, JSON.stringify(state))
-}
-
-function createDefaultNotesWorkspaceState(): NotesWorkspaceState {
-  return {
-    activePath: null,
-    expandedDirectories: [],
-    scrollTopByPath: {},
-  }
-}
-
-function isScrollTopMap(value: unknown): value is Record<string, number> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
-
-function rememberScrollPosition(
-  path: string,
-  scrollContainer: HTMLElement | null,
-  scrollTopByPathRef: MutableRefObject<Record<string, number>>,
-  workspaceState: NotesWorkspaceState,
-) {
-  if (!path || !scrollContainer) {
-    return
-  }
-
-  scrollTopByPathRef.current = {
-    ...scrollTopByPathRef.current,
-    [path]: scrollContainer.scrollTop,
-  }
-  saveNotesWorkspaceState({
-    ...workspaceState,
-    scrollTopByPath: scrollTopByPathRef.current,
-  })
-}
-
-function getAncestorPaths(path: string) {
-  const segments = path.split('/').filter(Boolean)
-
-  return segments.slice(0, -1).map((_, index) => segments.slice(0, index + 1).join('/'))
-}
-
-function mergeExpandedDirectories(currentDirectories: string[], nextDirectories: string[]) {
-  return Array.from(new Set([...currentDirectories, ...nextDirectories]))
-}
-
-function persistWorkspaceBeforeNavigation({
-  activePath,
-  currentPath,
-  expandedDirectories,
-  scrollContainer,
-  scrollTopByPathRef,
-  workspaceState,
-}: {
-  activePath: string
-  currentPath: string
-  expandedDirectories: string[]
-  scrollContainer: HTMLElement | null
-  scrollTopByPathRef: MutableRefObject<Record<string, number>>
-  workspaceState: NotesWorkspaceState
-}) {
-  const nextScrollTopByPath =
-    currentPath && scrollContainer
-      ? {
-          ...scrollTopByPathRef.current,
-          [currentPath]: scrollContainer.scrollTop,
-        }
-      : scrollTopByPathRef.current
-
-  scrollTopByPathRef.current = nextScrollTopByPath
-  saveNotesWorkspaceState({
-    ...workspaceState,
-    activePath,
-    expandedDirectories,
-    scrollTopByPath: nextScrollTopByPath,
-  })
 }

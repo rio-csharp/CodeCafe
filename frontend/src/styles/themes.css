@@ -1,0 +1,382 @@
+[data-theme="light"] body {
+  background:
+    linear-gradient(rgba(109, 139, 179, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(109, 139, 179, 0.12) 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.1), transparent 34%),
+    var(--bg);
+  background-size: 34px 34px, 34px 34px, auto, auto;
+}
+
+[data-theme="light"] * {
+  scrollbar-color: rgba(14, 165, 233, 0.28) rgba(221, 230, 241, 0.9);
+}
+
+[data-theme="light"] *::-webkit-scrollbar-track {
+  background: rgba(221, 230, 241, 0.9);
+}
+
+[data-theme="light"] *::-webkit-scrollbar-thumb {
+  border-color: rgba(221, 230, 241, 0.9);
+  background: rgba(14, 165, 233, 0.28);
+}
+
+[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 165, 233, 0.4);
+}
+
+[data-theme="light"] .app-nav,
+[data-theme="light"] .chat-workbench,
+[data-theme="light"] .notes-page,
+[data-theme="light"] .settings-page {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(243, 247, 252, 0.98)),
+    var(--surface);
+}
+
+[data-theme="light"] .app-nav {
+  box-shadow: inset -1px 0 0 rgba(14, 165, 233, 0.08);
+}
+
+[data-theme="light"] .notes-sidebar,
+[data-theme="light"] .session-list,
+[data-theme="light"] .note-outline,
+[data-theme="light"] .provider-menu {
+  background: rgba(247, 250, 255, 0.96);
+}
+
+[data-theme="light"] .note-editor-header,
+[data-theme="light"] .console-header,
+[data-theme="light"] .chat-settings-popover,
+[data-theme="light"] .chat-composer,
+[data-theme="light"] .settings-table-head,
+[data-theme="light"] .desktop-pagination {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+[data-theme="light"] .provider-settings,
+[data-theme="light"] .settings-table-wrap {
+  background: rgba(255, 255, 255, 0.88);
+}
+
+[data-theme="light"] .note-preview-pane,
+[data-theme="light"] .empty-thread,
+[data-theme="light"] .message-thread,
+[data-theme="light"] .notes-empty-panel {
+  background:
+    linear-gradient(rgba(14, 165, 233, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.06) 1px, transparent 1px),
+    rgba(255, 255, 255, 0.72);
+  background-size: 24px 24px;
+}
+
+[data-theme="light"] .note-preview-pane code,
+[data-theme="light"] .message-bubble,
+[data-theme="light"] .session-delete-button:hover,
+[data-theme="light"] .format-option,
+[data-theme="light"] .settings-panel,
+[data-theme="light"] .theme-option,
+[data-theme="light"] .table-badge,
+[data-theme="light"] .mobile-back-button,
+[data-theme="light"] .note-tree summary:hover,
+[data-theme="light"] .note-list-item:hover,
+[data-theme="light"] .note-list-item[aria-current="true"],
+[data-theme="light"] .session-item:hover,
+[data-theme="light"] .session-item[aria-current="true"] {
+  background: rgba(14, 165, 233, 0.05);
+}
+
+[data-theme="light"] .note-preview-pane pre,
+[data-theme="light"] .message-bubble pre {
+  border-color: rgba(120, 144, 173, 0.16);
+  background: rgba(243, 247, 252, 0.96);
+}
+
+[data-theme="light"] .session-list-header input,
+[data-theme="light"] .chat-setting-field input,
+[data-theme="light"] .chat-setting-field textarea,
+[data-theme="light"] .chat-composer-inputs,
+[data-theme="light"] .chat-composer textarea,
+[data-theme="light"] .chat-select,
+[data-theme="light"] .notes-sidebar-header input,
+[data-theme="light"] .settings-inline-field input,
+[data-theme="light"] .settings-field input,
+[data-theme="light"] .settings-field textarea,
+[data-theme="light"] .settings-table input,
+[data-theme="light"] .settings-table select {
+  background: rgba(248, 251, 255, 0.96);
+}
+
+[data-theme="light"] .settings-secondary-button,
+[data-theme="light"] .settings-actions button,
+[data-theme="light"] .settings-table button {
+  background: rgba(14, 165, 233, 0.05);
+}
+
+[data-theme="light"] .notes-download-link {
+  color: #0f172a;
+  border-color: rgba(14, 165, 233, 0.2);
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.22), rgba(103, 232, 249, 0.14));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 6px 14px rgba(14, 165, 233, 0.08);
+}
+
+[data-theme="light"] .notes-download-link:hover {
+  border-color: rgba(14, 165, 233, 0.32);
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.28), rgba(103, 232, 249, 0.18));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 8px 18px rgba(14, 165, 233, 0.12);
+}
+
+[data-theme="light"] .notes-ai-panel,
+[data-theme="light"] .notes-ai-header {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+[data-theme="light"] .notes-ai-thread {
+  background:
+    linear-gradient(rgba(14, 165, 233, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(14, 165, 233, 0.06) 1px, transparent 1px),
+    rgba(255, 255, 255, 0.72);
+  background-size: 24px 24px;
+}
+
+[data-theme="light"] .notes-ai-fab {
+  color: #0f172a;
+  border-color: rgba(14, 165, 233, 0.22);
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.28), rgba(103, 232, 249, 0.16));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 8px 18px rgba(14, 165, 233, 0.1);
+}
+
+[data-theme="light"] .settings-secondary-button:hover,
+[data-theme="light"] .settings-actions button:hover,
+[data-theme="light"] .settings-table button:hover {
+  background: rgba(14, 165, 233, 0.1);
+}
+
+[data-theme="light"] .primary-button {
+  color: #0f172a;
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.78), rgba(103, 232, 249, 0.78));
+  box-shadow: 0 8px 20px rgba(14, 165, 233, 0.12);
+}
+
+[data-theme="light"] .primary-button:hover {
+  filter: brightness(1.02);
+}
+
+[data-theme="light"] .chat-settings-backdrop {
+  background: rgba(148, 163, 184, 0.18);
+}
+
+[data-theme="light"] .chat-composer {
+  background: rgba(255, 255, 255, 0.96);
+}
+
+[data-theme="light"] .chat-composer-inputs {
+  border-color: rgba(120, 144, 173, 0.18);
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 6px 18px rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .chat-composer-primary {
+  color: #0f172a;
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.1);
+}
+
+[data-theme="e-ink"] * {
+  scrollbar-color: rgba(17, 17, 17, 0.22) transparent;
+}
+
+[data-theme="e-ink"] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme="e-ink"] *::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  background: rgba(17, 17, 17, 0.22);
+}
+
+[data-theme="e-ink"] body {
+  background: var(--bg);
+}
+
+[data-theme="e-ink"] .app-nav,
+[data-theme="e-ink"] .chat-workbench,
+[data-theme="e-ink"] .notes-page,
+[data-theme="e-ink"] .settings-page,
+[data-theme="e-ink"] .provider-settings,
+[data-theme="e-ink"] .settings-table-wrap,
+[data-theme="e-ink"] .note-preview-pane,
+[data-theme="e-ink"] .notes-empty-panel,
+[data-theme="e-ink"] .message-thread,
+[data-theme="e-ink"] .empty-thread {
+  background: var(--surface);
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .notes-sidebar,
+[data-theme="e-ink"] .note-outline,
+[data-theme="e-ink"] .session-list,
+[data-theme="e-ink"] .provider-menu,
+[data-theme="e-ink"] .note-editor-header,
+[data-theme="e-ink"] .desktop-pagination,
+[data-theme="e-ink"] .console-header,
+[data-theme="e-ink"] .chat-composer,
+[data-theme="e-ink"] .chat-settings-popover,
+[data-theme="e-ink"] .settings-panel,
+[data-theme="e-ink"] .settings-table-head,
+[data-theme="e-ink"] .format-option,
+[data-theme="e-ink"] .theme-option,
+[data-theme="e-ink"] .table-badge,
+[data-theme="e-ink"] .message-bubble,
+[data-theme="e-ink"] .note-preview-pane code {
+  background: var(--surface);
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .message-bubble pre,
+[data-theme="e-ink"] .note-preview-pane pre {
+  background: #f7f4ec;
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .theme-option,
+[data-theme="e-ink"] .settings-secondary-button,
+[data-theme="e-ink"] .settings-actions button,
+[data-theme="e-ink"] .settings-table button,
+[data-theme="e-ink"] .note-reader-pagination button,
+[data-theme="e-ink"] .chat-composer-primary {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.24);
+  background: #f0ede4;
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .theme-option:hover,
+[data-theme="e-ink"] .theme-option[aria-pressed="true"],
+[data-theme="e-ink"] .settings-secondary-button:hover,
+[data-theme="e-ink"] .settings-actions button:hover,
+[data-theme="e-ink"] .settings-table button:hover,
+[data-theme="e-ink"] .note-list-item:hover,
+[data-theme="e-ink"] .note-list-item[aria-current="true"],
+[data-theme="e-ink"] .note-tree summary:hover,
+[data-theme="e-ink"] .note-outline-item:hover,
+[data-theme="e-ink"] .session-item:hover,
+[data-theme="e-ink"] .session-item[aria-current="true"] {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.26);
+  background: #ece8de;
+}
+
+[data-theme="e-ink"] .notes-sidebar-header input,
+[data-theme="e-ink"] .session-list-header input,
+[data-theme="e-ink"] .settings-inline-field input,
+[data-theme="e-ink"] .settings-field input,
+[data-theme="e-ink"] .settings-field textarea,
+[data-theme="e-ink"] .settings-table input,
+[data-theme="e-ink"] .settings-table select,
+[data-theme="e-ink"] .chat-setting-field input,
+[data-theme="e-ink"] .chat-setting-field textarea,
+[data-theme="e-ink"] .chat-composer-inputs,
+[data-theme="e-ink"] .chat-composer textarea,
+[data-theme="e-ink"] .chat-select {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.22);
+  background: #fffdf8;
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .note-preview-pane a,
+[data-theme="e-ink"] .message-bubble a {
+  color: var(--text);
+  text-decoration-thickness: 1px;
+}
+
+[data-theme="e-ink"] .note-preview-pane blockquote,
+[data-theme="e-ink"] .message-bubble blockquote {
+  border-left-color: rgba(17, 17, 17, 0.42);
+}
+
+[data-theme="e-ink"] .app-nav-external-link {
+  color: var(--text);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .notes-download-link {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.2);
+  background: #f0ede4;
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .notes-download-link:hover,
+[data-theme="e-ink"] .notes-download-link:focus-visible {
+  border-color: rgba(17, 17, 17, 0.28);
+  background: #ece8de;
+  box-shadow: none;
+  transform: none;
+}
+
+[data-theme="e-ink"] .notes-ai-panel,
+[data-theme="e-ink"] .notes-ai-header,
+[data-theme="e-ink"] .notes-ai-thread,
+[data-theme="e-ink"] .notes-ai-fab {
+  background: var(--surface);
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .notes-ai-fab {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.24);
+}
+
+[data-theme="e-ink"] .app-nav-external-link:hover {
+  border-color: rgba(17, 17, 17, 0.26);
+  background: #ece8de;
+}
+
+[data-theme="e-ink"] .note-page-turn-zones {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  height: calc(100vh - 160px);
+  min-height: 360px;
+  margin-bottom: calc(-1 * (calc(100vh - 160px)));
+  pointer-events: none;
+}
+
+[data-theme="e-ink"] .note-page-turn-zone {
+  pointer-events: auto;
+  min-height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  appearance: none;
+  outline: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-theme="e-ink"] .note-page-turn-zone:focus-visible {
+  outline: none;
+}
+
+[data-theme="e-ink"] .note-preview-pane {
+  padding-inline: 28px;
+}
+
+[data-theme="e-ink"] .note-preview-content {
+  max-width: 76ch;
+  margin: 0 auto;
+}
+
