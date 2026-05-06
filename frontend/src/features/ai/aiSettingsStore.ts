@@ -46,6 +46,13 @@ export type AiSettings = {
   providers: AiProvider[]
 }
 
+export type AiModelOption = {
+  label: string
+  model: AiProviderModel
+  provider: AiProvider
+  value: string
+}
+
 export function loadAiSettings(): AiSettings {
   if (typeof window === 'undefined') {
     return createDefaultAiSettings()
@@ -124,8 +131,47 @@ export function getDefaultModel(settings: AiSettings) {
   )
 }
 
+export function getEnabledModelOptions(settings: AiSettings): AiModelOption[] {
+  return settings.providers
+    .filter((provider) => provider.enabled)
+    .flatMap((provider) =>
+      provider.models
+        .filter((model) => model.enabled)
+        .map((model) => ({
+          label: model.name,
+          model,
+          provider,
+          value: toModelOptionValue(provider.id, model.id),
+        })),
+    )
+}
+
+export function getDefaultModelOptionValue(settings: AiSettings) {
+  const provider = getDefaultProvider(settings)
+  const model = getDefaultModel(settings)
+
+  return provider && model ? toModelOptionValue(provider.id, model.id) : null
+}
+
+export function resolveModelSelection(
+  settings: AiSettings,
+  currentValue: string | null,
+) {
+  const enabledModelOptions = getEnabledModelOptions(settings)
+
+  if (currentValue && enabledModelOptions.some((option) => option.value === currentValue)) {
+    return currentValue
+  }
+
+  return getDefaultModelOptionValue(settings) ?? enabledModelOptions[0]?.value ?? null
+}
+
 export function getPreferredFormat(provider: AiProvider) {
   return provider.preferredFormat
+}
+
+export function toModelOptionValue(providerId: string, modelId: string) {
+  return `${providerId}:${modelId}`
 }
 
 function createDefaultAiSettings(): AiSettings {

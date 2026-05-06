@@ -3,9 +3,10 @@ import { Link } from 'react-router-dom'
 import { streamChatResponse } from '../ai/aiClient'
 import { MarkdownContent } from '../../components/MarkdownContent'
 import {
-  getDefaultModel,
-  getDefaultProvider,
+  getEnabledModelOptions,
   loadAiSettings,
+  resolveModelSelection,
+  toModelOptionValue,
   type AiSettings,
 } from '../ai/aiSettingsStore'
 import { checkBackendHealth } from '../../lib/apiClient'
@@ -45,14 +46,8 @@ export function ChatWorkbench() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [sendingSessionIds, setSendingSessionIds] = useState<string[]>([])
-  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(
-    () => {
-      const settings = loadAiSettings()
-      const provider = getDefaultProvider(settings)
-      const model = getDefaultModel(settings)
-
-      return provider && model ? toModelOptionValue(provider.id, model.id) : null
-    },
+  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(() =>
+    resolveModelSelection(loadAiSettings(), null),
   )
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => loadSelectedSessionId())
   const [sessions, setSessions] = useState<ChatSession[]>(() => loadChatSessions())
@@ -60,46 +55,13 @@ export function ChatWorkbench() {
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
   const silentAbortSessionIdsRef = useRef<Set<string>>(new Set())
 
-  const enabledModelOptions = useMemo(
-    () =>
-      aiSettings.providers
-        .filter((provider) => provider.enabled)
-        .flatMap((provider) =>
-          provider.models
-            .filter((model) => model.enabled)
-            .map((model) => ({
-              label: model.name,
-              model,
-              provider,
-              value: toModelOptionValue(provider.id, model.id),
-            })),
-        ),
-    [aiSettings.providers],
-  )
-
-  const defaultModelOption = useMemo(() => {
-    if (!aiSettings.defaultProviderId || !aiSettings.defaultModelId) {
-      return enabledModelOptions[0] ?? null
-    }
-
-    return (
-      enabledModelOptions.find(
-        (option) =>
-          option.provider.id === aiSettings.defaultProviderId &&
-          option.model.id === aiSettings.defaultModelId,
-      ) ??
-      enabledModelOptions[0] ??
-      null
-    )
-  }, [aiSettings.defaultModelId, aiSettings.defaultProviderId, enabledModelOptions])
+  const enabledModelOptions = useMemo(() => getEnabledModelOptions(aiSettings), [aiSettings])
 
   const selectedModelOption = useMemo(() => {
-    if (!selectedModelValue) {
-      return defaultModelOption
-    }
+    const resolvedValue = resolveModelSelection(aiSettings, selectedModelValue)
 
-    return enabledModelOptions.find((option) => option.value === selectedModelValue) ?? defaultModelOption
-  }, [defaultModelOption, enabledModelOptions, selectedModelValue])
+    return enabledModelOptions.find((option) => option.value === resolvedValue) ?? null
+  }, [aiSettings, enabledModelOptions, selectedModelValue])
 
   const selectedProvider = selectedModelOption?.provider ?? null
   const selectedModel = selectedModelOption?.model ?? null
@@ -153,27 +115,8 @@ export function ChatWorkbench() {
   useEffect(() => {
     const syncSettings = () => {
       const nextSettings = loadAiSettings()
-      const nextOptions = nextSettings.providers
-        .filter((provider) => provider.enabled)
-        .flatMap((provider) =>
-          provider.models
-            .filter((model) => model.enabled)
-            .map((model) => toModelOptionValue(provider.id, model.id)),
-        )
-
       setAiSettings(nextSettings)
-      setSelectedModelValue((currentModelValue) => {
-        if (currentModelValue && nextOptions.includes(currentModelValue)) {
-          return currentModelValue
-        }
-
-        const defaultProvider = getDefaultProvider(nextSettings)
-        const defaultModel = getDefaultModel(nextSettings)
-
-        return defaultProvider && defaultModel
-          ? toModelOptionValue(defaultProvider.id, defaultModel.id)
-          : nextOptions[0] ?? null
-      })
+      setSelectedModelValue((currentModelValue) => resolveModelSelection(nextSettings, currentModelValue))
     }
 
     syncSettings()
@@ -814,10 +757,6 @@ function getDefaultChatPreferences(): ChatPreferences {
     temperature: null,
     topP: null,
   }
-}
-
-function toModelOptionValue(providerId: string, modelId: string) {
-  return `${providerId}:${modelId}`
 }
 
 function loadSelectedSessionId() {

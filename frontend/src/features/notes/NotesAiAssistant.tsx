@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { streamChatResponse, type ChatMessage } from '../ai/aiClient'
 import { MarkdownContent } from '../../components/MarkdownContent'
 import {
-  getDefaultModel,
-  getDefaultProvider,
+  getEnabledModelOptions,
   loadAiSettings,
+  resolveModelSelection,
   type AiSettings,
 } from '../ai/aiSettingsStore'
 import type { NoteContent } from './notesApi'
@@ -71,13 +71,9 @@ export function NotesAiAssistant({
   const [fabPosition, setFabPosition] = useState(() => loadFabPosition())
   const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(null)
   const [aiSettings, setAiSettings] = useState<AiSettings>(() => loadAiSettings())
-  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(() => {
-    const settings = loadAiSettings()
-    const provider = getDefaultProvider(settings)
-    const model = getDefaultModel(settings)
-
-    return provider && model ? toModelOptionValue(provider.id, model.id) : null
-  })
+  const [selectedModelValue, setSelectedModelValue] = useState<string | null>(() =>
+    resolveModelSelection(loadAiSettings(), null),
+  )
   const messageThreadRef = useRef<HTMLDivElement | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
   const dragStateRef = useRef<DragState | null>(null)
@@ -89,39 +85,13 @@ export function NotesAiAssistant({
     startY: number
   } | null>(null)
 
-  const enabledModelOptions = useMemo(
-    () =>
-      aiSettings.providers
-        .filter((provider) => provider.enabled)
-        .flatMap((provider) =>
-          provider.models
-            .filter((model) => model.enabled)
-            .map((model) => ({
-              label: model.name,
-              model,
-              provider,
-              value: toModelOptionValue(provider.id, model.id),
-            })),
-        ),
-    [aiSettings.providers],
-  )
-
-  const defaultModelOption = useMemo(() => {
-    const provider = getDefaultProvider(aiSettings)
-    const model = getDefaultModel(aiSettings)
-
-    return provider && model
-      ? enabledModelOptions.find((option) => option.value === toModelOptionValue(provider.id, model.id)) ?? null
-      : enabledModelOptions[0] ?? null
-  }, [aiSettings, enabledModelOptions])
+  const enabledModelOptions = useMemo(() => getEnabledModelOptions(aiSettings), [aiSettings])
 
   const selectedModelOption = useMemo(() => {
-    if (!selectedModelValue) {
-      return defaultModelOption
-    }
+    const resolvedValue = resolveModelSelection(aiSettings, selectedModelValue)
 
-    return enabledModelOptions.find((option) => option.value === selectedModelValue) ?? defaultModelOption
-  }, [defaultModelOption, enabledModelOptions, selectedModelValue])
+    return enabledModelOptions.find((option) => option.value === resolvedValue) ?? null
+  }, [aiSettings, enabledModelOptions, selectedModelValue])
 
   const selectedProvider = selectedModelOption?.provider ?? null
   const selectedModel = selectedModelOption?.model ?? null
@@ -154,27 +124,8 @@ export function NotesAiAssistant({
   useEffect(() => {
     const syncSettings = () => {
       const nextSettings = loadAiSettings()
-      const nextOptions = nextSettings.providers
-        .filter((provider) => provider.enabled)
-        .flatMap((provider) =>
-          provider.models
-            .filter((model) => model.enabled)
-            .map((model) => toModelOptionValue(provider.id, model.id)),
-        )
-
       setAiSettings(nextSettings)
-      setSelectedModelValue((currentValue) => {
-        if (currentValue && nextOptions.includes(currentValue)) {
-          return currentValue
-        }
-
-        const defaultProvider = getDefaultProvider(nextSettings)
-        const defaultModel = getDefaultModel(nextSettings)
-
-        return defaultProvider && defaultModel
-          ? toModelOptionValue(defaultProvider.id, defaultModel.id)
-          : nextOptions[0] ?? null
-      })
+      setSelectedModelValue((currentValue) => resolveModelSelection(nextSettings, currentValue))
     }
 
     window.addEventListener('storage', syncSettings)
@@ -658,10 +609,6 @@ function isChatMessage(value: unknown): value is ChatMessage {
     typeof message.text === 'string' &&
     (message.role === 'assistant' || message.role === 'system' || message.role === 'user')
   )
-}
-
-function toModelOptionValue(providerId: string, modelId: string) {
-  return `${providerId}:${modelId}`
 }
 
 function getFabStyle(position: { x: number; y: number }) {
