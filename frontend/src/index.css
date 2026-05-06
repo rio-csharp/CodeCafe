@@ -2025,12 +2025,13 @@ h2 {
   border: 0;
   background: transparent;
   appearance: none;
+  outline: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
 [data-theme="e-ink"] .note-page-turn-zone:focus-visible {
-  outline: 2px solid rgba(17, 17, 17, 0.32);
-  outline-offset: -2px;
+  outline: none;
 }
 
 [data-theme="e-ink"] .note-preview-pane {
