@@ -20,9 +20,15 @@ export function useNotesAiPanelPosition() {
   } | null>(null)
 
   const isMobile = isMobileViewport()
+  const viewportWidth = typeof window === 'undefined' ? 1440 : window.innerWidth
+  const viewportHeight = typeof window === 'undefined' ? 900 : window.innerHeight
+  const clampedFabPosition = useMemo(() => ({
+    x: Math.min(Math.max(12, fabPosition.x), Math.max(12, viewportWidth - 60)),
+    y: Math.min(Math.max(12, fabPosition.y), Math.max(12, viewportHeight - 60)),
+  }), [fabPosition.x, fabPosition.y, viewportHeight, viewportWidth])
   const effectivePanelPosition = useMemo(
-    () => panelPosition ?? getAnchoredPanelPosition(fabPosition, isMobile),
-    [fabPosition, isMobile, panelPosition],
+    () => panelPosition ?? getAnchoredPanelPosition(clampedFabPosition, isMobile),
+    [clampedFabPosition, isMobile, panelPosition],
   )
 
   function handleFabPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
@@ -67,7 +73,7 @@ export function useNotesAiPanelPosition() {
       return
     }
 
-    saveFabPosition(fabPosition)
+    saveFabPosition(clampedFabPosition)
 
     if (!dragState.didMove) {
       onOpen()
@@ -126,7 +132,7 @@ export function useNotesAiPanelPosition() {
 
   return {
     effectivePanelPosition,
-    fabPosition,
+    fabPosition: clampedFabPosition,
     handleFabPointerDown,
     handleFabPointerMove,
     handleFabPointerUp,

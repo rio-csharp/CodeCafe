@@ -382,10 +382,8 @@
 }
 
 .notes-ai-fab {
-  position: absolute;
-  z-index: 4;
-  right: 18px;
-  bottom: 18px;
+  position: fixed;
+  z-index: 40;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -414,10 +412,8 @@
 }
 
 .notes-ai-panel {
-  position: absolute;
-  z-index: 5;
-  right: 18px;
-  bottom: 82px;
+  position: fixed;
+  z-index: 41;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto auto;
   min-width: 0;
