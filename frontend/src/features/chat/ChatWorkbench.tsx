@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import { streamChatResponse } from '../ai/aiClient'
+import { MarkdownContent } from '../../components/MarkdownContent'
 import {
   getDefaultModel,
   getDefaultProvider,
@@ -14,6 +13,7 @@ import { checkBackendHealth } from '../../lib/apiClient'
 const healthCheckIntervalMs = 5_000
 const chatSessionsStorageKey = 'codecafe-chat-sessions'
 const chatPreferencesStorageKey = 'codecafe-chat-preferences'
+const chatSelectedSessionStorageKey = 'codecafe-chat-selected-session'
 
 type ChatPreferences = {
   maxOutputTokens: number | null
@@ -54,7 +54,7 @@ export function ChatWorkbench() {
       return provider && model ? toModelOptionValue(provider.id, model.id) : null
     },
   )
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(() => loadSelectedSessionId())
   const [sessions, setSessions] = useState<ChatSession[]>(() => loadChatSessions())
   const [status, setStatus] = useState('')
   const abortControllersRef = useRef<Map<string, AbortController>>(new Map())
@@ -103,7 +103,11 @@ export function ChatWorkbench() {
 
   const selectedProvider = selectedModelOption?.provider ?? null
   const selectedModel = selectedModelOption?.model ?? null
-  const selectedSession = sessions.find((session) => session.id === selectedSessionId) ?? null
+  const selectedSessionExists = selectedSessionId
+    ? sessions.some((session) => session.id === selectedSessionId)
+    : false
+  const effectiveSelectedSessionId = selectedSessionExists ? selectedSessionId : null
+  const selectedSession = sessions.find((session) => session.id === effectiveSelectedSessionId) ?? null
   const isSelectedSessionSending = selectedSession
     ? sendingSessionIds.includes(selectedSession.id)
     : false
@@ -189,6 +193,20 @@ export function ChatWorkbench() {
   useEffect(() => {
     window.localStorage.setItem(chatPreferencesStorageKey, JSON.stringify(chatPreferences))
   }, [chatPreferences])
+
+  useEffect(() => {
+    if (isMobileViewport()) {
+      window.localStorage.removeItem(chatSelectedSessionStorageKey)
+      return
+    }
+
+    if (!selectedSessionId) {
+      window.localStorage.removeItem(chatSelectedSessionStorageKey)
+      return
+    }
+
+    window.localStorage.setItem(chatSelectedSessionStorageKey, selectedSessionId)
+  }, [selectedSessionId])
 
   useEffect(() => {
     document.body.classList.toggle('chat-session-open', Boolean(selectedSession))
@@ -415,12 +433,12 @@ export function ChatWorkbench() {
           {filteredSessions.length > 0 ? (
             filteredSessions.map((session) => (
               <div
-                aria-current={session.id === selectedSessionId ? 'true' : undefined}
+                aria-current={session.id === effectiveSelectedSessionId ? 'true' : undefined}
                 className="session-item"
                 key={session.id}
               >
                 <button
-                  aria-current={session.id === selectedSessionId ? 'true' : undefined}
+                  aria-current={session.id === effectiveSelectedSessionId ? 'true' : undefined}
                   aria-label={`Open ${session.title}`}
                   className="session-item-main"
                   onClick={() => {
@@ -521,7 +539,7 @@ export function ChatWorkbench() {
                 />
               </label>
 
-              <label className="chat-setting-field">
+              <label className="chat-setting-field chat-setting-field-compact">
                 <span>Temperature</span>
                 <input
                   max={2}
@@ -538,27 +556,10 @@ export function ChatWorkbench() {
                 />
               </label>
 
-              <label className="chat-setting-field">
-                <span>Top-p</span>
+              <label className="chat-setting-field chat-setting-field-compact">
+                <span>Max output tokens</span>
                 <input
-                  max={1}
-                  min={0}
-                  onChange={(event) =>
-                    setChatPreferences((currentPreferences) => ({
-                      ...currentPreferences,
-                      topP: event.target.value ? Number(event.target.value) : null,
-                    }))
-                  }
-                  step={0.05}
-                  type="number"
-                  value={chatPreferences.topP ?? selectedModel?.defaultTopP ?? 1}
-                />
-              </label>
-
-              <label className="chat-setting-field">
-                <span>Max tokens</span>
-                <input
-                  max={32768}
+                  max={selectedModel?.maxOutputTokens ?? 32768}
                   min={1}
                   onChange={(event) =>
                     setChatPreferences((currentPreferences) => ({
@@ -578,9 +579,9 @@ export function ChatWorkbench() {
         {selectedSession ? (
           <div className="message-thread" aria-label={`${selectedSession.title} messages`}>
             {selectedSession.messages.map((message) => (
-              <article className={`message-bubble ${message.role}`} key={message.id}>
+              <article className={`message-bubble chat-message-bubble ${message.role}`} key={message.id}>
                 {message.text ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.text}</ReactMarkdown>
+                  <MarkdownContent>{message.text}</MarkdownContent>
                 ) : null}
               </article>
             ))}
@@ -817,4 +818,16 @@ function getDefaultChatPreferences(): ChatPreferences {
 
 function toModelOptionValue(providerId: string, modelId: string) {
   return `${providerId}:${modelId}`
+}
+
+function loadSelectedSessionId() {
+  if (typeof window === 'undefined' || isMobileViewport()) {
+    return null
+  }
+
+  return window.localStorage.getItem(chatSelectedSessionStorageKey)
+}
+
+function isMobileViewport() {
+  return globalThis.matchMedia?.('(max-width: 820px)').matches ?? false
 }

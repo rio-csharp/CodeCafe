@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import type { MutableRefObject } from 'react'
 import { useTheme } from '../../app/useTheme'
+import { MarkdownContent } from '../../components/MarkdownContent'
 import { NotesAiAssistant } from './NotesAiAssistant'
 import { formatFileSize, formatReadingTime, toDisplayName } from './noteDisplay'
 import { buildOutline, createHeadingIdPlugin, getNoteHeadingInfo, removeLine } from './noteMarkdown'
@@ -10,6 +10,8 @@ import { NoteTree } from './noteTree'
 import { buildNoteTree } from './noteTreeBuilder'
 import { listNotes, readNote } from './notesApi'
 import type { NoteContent, NoteSummary } from './notesApi'
+
+const notesWorkspaceStorageKey = 'codecafe-notes-workspace'
 
 const bookDownloadLinks = [
   {
@@ -22,11 +24,22 @@ const bookDownloadLinks = [
   },
 ] as const
 
+type NotesWorkspaceState = {
+  activePath: string | null
+  expandedDirectories: string[]
+  scrollTopByPath: Record<string, number>
+}
+
 export function NotesPage() {
   const { theme } = useTheme()
   const previewRef = useRef<HTMLElement | null>(null)
+  const isRestoringScrollRef = useRef(false)
+  const [workspaceState, setWorkspaceState] = useState<NotesWorkspaceState>(loadNotesWorkspaceState)
+  const scrollTopByPathRef = useRef<Record<string, number>>(loadNotesWorkspaceState().scrollTopByPath)
   const [notes, setNotes] = useState<NoteSummary[]>([])
-  const [activePath, setActivePath] = useState('')
+  const [savedActivePath] = useState(() => loadNotesWorkspaceState().activePath)
+  const [initialRestorePath, setInitialRestorePath] = useState(() => savedActivePath)
+  const [activePath, setActivePath] = useState(() => savedActivePath ?? '')
   const [activeNote, setActiveNote] = useState<NoteContent | null>(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('')
@@ -34,6 +47,10 @@ export function NotesPage() {
   const [isLoadingNote, setIsLoadingNote] = useState(false)
   const [isNotesAiOpen, setIsNotesAiOpen] = useState(false)
   const [isMobileReaderOpen, setIsMobileReaderOpen] = useState(false)
+  const expandedPaths = useMemo(
+    () => new Set(workspaceState.expandedDirectories),
+    [workspaceState.expandedDirectories],
+  )
 
   const filteredNotes = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
@@ -66,6 +83,13 @@ export function NotesPage() {
       : null
 
   useEffect(() => {
+    saveNotesWorkspaceState({
+      ...workspaceState,
+      scrollTopByPath: scrollTopByPathRef.current,
+    })
+  }, [workspaceState])
+
+  useEffect(() => {
     let ignore = false
 
     async function loadNotes() {
@@ -77,7 +101,26 @@ export function NotesPage() {
         }
 
         setNotes(nextNotes)
-        setActivePath(nextNotes[0]?.path ?? '')
+        setActivePath((currentPath) => {
+          const preferredPath = currentPath || savedActivePath || ''
+
+          if (preferredPath && nextNotes.some((note) => note.path === preferredPath)) {
+            setWorkspaceState((currentState) => ({
+              ...currentState,
+              expandedDirectories: mergeExpandedDirectories(
+                currentState.expandedDirectories,
+                getAncestorPaths(preferredPath),
+              ),
+            }))
+            return preferredPath
+          }
+
+          setWorkspaceState((currentState) => ({
+            ...currentState,
+            activePath: nextNotes[0]?.path ?? null,
+          }))
+          return nextNotes[0]?.path ?? ''
+        })
       } catch {
         if (!ignore) {
           setStatus('Unable to load notes. Check the notes root path in Settings.')
@@ -94,7 +137,7 @@ export function NotesPage() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [savedActivePath])
 
   useEffect(() => {
     document.body.classList.toggle('notes-reader-open', isMobileReaderOpen)
@@ -152,10 +195,108 @@ export function NotesPage() {
     }
   }, [activePath])
 
+  useEffect(() => {
+    if (!activeNote || !previewRef.current) {
+      return
+    }
+
+    if (!initialRestorePath || activeNote.path !== initialRestorePath) {
+      return
+    }
+
+    const preview = previewRef.current
+    const scrollTop = scrollTopByPathRef.current[activeNote.path] ?? 0
+    isRestoringScrollRef.current = true
+    const restoreId = window.requestAnimationFrame(() => {
+      scrollPreviewToPosition(preview, scrollTop)
+      setInitialRestorePath(null)
+      isRestoringScrollRef.current = false
+    })
+
+    return () => {
+      window.cancelAnimationFrame(restoreId)
+      isRestoringScrollRef.current = false
+    }
+  }, [activeNote, initialRestorePath])
+
+  useEffect(() => {
+    const preview = previewRef.current
+
+    if (!preview || !activePath) {
+      return
+    }
+
+    const handleScroll = () => {
+      if (isRestoringScrollRef.current) {
+        return
+      }
+
+      scrollTopByPathRef.current = {
+        ...scrollTopByPathRef.current,
+        [activePath]: preview.scrollTop,
+      }
+    }
+
+    preview.addEventListener('scroll', handleScroll, { passive: true })
+
+    return () => {
+      preview.removeEventListener('scroll', handleScroll)
+    }
+  }, [activePath, activeNote])
+
+  useEffect(() => {
+    const flushWorkspaceState = () => {
+      saveNotesWorkspaceState({
+        ...workspaceState,
+        scrollTopByPath: scrollTopByPathRef.current,
+      })
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushWorkspaceState()
+      }
+    }
+
+    window.addEventListener('pagehide', flushWorkspaceState)
+    window.addEventListener('beforeunload', flushWorkspaceState)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.removeEventListener('pagehide', flushWorkspaceState)
+      window.removeEventListener('beforeunload', flushWorkspaceState)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [workspaceState])
+
   function selectNote(path: string) {
+    const nextExpandedDirectories = mergeExpandedDirectories(
+      workspaceState.expandedDirectories,
+      getAncestorPaths(path),
+    )
+    persistWorkspaceBeforeNavigation({
+      activePath: path,
+      currentPath: activePath,
+      expandedDirectories: nextExpandedDirectories,
+      scrollContainer: previewRef.current,
+      scrollTopByPathRef,
+      workspaceState,
+    })
+    rememberScrollPosition(
+      activePath,
+      previewRef.current,
+      scrollTopByPathRef,
+      workspaceState,
+    )
+    setInitialRestorePath(null)
+    setWorkspaceState((currentState) => ({
+      ...currentState,
+      activePath: path,
+      expandedDirectories: nextExpandedDirectories,
+    }))
     setActivePath(path)
     openMobileReader()
-    scrollPreviewToTop(previewRef.current)
+    scrollPreviewToPosition(previewRef.current, 0)
   }
 
   function openMobileReader() {
@@ -167,8 +308,49 @@ export function NotesPage() {
   }
 
   function moveToNote(path: string) {
+    const nextExpandedDirectories = mergeExpandedDirectories(
+      workspaceState.expandedDirectories,
+      getAncestorPaths(path),
+    )
+    persistWorkspaceBeforeNavigation({
+      activePath: path,
+      currentPath: activePath,
+      expandedDirectories: nextExpandedDirectories,
+      scrollContainer: previewRef.current,
+      scrollTopByPathRef,
+      workspaceState,
+    })
+    rememberScrollPosition(
+      activePath,
+      previewRef.current,
+      scrollTopByPathRef,
+      workspaceState,
+    )
+    setInitialRestorePath(null)
+    setWorkspaceState((currentState) => ({
+      ...currentState,
+      activePath: path,
+      expandedDirectories: nextExpandedDirectories,
+    }))
     setActivePath(path)
-    scrollPreviewToTop(previewRef.current)
+    scrollPreviewToPosition(previewRef.current, 0)
+  }
+
+  function toggleDirectory(path: string, isOpen: boolean) {
+    setWorkspaceState((currentState) => {
+      const nextExpandedDirectories = isOpen
+        ? Array.from(new Set([...currentState.expandedDirectories, path]))
+        : currentState.expandedDirectories.filter((entry) => entry !== path)
+
+      if (nextExpandedDirectories === currentState.expandedDirectories) {
+        return currentState
+      }
+
+      return {
+        ...currentState,
+        expandedDirectories: nextExpandedDirectories,
+      }
+    })
   }
 
   function turnReaderPage(direction: 'next' | 'previous') {
@@ -222,7 +404,13 @@ export function NotesPage() {
         </div>
 
         <div className="note-list">
-          <NoteTree nodes={noteTree} activePath={activePath} onSelect={selectNote} />
+          <NoteTree
+            activePath={activePath}
+            expandedPaths={expandedPaths}
+            nodes={noteTree}
+            onSelect={selectNote}
+            onToggleDirectory={toggleDirectory}
+          />
 
           {!isLoadingList && filteredNotes.length === 0 ? (
             <p className="empty-settings-copy note-list-empty">No notes found.</p>
@@ -281,9 +469,7 @@ export function NotesPage() {
                 </div>
               ) : null}
               <div className="note-preview-content">
-                <ReactMarkdown rehypePlugins={[headingIdPlugin]} remarkPlugins={[remarkGfm]}>
-                  {readerContent}
-                </ReactMarkdown>
+                <MarkdownContent rehypePlugins={[headingIdPlugin]}>{readerContent}</MarkdownContent>
 
                 <NotePagination
                   activeIndex={activeNoteIndex}
@@ -334,22 +520,12 @@ export function NotesPage() {
         )}
       </aside>
 
-      <button
-        aria-expanded={isNotesAiOpen}
-        aria-label="Open notes AI assistant"
-        className="notes-ai-fab"
-        onClick={() => setIsNotesAiOpen(true)}
-        type="button"
-      >
-        AI
-      </button>
-
       <NotesAiAssistant
         currentNote={activeNote}
         currentNoteTitle={readerTitle}
         isOpen={isNotesAiOpen}
-        noteTree={noteTree}
         onClose={() => setIsNotesAiOpen(false)}
+        onOpen={() => setIsNotesAiOpen(true)}
       />
     </section>
   )
@@ -418,8 +594,123 @@ function isMobileViewport() {
   return globalThis.matchMedia?.('(max-width: 820px)').matches ?? false
 }
 
-function scrollPreviewToTop(scrollContainer: HTMLElement | null) {
-  if (typeof scrollContainer?.scrollTo === 'function') {
-    scrollContainer.scrollTo({ top: 0 })
+function scrollPreviewToPosition(scrollContainer: HTMLElement | null, top: number) {
+  if (!scrollContainer) {
+    return
   }
+
+  if (typeof scrollContainer.scrollTo === 'function') {
+    scrollContainer.scrollTo({ top })
+    return
+  }
+
+  scrollContainer.scrollTop = top
+}
+
+function loadNotesWorkspaceState(): NotesWorkspaceState {
+  if (typeof window === 'undefined') {
+    return createDefaultNotesWorkspaceState()
+  }
+
+  try {
+    const rawState = window.localStorage.getItem(notesWorkspaceStorageKey)
+
+    if (!rawState) {
+      return createDefaultNotesWorkspaceState()
+    }
+
+    const parsedState = JSON.parse(rawState) as Partial<NotesWorkspaceState>
+
+    return {
+      activePath: typeof parsedState.activePath === 'string' ? parsedState.activePath : null,
+      expandedDirectories: Array.isArray(parsedState.expandedDirectories)
+        ? parsedState.expandedDirectories.filter((entry): entry is string => typeof entry === 'string')
+        : [],
+      scrollTopByPath: isScrollTopMap(parsedState.scrollTopByPath) ? parsedState.scrollTopByPath : {},
+    }
+  } catch {
+    return createDefaultNotesWorkspaceState()
+  }
+}
+
+function saveNotesWorkspaceState(state: NotesWorkspaceState) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(notesWorkspaceStorageKey, JSON.stringify(state))
+}
+
+function createDefaultNotesWorkspaceState(): NotesWorkspaceState {
+  return {
+    activePath: null,
+    expandedDirectories: [],
+    scrollTopByPath: {},
+  }
+}
+
+function isScrollTopMap(value: unknown): value is Record<string, number> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function rememberScrollPosition(
+  path: string,
+  scrollContainer: HTMLElement | null,
+  scrollTopByPathRef: MutableRefObject<Record<string, number>>,
+  workspaceState: NotesWorkspaceState,
+) {
+  if (!path || !scrollContainer) {
+    return
+  }
+
+  scrollTopByPathRef.current = {
+    ...scrollTopByPathRef.current,
+    [path]: scrollContainer.scrollTop,
+  }
+  saveNotesWorkspaceState({
+    ...workspaceState,
+    scrollTopByPath: scrollTopByPathRef.current,
+  })
+}
+
+function getAncestorPaths(path: string) {
+  const segments = path.split('/').filter(Boolean)
+
+  return segments.slice(0, -1).map((_, index) => segments.slice(0, index + 1).join('/'))
+}
+
+function mergeExpandedDirectories(currentDirectories: string[], nextDirectories: string[]) {
+  return Array.from(new Set([...currentDirectories, ...nextDirectories]))
+}
+
+function persistWorkspaceBeforeNavigation({
+  activePath,
+  currentPath,
+  expandedDirectories,
+  scrollContainer,
+  scrollTopByPathRef,
+  workspaceState,
+}: {
+  activePath: string
+  currentPath: string
+  expandedDirectories: string[]
+  scrollContainer: HTMLElement | null
+  scrollTopByPathRef: MutableRefObject<Record<string, number>>
+  workspaceState: NotesWorkspaceState
+}) {
+  const nextScrollTopByPath =
+    currentPath && scrollContainer
+      ? {
+          ...scrollTopByPathRef.current,
+          [currentPath]: scrollContainer.scrollTop,
+        }
+      : scrollTopByPathRef.current
+
+  scrollTopByPathRef.current = nextScrollTopByPath
+  saveNotesWorkspaceState({
+    ...workspaceState,
+    activePath,
+    expandedDirectories,
+    scrollTopByPath: nextScrollTopByPath,
+  })
 }

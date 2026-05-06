@@ -1,4 +1,17 @@
-export type ProviderFormat = 'chat-completions' | 'responses' | 'anthropic' | 'gemini'
+export const aiSettingsStorageKey = 'codecafe-ai-settings'
+
+export const providerFormatOptions = [
+  {
+    label: 'Chat Completions',
+    value: 'chat-completions',
+  },
+  {
+    label: 'Anthropic Messages',
+    value: 'anthropic-messages',
+  },
+] as const
+
+export type AiProviderFormat = (typeof providerFormatOptions)[number]['value']
 
 export type AiProviderModel = {
   defaultMaxOutputTokens: number
@@ -6,20 +19,25 @@ export type AiProviderModel = {
   defaultTopP: number
   enabled: boolean
   id: string
+  maxContextTokens: number
+  maxOutputTokens: number
   modelId: string
   name: string
+  supportsJsonOutput: boolean
   supportsStreaming: boolean
+  supportsThinking: boolean
+  supportsToolCalls: boolean
 }
 
 export type AiProvider = {
   apiKey: string
   baseUrl: string
   enabled: boolean
-  formats: ProviderFormat[]
+  formats: AiProviderFormat[]
   id: string
   models: AiProviderModel[]
   name: string
-  preferredFormat: ProviderFormat
+  preferredFormat: AiProviderFormat
 }
 
 export type AiSettings = {
@@ -28,99 +46,49 @@ export type AiSettings = {
   providers: AiProvider[]
 }
 
-const storageKey = 'codecafe-ai-settings'
-
-export const providerFormatOptions: Array<{
-  description: string
-  label: string
-  value: ProviderFormat
-}> = [
-  {
-    description: 'OpenAI-compatible /v1/chat/completions requests.',
-    label: 'Chat Completions',
-    value: 'chat-completions',
-  },
-  {
-    description: 'OpenAI-compatible /v1/responses requests.',
-    label: 'Responses API',
-    value: 'responses',
-  },
-  {
-    description: 'Anthropic Claude-style messages API payloads.',
-    label: 'Claude',
-    value: 'anthropic',
-  },
-  {
-    description: 'Google Gemini-style generateContent payloads.',
-    label: 'Gemini',
-    value: 'gemini',
-  },
-]
-
-export function createProvider(): AiProvider {
-  return {
-    apiKey: '',
-    baseUrl: '',
-    enabled: true,
-    formats: ['chat-completions'],
-    id: crypto.randomUUID(),
-    models: [createModel()],
-    name: 'New provider',
-    preferredFormat: 'chat-completions',
-  }
-}
-
-export function createModel(): AiProviderModel {
-  return {
-    defaultMaxOutputTokens: 2048,
-    defaultTemperature: 0.7,
-    defaultTopP: 1,
-    enabled: true,
-    id: crypto.randomUUID(),
-    modelId: '',
-    name: 'New model',
-    supportsStreaming: true,
-  }
-}
-
-export function getEmptyAiSettings(): AiSettings {
-  return {
-    defaultModelId: null,
-    defaultProviderId: null,
-    providers: [],
-  }
-}
-
 export function loadAiSettings(): AiSettings {
   if (typeof window === 'undefined') {
-    return getEmptyAiSettings()
+    return createDefaultAiSettings()
   }
 
-  const rawValue = window.localStorage.getItem(storageKey)
+  const rawValue = window.localStorage.getItem(aiSettingsStorageKey)
 
   if (!rawValue) {
-    return getEmptyAiSettings()
+    return createDefaultAiSettings()
   }
 
   try {
     const parsed = JSON.parse(rawValue) as Partial<AiSettings>
-    const providers = Array.isArray(parsed.providers)
-      ? parsed.providers
-          .map(normalizeProvider)
-          .filter((provider): provider is AiProvider => provider !== null)
-      : []
-    const defaultProviderId =
-      typeof parsed.defaultProviderId === 'string' ? parsed.defaultProviderId : null
-    const defaultModelId =
-      typeof parsed.defaultModelId === 'string' ? parsed.defaultModelId : null
 
-    return reconcileAiSettings({
-      defaultModelId,
-      defaultProviderId,
+    if (!Array.isArray(parsed.providers)) {
+      return createDefaultAiSettings()
+    }
+
+    const providers = parsed.providers
+      .map(normalizeProvider)
+      .filter((provider): provider is AiProvider => provider !== null)
+
+    if (providers.length === 0) {
+      return createDefaultAiSettings()
+    }
+
+    const defaultProvider =
+      providers.find((provider) => provider.id === parsed.defaultProviderId) ??
+      providers.find((provider) => provider.enabled) ??
+      providers[0]
+    const defaultModel =
+      defaultProvider.models.find((model) => model.id === parsed.defaultModelId && model.enabled) ??
+      defaultProvider.models.find((model) => model.enabled) ??
+      defaultProvider.models[0] ??
+      null
+
+    return {
+      defaultModelId: defaultModel?.id ?? null,
+      defaultProviderId: defaultProvider?.id ?? null,
       providers,
-    })
+    }
   } catch {
-    return getEmptyAiSettings()
+    return createDefaultAiSettings()
   }
 }
 
@@ -129,113 +97,156 @@ export function saveAiSettings(settings: AiSettings) {
     return
   }
 
-  window.localStorage.setItem(storageKey, JSON.stringify(reconcileAiSettings(settings)))
-}
-
-export function reconcileAiSettings(settings: AiSettings): AiSettings {
-  const enabledProviders = settings.providers.filter((provider) => provider.enabled)
-  const defaultProvider =
-    enabledProviders.find((provider) => provider.id === settings.defaultProviderId) ??
-    enabledProviders[0] ??
-    null
-
-  const enabledModels =
-    defaultProvider?.models.filter((model) => model.enabled) ??
-    []
-  const defaultModel =
-    enabledModels.find((model) => model.id === settings.defaultModelId) ??
-    enabledModels[0] ??
-    null
-
-  return {
-    defaultModelId: defaultModel?.id ?? null,
-    defaultProviderId: defaultProvider?.id ?? null,
-    providers: settings.providers,
-  }
+  window.localStorage.setItem(aiSettingsStorageKey, JSON.stringify(settings))
 }
 
 export function getDefaultProvider(settings: AiSettings) {
-  return settings.providers.find((provider) => provider.id === settings.defaultProviderId) ?? null
+  return (
+    settings.providers.find((provider) => provider.id === settings.defaultProviderId) ??
+    settings.providers.find((provider) => provider.enabled) ??
+    settings.providers[0] ??
+    null
+  )
 }
 
 export function getDefaultModel(settings: AiSettings) {
   const provider = getDefaultProvider(settings)
 
-  return provider?.models.find((model) => model.id === settings.defaultModelId) ?? null
-}
-
-export function getPreferredFormat(provider: AiProvider): ProviderFormat {
-  return provider.formats[0] ?? 'chat-completions'
-}
-
-function normalizeProvider(value: unknown): AiProvider | null {
-  if (!isRecord(value)) {
+  if (!provider) {
     return null
   }
 
-  const id = typeof value.id === 'string' ? value.id : crypto.randomUUID()
-  const name = typeof value.name === 'string' ? value.name : 'Provider'
-  const baseUrl = typeof value.baseUrl === 'string' ? value.baseUrl : ''
-  const apiKey = typeof value.apiKey === 'string' ? value.apiKey : ''
-  const enabled = typeof value.enabled === 'boolean' ? value.enabled : true
-  const formats: ProviderFormat[] = Array.isArray(value.formats)
-    ? value.formats.filter(isProviderFormat)
-    : ['chat-completions']
-  const preferredFormat: ProviderFormat =
-    isProviderFormat(value.preferredFormat) &&
-    formats.includes(value.preferredFormat as ProviderFormat)
-      ? (value.preferredFormat as ProviderFormat)
-      : ((formats[0] as ProviderFormat | undefined) ?? 'chat-completions')
-  const orderedFormats: ProviderFormat[] = [
-    preferredFormat,
-    ...formats.filter((format) => format !== preferredFormat),
-  ]
-  const models = Array.isArray(value.models)
-    ? value.models
-        .map(normalizeModel)
-        .filter((model): model is AiProviderModel => model !== null)
-    : []
+  return (
+    provider.models.find((model) => model.id === settings.defaultModelId && model.enabled) ??
+    provider.models.find((model) => model.enabled) ??
+    provider.models[0] ??
+    null
+  )
+}
+
+export function getPreferredFormat(provider: AiProvider) {
+  return provider.preferredFormat
+}
+
+function createDefaultAiSettings(): AiSettings {
+  return {
+    defaultModelId: 'deepseek-v4-pro',
+    defaultProviderId: 'deepseek',
+    providers: [
+      {
+        apiKey: '',
+        baseUrl: 'https://api.deepseek.com',
+        enabled: true,
+        formats: ['chat-completions', 'anthropic-messages'],
+        id: 'deepseek',
+        models: [
+          {
+            defaultMaxOutputTokens: 8192,
+            defaultTemperature: 0.7,
+            defaultTopP: 1,
+            enabled: true,
+            id: 'deepseek-v4-pro',
+            maxContextTokens: 1_000_000,
+            maxOutputTokens: 384_000,
+            modelId: 'deepseek-v4-pro',
+            name: 'DeepSeek V4 Pro',
+            supportsJsonOutput: true,
+            supportsStreaming: true,
+            supportsThinking: true,
+            supportsToolCalls: true,
+          },
+          {
+            defaultMaxOutputTokens: 8192,
+            defaultTemperature: 0.7,
+            defaultTopP: 1,
+            enabled: true,
+            id: 'deepseek-v4-flash',
+            maxContextTokens: 1_000_000,
+            maxOutputTokens: 384_000,
+            modelId: 'deepseek-v4-flash',
+            name: 'DeepSeek V4 Flash',
+            supportsJsonOutput: true,
+            supportsStreaming: true,
+            supportsThinking: true,
+            supportsToolCalls: true,
+          },
+        ],
+        name: 'DeepSeek',
+        preferredFormat: 'chat-completions',
+      },
+    ],
+  }
+}
+
+function normalizeProvider(value: unknown): AiProvider | null {
+  if (typeof value !== 'object' || value === null) {
+    return null
+  }
+
+  const provider = value as Record<string, unknown>
+
+  if (
+    typeof provider.id !== 'string' ||
+    typeof provider.name !== 'string' ||
+    typeof provider.baseUrl !== 'string' ||
+    typeof provider.apiKey !== 'string' ||
+    !Array.isArray(provider.models)
+  ) {
+    return null
+  }
+
+  const models = provider.models
+    .map(normalizeModel)
+    .filter((model): model is AiProviderModel => model !== null)
+
+  if (models.length === 0) {
+    return null
+  }
 
   return {
-    apiKey,
-    baseUrl,
-    enabled,
-    formats: (orderedFormats.length > 0 ? orderedFormats : ['chat-completions']) as ProviderFormat[],
-    id,
+    apiKey: provider.apiKey,
+    baseUrl: provider.baseUrl,
+    enabled: provider.enabled !== false,
+    formats: ['chat-completions', 'anthropic-messages'],
+    id: provider.id,
     models,
-    name,
-    preferredFormat: orderedFormats[0] ?? 'chat-completions',
+    name: provider.name,
+    preferredFormat: 'chat-completions',
   }
 }
 
 function normalizeModel(value: unknown): AiProviderModel | null {
-  if (!isRecord(value)) {
+  if (typeof value !== 'object' || value === null) {
+    return null
+  }
+
+  const model = value as Record<string, unknown>
+
+  if (
+    typeof model.id !== 'string' ||
+    typeof model.name !== 'string' ||
+    typeof model.modelId !== 'string'
+  ) {
     return null
   }
 
   return {
     defaultMaxOutputTokens:
-      typeof value.defaultMaxOutputTokens === 'number' ? value.defaultMaxOutputTokens : 2048,
+      typeof model.defaultMaxOutputTokens === 'number' ? model.defaultMaxOutputTokens : 8192,
     defaultTemperature:
-      typeof value.defaultTemperature === 'number' ? value.defaultTemperature : 0.7,
-    defaultTopP: typeof value.defaultTopP === 'number' ? value.defaultTopP : 1,
-    enabled: typeof value.enabled === 'boolean' ? value.enabled : true,
-    id: typeof value.id === 'string' ? value.id : crypto.randomUUID(),
-    modelId: typeof value.modelId === 'string' ? value.modelId : '',
-    name: typeof value.name === 'string' ? value.name : 'Model',
-    supportsStreaming: typeof value.supportsStreaming === 'boolean' ? value.supportsStreaming : true,
+      typeof model.defaultTemperature === 'number' ? model.defaultTemperature : 0.7,
+    defaultTopP: typeof model.defaultTopP === 'number' ? model.defaultTopP : 1,
+    enabled: model.enabled !== false,
+    id: model.id,
+    maxContextTokens:
+      typeof model.maxContextTokens === 'number' ? model.maxContextTokens : 1_000_000,
+    maxOutputTokens:
+      typeof model.maxOutputTokens === 'number' ? model.maxOutputTokens : 384_000,
+    modelId: model.modelId,
+    name: model.name,
+    supportsJsonOutput: model.supportsJsonOutput !== false,
+    supportsStreaming: model.supportsStreaming !== false,
+    supportsThinking: model.supportsThinking !== false,
+    supportsToolCalls: model.supportsToolCalls !== false,
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function isProviderFormat(value: unknown): value is ProviderFormat {
-  return (
-    value === 'chat-completions' ||
-    value === 'responses' ||
-    value === 'anthropic' ||
-    value === 'gemini'
-  )
 }

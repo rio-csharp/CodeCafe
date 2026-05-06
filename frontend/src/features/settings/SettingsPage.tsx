@@ -100,7 +100,7 @@ export function SettingsPage() {
 
         <Link className="settings-inline-row settings-link-row" to="/settings/ai">
           <h2>AI</h2>
-          <span className="settings-link-copy">Providers, formats, models, and capabilities</span>
+          <span className="settings-link-copy">Provider and model access</span>
         </Link>
       </section>
     </section>
