@@ -5,6 +5,8 @@ using CodeCafe.Contracts.Notes;
 
 public sealed class FileSystemNotesRepository(INotesSettingsRepository settingsRepository) : INotesRepository
 {
+    private const string NumberedNotePrefixPattern = @"^\d{2}-";
+
     private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".md",
@@ -83,7 +85,14 @@ public sealed class FileSystemNotesRepository(INotesSettingsRepository settingsR
 
     private static bool IsSupportedNoteFile(string path)
     {
-        return SupportedExtensions.Contains(Path.GetExtension(path));
+        if (!SupportedExtensions.Contains(Path.GetExtension(path)))
+        {
+            return false;
+        }
+
+        var fileName = Path.GetFileNameWithoutExtension(path);
+
+        return System.Text.RegularExpressions.Regex.IsMatch(fileName, NumberedNotePrefixPattern);
     }
 
     private static string ToRelativePath(string rootPath, string filePath)

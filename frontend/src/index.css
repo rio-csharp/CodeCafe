@@ -252,7 +252,7 @@ h2 {
 
 .notes-sidebar {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   min-height: 0;
   border-right: 1px solid var(--border);
   background: rgba(9, 14, 25, 0.62);
@@ -281,6 +281,57 @@ h2 {
 .notes-sidebar-header input:focus {
   border-color: rgba(56, 189, 248, 0.7);
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+}
+
+.notes-downloads {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.notes-download-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-decoration: none;
+  border: 1px solid rgba(56, 189, 248, 0.24);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(34, 211, 238, 0.1));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 24px rgba(8, 145, 178, 0.12);
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.notes-download-link:hover {
+  color: var(--text);
+  border-color: rgba(34, 211, 238, 0.42);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(34, 211, 238, 0.16));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 28px rgba(8, 145, 178, 0.16);
+  transform: translateY(-1px);
+}
+
+.notes-download-link:focus-visible {
+  outline: none;
+  border-color: rgba(34, 211, 238, 0.52);
+  box-shadow:
+    0 0 0 3px rgba(56, 189, 248, 0.16),
+    0 14px 28px rgba(8, 145, 178, 0.14);
 }
 
 .note-list {
@@ -1887,6 +1938,23 @@ h2 {
   background: rgba(14, 165, 233, 0.05);
 }
 
+[data-theme="light"] .notes-download-link {
+  color: #0f172a;
+  border-color: rgba(14, 165, 233, 0.2);
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.3), rgba(103, 232, 249, 0.2));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 8px 20px rgba(14, 165, 233, 0.1);
+}
+
+[data-theme="light"] .notes-download-link:hover {
+  border-color: rgba(14, 165, 233, 0.32);
+  background: linear-gradient(135deg, rgba(125, 211, 252, 0.4), rgba(103, 232, 249, 0.28));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 12px 24px rgba(14, 165, 233, 0.14);
+}
+
 [data-theme="light"] .settings-secondary-button:hover,
 [data-theme="light"] .settings-actions button:hover,
 [data-theme="light"] .settings-table button:hover {
@@ -2039,6 +2107,21 @@ h2 {
   color: var(--text);
   border-color: rgba(17, 17, 17, 0.18);
   background: #f0ede4;
+}
+
+[data-theme="e-ink"] .notes-download-link {
+  color: var(--text);
+  border-color: rgba(17, 17, 17, 0.2);
+  background: #f0ede4;
+  box-shadow: none;
+}
+
+[data-theme="e-ink"] .notes-download-link:hover,
+[data-theme="e-ink"] .notes-download-link:focus-visible {
+  border-color: rgba(17, 17, 17, 0.28);
+  background: #ece8de;
+  box-shadow: none;
+  transform: none;
 }
 
 [data-theme="e-ink"] .app-nav-external-link:hover {
