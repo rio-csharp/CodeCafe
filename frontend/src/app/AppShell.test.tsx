@@ -230,6 +230,21 @@ describe('AppShell', () => {
     expect(screen.queryByRole('button', { name: 'Open Deployment review' })).not.toBeInTheDocument()
   })
 
+  it('creates a new empty chat session immediately', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch()
+    seedAiSettings()
+    seedChatSessions()
+    renderRoute()
+
+    await user.click(screen.getByRole('button', { name: 'New' }))
+
+    expect(screen.getByRole('heading', { name: 'New chat' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open New chat' })).toBeInTheDocument()
+    expect(screen.getByText('No messages yet.')).toBeInTheDocument()
+  })
+
   it('navigates to settings and AI settings', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)

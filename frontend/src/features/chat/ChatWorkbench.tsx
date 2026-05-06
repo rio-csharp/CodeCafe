@@ -291,7 +291,18 @@ export function ChatWorkbench() {
   }
 
   function startNewChat() {
-    setSelectedSessionId(null)
+    const now = new Date().toISOString()
+    const nextSession: ChatSession = {
+      id: crypto.randomUUID(),
+      messages: [],
+      modelId: selectedModel?.id ?? null,
+      providerId: selectedProvider?.id ?? null,
+      title: 'New chat',
+      updatedAt: now,
+    }
+
+    setSessions((currentSessions) => upsertSession(currentSessions, nextSession))
+    setSelectedSessionId(nextSession.id)
     setDraftMessage('')
     setStatus('')
   }
