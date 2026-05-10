@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { streamChatResponse, type ChatMessage } from '../ai/aiClient'
-import { isBrowserUnsupportedProvider } from '../ai/aiSettingsStore'
 import { MarkdownContent } from '../../components/MarkdownContent'
 import type { NoteContent } from './notesApi'
 import {
@@ -86,11 +85,6 @@ export function NotesAiAssistant({
 
     if (!provider || !model) {
       setStatus('Configure an enabled model in AI settings first.')
-      return
-    }
-
-    if (isBrowserUnsupportedProvider(provider)) {
-      setStatus('MiniMax is not available in CodeCafe because its browser-side CORS policy blocks our current client-only integration.')
       return
     }
 

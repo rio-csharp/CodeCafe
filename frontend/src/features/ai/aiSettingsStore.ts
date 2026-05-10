@@ -53,10 +53,6 @@ export type AiModelOption = {
   value: string
 }
 
-export function isBrowserUnsupportedProvider(provider: AiProvider | null) {
-  return provider?.id === 'minimax'
-}
-
 export function loadAiSettings(): AiSettings {
   if (typeof window === 'undefined') {
     return createDefaultAiSettings()

@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
   getPreferredFormat,
-  isBrowserUnsupportedProvider,
   loadAiSettings,
   providerFormatOptions,
   saveAiSettings,
@@ -56,11 +55,6 @@ export function AiSettingsPage() {
   }
 
   async function testModel(provider: AiProvider, model: AiProviderModel) {
-    if (isBrowserUnsupportedProvider(provider)) {
-      setStatus('MiniMax is not available in CodeCafe because its browser-side CORS policy blocks our current client-only integration.')
-      return
-    }
-
     if (!provider.apiKey.trim()) {
       setStatus(`Add your ${provider.name} API key first.`)
       return
@@ -93,7 +87,7 @@ export function AiSettingsPage() {
   const supportedFormats = selectedProvider.formats
     .map((format) => providerFormatOptions.find((option) => option.value === format)?.label ?? format)
     .join(', ')
-  const isUnsupportedInBrowser = isBrowserUnsupportedProvider(selectedProvider)
+  const isMiniMax = selectedProvider.id === 'minimax'
 
   return (
     <section className="settings-page ai-settings-page" aria-label="AI settings">
@@ -128,8 +122,8 @@ export function AiSettingsPage() {
               <div>
                 <h2>{selectedProvider.name}</h2>
                 <p>Built-in provider configuration. Only your API key and model switches are editable.</p>
-                {isUnsupportedInBrowser ? (
-                  <p>MiniMax is listed for reference only. CodeCafe does not offer it because MiniMax browser-side CORS restrictions block our current client-only provider access.</p>
+                {isMiniMax ? (
+                  <p>MiniMax may not work in CodeCafe right now because its browser-side CORS restrictions can block our current client-only provider access.</p>
                 ) : null}
               </div>
             </div>
@@ -157,8 +151,7 @@ export function AiSettingsPage() {
 
               <label className="settings-checkbox-field">
                 <input
-                  checked={selectedProvider.enabled && !isUnsupportedInBrowser}
-                  disabled={isUnsupportedInBrowser}
+                  checked={selectedProvider.enabled}
                   onChange={(event) => {
                     updateProvider(selectedProvider.id, (provider) => ({
                       ...provider,
@@ -168,7 +161,7 @@ export function AiSettingsPage() {
                   }}
                   type="checkbox"
                 />
-                {isUnsupportedInBrowser ? 'Unavailable' : 'Enabled'}
+                Enabled
               </label>
 
               <label className="settings-field full-width-field">
@@ -217,7 +210,6 @@ export function AiSettingsPage() {
                   <div className="settings-table-row" key={model.id}>
                     <label className="table-checkbox">
                       <input
-                        disabled={isUnsupportedInBrowser}
                         checked={
                           settings.defaultProviderId === selectedProvider.id &&
                           settings.defaultModelId === model.id
@@ -250,7 +242,6 @@ export function AiSettingsPage() {
 
                     <label className="table-checkbox">
                       <input
-                        disabled={isUnsupportedInBrowser}
                         checked={model.supportsStreaming}
                         onChange={(event) => {
                           updateModel(selectedProvider.id, model.id, (currentModel) => ({
@@ -265,7 +256,6 @@ export function AiSettingsPage() {
 
                     <label className="table-checkbox">
                       <input
-                        disabled={isUnsupportedInBrowser}
                         checked={model.enabled}
                         onChange={(event) => {
                           updateModel(selectedProvider.id, model.id, (currentModel) => ({
@@ -279,8 +269,8 @@ export function AiSettingsPage() {
                     </label>
 
                     <div className="table-actions">
-                      <button disabled={isUnsupportedInBrowser} onClick={() => void testModel(selectedProvider, model)} type="button">
-                        {isUnsupportedInBrowser ? 'Unavailable' : testingModelId === model.id ? 'Testing' : 'Test'}
+                      <button onClick={() => void testModel(selectedProvider, model)} type="button">
+                        {testingModelId === model.id ? 'Testing' : 'Test'}
                       </button>
                     </div>
                   </div>

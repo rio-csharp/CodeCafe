@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { streamChatResponse } from '../ai/aiClient'
 import {
   getEnabledModelOptions,
-  isBrowserUnsupportedProvider,
   loadAiSettings,
   resolveModelSelection,
   toModelOptionValue,
@@ -161,11 +160,6 @@ export function ChatWorkbench() {
 
     if (!provider || !model) {
       setStatus('Configure an enabled model in AI settings first.')
-      return
-    }
-
-    if (isBrowserUnsupportedProvider(provider)) {
-      setStatus('MiniMax is not available in CodeCafe because its browser-side CORS policy blocks our current client-only integration.')
       return
     }
 
