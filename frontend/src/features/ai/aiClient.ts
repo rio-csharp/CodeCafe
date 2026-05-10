@@ -104,35 +104,18 @@ export async function testProviderConnection({
     maxRetries: 0,
   })
 
-  try {
-    await client.models.list({ signal })
-
-    return {
-      message: 'Connection succeeded.',
-      ok: true,
-    }
-  } catch (modelsError) {
-    if (!model) {
-      return {
-        message: getErrorMessage(modelsError),
-        ok: false,
-      }
-    }
-
+  if (model) {
     try {
-      await streamChatResponse({
-        maxOutputTokens: 8,
-        messages: [{
+      await client.chat.completions.create({
+        max_completion_tokens: 8,
+        messages: toChatCompletionMessages([{
           role: 'user',
           text: 'Reply with OK.',
-        }],
-        model,
-        onDelta: () => {},
-        provider,
-        signal,
+        }]),
+        model: model.modelId,
         temperature: 0,
-        topP: 1,
-      })
+        top_p: 1,
+      }, { signal })
 
       return {
         message: 'Connection succeeded.',
@@ -143,6 +126,20 @@ export async function testProviderConnection({
         message: getErrorMessage(chatError),
         ok: false,
       }
+    }
+  }
+
+  try {
+    await client.models.list({ signal })
+
+    return {
+      message: 'Connection succeeded.',
+      ok: true,
+    }
+  } catch (modelsError) {
+    return {
+      message: getErrorMessage(modelsError),
+      ok: false,
     }
   }
 }

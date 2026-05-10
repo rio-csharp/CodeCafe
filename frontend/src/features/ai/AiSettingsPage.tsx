@@ -56,7 +56,7 @@ export function AiSettingsPage() {
 
   async function testModel(provider: AiProvider, model: AiProviderModel) {
     if (!provider.apiKey.trim()) {
-      setStatus('Add your DeepSeek API key first.')
+      setStatus(`Add your ${provider.name} API key first.`)
       return
     }
 
@@ -87,6 +87,7 @@ export function AiSettingsPage() {
   const supportedFormats = selectedProvider.formats
     .map((format) => providerFormatOptions.find((option) => option.value === format)?.label ?? format)
     .join(', ')
+  const isMiniMax = selectedProvider.id === 'minimax'
 
   return (
     <section className="settings-page ai-settings-page" aria-label="AI settings">
@@ -121,6 +122,9 @@ export function AiSettingsPage() {
               <div>
                 <h2>{selectedProvider.name}</h2>
                 <p>Built-in provider configuration. Only your API key and model switches are editable.</p>
+                {isMiniMax ? (
+                  <p>MiniMax may not work in CodeCafe right now because its browser-side CORS restrictions can block our current client-only provider access.</p>
+                ) : null}
               </div>
             </div>
 
@@ -170,7 +174,7 @@ export function AiSettingsPage() {
                     }))
                     setStatus('')
                   }}
-                  placeholder="Paste your DeepSeek API key"
+                  placeholder={`Paste your ${selectedProvider.name} API key`}
                   type="password"
                   value={selectedProvider.apiKey}
                 />
@@ -182,7 +186,7 @@ export function AiSettingsPage() {
             <div className="settings-section-header">
               <div>
                 <h2>Models</h2>
-                <p>These are the built-in official DeepSeek models available in CodeCafe right now.</p>
+                <p>These are the built-in official {selectedProvider.name} models available in CodeCafe right now.</p>
               </div>
             </div>
 
