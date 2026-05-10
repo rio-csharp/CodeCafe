@@ -144,6 +144,32 @@ function seedAiSettings() {
         name: 'DeepSeek',
         preferredFormat: 'chat-completions',
       },
+      {
+        apiKey: '',
+        baseUrl: 'https://api.minimax.io/v1',
+        enabled: false,
+        formats: ['chat-completions'],
+        id: 'minimax',
+        models: [
+          {
+            defaultMaxOutputTokens: 8192,
+            defaultTemperature: 0.7,
+            defaultTopP: 1,
+            enabled: true,
+            id: 'minimax-m2.7',
+            maxContextTokens: 204800,
+            maxOutputTokens: 128000,
+            modelId: 'MiniMax-M2.7',
+            name: 'MiniMax M2.7',
+            supportsJsonOutput: true,
+            supportsStreaming: true,
+            supportsThinking: true,
+            supportsToolCalls: true,
+          },
+        ],
+        name: 'MiniMax',
+        preferredFormat: 'chat-completions',
+      },
     ],
   }))
 }
@@ -269,6 +295,7 @@ describe('AppShell', () => {
     expect(screen.getByDisplayValue('https://api.deepseek.com')).toBeInTheDocument()
     expect(screen.getByDisplayValue('DeepSeek V4 Pro')).toBeInTheDocument()
     expect(screen.getByDisplayValue('Chat Completions, Anthropic Messages')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /MiniMax/i })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Test' }).length).toBeGreaterThan(0)
     expect(screen.getByText('Context')).toBeInTheDocument()
     expect(screen.getByText('Max output')).toBeInTheDocument()
