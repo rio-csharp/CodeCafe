@@ -222,7 +222,7 @@ function createDefaultAiSettings(): AiSettings {
       },
       {
         apiKey: '',
-        baseUrl: 'https://api.minimax.io/v1',
+        baseUrl: 'https://api.minimaxi.com/v1',
         enabled: false,
         formats: ['chat-completions'],
         id: 'minimax',
