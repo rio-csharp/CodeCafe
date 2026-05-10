@@ -140,6 +140,9 @@ jobs:
       - detect-pr
       - prepare-pr-image
     if: needs.detect-pr.outputs.has_pr == 'true'
+    concurrency:
+      group: pr-${{ needs.detect-pr.outputs.pr_number }}-publish-api-image
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -177,6 +180,9 @@ jobs:
       - detect-pr
       - prepare-pr-image
     if: needs.detect-pr.outputs.has_pr == 'true'
+    concurrency:
+      group: pr-${{ needs.detect-pr.outputs.pr_number }}-publish-frontend-image
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@v6
