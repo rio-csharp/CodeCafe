@@ -73,30 +73,32 @@ export function SettingsPage() {
           </div>
         </div>
 
-        <form className="settings-inline-row" onSubmit={(event) => void saveNotesSettings(event)}>
-          <h2>Notes</h2>
-          <div className="settings-inline-field-group">
-            <label className="settings-inline-field">
-              <span className="sr-only">Notes root path</span>
-              <input
-                aria-label="Notes root path"
-                disabled={isLoading || !canEditNotesSettings}
-                name="rootPath"
-                onChange={(event) => setRootPath(event.target.value)}
-                placeholder="/srv/codecafe/notes"
-                readOnly={!canEditNotesSettings}
-                value={rootPath}
-              />
-            </label>
-            {canEditNotesSettings ? (
-              <button disabled={isLoading} type="submit">
-                Save
-              </button>
-            ) : (
-              <span className="settings-readonly-badge">Read-only</span>
-            )}
-          </div>
-        </form>
+        {canEditNotesSettings && (
+          <form className="settings-inline-row" onSubmit={(event) => void saveNotesSettings(event)}>
+            <h2>Notes</h2>
+            <div className="settings-inline-field-group">
+              <label className="settings-inline-field">
+                <span className="sr-only">Notes root path</span>
+                <input
+                  aria-label="Notes root path"
+                  disabled={isLoading || !canEditNotesSettings}
+                  name="rootPath"
+                  onChange={(event) => setRootPath(event.target.value)}
+                  placeholder="/srv/codecafe/notes"
+                  readOnly={!canEditNotesSettings}
+                  value={rootPath}
+                />
+              </label>
+              {canEditNotesSettings ? (
+                <button disabled={isLoading} type="submit">
+                  Save
+                </button>
+              ) : (
+                <span className="settings-readonly-badge">Read-only</span>
+              )}
+            </div>
+          </form>
+        )}
 
         <Link className="settings-inline-row settings-link-row" to="/settings/ai">
           <h2>AI</h2>

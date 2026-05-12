@@ -468,7 +468,7 @@ describe('AppShell', () => {
     })
   })
 
-  it('shows notes settings as read-only outside local environments', async () => {
+  it('hides notes settings outside local environments', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(false)
     mockApiFetch()
@@ -478,10 +478,7 @@ describe('AppShell', () => {
     await user.click(screen.getByRole('link', { name: 'Settings' }))
 
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
-    expect(await screen.findByDisplayValue('/srv/codecafe/notes')).toBeDisabled()
-    expect(screen.getByText('Read-only')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument()
   })
 
   it('allows multiple chat sessions to stream at the same time', async () => {
