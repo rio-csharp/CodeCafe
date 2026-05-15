@@ -1,3 +1,127 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #070a12;
+  --color-surface: #0d1320;
+  --color-text: #edf4ff;
+  --color-muted: #93a3b8;
+  --color-border: rgba(137, 160, 190, 0.2);
+  --color-border-strong: rgba(88, 166, 255, 0.36);
+  --color-accent: #38bdf8;
+  --color-accent-strong: #22d3ee;
+  --color-accent-glow: rgba(56, 189, 248, 0.08);
+  --color-accent-glow-hover: rgba(56, 189, 248, 0.14);
+  --color-panel: rgba(13, 19, 32, 0.9);
+
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #ff5f57;
+
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 18px;
+  --radius-full: 9999px;
+
+  --shadow-card: 0 22px 70px rgba(0, 0, 0, 0.34);
+  --shadow-glow: 0 0 42px rgba(56, 189, 248, 0.08);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-text);
+    background: var(--color-bg);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  button {
+    font: inherit;
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
+
+/* Light theme override */
+[data-theme="light"] {
+  --color-bg: #f4f7fb;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-muted: #5b6b80;
+  --color-border: rgba(120, 144, 173, 0.22);
+  --color-border-strong: rgba(14, 165, 233, 0.26);
+  --color-accent: #0284c7;
+  --color-accent-strong: #0891b2;
+  --color-accent-glow: rgba(2, 132, 199, 0.06);
+  --color-accent-glow-hover: rgba(2, 132, 199, 0.12);
+  --color-panel: rgba(255, 255, 255, 0.9);
+  --shadow-card: 0 22px 70px rgba(15, 23, 42, 0.12);
+  --shadow-glow: 0 0 42px rgba(14, 165, 233, 0.06);
+}
+
+/* E-ink theme override */
+[data-theme="e-ink"] {
+  --color-bg: #f3f1ea;
+  --color-surface: #fffdf7;
+  --color-text: #111111;
+  --color-muted: #5f5a52;
+  --color-border: rgba(17, 17, 17, 0.16);
+  --color-border-strong: rgba(17, 17, 17, 0.28);
+  --color-accent: #111111;
+  --color-accent-strong: #111111;
+  --color-accent-glow: rgba(17, 17, 17, 0.04);
+  --color-accent-glow-hover: rgba(17, 17, 17, 0.08);
+  --color-panel: rgba(255, 253, 247, 0.9);
+  --shadow-card: none;
+  --shadow-glow: none;
+}
+
+/* Scrollbar styling */
+* {
+  scrollbar-color: rgba(56, 189, 248, 0.22) rgba(7, 10, 18, 0.58);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(7, 10, 18, 0.58);
+}
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(7, 10, 18, 0.58);
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.22);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(56, 189, 248, 0.34);
+}
+
+/* Legacy styles for existing components during migration */
 @import './styles/base.css';
 @import './styles/features.css';
 @import './styles/themes.css';

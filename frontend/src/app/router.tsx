@@ -4,6 +4,7 @@ import { AiSettingsPage } from '../features/ai/AiSettingsPage'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
+import { LandingPage } from '../features/landing/LandingPage'
 import { AppShell } from './AppShell'
 
 export const router = createBrowserRouter([
@@ -13,6 +14,10 @@ export const router = createBrowserRouter([
   },
   {
     path: '/',
+    element: <LandingPage />,
+  },
+  {
+    path: '/app',
     element: <AppShell />,
     children: [
       { index: true, element: <ChatWorkbench /> },

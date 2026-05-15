@@ -21,11 +21,11 @@ import { AppShell } from './AppShell'
 import { ThemeProvider } from './theme'
 import * as runtimeEnvironment from './runtimeEnvironment'
 
-function renderRoute(initialPath = '/') {
+function renderRoute(initialPath = '/app') {
   const router = createMemoryRouter(
     [
       {
-        path: '/',
+        path: '/app',
         element: <AppShell />,
         children: [
           { index: true, element: <ChatWorkbench /> },
@@ -364,7 +364,7 @@ describe('AppShell', () => {
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
     seedAiSettings()
-    renderRoute('/notes')
+    renderRoute('/app/notes')
 
     await user.click(screen.getByRole('button', { name: 'Open notes AI assistant' }))
 
@@ -387,7 +387,7 @@ describe('AppShell', () => {
       },
     }))
 
-    renderRoute('/notes')
+    renderRoute('/app/notes')
 
     const clrButton = await screen.findByRole('button', { name: 'Clr' })
     const directory = screen.getByText('Dotnet Platform').closest('details')
@@ -463,7 +463,7 @@ describe('AppShell', () => {
       .mockResolvedValueOnce({ responseId: 'resp_1' })
       .mockResolvedValueOnce({ responseId: 'resp_2' })
 
-    renderRoute('/notes')
+    renderRoute('/app/notes')
 
     await user.click(screen.getByRole('button', { name: 'Open notes AI assistant' }))
     await user.type(screen.getByRole('textbox', { name: 'Ask AI about this note' }), 'Summarize this note')
