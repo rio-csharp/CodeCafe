@@ -1,48 +1,36 @@
 namespace CodeCafe.Infrastructure.Notes;
 
-using CodeCafe.Application.Notes;
-using CodeCafe.Contracts.Notes;
 
 public sealed class FileSystemNotesRepository(INotesSettingsRepository settingsRepository) : INotesRepository
 {
-    private const string NumberedNotePrefixPattern = @"^\d{2}-";
-
-    private static readonly HashSet<string> SupportedExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".md",
-        ".markdown",
-        ".txt"
-    };
-
-    public async Task<IReadOnlyCollection<NoteSummaryResponse>> ListAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyCollection<NoteSummary>> ListAsync(CancellationToken cancellationToken)
     {
         var rootPath = await GetRootPathAsync(cancellationToken);
 
         if (rootPath is null)
         {
-            return Array.Empty<NoteSummaryResponse>();
+            return Array.Empty<NoteSummary>();
         }
 
         return Directory
             .EnumerateFiles(rootPath, "*", SearchOption.AllDirectories)
-            .Where(IsSupportedNoteFile)
+            .Where(FileSystemNoteFilePolicy.IsSupportedNoteFile)
             .Select(filePath => CreateSummary(rootPath, filePath))
             .OrderBy(note => note.Path, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
-    public async Task<NoteContentResponse?> ReadAsync(string path, CancellationToken cancellationToken)
+    public async Task<NoteContent?> ReadAsync(string path, CancellationToken cancellationToken)
     {
         var rootPath = await GetRootPathAsync(cancellationToken);
 
-        if (rootPath is null || string.IsNullOrWhiteSpace(path))
+        if (rootPath is null)
         {
             return null;
         }
 
-        var fullPath = Path.GetFullPath(Path.Combine(rootPath, path));
-
-        if (!fullPath.StartsWith(rootPath, StringComparison.OrdinalIgnoreCase) || !IsSupportedNoteFile(fullPath) || !File.Exists(fullPath))
+        var fullPath = FileSystemNoteFilePolicy.ResolveReadableNotePath(rootPath, path);
+        if (fullPath is null)
         {
             return null;
         }
@@ -50,7 +38,7 @@ public sealed class FileSystemNotesRepository(INotesSettingsRepository settingsR
         var info = new FileInfo(fullPath);
         var content = await File.ReadAllTextAsync(fullPath, cancellationToken);
 
-        return new NoteContentResponse(
+        return new NoteContent(
             ToRelativePath(rootPath, fullPath),
             Path.GetFileNameWithoutExtension(fullPath),
             info.LastWriteTimeUtc,
@@ -58,11 +46,11 @@ public sealed class FileSystemNotesRepository(INotesSettingsRepository settingsR
             content);
     }
 
-    private static NoteSummaryResponse CreateSummary(string rootPath, string filePath)
+    private static NoteSummary CreateSummary(string rootPath, string filePath)
     {
         var info = new FileInfo(filePath);
 
-        return new NoteSummaryResponse(
+        return new NoteSummary(
             ToRelativePath(rootPath, filePath),
             Path.GetFileNameWithoutExtension(filePath),
             info.LastWriteTimeUtc,
@@ -73,30 +61,11 @@ public sealed class FileSystemNotesRepository(INotesSettingsRepository settingsR
     {
         var settings = await settingsRepository.GetAsync(cancellationToken);
 
-        if (string.IsNullOrWhiteSpace(settings.RootPath))
-        {
-            return null;
-        }
-
-        var rootPath = Path.GetFullPath(settings.RootPath);
-
-        return Directory.Exists(rootPath) ? Path.TrimEndingDirectorySeparator(rootPath) + Path.DirectorySeparatorChar : null;
-    }
-
-    private static bool IsSupportedNoteFile(string path)
-    {
-        if (!SupportedExtensions.Contains(Path.GetExtension(path)))
-        {
-            return false;
-        }
-
-        var fileName = Path.GetFileNameWithoutExtension(path);
-
-        return System.Text.RegularExpressions.Regex.IsMatch(fileName, NumberedNotePrefixPattern);
+        return FileSystemNoteFilePolicy.GetExistingRootPath(settings.RootPath);
     }
 
     private static string ToRelativePath(string rootPath, string filePath)
     {
-        return Path.GetRelativePath(rootPath, filePath).Replace(Path.DirectorySeparatorChar, '/');
+        return FileSystemNoteFilePolicy.ToRelativePath(rootPath, filePath);
     }
 }

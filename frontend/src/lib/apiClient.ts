@@ -6,6 +6,7 @@ const apiBaseUrl =
 export async function apiFetch(path: string, accept = 'application/json', init?: RequestInit): Promise<Response> {
   return fetch(`${apiBaseUrl}${path}`, {
     ...init,
+    credentials: init?.credentials ?? 'include',
     headers: {
       Accept: accept,
       ...init?.headers,

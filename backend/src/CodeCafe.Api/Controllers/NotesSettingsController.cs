@@ -1,36 +1,32 @@
-namespace CodeCafe.Api.Controllers;
-
+using CodeCafe.Api.Configuration;
 using CodeCafe.Application.Notes;
 using CodeCafe.Contracts.Notes;
-using Microsoft.AspNetCore.Mvc;
+
+namespace CodeCafe.Api.Controllers;
+
 
 [ApiController]
 [Route("api/notes/settings")]
+[Authorize]
 [Tags("Notes Settings")]
-public sealed class NotesSettingsController(
-    IHostEnvironment environment,
-    INotesSettingsService service) : ControllerBase
+public sealed class NotesSettingsController(INotesSettingsService service) : ControllerBase
 {
     [HttpGet(Name = "GetNotesSettings")]
     public async Task<ActionResult<NotesSettingsResponse>> GetAsync(CancellationToken cancellationToken)
     {
         var settings = await service.GetAsync(cancellationToken);
 
-        return Ok(settings);
+        return Ok(new NotesSettingsResponse(settings.RootPath));
     }
 
+    [Authorize(Policy = ApiPolicyNames.EditNotesSettings)]
     [HttpPut(Name = "UpdateNotesSettings")]
     public async Task<ActionResult<NotesSettingsResponse>> UpdateAsync(
         UpsertNotesSettingsRequest request,
         CancellationToken cancellationToken)
     {
-        if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
-        {
-            return StatusCode(StatusCodes.Status403Forbidden);
-        }
+        var settings = await service.UpdateAsync(request.RootPath, cancellationToken);
 
-        var settings = await service.UpdateAsync(request, cancellationToken);
-
-        return Ok(settings);
+        return Ok(new NotesSettingsResponse(settings.RootPath));
     }
 }

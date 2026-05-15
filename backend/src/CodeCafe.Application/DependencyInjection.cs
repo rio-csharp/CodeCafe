@@ -1,8 +1,7 @@
+using CodeCafe.Application.Notes;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeCafe.Application;
-
-using CodeCafe.Application.Notes;
 
 public static class DependencyInjection
 {

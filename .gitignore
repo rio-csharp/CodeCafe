@@ -302,6 +302,7 @@ FakesAssemblies/
 node_modules/
 dist/
 frontend/.vite/
+frontend/coverage/
 
 # Visual Studio 6 build log
 *.plg

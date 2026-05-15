@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CodeCafe.Domain\CodeCafe.Domain.csproj" />
-    <ProjectReference Include="..\CodeCafe.Contracts\CodeCafe.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

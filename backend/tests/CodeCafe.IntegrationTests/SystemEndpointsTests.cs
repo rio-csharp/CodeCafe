@@ -1,6 +1,4 @@
 using CodeCafe.Contracts.System;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace CodeCafe.IntegrationTests;
 
@@ -29,9 +27,20 @@ public sealed class SystemEndpointsTests(ApiFactory factory) : IClassFixture<Api
     }
 
     [Fact]
-    public async Task System_info_returns_application_metadata()
+    public async Task System_info_requires_authentication()
     {
         var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/system/info");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task System_info_returns_application_metadata_for_authenticated_users()
+    {
+        var client = factory.CreateClient();
+        await client.LoginAsync();
 
         var response = await client.GetFromJsonAsync<SystemInfoResponse>("/api/system/info");
 

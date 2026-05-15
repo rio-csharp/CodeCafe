@@ -1,7 +1,7 @@
+using CodeCafe.Contracts.System;
+
 namespace CodeCafe.Api.Controllers;
 
-using CodeCafe.Contracts.System;
-using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/system")]

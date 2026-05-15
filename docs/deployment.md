@@ -45,6 +45,7 @@ PREVIEW_BASE_DOMAIN
 TEST_SSH_HOST
 TEST_SSH_PORT
 TEST_SSH_USER
+TEST_APP_USERNAME
 ```
 
 Create these repository variables for the production cluster:
@@ -55,13 +56,18 @@ PRODUCTION_API_HOST
 PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PORT
 PRODUCTION_SSH_USER
+PRODUCTION_APP_USERNAME
 ```
 
 Create these repository secrets:
 
 ```text
 TEST_SSH_PRIVATE_KEY
+TEST_APP_PASSWORD
+TEST_APP_JWT_SIGNING_KEY
 PRODUCTION_SSH_PRIVATE_KEY
+PRODUCTION_APP_PASSWORD
+PRODUCTION_APP_JWT_SIGNING_KEY
 ```
 
 Create this additional repository variable:
@@ -76,6 +82,12 @@ Keep local copies in `deploy/secrets.env`. That file is ignored by Git. Use
 The test and production workflows use SSH to connect to the target server and
 run `kubectl` and `helm` there. Do not expose the Kubernetes API publicly for
 GitHub Actions.
+
+The deploy workflows also create or update a Kubernetes secret named
+`<release>-api-auth` in the target namespace. The API reads its login
+credentials from that secret via `Authentication__Username` and
+`Authentication__Password` environment variables, and reads the JWT signing key
+via `Authentication__JwtSigningKey`.
 
 ## Notes Content
 

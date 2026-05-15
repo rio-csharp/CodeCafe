@@ -1,7 +1,7 @@
+using CodeCafe.Domain.Notes;
+
 namespace CodeCafe.Infrastructure.Notes;
 
-using CodeCafe.Application.Notes;
-using CodeCafe.Domain.Notes;
 
 public sealed class InMemoryNotesSettingsRepository : INotesSettingsRepository
 {

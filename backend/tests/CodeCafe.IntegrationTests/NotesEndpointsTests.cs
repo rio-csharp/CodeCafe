@@ -1,6 +1,4 @@
 using CodeCafe.Contracts.Notes;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace CodeCafe.IntegrationTests;
 
@@ -19,6 +17,7 @@ public sealed class NotesEndpointsTests(ApiFactory factory) : IClassFixture<ApiF
             await File.WriteAllTextAsync(Path.Combine(rootPath, "ignore.json"), "{}");
 
             var client = factory.CreateClient();
+            await client.LoginAsync();
 
             var settingsResponse = await client.PutAsJsonAsync("/api/notes/settings", new UpsertNotesSettingsRequest(rootPath));
 
@@ -57,6 +56,7 @@ public sealed class NotesEndpointsTests(ApiFactory factory) : IClassFixture<ApiF
         try
         {
             var client = factory.CreateClient();
+            await client.LoginAsync();
 
             await client.PutAsJsonAsync("/api/notes/settings", new UpsertNotesSettingsRequest(rootPath));
 
@@ -87,6 +87,7 @@ public sealed class NotesEndpointsTests(ApiFactory factory) : IClassFixture<ApiF
             await File.WriteAllTextAsync(Path.Combine(nestedPath, "02-numbered.md"), "# Numbered");
 
             var client = factory.CreateClient();
+            await client.LoginAsync();
 
             var settingsResponse = await client.PutAsJsonAsync("/api/notes/settings", new UpsertNotesSettingsRequest(rootPath));
 

@@ -1,6 +1,7 @@
+using CodeCafe.Domain.Notes;
+
 namespace CodeCafe.Application.Notes;
 
-using CodeCafe.Domain.Notes;
 
 public interface INotesSettingsRepository
 {

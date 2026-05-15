@@ -1,6 +1,4 @@
-namespace CodeCafe.Api.Infrastructure;
-
-using Microsoft.Extensions.Diagnostics.HealthChecks;
+namespace CodeCafe.Api.HealthChecks;
 
 public sealed class ReadinessHealthCheck : IHealthCheck
 {

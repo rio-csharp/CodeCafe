@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 
-namespace CodeCafe.Api.Infrastructure;
+namespace CodeCafe.Api.Middleware;
 
 public sealed class GlobalExceptionHandler(
     ILogger<GlobalExceptionHandler> logger,

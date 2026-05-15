@@ -1,11 +1,12 @@
-namespace CodeCafe.Api.Controllers;
-
 using CodeCafe.Application.Notes;
 using CodeCafe.Contracts.Notes;
-using Microsoft.AspNetCore.Mvc;
+
+namespace CodeCafe.Api.Controllers;
+
 
 [ApiController]
 [Route("api/notes")]
+[AllowAnonymous]
 [Tags("Notes")]
 public sealed class NotesController(INotesService service) : ControllerBase
 {
@@ -14,7 +15,11 @@ public sealed class NotesController(INotesService service) : ControllerBase
     {
         var notes = await service.ListAsync(cancellationToken);
 
-        return Ok(notes);
+        return Ok(notes.Select(note => new NoteSummaryResponse(
+            note.Path,
+            note.Title,
+            note.UpdatedAt,
+            note.SizeBytes)).ToArray());
     }
 
     [HttpGet("content", Name = "ReadNote")]
@@ -24,6 +29,13 @@ public sealed class NotesController(INotesService service) : ControllerBase
     {
         var note = await service.ReadAsync(path, cancellationToken);
 
-        return note is null ? NotFound() : Ok(note);
+        return note is null
+            ? NotFound()
+            : Ok(new NoteContentResponse(
+                note.Path,
+                note.Title,
+                note.UpdatedAt,
+                note.SizeBytes,
+                note.Content));
     }
 }

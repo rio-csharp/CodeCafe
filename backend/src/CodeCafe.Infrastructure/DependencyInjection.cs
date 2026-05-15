@@ -1,10 +1,8 @@
+using CodeCafe.Infrastructure.Notes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeCafe.Infrastructure;
-
-using CodeCafe.Application.Notes;
-using CodeCafe.Infrastructure.Notes;
 
 public static class DependencyInjection
 {
