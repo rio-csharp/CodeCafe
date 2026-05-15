@@ -14,12 +14,15 @@ public sealed class JwtTokenIssuer(
     public IssuedAuthToken IssueToken(string username)
     {
         var configuredOptions = configuredLoginOptions.Value;
-        var expiresAtUtc = timeProvider.GetUtcNow().AddMinutes(configuredOptions.JwtTokenLifetimeMinutes);
+        var nowUtc = timeProvider.GetUtcNow();
+        var expiresAtUtc = nowUtc.AddMinutes(configuredOptions.JwtTokenLifetimeMinutes);
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuredOptions.JwtSigningKey));
         var signingCredentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
         var descriptor = new SecurityTokenDescriptor
         {
             Expires = expiresAtUtc.UtcDateTime,
+            IssuedAt = nowUtc.UtcDateTime,
+            NotBefore = nowUtc.UtcDateTime,
             SigningCredentials = signingCredentials,
             Subject = new ClaimsIdentity(
                 [new Claim(ClaimTypes.Name, username)],

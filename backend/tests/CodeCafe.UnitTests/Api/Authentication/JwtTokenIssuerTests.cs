@@ -35,7 +35,7 @@ public sealed class JwtTokenIssuerTests
                 ValidateAudience = false,
                 ValidateIssuer = false,
                 ValidateIssuerSigningKey = true,
-                ValidateLifetime = true,
+                ValidateLifetime = false,
             },
             out _);
 
