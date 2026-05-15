@@ -82,10 +82,8 @@ target servers, even if they match the CodeCafe repository values.
 Recommended variables:
 
 ```text
-TEST_SSH_HOST
 TEST_SSH_PORT
 TEST_SSH_USER
-PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PORT
 PRODUCTION_SSH_USER
 ```
@@ -93,7 +91,9 @@ PRODUCTION_SSH_USER
 Recommended secrets:
 
 ```text
+TEST_SSH_HOST
 TEST_SSH_PRIVATE_KEY
+PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PRIVATE_KEY
 ```
 

@@ -32,5 +32,5 @@ jobs:
             PR_NUMBER="${{ github.event.pull_request.number }}"
           fi
 
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ vars.TEST_SSH_HOST }}" \
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
             "kubectl delete namespace codecafe-pr-$PR_NUMBER --ignore-not-found=true"
