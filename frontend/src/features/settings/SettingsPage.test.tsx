@@ -3,12 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SettingsPage } from './SettingsPage'
-import { useAuth } from '../auth/AuthProvider'
+import { useAuth } from '../auth/useAuth'
 import { useTheme } from '../../app/useTheme'
 import { isLocalEnvironment } from '../../app/runtimeEnvironment'
 import { getNotesSettings, updateNotesSettings } from './notesSettingsApi'
 
-vi.mock('../auth/AuthProvider', () => ({
+vi.mock('../auth/useAuth', () => ({
   useAuth: vi.fn(),
 }))
 

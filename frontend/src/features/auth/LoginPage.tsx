@@ -5,8 +5,8 @@ import {
   AuthenticationError,
   AuthenticationRateLimitError,
   AuthenticationUnavailableError,
-  useAuth,
-} from './AuthProvider'
+} from './authApi'
+import { useAuth } from './useAuth'
 
 type RedirectState = {
   from?: {

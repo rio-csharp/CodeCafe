@@ -2,7 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AuthProvider, useAuth } from './AuthProvider'
+import { AuthProvider } from './AuthProvider'
+import { useAuth } from './useAuth'
 import {
   AuthenticationUnavailableError,
   getSession,

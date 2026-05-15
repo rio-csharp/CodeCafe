@@ -7,11 +7,11 @@ import {
   AuthenticationError,
   AuthenticationRateLimitError,
   AuthenticationUnavailableError,
-  useAuth,
-} from './AuthProvider'
+} from './authApi'
+import { useAuth } from './useAuth'
 
-vi.mock('./AuthProvider', async () => {
-  const actual = await vi.importActual<typeof import('./AuthProvider')>('./AuthProvider')
+vi.mock('./useAuth', async () => {
+  const actual = await vi.importActual<typeof import('./useAuth')>('./useAuth')
 
   return {
     ...actual,

@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { isLocalEnvironment } from '../../app/runtimeEnvironment'
 import { useTheme } from '../../app/useTheme'
-import { useAuth } from '../auth/AuthProvider'
+import { useAuth } from '../auth/useAuth'
 import { getNotesSettings, updateNotesSettings } from './notesSettingsApi'
 
 export function SettingsPage() {
@@ -23,9 +23,6 @@ export function SettingsPage() {
     }
 
     if (!canViewNotesSettings) {
-      setIsLoading(false)
-      setRootPath('')
-      setStatus('')
       return
     }
 
