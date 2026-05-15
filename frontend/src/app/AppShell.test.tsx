@@ -11,6 +11,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AuthProvider } from '../features/auth/AuthProvider'
 import * as aiClient from '../features/ai/aiClient'
 import { AiSettingsPage } from '../features/ai/AiSettingsPage'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
@@ -39,18 +40,33 @@ function renderRoute(initialPath = '/') {
   )
 
   render(
-    <ThemeProvider>
-      <RouterProvider router={router} />
-    </ThemeProvider>,
+    <AuthProvider>
+      <ThemeProvider>
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </AuthProvider>,
   )
 }
 
-function mockApiFetch() {
+function mockApiFetch(options?: { isAuthenticated?: boolean }) {
+  const isAuthenticated = options?.isAuthenticated ?? true
+
   return vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
     const url = String(input)
 
     if (url.endsWith('/health')) {
       return Promise.resolve(new Response('Healthy', { status: 200 }))
+    }
+
+    if (url.endsWith('/api/auth/session')) {
+      return Promise.resolve(Response.json({
+        isAuthenticated,
+        username: isAuthenticated ? 'test-user' : null,
+      }))
+    }
+
+    if (url.endsWith('/api/auth/logout')) {
+      return Promise.resolve(new Response(null, { status: 204 }))
     }
 
     if (url.endsWith('/api/notes/settings')) {
@@ -214,12 +230,23 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Notes' })).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'DeepSeek V4 Pro' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Chat settings' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete Deployment review' })).toBeInTheDocument()
+  })
+
+  it('shows the same public navigation for anonymous visitors', async () => {
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
+    mockApiFetch({ isAuthenticated: false })
+    seedAiSettings()
+    seedChatSessions()
+    renderRoute()
+
+    expect(await screen.findByRole('link', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Notes' })).toBeInTheDocument()
   })
 
   it('opens an existing chat session', async () => {
@@ -274,13 +301,16 @@ describe('AppShell', () => {
   it('navigates to settings and AI settings', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
-    mockApiFetch()
+    mockApiFetch({ isAuthenticated: true })
     seedAiSettings()
     renderRoute()
 
     await user.click(screen.getByRole('link', { name: 'Settings' }))
 
     expect(within(screen.getByLabelText('Settings')).getByText('Settings')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument()
+    expect(screen.getByText('test-user')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'AI' })).toBeInTheDocument()
@@ -313,7 +343,7 @@ describe('AppShell', () => {
     seedAiSettings()
     renderRoute()
 
-    await user.click(screen.getByRole('link', { name: 'Notes' }))
+    await user.click(await screen.findByRole('link', { name: 'Notes' }))
 
     expect(screen.getByRole('searchbox', { name: 'Search notes' })).toBeInTheDocument()
     expect(await screen.findByText('Dotnet Platform')).toBeInTheDocument()
@@ -471,14 +501,31 @@ describe('AppShell', () => {
   it('hides notes settings outside local environments', async () => {
     const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(false)
-    mockApiFetch()
+    mockApiFetch({ isAuthenticated: false })
     seedAiSettings()
     renderRoute()
 
     await user.click(screen.getByRole('link', { name: 'Settings' }))
 
+    expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
+    expect(screen.getByText('Sign in to access admin settings.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Notes' })).not.toBeInTheDocument()
+  })
+
+  it('shows notes settings read-only for signed-in users outside local environments', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(false)
+    mockApiFetch({ isAuthenticated: true })
+    seedAiSettings()
+    renderRoute()
+
+    await user.click(screen.getByRole('link', { name: 'Settings' }))
+
+    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Notes root path' })).toBeDisabled()
+    expect(screen.getByText('Read-only')).toBeInTheDocument()
   })
 
   it('allows multiple chat sessions to stream at the same time', async () => {

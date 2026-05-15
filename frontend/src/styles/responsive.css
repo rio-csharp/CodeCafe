@@ -17,6 +17,15 @@
     background: rgba(9, 14, 25, 0.96);
   }
 
+  .app-nav-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .app-nav-bottom {
+    display: none;
+  }
+
   .app-nav-group {
     display: grid;
     flex: 1;
@@ -456,10 +465,18 @@
   .settings-inline-field-group {
     display: grid;
     justify-content: stretch;
+    gap: 12px;
   }
 
   .settings-inline-field {
     max-width: none;
+  }
+
+  .settings-inline-row button,
+  .settings-readonly-badge,
+  .settings-link-copy {
+    justify-self: stretch;
+    text-align: center;
   }
 
   .format-option-list {

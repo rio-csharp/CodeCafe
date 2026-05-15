@@ -4,13 +4,20 @@ public sealed class NotesSettings
 {
     public NotesSettings(string rootPath)
     {
-        RootPath = rootPath.Trim();
+        RootPath = NormalizeRootPath(rootPath);
     }
 
     public string RootPath { get; private set; }
 
     public void UpdateRootPath(string rootPath)
     {
-        RootPath = rootPath.Trim();
+        RootPath = NormalizeRootPath(rootPath);
+    }
+
+    private static string NormalizeRootPath(string rootPath)
+    {
+        ArgumentNullException.ThrowIfNull(rootPath);
+
+        return rootPath.Trim();
     }
 }

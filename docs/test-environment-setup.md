@@ -317,12 +317,14 @@ PREVIEW_BASE_DOMAIN
 TEST_SSH_HOST
 TEST_SSH_PORT
 TEST_SSH_USER
+TEST_APP_USERNAME
 ```
 
 Repository secrets:
 
 ```text
 TEST_SSH_PRIVATE_KEY
+TEST_APP_PASSWORD
 ```
 
 Production uses the same SSH deployment model. Production repository variables:
@@ -333,12 +335,14 @@ PRODUCTION_API_HOST
 PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PORT
 PRODUCTION_SSH_USER
+PRODUCTION_APP_USERNAME
 ```
 
 Repository secrets:
 
 ```text
 PRODUCTION_SSH_PRIVATE_KEY
+PRODUCTION_APP_PASSWORD
 ```
 
 Set them locally with `gh`:

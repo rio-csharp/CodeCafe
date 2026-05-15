@@ -1,4 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom'
+import { LoginPage } from '../features/auth/LoginPage'
 import { AiSettingsPage } from '../features/ai/AiSettingsPage'
 import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
@@ -6,6 +7,10 @@ import { SettingsPage } from '../features/settings/SettingsPage'
 import { AppShell } from './AppShell'
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
   {
     path: '/',
     element: <AppShell />,

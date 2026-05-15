@@ -1,18 +1,34 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { isLocalEnvironment } from '../../app/runtimeEnvironment'
 import { useTheme } from '../../app/useTheme'
+import { useAuth } from '../auth/AuthProvider'
 import { getNotesSettings, updateNotesSettings } from './notesSettingsApi'
 
 export function SettingsPage() {
+  const auth = useAuth()
+  const navigate = useNavigate()
   const { setTheme, theme } = useTheme()
   const [rootPath, setRootPath] = useState('')
   const [status, setStatus] = useState('')
   const [isLoading, setIsLoading] = useState(true)
-  const canEditNotesSettings = isLocalEnvironment()
+  const isDevelopmentEnvironment = isLocalEnvironment()
+  const canEditNotesSettings = isDevelopmentEnvironment && auth.isAuthenticated
+  const canViewNotesSettings = auth.isAuthenticated
 
   useEffect(() => {
+    if (auth.status === 'loading') {
+      return
+    }
+
+    if (!canViewNotesSettings) {
+      setIsLoading(false)
+      setRootPath('')
+      setStatus('')
+      return
+    }
+
     let ignore = false
 
     async function load() {
@@ -38,7 +54,7 @@ export function SettingsPage() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [auth.status, canViewNotesSettings])
 
   async function saveNotesSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -54,6 +70,16 @@ export function SettingsPage() {
       setStatus('Notes settings saved.')
     } catch {
       setStatus('Save failed.')
+    }
+  }
+
+  async function handleSignOut() {
+    try {
+      setStatus('')
+      await auth.logout()
+      setRootPath('')
+    } catch {
+      setStatus('Unable to sign out right now.')
     }
   }
 
@@ -73,7 +99,41 @@ export function SettingsPage() {
           </div>
         </div>
 
-        {canEditNotesSettings && (
+        {auth.status === 'loading' ? null : auth.status === 'unavailable' ? (
+          <div className="settings-inline-row">
+            <h2>Admin</h2>
+            <div className="settings-inline-field-group">
+              <span className="settings-link-copy">
+                {auth.statusMessage ?? 'Authentication service is unavailable.'}
+              </span>
+              <button disabled type="button">
+                Sign in
+              </button>
+            </div>
+          </div>
+        ) : auth.isAuthenticated ? (
+          <div className="settings-inline-row">
+            <h2>Admin</h2>
+            <div className="settings-inline-field-group">
+              <span className="settings-link-copy">{auth.username}</span>
+              <button onClick={() => void handleSignOut()} type="button">
+                Sign out
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="settings-inline-row">
+            <h2>Admin</h2>
+            <div className="settings-inline-field-group">
+              <span className="settings-link-copy">Sign in to access admin settings.</span>
+              <button onClick={() => void navigate('/login')} type="button">
+                Sign in
+              </button>
+            </div>
+          </div>
+        )}
+
+        {canViewNotesSettings ? (
           <form className="settings-inline-row" onSubmit={(event) => void saveNotesSettings(event)}>
             <h2>Notes</h2>
             <div className="settings-inline-field-group">
@@ -98,7 +158,7 @@ export function SettingsPage() {
               )}
             </div>
           </form>
-        )}
+        ) : null}
 
         <Link className="settings-inline-row settings-link-row" to="/settings/ai">
           <h2>AI</h2>

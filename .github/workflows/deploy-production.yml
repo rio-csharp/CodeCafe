@@ -106,15 +106,16 @@ jobs:
           CHART_ARCHIVE="codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
           REMOTE_DIR="/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           tar -czf "$CHART_ARCHIVE" -C deploy/helm codecafe
-          ssh -p "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" "mkdir -p '$REMOTE_DIR'"
-          scp -P "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "$CHART_ARCHIVE" "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
-          ssh -p "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
-            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' PRODUCTION_FRONTEND_HOST='${{ secrets.PRODUCTION_FRONTEND_HOST }}' PRODUCTION_API_HOST='${{ secrets.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' bash -s" <<'REMOTE'
+          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.PRODUCTION_SSH_USER }}@${{ vars.PRODUCTION_SSH_HOST }}" "mkdir -p '$REMOTE_DIR'"
+          scp -P "${{ vars.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "$CHART_ARCHIVE" "${{ vars.PRODUCTION_SSH_USER }}@${{ vars.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
+          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.PRODUCTION_SSH_USER }}@${{ vars.PRODUCTION_SSH_HOST }}" \
+            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' PRODUCTION_FRONTEND_HOST='${{ vars.PRODUCTION_FRONTEND_HOST }}' PRODUCTION_API_HOST='${{ vars.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' APP_USERNAME='${{ vars.PRODUCTION_APP_USERNAME }}' APP_PASSWORD='${{ secrets.PRODUCTION_APP_PASSWORD }}' bash -s" <<'REMOTE'
           set -euo pipefail
           trap 'rm -rf "$REMOTE_DIR"' EXIT
           export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
           KUBECTL="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl"
           HELM="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/helm"
+          AUTH_SECRET="${RELEASE}-api-auth"
           tar -xzf "$REMOTE_DIR/codecafe-chart.tgz" -C "$REMOTE_DIR"
           $KUBECTL create namespace "$NAMESPACE" --dry-run=client -o yaml | $KUBECTL apply -f -
           TLS_CERT_FILE="$(mktemp)"
@@ -124,6 +125,11 @@ jobs:
           $KUBECTL create secret tls "$TLS_SECRET" \
             --cert="$TLS_CERT_FILE" \
             --key="$TLS_KEY_FILE" \
+            --namespace "$NAMESPACE" \
+            --dry-run=client -o yaml | $KUBECTL apply -f -
+          $KUBECTL create secret generic "$AUTH_SECRET" \
+            --from-literal=username="$APP_USERNAME" \
+            --from-literal=password="$APP_PASSWORD" \
             --namespace "$NAMESPACE" \
             --dry-run=client -o yaml | $KUBECTL apply -f -
           rm -f "$TLS_CERT_FILE" "$TLS_KEY_FILE"
@@ -143,12 +149,12 @@ jobs:
 
       - name: Wait for rollout
         run: |
-          ssh -p "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
+          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.PRODUCTION_SSH_USER }}@${{ vars.PRODUCTION_SSH_HOST }}" \
             "sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=frontend --namespace $NAMESPACE --timeout=180s && sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=api --namespace $NAMESPACE --timeout=180s"
 
       - name: Smoke test
         run: |
-          ssh -p "${{ secrets.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
+          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.PRODUCTION_SSH_USER }}@${{ vars.PRODUCTION_SSH_HOST }}" \
             "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' bash -s" <<'REMOTE'
           set -euo pipefail
           export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin

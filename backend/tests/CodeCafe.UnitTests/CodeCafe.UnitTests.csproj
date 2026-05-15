@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\CodeCafe.Api\CodeCafe.Api.csproj" />
     <ProjectReference Include="..\..\src\CodeCafe.Domain\CodeCafe.Domain.csproj" />
     <ProjectReference Include="..\..\src\CodeCafe.Application\CodeCafe.Application.csproj" />
   </ItemGroup>

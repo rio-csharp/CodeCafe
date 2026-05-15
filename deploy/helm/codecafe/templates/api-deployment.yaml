@@ -40,6 +40,16 @@ spec:
             - name: Cors__AllowedOrigins__{{ $index }}
               value: {{ $origin | quote }}
             {{- end }}
+            - name: Authentication__Username
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "codecafe.fullname" . }}-api-auth
+                  key: username
+            - name: Authentication__Password
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "codecafe.fullname" . }}-api-auth
+                  key: password
           ports:
             - name: http
               containerPort: {{ .Values.api.service.targetPort }}

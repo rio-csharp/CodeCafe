@@ -1,6 +1,4 @@
 using CodeCafe.Contracts.Notes;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace CodeCafe.IntegrationTests;
 
@@ -10,6 +8,7 @@ public sealed class NotesSettingsEndpointsTests(ApiFactory factory) : IClassFixt
     public async Task Notes_root_path_can_be_updated()
     {
         var client = factory.CreateClient();
+        await client.LoginAsync();
 
         var initialSettings = await client.GetFromJsonAsync<NotesSettingsResponse>("/api/notes/settings");
 
@@ -32,6 +31,7 @@ public sealed class NotesSettingsEndpointsTests(ApiFactory factory) : IClassFixt
     {
         using var productionFactory = factory.WithEnvironment("Production");
         var client = productionFactory.CreateClient();
+        await client.LoginAsync();
 
         var updateResponse = await client.PutAsJsonAsync("/api/notes/settings", new UpsertNotesSettingsRequest(
             "/srv/codecafe/notes"));
