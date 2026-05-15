@@ -11,7 +11,6 @@ public static class ApiServiceCollectionExtensions
         IConfiguration configuration)
     {
         services
-            .AddApiOptions(configuration)
             .AddApiPresentation()
             .AddApiForwardedHeaders()
             .AddApiAuthentication()

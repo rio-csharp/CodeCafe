@@ -1,7 +1,6 @@
 using CodeCafe.Api.Configuration;
-using CodeCafe.Infrastructure.Auth;
+using CodeCafe.Application.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
@@ -17,10 +16,10 @@ public static class AuthenticationServiceCollectionExtensions
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<IOptions<ConfiguredLoginOptions>>((options, configuredLoginOptions) =>
+            .Configure<IAuthTokenValidationConfigurationProvider>((options, tokenValidationConfigurationProvider) =>
             {
-                var configuredOptions = configuredLoginOptions.Value;
-                var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuredOptions.JwtSigningKey));
+                var tokenValidationConfiguration = tokenValidationConfigurationProvider.Get();
+                var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenValidationConfiguration.SigningKey));
 
                 options.Events = new JwtBearerEvents
                 {
@@ -45,7 +44,7 @@ public static class AuthenticationServiceCollectionExtensions
                 options.SaveToken = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ClockSkew = TimeSpan.FromMinutes(1),
+                    ClockSkew = tokenValidationConfiguration.ClockSkew,
                     IssuerSigningKey = signingKey,
                     NameClaimType = ClaimTypes.Name,
                     ValidateAudience = false,
