@@ -1,3 +1,5 @@
+using CodeCafe.Application.Auth;
+
 namespace CodeCafe.Api.Authentication;
 
 public interface IAuthCookieManager

@@ -1,3 +1,4 @@
+using CodeCafe.Infrastructure.Auth;
 using CodeCafe.Infrastructure.Notes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,6 +11,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddAuthInfrastructure(configuration);
         services.AddSingleton<INotesSettingsRepository>(_ =>
             new InMemoryNotesSettingsRepository(configuration["Notes:RootPath"] ?? string.Empty));
         services.AddScoped<INotesRepository, FileSystemNotesRepository>();

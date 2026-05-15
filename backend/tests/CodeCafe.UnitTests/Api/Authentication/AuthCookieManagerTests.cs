@@ -1,4 +1,5 @@
 using CodeCafe.Api.Authentication;
+using CodeCafe.Application.Auth;
 using Microsoft.AspNetCore.Http;
 
 namespace CodeCafe.UnitTests.Api.Authentication;

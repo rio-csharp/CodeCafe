@@ -1,8 +1,12 @@
-namespace CodeCafe.Api.Authentication;
+using CodeCafe.Application.Auth;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-internal static class AuthenticationOptionsServiceCollectionExtensions
+namespace CodeCafe.Infrastructure.Auth;
+
+internal static class AuthServiceCollectionExtensions
 {
-    public static IServiceCollection AddApiOptions(
+    public static IServiceCollection AddAuthInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration)
     {
@@ -14,6 +18,11 @@ internal static class AuthenticationOptionsServiceCollectionExtensions
             .Validate(options => !string.IsNullOrWhiteSpace(options.JwtSigningKey), "Authentication JWT signing key is required.")
             .Validate(options => options.JwtTokenLifetimeMinutes > 0, "Authentication JWT token lifetime must be greater than zero.")
             .ValidateOnStart();
+
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<ICredentialValidator, ConfiguredCredentialValidator>();
+        services.AddSingleton<IAuthTokenIssuer, JwtTokenIssuer>();
+        services.AddSingleton<IAuthTokenValidationConfigurationProvider, ConfiguredAuthTokenValidationConfigurationProvider>();
 
         return services;
     }

@@ -1,7 +1,7 @@
-using CodeCafe.Api.Authentication;
+using CodeCafe.Infrastructure.Auth;
 using Microsoft.Extensions.Options;
 
-namespace CodeCafe.UnitTests.Api.Authentication;
+namespace CodeCafe.UnitTests.Infrastructure.Auth;
 
 public sealed class ConfiguredCredentialValidatorTests
 {
