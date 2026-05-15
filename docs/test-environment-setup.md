@@ -314,7 +314,6 @@ Test environment repository variables:
 TEST_FRONTEND_HOST
 TEST_API_HOST
 PREVIEW_BASE_DOMAIN
-TEST_SSH_HOST
 TEST_SSH_PORT
 TEST_SSH_USER
 TEST_APP_USERNAME
@@ -323,6 +322,7 @@ TEST_APP_USERNAME
 Repository secrets:
 
 ```text
+TEST_SSH_HOST
 TEST_SSH_PRIVATE_KEY
 TEST_APP_PASSWORD
 TEST_APP_JWT_SIGNING_KEY
@@ -333,7 +333,6 @@ Production uses the same SSH deployment model. Production repository variables:
 ```text
 PRODUCTION_FRONTEND_HOST
 PRODUCTION_API_HOST
-PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PORT
 PRODUCTION_SSH_USER
 PRODUCTION_APP_USERNAME
@@ -342,6 +341,7 @@ PRODUCTION_APP_USERNAME
 Repository secrets:
 
 ```text
+PRODUCTION_SSH_HOST
 PRODUCTION_SSH_PRIVATE_KEY
 PRODUCTION_APP_PASSWORD
 PRODUCTION_APP_JWT_SIGNING_KEY
@@ -355,14 +355,14 @@ gh variable set IMAGE_NAMESPACE --body "<owner-or-org>/codecafe"
 gh variable set TEST_FRONTEND_HOST --body "<test-frontend-host>"
 gh variable set TEST_API_HOST --body "<test-api-host>"
 gh variable set PREVIEW_BASE_DOMAIN --body "<preview-base-domain>"
-gh variable set TEST_SSH_HOST --body "<test-server-ip>"
+"<test-server-ip>" | gh secret set TEST_SSH_HOST
 gh variable set TEST_SSH_PORT --body "<ssh-port>"
 gh variable set TEST_SSH_USER --body "deploy"
 Get-Content .local-keys\codecafe_test_deploy_user_ed25519 | gh secret set TEST_SSH_PRIVATE_KEY
 
 gh variable set PRODUCTION_FRONTEND_HOST --body "<production-frontend-host>"
 gh variable set PRODUCTION_API_HOST --body "<production-api-host>"
-gh variable set PRODUCTION_SSH_HOST --body "<production-server-ip>"
+"<production-server-ip>" | gh secret set PRODUCTION_SSH_HOST
 gh variable set PRODUCTION_SSH_PORT --body "<ssh-port>"
 gh variable set PRODUCTION_SSH_USER --body "deploy"
 Get-Content .local-keys\codecafe_production_deploy_user_ed25519 | gh secret set PRODUCTION_SSH_PRIVATE_KEY
