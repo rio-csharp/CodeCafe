@@ -1,3 +1,5 @@
+using CodeCafe.Infrastructure.Auth;
+
 namespace CodeCafe.Api.Authentication;
 
 internal static class AuthenticationOptionsServiceCollectionExtensions

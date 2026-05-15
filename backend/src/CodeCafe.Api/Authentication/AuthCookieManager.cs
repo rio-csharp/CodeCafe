@@ -1,3 +1,4 @@
+using CodeCafe.Application.Auth;
 using CodeCafe.Api.Configuration;
 
 namespace CodeCafe.Api.Authentication;

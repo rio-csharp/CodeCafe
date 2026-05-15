@@ -1,4 +1,5 @@
 using CodeCafe.Api.Configuration;
+using CodeCafe.Infrastructure.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -11,11 +12,7 @@ public static class AuthenticationServiceCollectionExtensions
 {
     public static IServiceCollection AddApiAuthentication(this IServiceCollection services)
     {
-        services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IAuthCookieManager, AuthCookieManager>();
-        services.AddSingleton<IAuthSessionService, AuthSessionService>();
-        services.AddSingleton<IConfiguredCredentialValidator, ConfiguredCredentialValidator>();
-        services.AddSingleton<IJwtTokenIssuer, JwtTokenIssuer>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();

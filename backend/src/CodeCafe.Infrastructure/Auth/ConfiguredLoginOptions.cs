@@ -1,4 +1,4 @@
-namespace CodeCafe.Api.Authentication;
+namespace CodeCafe.Infrastructure.Auth;
 
 public sealed class ConfiguredLoginOptions
 {

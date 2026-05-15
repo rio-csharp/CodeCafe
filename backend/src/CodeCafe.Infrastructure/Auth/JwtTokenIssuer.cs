@@ -1,15 +1,15 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using CodeCafe.Application.Auth;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace CodeCafe.Api.Authentication;
+namespace CodeCafe.Infrastructure.Auth;
 
 public sealed class JwtTokenIssuer(
     IOptions<ConfiguredLoginOptions> configuredLoginOptions,
-    TimeProvider timeProvider) : IJwtTokenIssuer
+    TimeProvider timeProvider) : IAuthTokenIssuer
 {
     public IssuedAuthToken IssueToken(string username)
     {
@@ -26,7 +26,7 @@ public sealed class JwtTokenIssuer(
             SigningCredentials = signingCredentials,
             Subject = new ClaimsIdentity(
                 [new Claim(ClaimTypes.Name, username)],
-                JwtBearerDefaults.AuthenticationScheme),
+                "Bearer"),
         };
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(descriptor);
