@@ -325,6 +325,7 @@ Repository secrets:
 ```text
 TEST_SSH_PRIVATE_KEY
 TEST_APP_PASSWORD
+TEST_APP_JWT_SIGNING_KEY
 ```
 
 Production uses the same SSH deployment model. Production repository variables:
@@ -343,6 +344,7 @@ Repository secrets:
 ```text
 PRODUCTION_SSH_PRIVATE_KEY
 PRODUCTION_APP_PASSWORD
+PRODUCTION_APP_JWT_SIGNING_KEY
 ```
 
 Set them locally with `gh`:

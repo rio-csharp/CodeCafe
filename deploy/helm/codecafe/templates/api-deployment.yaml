@@ -50,6 +50,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "codecafe.fullname" . }}-api-auth
                   key: password
+            - name: Authentication__JwtSigningKey
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "codecafe.fullname" . }}-api-auth
+                  key: jwt-signing-key
           ports:
             - name: http
               containerPort: {{ .Values.api.service.targetPort }}

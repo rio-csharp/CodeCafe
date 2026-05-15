@@ -64,8 +64,10 @@ Create these repository secrets:
 ```text
 TEST_SSH_PRIVATE_KEY
 TEST_APP_PASSWORD
+TEST_APP_JWT_SIGNING_KEY
 PRODUCTION_SSH_PRIVATE_KEY
 PRODUCTION_APP_PASSWORD
+PRODUCTION_APP_JWT_SIGNING_KEY
 ```
 
 Create this additional repository variable:
@@ -84,7 +86,8 @@ GitHub Actions.
 The deploy workflows also create or update a Kubernetes secret named
 `<release>-api-auth` in the target namespace. The API reads its login
 credentials from that secret via `Authentication__Username` and
-`Authentication__Password` environment variables.
+`Authentication__Password` environment variables, and reads the JWT signing key
+via `Authentication__JwtSigningKey`.
 
 ## Notes Content
 
