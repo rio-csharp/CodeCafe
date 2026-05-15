@@ -1,5 +1,6 @@
 using CodeCafe.Api.Authentication;
 using CodeCafe.Api.Configuration;
+using CodeCafe.Application.Auth;
 using CodeCafe.Contracts.Auth;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -9,7 +10,9 @@ namespace CodeCafe.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [Tags("Authentication")]
-public sealed class AuthController(IAuthSessionService authSessionService) : ControllerBase
+public sealed class AuthController(
+    IAuthService authService,
+    IAuthCookieManager authCookieManager) : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet("session", Name = "GetSession")]
@@ -23,20 +26,22 @@ public sealed class AuthController(IAuthSessionService authSessionService) : Con
     [HttpPost("login", Name = "Login")]
     public ActionResult<LoginSessionResponse> Login(LoginRequest request)
     {
-        var username = authSessionService.SignIn(HttpContext, request.Username, request.Password);
+        var signInResult = authService.SignIn(request.Username, request.Password);
 
-        if (username is null)
+        if (signInResult is null)
         {
             return Unauthorized();
         }
 
-        return Ok(new LoginSessionResponse(true, username));
+        authCookieManager.Append(Response, Request.IsHttps, signInResult.Token);
+
+        return Ok(new LoginSessionResponse(true, signInResult.Username));
     }
 
     [HttpPost("logout", Name = "Logout")]
     public IActionResult Logout()
     {
-        authSessionService.SignOut(HttpContext);
+        authCookieManager.Delete(Response, Request.IsHttps);
 
         return NoContent();
     }

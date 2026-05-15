@@ -1,6 +1,6 @@
 using CodeCafe.Api.Configuration;
+using CodeCafe.Application.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
@@ -11,19 +11,15 @@ public static class AuthenticationServiceCollectionExtensions
 {
     public static IServiceCollection AddApiAuthentication(this IServiceCollection services)
     {
-        services.AddSingleton(TimeProvider.System);
         services.AddSingleton<IAuthCookieManager, AuthCookieManager>();
-        services.AddSingleton<IAuthSessionService, AuthSessionService>();
-        services.AddSingleton<IConfiguredCredentialValidator, ConfiguredCredentialValidator>();
-        services.AddSingleton<IJwtTokenIssuer, JwtTokenIssuer>();
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer();
         services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
-            .Configure<IOptions<ConfiguredLoginOptions>>((options, configuredLoginOptions) =>
+            .Configure<IAuthTokenValidationConfigurationProvider>((options, tokenValidationConfigurationProvider) =>
             {
-                var configuredOptions = configuredLoginOptions.Value;
-                var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuredOptions.JwtSigningKey));
+                var tokenValidationConfiguration = tokenValidationConfigurationProvider.Get();
+                var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(tokenValidationConfiguration.SigningKey));
 
                 options.Events = new JwtBearerEvents
                 {
@@ -48,7 +44,7 @@ public static class AuthenticationServiceCollectionExtensions
                 options.SaveToken = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ClockSkew = TimeSpan.FromMinutes(1),
+                    ClockSkew = tokenValidationConfiguration.ClockSkew,
                     IssuerSigningKey = signingKey,
                     NameClaimType = ClaimTypes.Name,
                     ValidateAudience = false,

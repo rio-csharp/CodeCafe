@@ -1,11 +1,12 @@
+using CodeCafe.Application.Auth;
 using Microsoft.Extensions.Options;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace CodeCafe.Api.Authentication;
+namespace CodeCafe.Infrastructure.Auth;
 
 public sealed class ConfiguredCredentialValidator(IOptions<ConfiguredLoginOptions> configuredLoginOptions)
-    : IConfiguredCredentialValidator
+    : ICredentialValidator
 {
     public string? Validate(string username, string password)
     {
