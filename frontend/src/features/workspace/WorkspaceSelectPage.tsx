@@ -210,7 +210,7 @@ export function WorkspaceSelectPage() {
                           ? 'bg-accent text-[#070a12] hover:opacity-90'
                           : 'border border-border bg-bg/60 text-text hover:border-accent/30'
                       }`}
-                      to={`/app/${ws.id}/chat`}
+                      to={`/workspaces/${ws.id}`}
                     >
                       Open Workspace
                     </Link>
