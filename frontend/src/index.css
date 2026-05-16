@@ -83,29 +83,6 @@
   );
 }
 
-@utility bg-stars {
-  background-image:
-    radial-gradient(1px 1px at 25px 25px, rgba(200, 200, 255, 0.50), transparent),
-    radial-gradient(1px 1px at 75px 50px, rgba(200, 200, 255, 0.35), transparent),
-    radial-gradient(1px 1px at 50px 100px, rgba(200, 200, 255, 0.28), transparent),
-    radial-gradient(1.5px 1.5px at 125px 75px, rgba(200, 200, 255, 0.42), transparent),
-    radial-gradient(1px 1px at 150px 150px, rgba(200, 200, 255, 0.28), transparent),
-    radial-gradient(1px 1px at 100px 175px, rgba(200, 200, 255, 0.32), transparent),
-    radial-gradient(1.5px 1.5px at 200px 50px, rgba(200, 200, 255, 0.48), transparent),
-    radial-gradient(1px 1px at 225px 125px, rgba(200, 200, 255, 0.28), transparent),
-    radial-gradient(1px 1px at 175px 200px, rgba(200, 200, 255, 0.22), transparent),
-    radial-gradient(1.5px 1.5px at 300px 100px, rgba(200, 200, 255, 0.35), transparent),
-    radial-gradient(1px 1px at 325px 175px, rgba(200, 200, 255, 0.28), transparent),
-    radial-gradient(1px 1px at 275px 225px, rgba(200, 200, 255, 0.22), transparent),
-    radial-gradient(1.5px 1.5px at 350px 50px, rgba(200, 200, 255, 0.40), transparent),
-    radial-gradient(1px 1px at 375px 200px, rgba(200, 200, 255, 0.28), transparent),
-    radial-gradient(1px 1px at 50px 275px, rgba(200, 200, 255, 0.32), transparent),
-    radial-gradient(1.5px 1.5px at 150px 300px, rgba(200, 200, 255, 0.28), transparent),
-    radial-gradient(1px 1px at 250px 275px, rgba(200, 200, 255, 0.22), transparent),
-    radial-gradient(1px 1px at 350px 325px, rgba(200, 200, 255, 0.32), transparent);
-  background-size: 400px 400px;
-}
-
 @utility bg-dot-pattern {
   background-image: radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.15) 1px, transparent 0);
   background-size: 40px 40px;

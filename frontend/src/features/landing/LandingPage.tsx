@@ -26,25 +26,65 @@ function ArrowRightIcon({ size = 18 }: { size?: number }) {
   )
 }
 
+function seededRandom(seed: number) {
+  let s = seed
+  return () => {
+    s = (s * 16807) % 2147483647
+    return (s - 1) / 2147483646
+  }
+}
+
+function StarField() {
+  const rng = seededRandom(42)
+  const stars = Array.from({ length: 80 }, () => ({
+    left: rng() * 100,
+    top: rng() * 100,
+    size: rng() > 0.7 ? 2 : 1,
+    opacity: 0.15 + rng() * 0.35,
+  }))
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {stars.map((star, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full bg-white"
+          style={{
+            left: `${star.left}%`,
+            top: `${star.top}%`,
+            width: star.size,
+            height: star.size,
+            opacity: star.opacity,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export function LandingPage() {
   const auth = useAuth()
   const isAuthenticated = auth.status === 'authenticated'
 
   return (
-    <div className="relative min-h-screen overflow-hidden text-text bg-bg">
+    <div className="relative min-h-screen overflow-hidden text-text bg-[#080b1a]">
       {/* Background layers (bottom to top) */}
       {/* Scanlines */}
       <div className="pointer-events-none absolute inset-0 bg-scanlines" />
-      {/* Stars */}
-      <div className="pointer-events-none absolute inset-0 bg-stars" />
+      {/* Random stars */}
+      <StarField />
       {/* Bottom glow */}
       <div className="pointer-events-none absolute bottom-0 left-1/2 h-[600px] w-[1400px] -translate-x-1/2 bg-glow-bottom" />
       {/* Mid glow */}
       <div className="pointer-events-none absolute left-1/2 top-[40%] h-[500px] w-[1200px] -translate-x-1/2 bg-glow-mid" />
-      {/* Left arc */}
-      <div className="pointer-events-none absolute inset-0 bg-arc-left" />
-      {/* Right arc */}
-      <div className="pointer-events-none absolute inset-0 bg-arc-right" />
+      {/* Left arc with rotation */}
+      <div className="pointer-events-none absolute -left-[20%] top-0 h-full w-[70%] -rotate-[12deg] overflow-hidden">
+        <div className="h-full w-full bg-arc-left" />
+      </div>
+      {/* Right arc with rotation */}
+      <div className="pointer-events-none absolute -right-[20%] top-0 h-full w-[70%] rotate-[12deg] overflow-hidden">
+        <div className="h-full w-full bg-arc-right" />
+      </div>
       {/* Top purple glow */}
       <div className="pointer-events-none absolute left-1/2 top-0 h-[700px] w-[1400px] -translate-x-1/2 bg-glow-hero" />
       {/* Top cyan glow */}
