@@ -66,12 +66,12 @@ export function WorkspaceSelectPage() {
             <span>CodeCafe</span>
           </Link>
 
-          <div className="flex items-center gap-6">
-            <a href="#" className="flex items-center gap-2 text-sm font-medium text-muted no-underline transition-colors hover:text-text">
+          <div className="flex items-center gap-4 md:gap-6">
+            <a href="#" className="hidden md:flex items-center gap-2 text-sm font-medium text-muted no-underline transition-colors hover:text-text">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
               Docs
             </a>
-            <a href="https://github.com/rio-csharp/CodeCafe" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-sm font-medium text-muted no-underline transition-colors hover:text-text">
+            <a href="https://github.com/rio-csharp/CodeCafe" target="_blank" rel="noreferrer" className="hidden md:flex items-center gap-2 text-sm font-medium text-muted no-underline transition-colors hover:text-text">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.59 2 12.25c0 4.53 2.87 8.37 6.84 9.72.5.09.68-.22.68-.49 0-.24-.01-1.03-.01-1.87-2.78.62-3.37-1.21-3.37-1.21-.46-1.2-1.11-1.52-1.11-1.52-.91-.64.07-.63.07-.63 1 .08 1.53 1.06 1.53 1.06.9 1.58 2.35 1.12 2.92.86.09-.67.35-1.12.63-1.38-2.22-.26-4.56-1.15-4.56-5.1 0-1.13.39-2.05 1.03-2.78-.1-.26-.45-1.31.1-2.73 0 0 .84-.28 2.75 1.06A9.3 9.3 0 0 1 12 6.84c.85 0 1.71.12 2.51.35 1.91-1.34 2.75-1.06 2.75-1.06.55 1.42.2 2.47.1 2.73.64.73 1.03 1.65 1.03 2.78 0 3.96-2.34 4.83-4.57 5.09.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.8 0 .27.18.58.69.48A10.27 10.27 0 0 0 22 12.25C22 6.59 17.52 2 12 2Z"/></svg>
               GitHub
             </a>
@@ -79,7 +79,7 @@ export function WorkspaceSelectPage() {
               <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-accent/10">
                 <img src="https://github.com/rio-csharp.png" alt="Rio" className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
               </div>
-              <span className="text-sm font-medium">Rio</span>
+              <span className="hidden sm:inline text-sm font-medium">Rio</span>
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M6 9l6 6 6-6"/></svg>
             </div>
           </div>
@@ -97,7 +97,7 @@ export function WorkspaceSelectPage() {
         </div>
 
         {/* Main grid */}
-        <div className="grid grid-cols-[280px_1fr] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
           {/* Left info panel */}
           <div className="flex flex-col gap-5">
             <div className="rounded-xl border border-border bg-surface/50 p-5">
@@ -137,7 +137,7 @@ export function WorkspaceSelectPage() {
 
           {/* Right workspace grid */}
           <div className="flex flex-col gap-5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="m-0 text-lg font-bold">Your Workspaces</h2>
               <div className="flex items-center gap-3">
                 <button className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted transition hover:text-text">
@@ -161,7 +161,7 @@ export function WorkspaceSelectPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {workspaces.map((ws) => (
                 <div
                   key={ws.id}
@@ -242,14 +242,13 @@ export function WorkspaceSelectPage() {
 
       {/* Bottom tip */}
       <div className="border-t border-border bg-bg/60">
-        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-2 text-sm text-muted">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            <span className="font-semibold text-text">Tip:</span>
-            <span>Workspaces are isolated and secure</span>
+        <div className="mx-auto flex max-w-[1200px] flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-6 py-3.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" className="text-accent shrink-0"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <span className="font-semibold text-text">Tip: Workspaces are isolated and secure</span>
             <span className="text-xs">Each workspace runs in its own environment with separate memory, configurations, and execution sandboxes.</span>
           </div>
-          <a href="#" className="flex items-center gap-1 text-sm font-medium text-muted no-underline transition hover:text-text">
+          <a href="#" className="flex shrink-0 items-center gap-1 text-sm font-medium text-muted no-underline transition hover:text-text">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             Manage all workspaces
           </a>
