@@ -7,7 +7,7 @@ vi.mock('../features/ai/aiClient', async () => {
   }
 })
 
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RouterProvider, createMemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -21,11 +21,12 @@ import { AppShell } from './AppShell'
 import { ThemeProvider } from './theme'
 import * as runtimeEnvironment from './runtimeEnvironment'
 
-function renderRoute(initialPath = '/') {
+function renderRoute(initialPath = '/app') {
+  cleanup()
   const router = createMemoryRouter(
     [
       {
-        path: '/',
+        path: '/app',
         element: <AppShell />,
         children: [
           { index: true, element: <ChatWorkbench /> },
@@ -231,7 +232,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('searchbox', { name: 'Search conversations' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Chat' })).toBeInTheDocument()
     expect(await screen.findByRole('link', { name: 'Notes' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'New' })).toBeInTheDocument()
     expect(screen.getByRole('option', { name: 'DeepSeek V4 Pro' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Chat settings' })).toBeInTheDocument()
@@ -245,8 +246,8 @@ describe('AppShell', () => {
     seedChatSessions()
     renderRoute()
 
-    expect(await screen.findByRole('link', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Notes' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Overview' })).toBeInTheDocument()
   })
 
   it('opens an existing chat session', async () => {
@@ -305,10 +306,10 @@ describe('AppShell', () => {
     seedAiSettings()
     renderRoute()
 
-    await user.click(screen.getByRole('link', { name: 'Settings' }))
+    renderRoute('/app/settings')
 
     expect(within(screen.getByLabelText('Settings')).getByText('Settings')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument()
     expect(screen.getByText('test-user')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
@@ -364,7 +365,7 @@ describe('AppShell', () => {
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(true)
     mockApiFetch()
     seedAiSettings()
-    renderRoute('/notes')
+    renderRoute('/app/notes')
 
     await user.click(screen.getByRole('button', { name: 'Open notes AI assistant' }))
 
@@ -387,7 +388,7 @@ describe('AppShell', () => {
       },
     }))
 
-    renderRoute('/notes')
+    renderRoute('/app/notes')
 
     const clrButton = await screen.findByRole('button', { name: 'Clr' })
     const directory = screen.getByText('Dotnet Platform').closest('details')
@@ -463,7 +464,7 @@ describe('AppShell', () => {
       .mockResolvedValueOnce({ responseId: 'resp_1' })
       .mockResolvedValueOnce({ responseId: 'resp_2' })
 
-    renderRoute('/notes')
+    renderRoute('/app/notes')
 
     await user.click(screen.getByRole('button', { name: 'Open notes AI assistant' }))
     await user.type(screen.getByRole('textbox', { name: 'Ask AI about this note' }), 'Summarize this note')
@@ -499,15 +500,14 @@ describe('AppShell', () => {
   })
 
   it('hides notes settings outside local environments', async () => {
-    const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(false)
     mockApiFetch({ isAuthenticated: false })
     seedAiSettings()
     renderRoute()
 
-    await user.click(screen.getByRole('link', { name: 'Settings' }))
+    renderRoute('/app/settings')
 
-    expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument()
     expect(screen.getByText('Sign in to access admin settings.')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Appearance' })).toBeInTheDocument()
@@ -515,15 +515,14 @@ describe('AppShell', () => {
   })
 
   it('shows notes settings read-only for signed-in users outside local environments', async () => {
-    const user = userEvent.setup()
     vi.spyOn(runtimeEnvironment, 'isLocalEnvironment').mockReturnValue(false)
     mockApiFetch({ isAuthenticated: true })
     seedAiSettings()
     renderRoute()
 
-    await user.click(screen.getByRole('link', { name: 'Settings' }))
+    renderRoute('/app/settings')
 
-    expect(screen.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Notes' })).toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Notes root path' })).toBeDisabled()
     expect(screen.getByText('Read-only')).toBeInTheDocument()
   })

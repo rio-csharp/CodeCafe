@@ -157,7 +157,7 @@ export function SettingsPage() {
           </form>
         ) : null}
 
-        <Link className="settings-inline-row settings-link-row" to="/settings/ai">
+        <Link className="settings-inline-row settings-link-row" to="/app/settings/ai">
           <h2>AI</h2>
           <span className="settings-link-copy">Provider and model access</span>
         </Link>
