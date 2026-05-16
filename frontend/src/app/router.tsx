@@ -11,6 +11,7 @@ import { WorkspaceDetail } from '../features/workspace/WorkspaceDetail'
 import { WorkspaceChatPage } from '../features/workspace/WorkspaceChatPage'
 import { WorkspaceCodePage } from '../features/workspace/WorkspaceCodePage'
 import { WorkspaceRunsPage } from '../features/workspace/WorkspaceRunsPage'
+import { WorkspaceNotesPage } from '../features/workspace/WorkspaceNotesPage'
 import { AppShell } from './AppShell'
 
 export const router = createBrowserRouter([
@@ -45,6 +46,10 @@ export const router = createBrowserRouter([
   {
     path: '/workspaces/:id/runs',
     element: <WorkspaceRunsPage />,
+  },
+  {
+    path: '/workspaces/:id/notes',
+    element: <WorkspaceNotesPage />,
   },
   {
     path: '/app',
