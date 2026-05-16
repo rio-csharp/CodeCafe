@@ -34,9 +34,9 @@ export function LandingPage() {
     <div className="relative min-h-screen overflow-hidden text-text bg-bg">
       {/* Background layers (bottom to top) */}
       {/* Scanlines */}
-      <div className="pointer-events-none absolute inset-0 bg-scanlines opacity-70" />
+      <div className="pointer-events-none absolute inset-0 bg-scanlines" />
       {/* Stars */}
-      <div className="pointer-events-none absolute inset-0 bg-stars opacity-60" />
+      <div className="pointer-events-none absolute inset-0 bg-stars" />
       {/* Bottom glow */}
       <div className="pointer-events-none absolute bottom-0 left-1/2 h-[600px] w-[1400px] -translate-x-1/2 bg-glow-bottom" />
       {/* Mid glow */}
