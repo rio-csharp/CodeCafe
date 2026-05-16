@@ -1,5 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../auth/useAuth'
+import { Link } from 'react-router-dom'
 
 function LogoIcon({ size = 28 }: { size?: number }) {
   return (
@@ -27,9 +26,6 @@ function ArrowRightIcon({ size = 18 }: { size?: number }) {
 }
 
 export function LandingPage() {
-  const auth = useAuth()
-  const navigate = useNavigate()
-  const isAuthenticated = auth.status === 'authenticated'
 
   return (
     <div className="min-h-screen text-text bg-bg">
@@ -50,22 +46,12 @@ export function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-3">
-            {isAuthenticated ? (
-              <button
-                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text transition-colors hover:border-accent/40 hover:bg-accent/8"
-                onClick={() => void navigate('/app')}
-                type="button"
-              >
-                Open App
-              </button>
-            ) : (
-              <Link
-                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text no-underline transition-colors hover:border-accent/40 hover:bg-accent/8"
-                to="/login"
-              >
-                Sign in
-              </Link>
-            )}
+            <Link
+              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text no-underline transition-colors hover:border-accent/40 hover:bg-accent/8"
+              to="/login"
+            >
+              Sign in
+            </Link>
             <Link
               className="rounded-lg bg-gradient-to-br from-accent to-[#818cf8] px-[18px] py-2 text-sm font-semibold text-[#070a12] no-underline transition hover:opacity-92 hover:-translate-y-px"
               to="/workspaces"
@@ -108,7 +94,7 @@ export function LandingPage() {
             </Link>
             <Link
               className="rounded-xl border border-border-strong bg-surface/60 px-6 py-3 text-[15px] font-semibold text-text no-underline transition hover:border-accent/50 hover:bg-accent/10"
-              to="/workspaces"
+              to="/workspaces/codecafe"
             >
               Explore Demo Workspace
             </Link>
