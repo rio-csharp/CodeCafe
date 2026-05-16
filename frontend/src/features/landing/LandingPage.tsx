@@ -68,7 +68,7 @@ export function LandingPage() {
             )}
             <Link
               className="rounded-lg bg-gradient-to-br from-accent to-[#818cf8] px-[18px] py-2 text-sm font-semibold text-[#070a12] no-underline transition hover:opacity-92 hover:-translate-y-px"
-              to="/app"
+              to="/workspaces"
             >
               Get Started
             </Link>
@@ -101,14 +101,14 @@ export function LandingPage() {
           <div className="mt-2 flex flex-wrap items-center justify-center gap-3.5">
             <Link
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-accent to-[#818cf8] px-6 py-3 text-[15px] font-bold text-[#070a12] no-underline transition hover:opacity-92 hover:-translate-y-px"
-              to="/app"
+              to="/workspaces"
             >
               Get Started
               <ArrowRightIcon />
             </Link>
             <Link
               className="rounded-xl border border-border-strong bg-surface/60 px-6 py-3 text-[15px] font-semibold text-text no-underline transition hover:border-accent/50 hover:bg-accent/10"
-              to="/app"
+              to="/workspaces"
             >
               Explore Demo Workspace
             </Link>
@@ -297,7 +297,7 @@ export function LandingPage() {
           </h2>
           <Link
             className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-accent to-[#818cf8] px-7 py-3.5 text-base font-bold text-[#070a12] no-underline transition hover:opacity-92 hover:-translate-y-px"
-            to="/app"
+            to="/workspaces"
           >
             Get Started for Free
             <ArrowRightIcon />
