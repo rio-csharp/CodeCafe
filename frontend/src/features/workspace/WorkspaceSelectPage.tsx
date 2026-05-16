@@ -52,7 +52,12 @@ function LogoIcon({ size = 28 }: { size?: number }) {
 
 export function WorkspaceSelectPage() {
   return (
-    <div className="min-h-screen text-text bg-bg">
+    <div className="relative min-h-screen overflow-hidden text-text bg-bg">
+      {/* Subtle background glow */}
+      <div className="pointer-events-none absolute left-1/2 top-0 h-[500px] w-[1000px] -translate-x-1/2 bg-glow-hero" />
+      {/* Dot pattern */}
+      <div className="pointer-events-none absolute inset-0 bg-dot-pattern opacity-[0.08]" />
+
       {/* Header */}
       <header className="border-b border-border bg-bg/82 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-6 px-6 py-3.5">
