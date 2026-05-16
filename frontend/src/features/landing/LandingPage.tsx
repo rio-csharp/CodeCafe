@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../auth/useAuth'
 
 function LogoIcon({ size = 28 }: { size?: number }) {
   return (
@@ -26,6 +27,8 @@ function ArrowRightIcon({ size = 18 }: { size?: number }) {
 }
 
 export function LandingPage() {
+  const auth = useAuth()
+  const isAuthenticated = auth.status === 'authenticated'
 
   return (
     <div className="min-h-screen text-text bg-bg">
@@ -42,16 +45,30 @@ export function LandingPage() {
             <a href="#how-it-works" className="text-sm font-medium text-muted no-underline transition-colors hover:text-text">How It Works</a>
             <a href="#pricing" className="text-sm font-medium text-muted no-underline transition-colors hover:text-text">Pricing</a>
             <a href="#docs" className="text-sm font-medium text-muted no-underline transition-colors hover:text-text">Docs</a>
-            <a href="#about" className="text-sm font-medium text-muted no-underline transition-colors hover:text-text">About</a>
+            <Link to="/about" className="text-sm font-medium text-muted no-underline transition-colors hover:text-text">About</Link>
           </nav>
 
           <div className="flex items-center gap-3">
-            <Link
-              className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text no-underline transition-colors hover:border-accent/40 hover:bg-accent/8"
-              to="/login"
-            >
-              Sign in
-            </Link>
+            {isAuthenticated ? (
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 overflow-hidden rounded-full border border-border bg-accent/10">
+                  <img
+                    src="https://github.com/rio-csharp.png"
+                    alt={auth.username ?? 'User'}
+                    className="h-full w-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                  />
+                </div>
+                <span className="hidden text-sm font-medium sm:inline">{auth.username}</span>
+              </div>
+            ) : (
+              <Link
+                className="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text no-underline transition-colors hover:border-accent/40 hover:bg-accent/8"
+                to="/login"
+              >
+                Sign in
+              </Link>
+            )}
             <Link
               className="rounded-lg bg-gradient-to-br from-accent to-[#818cf8] px-[18px] py-2 text-sm font-semibold text-[#070a12] no-underline transition hover:opacity-92 hover:-translate-y-px"
               to="/workspaces"

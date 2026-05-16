@@ -5,6 +5,7 @@ import { ChatWorkbench } from '../features/chat/ChatWorkbench'
 import { NotesPage } from '../features/notes/NotesPage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { LandingPage } from '../features/landing/LandingPage'
+import { AboutPage } from '../features/about/AboutPage'
 import { WorkspaceSelectPage } from '../features/workspace/WorkspaceSelectPage'
 import { WorkspaceDetail } from '../features/workspace/WorkspaceDetail'
 import { AppShell } from './AppShell'
@@ -17,6 +18,10 @@ export const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingPage />,
+  },
+  {
+    path: '/about',
+    element: <AboutPage />,
   },
   {
     path: '/workspaces',
