@@ -8,6 +8,7 @@ import { LandingPage } from '../features/landing/LandingPage'
 import { AboutPage } from '../features/about/AboutPage'
 import { WorkspaceSelectPage } from '../features/workspace/WorkspaceSelectPage'
 import { WorkspaceDetail } from '../features/workspace/WorkspaceDetail'
+import { WorkspaceChatPage } from '../features/workspace/WorkspaceChatPage'
 import { AppShell } from './AppShell'
 
 export const router = createBrowserRouter([
@@ -30,6 +31,10 @@ export const router = createBrowserRouter([
   {
     path: '/workspaces/:id',
     element: <WorkspaceDetail />,
+  },
+  {
+    path: '/workspaces/:id/chat',
+    element: <WorkspaceChatPage />,
   },
   {
     path: '/app',
