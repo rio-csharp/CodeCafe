@@ -60,6 +60,13 @@ export function LandingPage() {
                   />
                 </div>
                 <span className="hidden text-sm font-medium sm:inline">{auth.username}</span>
+                <button
+                  className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted transition-colors hover:border-accent/40 hover:bg-accent/8 hover:text-text"
+                  onClick={() => void auth.logout()}
+                  type="button"
+                >
+                  Sign out
+                </button>
               </div>
             ) : (
               <Link
