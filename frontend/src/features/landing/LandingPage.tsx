@@ -210,12 +210,12 @@ export function LandingPage() {
                       CodeCafe
                     </div>
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted">
-                      <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded bg-accent/20 text-[10px] font-bold">T</span>
-                      TinyCivilization
+                      <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded bg-accent/20 text-[10px] font-bold">N</span>
+                      Notes
                     </div>
                     <div className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted">
-                      <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded bg-accent/20 text-[10px] font-bold">I</span>
-                      Interview Prep
+                      <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded bg-accent/20 text-[10px] font-bold">S</span>
+                      Skills
                     </div>
                   </div>
                   <div className="flex flex-col gap-1">
