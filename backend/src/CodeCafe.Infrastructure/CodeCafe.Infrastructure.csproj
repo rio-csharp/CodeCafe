@@ -3,6 +3,8 @@
   <ItemGroup>
     <ProjectReference Include="..\CodeCafe.Application\CodeCafe.Application.csproj" />
     <ProjectReference Include="..\CodeCafe.Domain\CodeCafe.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\OpenSource\agent-framework\dotnet\src\Microsoft.Agents.AI\Microsoft.Agents.AI.csproj" />
+    <ProjectReference Include="..\..\..\..\OpenSource\agent-framework\dotnet\src\Microsoft.Agents.AI.OpenAI\Microsoft.Agents.AI.OpenAI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

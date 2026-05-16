@@ -30,10 +30,10 @@ docs/
 
 ## Backend
 
-Copy `backend/src/CodeCafe.Api/appsettings.Development.example.json` to
-`backend/src/CodeCafe.Api/appsettings.Development.json` for local development
-settings. The real development settings file is ignored by Git so it can hold
-local secrets.
+`backend/src/CodeCafe.Api/appsettings.json` contains the full configuration
+shape. For local development, create the ignored
+`backend/src/CodeCafe.Api/appsettings.Development.json` only when you need to
+override local paths or secrets.
 
 ```powershell
 dotnet restore backend/CodeCafe.slnx

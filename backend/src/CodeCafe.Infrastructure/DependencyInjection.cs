@@ -1,3 +1,4 @@
+using CodeCafe.Infrastructure.AI.Maf;
 using CodeCafe.Infrastructure.Auth;
 using CodeCafe.Infrastructure.Notes;
 using Microsoft.Extensions.Configuration;
@@ -11,6 +12,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddMafInfrastructure(configuration);
         services.AddAuthInfrastructure(configuration);
         services.AddSingleton<INotesSettingsRepository>(_ =>
             new InMemoryNotesSettingsRepository(configuration["Notes:RootPath"] ?? string.Empty));

@@ -25,3 +25,6 @@ The first modules are expected to be:
 Notes should expose capabilities to the AI layer over time, such as reading,
 searching, summarizing, and drafting notes. The notes module should not directly
 depend on MAF implementation details.
+
+See [Backend AI and MAF Architecture](backend-ai-maf-architecture.md) for the
+AI runtime boundary and milestone design.
