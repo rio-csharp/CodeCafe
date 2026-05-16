@@ -32,12 +32,23 @@ export function LandingPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden text-text bg-bg">
-      {/* Background glow — top center purple */}
+      {/* Background layers (bottom to top) */}
+      {/* Scanlines */}
+      <div className="pointer-events-none absolute inset-0 bg-scanlines opacity-70" />
+      {/* Stars */}
+      <div className="pointer-events-none absolute inset-0 bg-stars opacity-60" />
+      {/* Bottom glow */}
+      <div className="pointer-events-none absolute bottom-0 left-1/2 h-[600px] w-[1400px] -translate-x-1/2 bg-glow-bottom" />
+      {/* Mid glow */}
+      <div className="pointer-events-none absolute left-1/2 top-[40%] h-[500px] w-[1200px] -translate-x-1/2 bg-glow-mid" />
+      {/* Left arc */}
+      <div className="pointer-events-none absolute inset-0 bg-arc-left" />
+      {/* Right arc */}
+      <div className="pointer-events-none absolute inset-0 bg-arc-right" />
+      {/* Top purple glow */}
       <div className="pointer-events-none absolute left-1/2 top-0 h-[700px] w-[1400px] -translate-x-1/2 bg-glow-hero" />
-      {/* Background glow — top center cyan overlay */}
+      {/* Top cyan glow */}
       <div className="pointer-events-none absolute left-1/2 top-0 h-[500px] w-[1000px] -translate-x-1/2 bg-glow-hero-cyan" />
-      {/* Subtle dot pattern */}
-      <div className="pointer-events-none absolute inset-0 bg-dot-pattern opacity-[0.12]" />
 
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-bg/82 backdrop-blur-xl">
