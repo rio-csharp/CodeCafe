@@ -37,11 +37,25 @@ export function AboutPage() {
 
       <main className="mx-auto max-w-[640px] px-6 py-16">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-6 grid h-20 w-20 place-items-center rounded-2xl border border-accent/20 bg-accent/8 text-accent">
-            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-              <circle cx="12" cy="7" r="4" />
-            </svg>
+          <div className="mx-auto mb-6 h-20 w-20 overflow-hidden rounded-2xl border border-accent/20">
+            <img
+              src="https://github.com/rio-csharp.png"
+              alt="Yao"
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                target.parentElement?.classList.add('grid', 'place-items-center', 'bg-accent/8', 'text-accent')
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+                svg.setAttribute('viewBox', '0 0 24 24')
+                svg.setAttribute('width', '40')
+                svg.setAttribute('height', '40')
+                svg.setAttribute('fill', 'none')
+                svg.setAttribute('stroke', 'currentColor')
+                svg.setAttribute('stroke-width', '1.5')
+                target.parentElement?.appendChild(svg)
+              }}
+            />
           </div>
           <h1 className="m-0 text-3xl font-bold tracking-tight">About</h1>
         </div>
