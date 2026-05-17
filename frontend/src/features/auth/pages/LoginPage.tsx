@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -17,7 +16,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
-  const [hint, setHint] = useState<string | null>(null)
+  const navigate = useNavigate()
   const loginMutation = useLogin()
 
   const {
@@ -28,14 +27,10 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   })
 
-  useEffect(() => {
-    if (!hint) return
-    const timer = setTimeout(() => setHint(null), 3000)
-    return () => clearTimeout(timer)
-  }, [hint])
-
   const onSubmit = (data: LoginFormData) => {
-    loginMutation.mutate(data)
+    loginMutation.mutate(data, {
+      onSuccess: () => navigate('/dashboard'),
+    })
   }
 
   return (
@@ -85,13 +80,7 @@ export default function LoginPage() {
             <label className="block text-sm font-medium text-gray-900">
               Password
             </label>
-            <button
-              type="button"
-              onClick={() => setHint('Password recovery is not supported yet. Coming soon.')}
-              className="text-xs text-brand-brown hover:underline"
-            >
-              Forgot password?
-            </button>
+            <span className="text-xs text-gray-300">Forgot password? Coming soon</span>
           </div>
           <PasswordInput
             placeholder="Enter your password"
@@ -99,10 +88,6 @@ export default function LoginPage() {
             {...register('password')}
           />
         </div>
-
-        {hint && (
-          <p className="text-sm text-brand-brown text-center">{hint}</p>
-        )}
 
         <button
           type="submit"
@@ -124,11 +109,12 @@ export default function LoginPage() {
 
       <button
         type="button"
-        onClick={() => setHint('GitHub login is not supported yet. Coming soon.')}
-        className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+        disabled
+        className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-100 bg-gray-50 py-2.5 text-sm font-medium text-gray-300 cursor-not-allowed"
       >
-        <GitHubIcon className="h-5 w-5" />
+        <GitHubIcon className="h-5 w-5 opacity-50" />
         Continue with GitHub
+        <span className="text-xs text-gray-300">(Coming soon)</span>
       </button>
     </AuthLayout>
   )

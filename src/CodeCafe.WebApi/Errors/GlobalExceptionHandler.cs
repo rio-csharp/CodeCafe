@@ -10,16 +10,14 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var (statusCode, code, detail) = exception switch
+        var (statusCode, error) = exception switch
         {
             AntiforgeryValidationException => (
                 StatusCodes.Status400BadRequest,
-                "invalid_csrf_token",
-                "The CSRF token is missing or invalid."),
+                new ApiError("invalid_csrf_token", "The CSRF token is missing or invalid.")),
             _ => (
                 StatusCodes.Status500InternalServerError,
-                "internal_error",
-                "An unexpected error occurred.")
+                new ApiError("internal_error", "An unexpected error occurred."))
         };
 
         if (statusCode == StatusCodes.Status500InternalServerError)
@@ -27,11 +25,8 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             logger.LogError(exception, "Unhandled exception.");
         }
 
-        var problem = ProblemFactory.Create(statusCode, code, detail);
-
         httpContext.Response.StatusCode = statusCode;
-        httpContext.Response.ContentType = "application/problem+json";
-        await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
+        await httpContext.Response.WriteAsJsonAsync(error, cancellationToken);
 
         return true;
     }

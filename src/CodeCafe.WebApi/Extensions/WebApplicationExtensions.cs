@@ -17,6 +17,7 @@ public static class WebApplicationExtensions
         app.UseSerilogRequestLogging();
         app.UseForwardedHeaders();
 
+        // Production HTTPS is enforced at the edge/ingress layer.
         if (!app.Environment.IsProduction())
         {
             app.UseHttpsRedirection();

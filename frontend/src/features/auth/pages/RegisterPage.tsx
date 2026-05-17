@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,16 +11,23 @@ import { useRegister } from '../hooks/useAuth'
 const registerSchema = z.object({
   displayName: z
     .string()
+    .trim()
     .min(2, 'Display name must be at least 2 characters')
     .max(40, 'Display name must be at most 40 characters'),
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).*$/,
+      'Password must include uppercase, lowercase, number, and special character'
+    ),
 })
 
 type RegisterFormData = z.infer<typeof registerSchema>
 
 export default function RegisterPage() {
-  const [hint, setHint] = useState<string | null>(null)
+  const navigate = useNavigate()
   const registerMutation = useRegister()
 
   const {
@@ -32,14 +38,15 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
   })
 
-  useEffect(() => {
-    if (!hint) return
-    const timer = setTimeout(() => setHint(null), 3000)
-    return () => clearTimeout(timer)
-  }, [hint])
-
   const onSubmit = (data: RegisterFormData) => {
-    registerMutation.mutate(data)
+    const trimmed = {
+      displayName: data.displayName.trim(),
+      email: data.email.trim(),
+      password: data.password,
+    }
+    registerMutation.mutate(trimmed, {
+      onSuccess: () => navigate('/dashboard'),
+    })
   }
 
   return (
@@ -116,13 +123,9 @@ export default function RegisterPage() {
             {...register('password')}
           />
           <p className="mt-1.5 text-xs text-gray-400">
-            At least 8 characters, includes letters and numbers
+            At least 8 characters, including uppercase, lowercase, number, and special character
           </p>
         </div>
-
-        {hint && (
-          <p className="text-sm text-brand-brown text-center">{hint}</p>
-        )}
 
         <button
           type="submit"
@@ -144,11 +147,12 @@ export default function RegisterPage() {
 
       <button
         type="button"
-        onClick={() => setHint('GitHub login is not supported yet. Coming soon.')}
-        className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+        disabled
+        className="w-full flex items-center justify-center gap-2 rounded-lg border border-gray-100 bg-gray-50 py-2.5 text-sm font-medium text-gray-300 cursor-not-allowed"
       >
-        <GitHubIcon className="h-5 w-5" />
+        <GitHubIcon className="h-5 w-5 opacity-50" />
         Continue with GitHub
+        <span className="text-xs text-gray-300">(Coming soon)</span>
       </button>
     </AuthLayout>
   )

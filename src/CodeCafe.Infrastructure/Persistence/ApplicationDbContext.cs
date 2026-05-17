@@ -1,7 +1,7 @@
 using CodeCafe.Application.Common.Interfaces;
+using CodeCafe.Domain.Common.Interfaces;
 using CodeCafe.Infrastructure.Identity;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
-using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -19,35 +19,13 @@ public sealed class ApplicationDbContext(
     {
         base.OnModelCreating(builder);
 
-        builder.Entity<ApplicationUser>(entity =>
-        {
-            entity.Property(user => user.DisplayName)
-                .HasMaxLength(40)
-                .IsRequired();
-
-            entity.Property(user => user.CreatedAtUtc)
-                .IsRequired();
-
-            entity.Property(user => user.UpdatedAtUtc);
-        });
-    }
-
-    public override int SaveChanges()
-    {
-        SetAuditFields();
-        return base.SaveChanges();
+        builder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         SetAuditFields();
         return base.SaveChanges(acceptAllChangesOnSuccess);
-    }
-
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        SetAuditFields();
-        return base.SaveChangesAsync(cancellationToken);
     }
 
     public override Task<int> SaveChangesAsync(
@@ -62,15 +40,16 @@ public sealed class ApplicationDbContext(
     {
         var now = dateTimeProvider.UtcNow;
 
-        foreach (var entry in ChangeTracker.Entries<ApplicationUser>())
+        foreach (var entry in ChangeTracker.Entries<IAuditableEntity>())
         {
             if (entry.State == EntityState.Added)
             {
                 entry.Entity.CreatedAtUtc = now;
+                entry.Entity.UpdatedAtUtc = now;
             }
-
-            if (entry.State == EntityState.Modified)
+            else if (entry.State == EntityState.Modified)
             {
+                entry.Property(x => x.CreatedAtUtc).IsModified = false;
                 entry.Entity.UpdatedAtUtc = now;
             }
         }

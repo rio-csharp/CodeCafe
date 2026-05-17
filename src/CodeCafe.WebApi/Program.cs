@@ -18,7 +18,9 @@ try
     app.UseCodeCafePipeline();
     await app.RunAsync();
 }
-catch (Exception exception) when (exception.GetType().Name != "HostAbortedException")
+catch (Exception exception) when (
+    !builder.Environment.IsEnvironment("Testing")
+    && exception.GetType().Name != "HostAbortedException")
 {
     Log.Fatal(exception, "CodeCafe API terminated unexpectedly.");
 }

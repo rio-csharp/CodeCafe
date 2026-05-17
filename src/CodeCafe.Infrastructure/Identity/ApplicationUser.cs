@@ -1,8 +1,9 @@
+using CodeCafe.Domain.Common.Interfaces;
 using Microsoft.AspNetCore.Identity;
 
 namespace CodeCafe.Infrastructure.Identity;
 
-public sealed class ApplicationUser : IdentityUser<Guid>
+public sealed class ApplicationUser : IdentityUser<Guid>, IAuditableEntity
 {
     public required string DisplayName { get; set; }
 

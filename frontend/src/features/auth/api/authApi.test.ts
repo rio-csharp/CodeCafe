@@ -51,6 +51,50 @@ describe('authApi', () => {
         password: 'password123',
       })
     })
+
+    it('clears CSRF token after login changes the current user', async () => {
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ token: 'anonymous-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: vi
+            .fn()
+            .mockResolvedValue(
+              JSON.stringify({
+                user: {
+                  id: '1',
+                  email: 'test@test.com',
+                  displayName: 'Test',
+                },
+              }),
+            ),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ token: 'authenticated-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: vi.fn().mockResolvedValue(''),
+        })
+
+      globalThis.fetch = mockFetch
+
+      await login({
+        email: 'test@test.com',
+        password: 'password123',
+      })
+      await logout()
+
+      expect(mockFetch).toHaveBeenCalledTimes(4)
+      const [, logoutOptions] = mockFetch.mock.calls[3]
+      expect(logoutOptions.headers.get('X-CSRF-TOKEN')).toBe(
+        'authenticated-token',
+      )
+    })
   })
 
   describe('register', () => {
@@ -93,6 +137,50 @@ describe('authApi', () => {
         displayName: 'New',
       })
     })
+
+    it('clears CSRF token after register signs in the new user', async () => {
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ token: 'anonymous-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: vi
+            .fn()
+            .mockResolvedValue(
+              JSON.stringify({
+                user: {
+                  id: '2',
+                  email: 'new@test.com',
+                  displayName: 'New',
+                },
+              }),
+            ),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ token: 'authenticated-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: vi.fn().mockResolvedValue(''),
+        })
+
+      globalThis.fetch = mockFetch
+
+      await register({
+        email: 'new@test.com',
+        password: 'password123',
+        displayName: 'New',
+      })
+      await logout()
+
+      const [, logoutOptions] = mockFetch.mock.calls[3]
+      expect(logoutOptions.headers.get('X-CSRF-TOKEN')).toBe(
+        'authenticated-token',
+      )
+    })
   })
 
   describe('logout', () => {
@@ -114,6 +202,48 @@ describe('authApi', () => {
       const [, logoutOptions] = mockFetch.mock.calls[1]
       expect(logoutOptions.method).toBe('POST')
       expect(logoutOptions.credentials).toBe('include')
+    })
+
+    it('clears CSRF token after logout changes back to anonymous user', async () => {
+      const mockFetch = vi.fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ token: 'authenticated-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: vi.fn().mockResolvedValue(''),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ token: 'anonymous-token' }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          text: vi
+            .fn()
+            .mockResolvedValue(
+              JSON.stringify({
+                user: {
+                  id: '1',
+                  email: 'test@test.com',
+                  displayName: 'Test',
+                },
+              }),
+            ),
+        })
+
+      globalThis.fetch = mockFetch
+
+      await logout()
+      await login({
+        email: 'test@test.com',
+        password: 'password123',
+      })
+
+      expect(mockFetch).toHaveBeenCalledTimes(4)
+      const [, loginOptions] = mockFetch.mock.calls[3]
+      expect(loginOptions.headers.get('X-CSRF-TOKEN')).toBe('anonymous-token')
     })
   })
 

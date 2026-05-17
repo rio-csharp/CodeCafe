@@ -1,34 +1,34 @@
-using System.Net;
-using System.Net.Http.Json;
-using System.Text.Json;
-using CodeCafe.Application;
-using CodeCafe.Application.Common.Interfaces;
 using CodeCafe.Infrastructure.Persistence;
-using CodeCafe.WebApi.Extensions;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace CodeCafe.WebApi.Tests.Auth;
 
-public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
+public sealed class AuthApiTests : IClassFixture<AuthApiFactory>
 {
-    private readonly AuthApiFixture _fixture;
+    private readonly AuthApiFactory _factory;
 
-    public AuthApiTests(AuthApiFixture fixture)
+    public AuthApiTests(AuthApiFactory factory)
     {
-        _fixture = fixture;
+        _factory = factory;
     }
 
     [Fact]
     public async Task AuthFlow_WithValidCsrf_RegistersReadsCurrentUserLogsOutAndLogsIn()
     {
-        using var client = _fixture.CreateBrowserClient();
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
 
         var email = $"smoke+{Guid.NewGuid():N}@example.com";
         var registerCsrf = await GetCsrfTokenAsync(client);
@@ -47,6 +47,7 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
 
         var registerResponse = await client.SendAsync(register);
         registerResponse.EnsureSuccessStatusCode();
+        AssertAuthCookieSet(registerResponse);
 
         var currentUser = await client.GetFromJsonAsync<AuthResponse>("/api/auth/me");
         Assert.Equal(email, currentUser?.User.Email);
@@ -61,6 +62,7 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
 
         var logoutResponse = await client.SendAsync(logout);
         logoutResponse.EnsureSuccessStatusCode();
+        AssertAuthCookieExpired(logoutResponse);
 
         var unauthorizedMe = await client.GetAsync("/api/auth/me");
         Assert.Equal(HttpStatusCode.Unauthorized, unauthorizedMe.StatusCode);
@@ -81,9 +83,65 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
     }
 
     [Fact]
+    public async Task Register_WithDuplicateEmail_ReturnsEmailAlreadyRegistered()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        var email = $"duplicate+{Guid.NewGuid():N}@example.com";
+        await RegisterAsync(client, email, "203.0.113.30");
+
+        var response = await RegisterAsync(client, email, "203.0.113.31");
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("email_already_registered", await ReadErrorCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Logout_WithoutAuthenticatedUser_ReturnsUnauthorized()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        var csrf = await GetCsrfTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/logout")
+        {
+            Content = JsonContent.Create(new { })
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Login_WhenAlreadyAuthenticated_AllowsRepeatedLogin()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        var email = $"repeat-login+{Guid.NewGuid():N}@example.com";
+        await RegisterAsync(client, email, "203.0.113.32");
+
+        var response = await LoginAsync(client, email, "Password123!", "203.0.113.32");
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
     public async Task Login_WithWrongPassword_ReturnsInvalidCredentials()
     {
-        using var client = _fixture.CreateBrowserClient();
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
 
         var email = $"wrong-password+{Guid.NewGuid():N}@example.com";
         await RegisterAsync(client, email, "203.0.113.20");
@@ -102,14 +160,68 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemResponse>();
-        Assert.Equal("invalid_credentials", problem?.Code);
+        Assert.Equal("invalid_credentials", await ReadErrorCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Register_WithInvalidBody_ReturnsInvalidRequest()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        var csrf = await GetCsrfTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/register")
+        {
+            Content = JsonContent.Create(new
+            {
+                email = "bad",
+                password = "123",
+                displayName = ""
+            })
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid_request", await ReadErrorCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Register_WithWhitespaceDisplayName_ReturnsInvalidDisplayName()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        var csrf = await GetCsrfTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/register")
+        {
+            Content = JsonContent.Create(new
+            {
+                email = $"blank-name+{Guid.NewGuid():N}@example.com",
+                password = "Password123!",
+                displayName = "   "
+            })
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid_request", await ReadErrorCodeAsync(response));
     }
 
     [Fact]
     public async Task Register_WithoutCsrfToken_ReturnsInvalidCsrfToken()
     {
-        using var client = _fixture.CreateBrowserClient();
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
 
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/register")
         {
@@ -125,14 +237,42 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemResponse>();
-        Assert.Equal("invalid_csrf_token", problem?.Code);
+        Assert.Equal("invalid_csrf_token", await ReadErrorCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task Register_WithInvalidCsrfToken_ReturnsInvalidCsrfToken()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/register")
+        {
+            Content = JsonContent.Create(new
+            {
+                email = $"csrf-invalid+{Guid.NewGuid():N}@example.com",
+                password = "Password123!",
+                displayName = "Yao"
+            })
+        };
+        request.Headers.Add("X-CSRF-TOKEN", "not-a-valid-token");
+        request.Headers.Add("X-Forwarded-For", $"203.0.113.{Random.Shared.Next(50, 199)}");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("invalid_csrf_token", await ReadErrorCodeAsync(response));
     }
 
     [Fact]
     public async Task Register_RateLimitsByClientIp()
     {
-        using var client = _fixture.CreateBrowserClient();
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
         var clientIp = $"198.51.100.{Random.Shared.Next(1, 200)}";
 
         for (var attempt = 1; attempt <= 3; attempt++)
@@ -144,11 +284,60 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
         var limited = await RegisterAsync(client, $"limit-4+{Guid.NewGuid():N}@example.com", clientIp);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
-        var problem = await limited.Content.ReadFromJsonAsync<ProblemResponse>();
-        Assert.Equal("rate_limited", problem?.Code);
+        Assert.Equal("rate_limited", await ReadErrorCodeAsync(limited));
     }
 
-    private static async Task<HttpResponseMessage> RegisterAsync(BrowserClient client, string email, string clientIp)
+    [Fact]
+    public async Task Login_RateLimitsByClientIp()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        var clientIp = $"198.51.100.{Random.Shared.Next(1, 200)}";
+
+        for (var attempt = 1; attempt <= 10; attempt++)
+        {
+            var response = await LoginAsync(
+                client,
+                $"unknown-{attempt}+{Guid.NewGuid():N}@example.com",
+                "WrongPassword123!",
+                clientIp);
+            Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        }
+
+        var limited = await LoginAsync(
+            client,
+            $"unknown-11+{Guid.NewGuid():N}@example.com",
+            "WrongPassword123!",
+            clientIp);
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        Assert.Equal("rate_limited", await ReadErrorCodeAsync(limited));
+    }
+
+    [Fact]
+    public async Task Register_WhenRegistrationDisabled_ReturnsForbidden()
+    {
+        using var factory = new AuthApiFactory
+        {
+            RegistrationEnabled = false
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        var response = await RegisterAsync(
+            client,
+            $"disabled+{Guid.NewGuid():N}@example.com",
+            "203.0.113.40");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("registration_disabled", await ReadErrorCodeAsync(response));
+    }
+
+    private static async Task<HttpResponseMessage> RegisterAsync(HttpClient client, string email, string clientIp)
     {
         var csrf = await GetCsrfTokenAsync(client);
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/register")
@@ -166,7 +355,28 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
         return await client.SendAsync(request);
     }
 
-    private static async Task<string> GetCsrfTokenAsync(BrowserClient client)
+    private static async Task<HttpResponseMessage> LoginAsync(
+        HttpClient client,
+        string email,
+        string password,
+        string clientIp)
+    {
+        var csrf = await GetCsrfTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
+        {
+            Content = JsonContent.Create(new
+            {
+                email,
+                password
+            })
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+        request.Headers.Add("X-Forwarded-For", clientIp);
+
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<string> GetCsrfTokenAsync(HttpClient client)
     {
         using var response = await client.GetAsync("/api/auth/csrf");
         response.EnsureSuccessStatusCode();
@@ -175,151 +385,74 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
         return document.RootElement.GetProperty("token").GetString() ?? throw new InvalidOperationException("Missing CSRF token.");
     }
 
+    private static async Task<string?> ReadErrorCodeAsync(HttpResponseMessage response)
+    {
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.TryGetProperty("code", out var camelCaseCode)
+            ? camelCaseCode.GetString()
+            : document.RootElement.GetProperty("Code").GetString();
+    }
+
+    private static void AssertAuthCookieSet(HttpResponseMessage response)
+    {
+        Assert.Contains(response.Headers.GetValues("Set-Cookie"), value =>
+            value.StartsWith("CodeCafe.Auth=", StringComparison.Ordinal)
+            && !value.StartsWith("CodeCafe.Auth=;", StringComparison.Ordinal));
+    }
+
+    private static void AssertAuthCookieExpired(HttpResponseMessage response)
+    {
+        Assert.Contains(response.Headers.GetValues("Set-Cookie"), value =>
+            value.StartsWith("CodeCafe.Auth=", StringComparison.Ordinal)
+            && value.Contains("expires=", StringComparison.OrdinalIgnoreCase));
+    }
+
     private sealed record AuthResponse(UserResponse User);
 
     private sealed record UserResponse(Guid Id, string Email, string DisplayName);
-
-    private sealed record ProblemResponse(string Code);
 }
 
-public sealed class AuthApiFixture : IAsyncLifetime
+public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
 {
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
-    private WebApplication? _app;
 
-    public async Task InitializeAsync()
+    public bool RegistrationEnabled { get; set; } = true;
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        _connection.Open();
-
-        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        builder.UseEnvironment("Testing");
+        builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
-            EnvironmentName = "Testing"
-        });
-
-        builder.WebHost.UseTestServer();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Database=codecafe_tests",
-            ["Cors:AllowedOrigins:0"] = "http://localhost"
-        });
-
-        builder.AddCodeCafeSerilog();
-        builder.Services.AddApplication();
-        builder.Services.AddSingleton<IDateTimeProvider, TestDateTimeProvider>();
-        builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        {
-            options.UseSqlite(_connection);
-        });
-        builder.Services.AddWebApiServices(builder.Configuration, builder.Environment);
-        builder.Services.AddCodeCafeForwardedHeaders();
-
-        _app = builder.Build();
-        _app.UseCodeCafePipeline();
-
-        using var scope = _app.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        await dbContext.Database.EnsureCreatedAsync();
-
-        await _app.StartAsync();
-    }
-
-    public BrowserClient CreateBrowserClient()
-    {
-        return new BrowserClient(_app?.GetTestClient() ?? throw new InvalidOperationException("Test host is not started."));
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_app is not null)
-        {
-            await _app.DisposeAsync();
-        }
-
-        _connection.Dispose();
-    }
-}
-
-public sealed class TestDateTimeProvider : IDateTimeProvider
-{
-    public DateTimeOffset UtcNow => DateTimeOffset.UtcNow;
-}
-
-public sealed class BrowserClient : IDisposable
-{
-    private readonly HttpClient _client;
-    private readonly Dictionary<string, string> _cookies = [];
-
-    public BrowserClient(HttpClient client)
-    {
-        _client = client;
-    }
-
-    public Task<HttpResponseMessage> GetAsync(string requestUri)
-    {
-        return SendAsync(new HttpRequestMessage(HttpMethod.Get, requestUri));
-    }
-
-    public async Task<T?> GetFromJsonAsync<T>(string requestUri)
-    {
-        using var response = await GetAsync(requestUri);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<T>();
-    }
-
-    public Task<HttpResponseMessage> PostAsJsonAsync<T>(string requestUri, T value)
-    {
-        return SendAsync(new HttpRequestMessage(HttpMethod.Post, requestUri)
-        {
-            Content = JsonContent.Create(value)
-        });
-    }
-
-    public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)
-    {
-        if (_cookies.Count > 0)
-        {
-            request.Headers.TryAddWithoutValidation(
-                "Cookie",
-                string.Join("; ", _cookies.Select(cookie => $"{cookie.Key}={cookie.Value}")));
-        }
-
-        var response = await _client.SendAsync(request);
-
-        foreach (var header in response.Headers.Where(header => header.Key.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase)))
-        {
-            foreach (var value in header.Value)
+            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                StoreCookie(value);
+                ["Auth:RegistrationEnabled"] = RegistrationEnabled.ToString(),
+                ["Cors:AllowedOrigins:0"] = "http://localhost"
+            });
+        });
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+            services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
+            services.AddDbContext<ApplicationDbContext>(options =>
+            {
+                options.UseSqlite(_connection);
+            });
+
+            if (_connection.State != System.Data.ConnectionState.Open)
+            {
+                _connection.Open();
             }
-        }
 
-        return response;
+            using var serviceProvider = services.BuildServiceProvider();
+            using var scope = serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            dbContext.Database.EnsureCreated();
+        });
     }
 
-    public void Dispose()
+    public new void Dispose()
     {
-        _client.Dispose();
-    }
-
-    private void StoreCookie(string setCookieHeader)
-    {
-        var pair = setCookieHeader.Split(';', 2)[0];
-        var separatorIndex = pair.IndexOf('=');
-        if (separatorIndex <= 0)
-        {
-            return;
-        }
-
-        var name = pair[..separatorIndex];
-        var value = pair[(separatorIndex + 1)..];
-
-        if (string.IsNullOrEmpty(value))
-        {
-            _cookies.Remove(name);
-        }
-        else
-        {
-            _cookies[name] = value;
-        }
+        _connection.Dispose();
+        base.Dispose();
     }
 }

@@ -16,20 +16,12 @@ function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  useEffect(() => {
-    if (logout.isSuccess) {
-      navigate('/')
-      logout.reset()
-    }
-    // Depending on the full `logout` object would re-run the effect on every
-    // render because react-query returns a new mutation object each time.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [logout.isSuccess, logout.reset, navigate])
-
   const isActive = (path: string) => location.pathname === path
 
   const handleLogout = () => {
-    logout.mutate()
+    logout.mutate(undefined, {
+      onSuccess: () => navigate('/'),
+    })
   }
 
   return (

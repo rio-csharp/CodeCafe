@@ -1,4 +1,3 @@
-using CodeCafe.Application;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeCafe.Application.Tests;

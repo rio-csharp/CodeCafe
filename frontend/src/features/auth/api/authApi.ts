@@ -1,24 +1,29 @@
-import { apiFetch, ApiError } from '../../../lib/apiClient'
+import { apiFetch, ApiError, clearCsrfToken } from '../../../lib/apiClient'
 import type { AuthResponse, LoginRequest, RegisterRequest } from '../types'
 
 export async function login(data: LoginRequest): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/api/auth/login', {
+  const response = await apiFetch<AuthResponse>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify(data),
   })
+  clearCsrfToken()
+  return response
 }
 
 export async function register(data: RegisterRequest): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>('/api/auth/register', {
+  const response = await apiFetch<AuthResponse>('/api/auth/register', {
     method: 'POST',
     body: JSON.stringify(data),
   })
+  clearCsrfToken()
+  return response
 }
 
 export async function logout(): Promise<void> {
   await apiFetch<void>('/api/auth/logout', {
     method: 'POST',
   })
+  clearCsrfToken()
 }
 
 export async function getMe(): Promise<AuthResponse | null> {

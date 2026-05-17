@@ -11,7 +11,7 @@ public static class ProblemFactory
             Status = statusCode,
             Title = code,
             Detail = detail,
-            Type = $"https://codecafe.dev/errors/{code}",
+            Type = $"https://codes.cafe/errors/{code}"
         };
         problem.Extensions["code"] = code;
         return problem;
