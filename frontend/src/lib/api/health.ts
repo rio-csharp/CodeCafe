@@ -17,7 +17,7 @@ export async function fetchHealth(): Promise<HealthResult> {
     }
 
     return { status: 'ok' }
-  } catch (_err) {
+  } catch {
     // Network error, CORS, or certificate issue
     return { status: 'offline' }
   }
