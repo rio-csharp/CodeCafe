@@ -43,7 +43,7 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
             })
         };
         register.Headers.Add("X-CSRF-TOKEN", registerCsrf);
-        register.Headers.Add("CF-Connecting-IP", "203.0.113.10");
+        register.Headers.Add("X-Forwarded-For", "203.0.113.10");
 
         var registerResponse = await client.SendAsync(register);
         registerResponse.EnsureSuccessStatusCode();
@@ -102,8 +102,8 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
         var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-        var error = await response.Content.ReadFromJsonAsync<AuthError>();
-        Assert.Equal("invalid_credentials", error?.Code);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemResponse>();
+        Assert.Equal("invalid_credentials", problem?.Code);
     }
 
     [Fact]
@@ -111,16 +111,22 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
     {
         using var client = _fixture.CreateBrowserClient();
 
-        var response = await client.PostAsJsonAsync("/api/auth/register", new
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/auth/register")
         {
-            email = $"csrf+{Guid.NewGuid():N}@example.com",
-            password = "Password123!",
-            displayName = "Yao"
-        });
+            Content = JsonContent.Create(new
+            {
+                email = $"csrf+{Guid.NewGuid():N}@example.com",
+                password = "Password123!",
+                displayName = "Yao"
+            })
+        };
+        request.Headers.Add("X-Forwarded-For", $"203.0.113.{Random.Shared.Next(50, 199)}");
+
+        var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var error = await response.Content.ReadFromJsonAsync<AuthError>();
-        Assert.Equal("invalid_csrf_token", error?.Code);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemResponse>();
+        Assert.Equal("invalid_csrf_token", problem?.Code);
     }
 
     [Fact]
@@ -138,8 +144,8 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
         var limited = await RegisterAsync(client, $"limit-4+{Guid.NewGuid():N}@example.com", clientIp);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
-        var error = await limited.Content.ReadFromJsonAsync<AuthError>();
-        Assert.Equal("rate_limited", error?.Code);
+        var problem = await limited.Content.ReadFromJsonAsync<ProblemResponse>();
+        Assert.Equal("rate_limited", problem?.Code);
     }
 
     private static async Task<HttpResponseMessage> RegisterAsync(BrowserClient client, string email, string clientIp)
@@ -155,7 +161,7 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
             })
         };
         request.Headers.Add("X-CSRF-TOKEN", csrf);
-        request.Headers.Add("CF-Connecting-IP", clientIp);
+        request.Headers.Add("X-Forwarded-For", clientIp);
 
         return await client.SendAsync(request);
     }
@@ -173,7 +179,7 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFixture>
 
     private sealed record UserResponse(Guid Id, string Email, string DisplayName);
 
-    private sealed record AuthError(string Code, string Message);
+    private sealed record ProblemResponse(string Code);
 }
 
 public sealed class AuthApiFixture : IAsyncLifetime

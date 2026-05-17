@@ -1,4 +1,3 @@
-using CodeCafe.WebApi.Auth;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
 
@@ -11,14 +10,16 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var (statusCode, error) = exception switch
+        var (statusCode, code, detail) = exception switch
         {
             AntiforgeryValidationException => (
                 StatusCodes.Status400BadRequest,
-                new AuthError("invalid_csrf_token", "The CSRF token is missing or invalid.")),
+                "invalid_csrf_token",
+                "The CSRF token is missing or invalid."),
             _ => (
                 StatusCodes.Status500InternalServerError,
-                new AuthError("internal_error", "An unexpected error occurred."))
+                "internal_error",
+                "An unexpected error occurred.")
         };
 
         if (statusCode == StatusCodes.Status500InternalServerError)
@@ -26,8 +27,11 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             logger.LogError(exception, "Unhandled exception.");
         }
 
+        var problem = ProblemFactory.Create(statusCode, code, detail);
+
         httpContext.Response.StatusCode = statusCode;
-        await httpContext.Response.WriteAsJsonAsync(error, cancellationToken);
+        httpContext.Response.ContentType = "application/problem+json";
+        await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
 
         return true;
     }

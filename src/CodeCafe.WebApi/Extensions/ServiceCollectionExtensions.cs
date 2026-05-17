@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Options;
 using System.Threading.RateLimiting;
 
@@ -31,10 +32,10 @@ public static class ServiceCollectionExtensions
         services.Configure<ApiBehaviorOptions>(options =>
         {
             options.InvalidModelStateResponseFactory = context =>
-            {
-                var error = new AuthError("invalid_request", "The request body is invalid.");
-                return new BadRequestObjectResult(error);
-            };
+                ProblemFactory.Result(
+                    StatusCodes.Status400BadRequest,
+                    "invalid_request",
+                    "The request body is invalid.");
         });
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddOpenApi();
@@ -125,7 +126,7 @@ public static class ServiceCollectionExtensions
         services.AddAntiforgery(options =>
         {
             options.HeaderName = "X-CSRF-TOKEN";
-            options.Cookie.Name = "CodeCafe.Csrf";
+            options.Cookie.Name = $"CodeCafe.Csrf.{environment.EnvironmentName}";
             options.Cookie.HttpOnly = false;
             options.Cookie.SameSite = SameSiteMode.Lax;
             options.Cookie.SecurePolicy = environment.IsProduction()
@@ -154,10 +155,14 @@ public static class ServiceCollectionExtensions
                     context.HttpContext.Request.Path,
                     clientIpAddressAccessor.GetClientIpAddress(context.HttpContext));
 
+                var problem = ProblemFactory.Create(
+                    StatusCodes.Status429TooManyRequests,
+                    "rate_limited",
+                    "Too many requests. Please try again later.");
+
                 context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-                await context.HttpContext.Response.WriteAsJsonAsync(
-                    new AuthError("rate_limited", "Too many requests. Please try again later."),
-                    cancellationToken);
+                context.HttpContext.Response.ContentType = "application/problem+json";
+                await context.HttpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
             };
 
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(_ =>
@@ -193,7 +198,7 @@ public static class ServiceCollectionExtensions
     {
         services.ConfigureApplicationCookie(options =>
         {
-            options.Cookie.Name = "CodeCafe.Auth";
+            options.Cookie.Name = $"CodeCafe.Auth.{environment.EnvironmentName}";
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Lax;
             options.Cookie.SecurePolicy = environment.IsProduction()
@@ -278,8 +283,13 @@ public static class ServiceCollectionExtensions
         services.Configure<ForwardedHeadersOptions>(options =>
         {
             options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-            options.KnownIPNetworks.Clear();
             options.KnownProxies.Clear();
+            options.KnownIPNetworks.Clear();
+            foreach (var network in TrustedProxyNetworks.All)
+            {
+                options.KnownIPNetworks.Add(network);
+            }
+            options.ForwardLimit = 2;
         });
 
         return services;

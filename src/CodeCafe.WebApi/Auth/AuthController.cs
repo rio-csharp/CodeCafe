@@ -1,4 +1,5 @@
 using CodeCafe.Infrastructure.Identity;
+using CodeCafe.WebApi.Errors;
 using CodeCafe.WebApi.Networking;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -21,8 +22,9 @@ public sealed class AuthController(
     [HttpPost("register")]
     [EnableRateLimiting("registration")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType<AuthError>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<AuthError>(StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
         var clientIp = clientIpAddressAccessor.GetClientIpAddress(HttpContext);
@@ -30,23 +32,31 @@ public sealed class AuthController(
         if (!authOptions.Value.RegistrationEnabled)
         {
             logger.LogInformation("Registration rejected because it is disabled. ClientIp={ClientIp}", clientIp);
-            return StatusCode(StatusCodes.Status403Forbidden,
-                new AuthError("registration_disabled", "Registration is currently disabled."));
+            return ProblemFactory.Result(
+                StatusCodes.Status403Forbidden,
+                "registration_disabled",
+                "Registration is currently disabled.");
         }
 
-        var email = request.Email.Trim();
+        var email = request.Email.Trim().ToLowerInvariant();
         var displayName = request.DisplayName.Trim();
 
         if (displayName.Length == 0)
         {
-            return BadRequest(new AuthError("invalid_display_name", "Display name is required."));
+            return ProblemFactory.Result(
+                StatusCodes.Status400BadRequest,
+                "invalid_display_name",
+                "Display name is required.");
         }
 
         var existingUser = await userManager.FindByEmailAsync(email);
         if (existingUser is not null)
         {
             logger.LogInformation("Registration rejected for existing email. ClientIp={ClientIp}", clientIp);
-            return Conflict(new AuthError("email_already_registered", "A user with this email already exists."));
+            return ProblemFactory.Result(
+                StatusCodes.Status409Conflict,
+                "email_already_registered",
+                "A user with this email already exists.");
         }
 
         var user = new ApplicationUser
@@ -65,7 +75,10 @@ public sealed class AuthController(
                 clientIp,
                 string.Join(", ", result.Errors.Select(error => error.Code)));
 
-            return BadRequest(new AuthError("registration_failed", "Registration failed. Please check the submitted values."));
+            return ProblemFactory.Result(
+                StatusCodes.Status400BadRequest,
+                "registration_failed",
+                "Registration failed. Please check the submitted values.");
         }
 
         await signInManager.SignInAsync(user, isPersistent: true);
@@ -77,11 +90,11 @@ public sealed class AuthController(
 
     [HttpPost("login")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType<AuthError>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var clientIp = clientIpAddressAccessor.GetClientIpAddress(HttpContext);
-        var email = request.Email.Trim();
+        var email = request.Email.Trim().ToLowerInvariant();
         var user = await userManager.FindByEmailAsync(email);
 
         if (user is null)
@@ -131,9 +144,12 @@ public sealed class AuthController(
             : Ok(new AuthResponse(ToResponse(user)));
     }
 
-    private UnauthorizedObjectResult InvalidCredentials()
+    private ObjectResult InvalidCredentials()
     {
-        return Unauthorized(new AuthError("invalid_credentials", "Invalid email or password."));
+        return ProblemFactory.Result(
+            StatusCodes.Status401Unauthorized,
+            "invalid_credentials",
+            "Invalid email or password.");
     }
 
     private static UserResponse ToResponse(ApplicationUser user)
