@@ -6,6 +6,10 @@ metadata:
   labels:
     {{- include "codecafe.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
+  {{- with .Values.frontend.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.frontend.ingress.className | quote }}
   {{- if .Values.frontend.ingress.tls.enabled }}

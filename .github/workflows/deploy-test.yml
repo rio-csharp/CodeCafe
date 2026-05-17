@@ -11,10 +11,6 @@ on:
       ci_run_id:
         description: CI workflow run id that produced artifacts.
         required: true
-      git_ref:
-        description: Branch, tag, or commit SHA to deploy to test.
-        required: false
-        default: release/1.0
 
 permissions:
   actions: read
@@ -51,8 +47,6 @@ jobs:
 
             core.setOutput('skip', 'false');
             core.setOutput('ci_run_id', isDispatch ? '${{ inputs.ci_run_id }}' : String(run.id));
-            core.setOutput('ref', isDispatch ? '${{ inputs.git_ref }}' : run.head_sha);
-            core.setOutput('head_sha', isDispatch ? '${{ inputs.git_ref }}' : run.head_sha);
 
       - name: Download CI artifacts
         if: steps.ci.outputs.skip != 'true'
@@ -75,15 +69,22 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
 
+      - name: Configure SSH known hosts
+        if: steps.ci.outputs.skip != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' "${{ secrets.TEST_SSH_KNOWN_HOSTS }}" > "$RUNNER_TEMP/ssh/known_hosts"
+          echo "SSH_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
+
       - name: Deploy test environment
         if: steps.ci.outputs.skip != 'true'
         run: |
           CHART_ARCHIVE="codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
           REMOTE_DIR="/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           tar -czf "$CHART_ARCHIVE" -C .artifacts/helm .
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
+          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
             "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' TEST_FRONTEND_HOST='${{ vars.TEST_FRONTEND_HOST }}' TEST_API_HOST='${{ vars.TEST_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' bash -s" <<'REMOTE'
           set -euo pipefail
           trap 'rm -rf "$REMOTE_DIR"' EXIT
@@ -106,6 +107,7 @@ jobs:
             --set frontend.ingress.tls.secretName="$TLS_SECRET" \
             --set api.image.repository="$REGISTRY/$IMAGE_NAMESPACE/api" \
             --set api.image.tag="$IMAGE_TAG" \
+            --set api.cors.allowedOrigins[0]="https://$TEST_FRONTEND_HOST" \
             --set api.ingress.host="$TEST_API_HOST" \
             --set api.ingress.tls.secretName="$TLS_SECRET"
           REMOTE
@@ -113,13 +115,13 @@ jobs:
       - name: Wait for rollout
         if: steps.ci.outputs.skip != 'true'
         run: |
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
             "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin; kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=frontend --namespace $NAMESPACE --timeout=180s && kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=api --namespace $NAMESPACE --timeout=180s"
 
       - name: Smoke test
         if: steps.ci.outputs.skip != 'true'
         run: |
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
             "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' bash -s" <<'REMOTE'
           set -euo pipefail
           export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin

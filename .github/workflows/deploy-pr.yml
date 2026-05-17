@@ -104,11 +104,13 @@ jobs:
         if: steps.pr.outputs.skip != 'true'
         run: |
           . .artifacts/deployment/deployment.env
-          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
-          echo "NAMESPACE=${{ env.NAMESPACE_PREFIX }}-${{ steps.pr.outputs.pr_number }}" >> "$GITHUB_ENV"
-          echo "RELEASE=codecafe-pr-${{ steps.pr.outputs.pr_number }}" >> "$GITHUB_ENV"
-          echo "FRONTEND_HOST=pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
-          echo "API_HOST=api-pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
+          {
+            echo "IMAGE_TAG=$IMAGE_TAG"
+            echo "NAMESPACE=${{ env.NAMESPACE_PREFIX }}-${{ steps.pr.outputs.pr_number }}"
+            echo "RELEASE=codecafe-pr-${{ steps.pr.outputs.pr_number }}"
+            echo "FRONTEND_HOST=pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}"
+            echo "API_HOST=api-pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}"
+          } >> "$GITHUB_ENV"
 
       - name: Configure SSH
         if: steps.pr.outputs.skip != 'true'
@@ -116,15 +118,22 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
 
+      - name: Configure SSH known hosts
+        if: steps.pr.outputs.skip != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' "${{ secrets.TEST_SSH_KNOWN_HOSTS }}" > "$RUNNER_TEMP/ssh/known_hosts"
+          echo "SSH_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
+
       - name: Deploy preview
         if: steps.pr.outputs.skip != 'true'
         run: |
           CHART_ARCHIVE="codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
           REMOTE_DIR="/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           tar -czf "$CHART_ARCHIVE" -C .artifacts/helm .
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
+          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
             "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='${{ env.TLS_SECRET }}' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='$FRONTEND_HOST' API_HOST='$API_HOST' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' bash -s" <<'REMOTE'
           set -euo pipefail
           trap 'rm -rf "$REMOTE_DIR"' EXIT
@@ -148,6 +157,7 @@ jobs:
             --set api.replicaCount=1 \
             --set api.image.repository="$REGISTRY/$IMAGE_NAMESPACE/api" \
             --set api.image.tag="$IMAGE_TAG" \
+            --set api.cors.allowedOrigins[0]="https://$FRONTEND_HOST" \
             --set api.ingress.host="$API_HOST" \
             --set api.ingress.tls.secretName="$TLS_SECRET"
           REMOTE
@@ -155,8 +165,36 @@ jobs:
       - name: Wait for rollout
         if: steps.pr.outputs.skip != 'true'
         run: |
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
             "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin; kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=frontend --namespace $NAMESPACE --timeout=180s && kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=api --namespace $NAMESPACE --timeout=180s"
+
+      - name: Smoke test
+        if: steps.pr.outputs.skip != 'true'
+        run: |
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+            "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' bash -s" <<'REMOTE'
+          set -euo pipefail
+          export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
+          frontend_port=18080
+          api_port=18081
+          kubectl port-forward "service/${RELEASE}-frontend" "${frontend_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-frontend-port-forward.log 2>&1 &
+          frontend_pid=$!
+          kubectl port-forward "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-api-port-forward.log 2>&1 &
+          api_pid=$!
+          cleanup() {
+            kill "$frontend_pid" "$api_pid" 2>/dev/null || true
+            wait "$frontend_pid" "$api_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+          for _ in $(seq 1 20); do
+            if curl --silent --fail "http://127.0.0.1:${frontend_port}/" >/dev/null && curl --silent --fail "http://127.0.0.1:${api_port}/health/ready" >/dev/null; then
+              exit 0
+            fi
+            sleep 3
+          done
+          curl --fail "http://127.0.0.1:${frontend_port}/"
+          curl --fail "http://127.0.0.1:${api_port}/health/ready"
+          REMOTE
 
       - name: Comment preview
         if: steps.pr.outputs.skip != 'true'

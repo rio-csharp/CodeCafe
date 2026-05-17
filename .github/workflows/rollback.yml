@@ -27,9 +27,15 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.PRODUCTION_SSH_PRIVATE_KEY }}
 
+      - name: Configure SSH known hosts
+        run: |
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' "${{ secrets.PRODUCTION_SSH_KNOWN_HOSTS }}" > "$RUNNER_TEMP/ssh/known_hosts"
+          echo "SSH_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
+
       - name: Roll back Helm release
         run: |
-          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
+          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
             "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' REVISION='${{ inputs.revision }}' bash -s" <<'REMOTE'
           set -euo pipefail
           export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
@@ -49,7 +55,7 @@ jobs:
 
       - name: Smoke test
         run: |
-          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
+          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
             "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' bash -s" <<'REMOTE'
           set -euo pipefail
           export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
