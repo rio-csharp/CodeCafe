@@ -3,7 +3,7 @@ set -eu
 
 cat > /usr/share/nginx/html/config.js <<EOF
 window.__CODECAFE_CONFIG__ = {
-  apiBaseUrl: "${API_BASE_URL:-http://localhost:5000}"
+  apiBaseUrl: "${API_BASE_URL:-http://localhost:8080}"
 };
 EOF
 

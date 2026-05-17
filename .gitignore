@@ -12,6 +12,7 @@ deploy/cloudflare/*.private.*
 
 # Local development configuration can contain secrets.
 appsettings.Development.json
+appsettings.development.json
 appsettings.*.local.json
 
 # User-specific files

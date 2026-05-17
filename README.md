@@ -1,70 +1,59 @@
 # CodeCafe
 
-CodeCafe is a developer-focused AI workbench for chat, notes, and workspace
-workflows. It is designed as an extensible platform that can grow into richer
-AI, knowledge, and agent-driven experiences over time.
+CodeCafe is an open-source ASP.NET Core Web API and React project scaffold.
 
-## Live demo
-
-- App: [https://codes.cafe](https://codes.cafe)
-- Test environment: [https://test.codes.cafe](https://test.codes.cafe)
-
-## Repository layout
+## Structure
 
 ```text
-backend/
-  src/
-    CodeCafe.Api/
-    CodeCafe.Application/
-    CodeCafe.Contracts/
-    CodeCafe.Domain/
-    CodeCafe.Infrastructure/
-frontend/
-  src/
-    app/
-    features/
-    lib/
-    shared/
-docs/
+CodeCafe/
+├─ src/
+│  ├─ CodeCafe.Domain/          # Enterprise entities and domain rules
+│  ├─ CodeCafe.Application/     # Use cases, abstractions, DTOs, validation
+│  ├─ CodeCafe.Infrastructure/  # Persistence, external services, implementations
+│  └─ CodeCafe.WebApi/          # ASP.NET Core API host and HTTP endpoints
+├─ tests/
+│  └─ CodeCafe.Application.Tests/
+└─ frontend/                    # React app, developed in the same repository
 ```
 
-## Backend
-
-Copy `backend/src/CodeCafe.Api/appsettings.Development.example.json` to
-`backend/src/CodeCafe.Api/appsettings.Development.json` for local development
-settings. The real development settings file is ignored by Git so it can hold
-local secrets.
+## Getting Started
 
 ```powershell
-dotnet restore backend/CodeCafe.slnx
-dotnet run --project backend/src/CodeCafe.Api
-dotnet test backend/CodeCafe.slnx
+dotnet restore
+dotnet build
+dotnet test
+dotnet run --project src/CodeCafe.WebApi
 ```
 
-The API runs on `http://localhost:5000`.
+The API includes liveness and readiness endpoints:
 
-- Health check: `GET /health`
-- System info: `GET /api/system/info`
-- Swagger UI: `http://localhost:5000/swagger`
+```http
+GET /health/live
+GET /health/ready
+```
+
+## Architecture
+
+The backend follows Clean Architecture dependency direction:
+
+```text
+Domain <- Application <- Infrastructure
+                      <- WebApi
+```
+
+`Domain` has no dependencies on other application projects. `Application` depends only on `Domain`.
+`Infrastructure` implements application abstractions. `WebApi` composes the app through dependency injection.
+
+Backend development guidelines are documented in [docs/backend-best-practices.md](docs/backend-best-practices.md).
 
 ## Frontend
 
-```powershell
-cd frontend
-npm install
-npm run dev
-npm run test
-```
-
-The frontend runs on `http://localhost:5173` and expects the API base URL from
-`VITE_API_BASE_URL`. See `frontend/.env.example`.
-
-## Current milestone
-
-Issue #1 establishes the platform skeleton: Clean Architecture backend projects,
-logging, global error handling, health checks, API documentation, and a React app
-structure that can grow into Notes, Workspaces, Audit, and AI/MAF features.
+The `frontend/` directory contains the React app. Frontend implementation is handled by another AI collaborator in this same repository. Backend work should preserve API contracts and document breaking changes.
 
 ## Deployment
 
-Kubernetes deployment notes live in `docs/deployment.md`.
+CI/CD workflow notes and required GitHub variables are documented in [docs/deployment.md](docs/deployment.md).
+
+## License
+
+This project is licensed under the MIT License.

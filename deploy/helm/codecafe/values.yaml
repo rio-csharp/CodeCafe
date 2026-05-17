@@ -18,7 +18,7 @@ frontend:
     port: 80
     targetPort: 8080
   env:
-    apiBaseUrl: http://localhost:5000
+    apiBaseUrl: https://api.example.local
   probes:
     readiness:
       path: /
@@ -50,6 +50,7 @@ frontend:
 api:
   replicaCount: 2
   terminationGracePeriodSeconds: 60
+  preStopSleepSeconds: 10
   strategy:
     rollingUpdate:
       maxUnavailable: 0
@@ -61,12 +62,6 @@ api:
   service:
     port: 80
     targetPort: 8080
-  cors:
-    allowedOrigins:
-      - https://frontend.example.local
-  notes:
-    rootPath: /data/notes
-    hostPath: /home/deploy/codecafe/notes
   probes:
     readiness:
       path: /health/ready

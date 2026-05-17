@@ -17,7 +17,8 @@ jobs:
   cleanup:
     name: Delete PR namespace
     runs-on: ubuntu-latest
-    environment: test
+    environment:
+      name: test
     steps:
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.10.0
