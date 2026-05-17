@@ -12,10 +12,10 @@ import { useRegister } from '../hooks/useAuth'
 const registerSchema = z.object({
   displayName: z
     .string()
-    .min(2, '显示名称至少 2 位')
-    .max(40, '显示名称最多 40 位'),
-  email: z.string().email('请输入有效的邮箱地址'),
-  password: z.string().min(8, '密码至少 8 位'),
+    .min(2, 'Display name must be at least 2 characters')
+    .max(40, 'Display name must be at most 40 characters'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
 })
 
 type RegisterFormData = z.infer<typeof registerSchema>
@@ -60,7 +60,7 @@ export default function RegisterPage() {
           <p className="text-sm text-red-500 text-center">
             {registerMutation.error instanceof Error
               ? registerMutation.error.message
-              : '注册失败'}
+              : 'Registration failed'}
           </p>
         )}
 

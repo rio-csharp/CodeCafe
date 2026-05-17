@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMe } from '../features/auth/hooks/useAuth'
+import RouteGuardSpinner from '../components/RouteGuardSpinner'
 import HomePage from '../features/home/HomePage'
 import NotesPage from '../features/notes/NotesPage'
 import CodesPage from '../features/codes/CodesPage'
@@ -26,11 +27,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { data, isPending } = useMe()
 
   if (isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-black" />
-      </div>
-    )
+    return <RouteGuardSpinner />
   }
 
   if (!data?.user) {
@@ -44,11 +41,7 @@ function AuthRedirect({ children }: { children: React.ReactNode }) {
   const { data, isPending } = useMe()
 
   if (isPending) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-black" />
-      </div>
-    )
+    return <RouteGuardSpinner />
   }
 
   if (data?.user) {

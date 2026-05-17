@@ -24,6 +24,7 @@ const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
           <button
             type="button"
             onClick={() => setShow(!show)}
+            aria-label={show ? 'Hide password' : 'Show password'}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
           >
             {show ? (

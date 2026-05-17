@@ -26,11 +26,13 @@ describe('useMe', () => {
   it('returns user data when authenticated', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: vi
+      text: vi
         .fn()
-        .mockResolvedValue({
-          user: { id: '1', email: 'a@b.com', displayName: 'Alice' },
-        }),
+        .mockResolvedValue(
+          JSON.stringify({
+            user: { id: '1', email: 'a@b.com', displayName: 'Alice' },
+          }),
+        ),
     })
 
     const queryClient = createTestQueryClient()
@@ -48,6 +50,7 @@ describe('useMe', () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       status: 401,
       ok: false,
+      json: vi.fn().mockResolvedValue({}),
     })
 
     const queryClient = createTestQueryClient()

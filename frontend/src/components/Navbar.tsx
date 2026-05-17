@@ -21,7 +21,10 @@ function Navbar() {
       navigate('/')
       logout.reset()
     }
-  }, [logout.isSuccess, navigate, logout])
+    // Depending on the full `logout` object would re-run the effect on every
+    // render because react-query returns a new mutation object each time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [logout.isSuccess, logout.reset, navigate])
 
   const isActive = (path: string) => location.pathname === path
 

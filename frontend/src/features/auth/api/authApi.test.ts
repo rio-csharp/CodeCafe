@@ -121,11 +121,13 @@ describe('authApi', () => {
     it('returns user data on 200', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
-        json: vi
+        text: vi
           .fn()
-          .mockResolvedValue({
-            user: { id: '1', email: 'a@b.com', displayName: 'A' },
-          }),
+          .mockResolvedValue(
+            JSON.stringify({
+              user: { id: '1', email: 'a@b.com', displayName: 'A' },
+            }),
+          ),
       })
 
       const result = await getMe()
@@ -136,6 +138,7 @@ describe('authApi', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 401,
         ok: false,
+        json: vi.fn().mockResolvedValue({}),
       })
 
       const result = await getMe()
@@ -146,7 +149,7 @@ describe('authApi', () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         status: 500,
         ok: false,
-        json: vi.fn().mockResolvedValue({ message: 'Server error' }),
+        json: vi.fn().mockResolvedValue({ detail: 'Server error' }),
       })
 
       await expect(getMe()).rejects.toThrow('Server error')

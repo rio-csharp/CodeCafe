@@ -101,7 +101,7 @@ describe('apiFetch', () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 422,
-      json: vi.fn().mockResolvedValue({ message: 'Invalid input' }),
+      json: vi.fn().mockResolvedValue({ detail: 'Invalid input' }),
     })
 
     await expect(apiFetch('/test', { method: 'GET' })).rejects.toThrow(ApiError)

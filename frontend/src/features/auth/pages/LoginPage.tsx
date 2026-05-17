@@ -10,8 +10,8 @@ import GitHubIcon from '../../../components/icons/GitHubIcon'
 import { useLogin } from '../hooks/useAuth'
 
 const loginSchema = z.object({
-  email: z.string().email('请输入有效的邮箱地址'),
-  password: z.string().min(1, '请输入密码'),
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(1, 'Please enter your password'),
 })
 
 type LoginFormData = z.infer<typeof loginSchema>
@@ -56,7 +56,7 @@ export default function LoginPage() {
           <p className="text-sm text-red-500 text-center">
             {loginMutation.error instanceof Error
               ? loginMutation.error.message
-              : '登录失败'}
+              : 'Login failed'}
           </p>
         )}
 
