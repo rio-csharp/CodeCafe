@@ -20,6 +20,9 @@ dotnet_style_qualification_for_field = false:suggestion
 dotnet_style_qualification_for_method = false:suggestion
 dotnet_style_qualification_for_property = false:suggestion
 
+[**/Migrations/*.cs]
+csharp_style_namespace_declarations = block_scoped:silent
+
 [*.{yml,yaml,json,md}]
 indent_style = space
 indent_size = 2

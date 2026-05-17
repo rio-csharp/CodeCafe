@@ -85,7 +85,7 @@ jobs:
           ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
           scp -P "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
           ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
-            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' PRODUCTION_FRONTEND_HOST='${{ vars.PRODUCTION_FRONTEND_HOST }}' PRODUCTION_API_HOST='${{ vars.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' bash -s" <<'REMOTE'
+            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' PRODUCTION_FRONTEND_HOST='${{ vars.PRODUCTION_FRONTEND_HOST }}' PRODUCTION_API_HOST='${{ vars.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DATABASE_CONNECTION_STRING='${{ secrets.PRODUCTION_DATABASE_CONNECTION_STRING }}' bash -s" <<'REMOTE'
           set -euo pipefail
           trap 'rm -rf "$REMOTE_DIR"' EXIT
           export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
@@ -99,6 +99,11 @@ jobs:
           $KUBECTL get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.key}' | base64 -d > "$TLS_KEY_FILE"
           $KUBECTL create secret tls "$TLS_SECRET" --cert="$TLS_CERT_FILE" --key="$TLS_KEY_FILE" --namespace "$NAMESPACE" --dry-run=client -o yaml | $KUBECTL apply -f -
           rm -f "$TLS_CERT_FILE" "$TLS_KEY_FILE"
+          API_CONFIG_SECRET="${RELEASE}-api-config"
+          $KUBECTL create secret generic "$API_CONFIG_SECRET" \
+            --from-literal=ConnectionStrings__DefaultConnection="$DATABASE_CONNECTION_STRING" \
+            --namespace "$NAMESPACE" \
+            --dry-run=client -o yaml | $KUBECTL apply -f -
           $HELM upgrade --install "$RELEASE" "$REMOTE_DIR/codecafe" \
             --namespace "$NAMESPACE" \
             --set frontend.image.repository="$REGISTRY/$IMAGE_NAMESPACE/frontend" \
@@ -108,6 +113,7 @@ jobs:
             --set frontend.ingress.tls.secretName="$TLS_SECRET" \
             --set api.image.repository="$REGISTRY/$IMAGE_NAMESPACE/api" \
             --set api.image.tag="$IMAGE_TAG" \
+            --set api.envFromSecrets[0]="$API_CONFIG_SECRET" \
             --set api.cors.allowedOrigins[0]="https://$PRODUCTION_FRONTEND_HOST" \
             --set api.ingress.host="$PRODUCTION_API_HOST" \
             --set api.ingress.tls.secretName="$TLS_SECRET"

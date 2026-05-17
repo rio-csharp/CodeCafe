@@ -29,6 +29,15 @@ excluded from Docker build context and publish output. Deployed values should be
 provided through environment variables, GitHub secrets, Kubernetes secrets, or
 Helm values.
 
+The API expects the PostgreSQL connection string in:
+
+```text
+ConnectionStrings__DefaultConnection
+```
+
+Deploy workflows create a Kubernetes secret named `<release>-api-config` and
+mount it into the API pod through `envFrom`.
+
 ## CORS
 
 The backend reads allowed frontend origins from:
@@ -86,9 +95,11 @@ Repository secrets:
 - `TEST_SSH_HOST`
 - `TEST_SSH_PRIVATE_KEY`
 - `TEST_SSH_KNOWN_HOSTS`
+- `TEST_DATABASE_CONNECTION_STRING`
 - `PRODUCTION_SSH_HOST`
 - `PRODUCTION_SSH_PRIVATE_KEY`
 - `PRODUCTION_SSH_KNOWN_HOSTS`
+- `PRODUCTION_DATABASE_CONNECTION_STRING`
 
 `TEST_SSH_KNOWN_HOSTS` and `PRODUCTION_SSH_KNOWN_HOSTS` must contain the
 expected OpenSSH known_hosts line for the deployment host. The workflows use

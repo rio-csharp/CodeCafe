@@ -74,6 +74,9 @@ api:
   service:
     port: 80
     targetPort: 8080
+  envFromSecrets: []
+  auth:
+    registrationEnabled: true
   cors:
     allowedOrigins:
       - https://frontend.example.local

@@ -1,0 +1,12 @@
+using Microsoft.AspNetCore.Identity;
+
+namespace CodeCafe.Infrastructure.Identity;
+
+public sealed class ApplicationUser : IdentityUser<Guid>
+{
+    public required string DisplayName { get; set; }
+
+    public DateTimeOffset CreatedAtUtc { get; set; }
+
+    public DateTimeOffset? UpdatedAtUtc { get; set; }
+}

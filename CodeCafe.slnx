@@ -7,5 +7,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CodeCafe.Application.Tests/CodeCafe.Application.Tests.csproj" />
+    <Project Path="tests/CodeCafe.WebApi.Tests/CodeCafe.WebApi.Tests.csproj" />
   </Folder>
 </Solution>

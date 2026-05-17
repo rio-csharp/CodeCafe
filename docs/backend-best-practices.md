@@ -399,6 +399,9 @@ Security defaults:
 - Keep CORS narrow in deployed environments.
 - Use secure cookie settings when cookies are introduced.
 - Use rate limiting for login or expensive endpoints when those endpoints exist.
+- Cookie-authenticated write endpoints must enforce CSRF protection. The
+  frontend should fetch `/api/auth/csrf` with credentials and send the returned
+  token in the `X-CSRF-TOKEN` header on mutating requests.
 
 Authentication answers “who are you?” Authorization answers “may you do this?” Keep them separate.
 
