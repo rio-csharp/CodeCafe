@@ -1,0 +1,91 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+frontend:
+  replicaCount: 2
+  terminationGracePeriodSeconds: 30
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  image:
+    repository: ghcr.io/example/codecafe/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+    targetPort: 8080
+  env:
+    apiBaseUrl: https://api.example.local
+  probes:
+    readiness:
+      path: /
+      initialDelaySeconds: 3
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    liveness:
+      path: /
+      initialDelaySeconds: 10
+      periodSeconds: 20
+      timeoutSeconds: 2
+      failureThreshold: 3
+  ingress:
+    enabled: true
+    className: traefik
+    host: frontend.example.local
+    tls:
+      enabled: true
+      secretName: codecafe-frontend-tls
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+api:
+  replicaCount: 2
+  terminationGracePeriodSeconds: 60
+  preStopSleepSeconds: 10
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  image:
+    repository: ghcr.io/example/codecafe/api
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    port: 80
+    targetPort: 8080
+  probes:
+    readiness:
+      path: /health/ready
+      initialDelaySeconds: 3
+      periodSeconds: 10
+      timeoutSeconds: 2
+      failureThreshold: 3
+    liveness:
+      path: /health/live
+      initialDelaySeconds: 10
+      periodSeconds: 20
+      timeoutSeconds: 2
+      failureThreshold: 3
+  ingress:
+    enabled: true
+    className: traefik
+    host: api.example.local
+    tls:
+      enabled: true
+      secretName: codecafe-api-tls
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi

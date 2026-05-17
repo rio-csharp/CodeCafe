@@ -1,0 +1,16 @@
+.git
+.github
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/coverage
+**/appsettings.Development.json
+**/appsettings.development.json
+**/appsettings.*.local.json
+.artifacts
+!.artifacts/
+!.artifacts/api/
+!.artifacts/api/**
+!.artifacts/frontend/
+!.artifacts/frontend/**
