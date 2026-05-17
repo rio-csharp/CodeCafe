@@ -1,14 +1,7 @@
 namespace CodeCafe.WebApi.Health;
 
-public sealed class ReadinessShutdownService : IHostedLifecycleService
+public sealed class ReadinessShutdownService(ReadinessState readinessState) : IHostedLifecycleService
 {
-    private readonly ReadinessState _readinessState;
-
-    public ReadinessShutdownService(ReadinessState readinessState)
-    {
-        _readinessState = readinessState;
-    }
-
     public Task StartingAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;
@@ -16,12 +9,13 @@ public sealed class ReadinessShutdownService : IHostedLifecycleService
 
     public Task StartedAsync(CancellationToken cancellationToken)
     {
+        readinessState.MarkReady();
         return Task.CompletedTask;
     }
 
     public Task StoppingAsync(CancellationToken cancellationToken)
     {
-        _readinessState.MarkNotReady();
+        readinessState.MarkNotReady();
         return Task.CompletedTask;
     }
 

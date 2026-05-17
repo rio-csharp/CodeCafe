@@ -402,6 +402,10 @@ Security defaults:
 
 Authentication answers “who are you?” Authorization answers “may you do this?” Keep them separate.
 
+CORS should be explicit. Local development may allow the Vite dev server, but
+test, preview, and production should allow only the matching frontend host for
+that environment.
+
 ---
 
 ## 12. Logging and Observability

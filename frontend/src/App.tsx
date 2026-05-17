@@ -1,34 +1,40 @@
-import { Routes, Route, Link } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
+import ErrorBoundary from './components/ErrorBoundary'
+import HomePage from './features/home/HomePage'
+import NotesPage from './features/notes/NotesPage'
+import CodesPage from './features/codes/CodesPage'
+import AboutPage from './features/about/AboutPage'
+import LoginPage from './features/auth/LoginPage'
 
-function Home() {
+function PageTransition({ children }: { children: React.ReactNode }) {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-blue-600">CodeCafe Home</h1>
-      <p className="mt-2 text-gray-600">Tailwind + React Router + TanStack Query are working.</p>
-      <Link to="/about" className="mt-4 inline-block text-blue-500 underline">
-        Go to About
-      </Link>
-    </div>
-  )
-}
-
-function About() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold text-green-600">About</h1>
-      <Link to="/" className="mt-4 inline-block text-blue-500 underline">
-        Back to Home
-      </Link>
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
+    >
+      {children}
+    </motion.div>
   )
 }
 
 function App() {
+  const location = useLocation()
+
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/about" element={<About />} />
-    </Routes>
+    <ErrorBoundary>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<PageTransition><HomePage /></PageTransition>} />
+          <Route path="/notes" element={<PageTransition><NotesPage /></PageTransition>} />
+          <Route path="/codes" element={<PageTransition><CodesPage /></PageTransition>} />
+          <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
+          <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+        </Routes>
+      </AnimatePresence>
+    </ErrorBoundary>
   )
 }
 

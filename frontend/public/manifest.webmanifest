@@ -1,0 +1,9 @@
+{
+  "name": "CodeCafe",
+  "short_name": "CodeCafe",
+  "description": "A personal space for notes, code, and engineering thoughts.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000"
+}
