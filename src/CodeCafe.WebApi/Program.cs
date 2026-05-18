@@ -1,6 +1,7 @@
 using CodeCafe.Application;
 using CodeCafe.Infrastructure;
 using CodeCafe.WebApi.Extensions;
+using CodeCafe.WebApi.Infrastructure;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +16,12 @@ builder.Services.AddCodeCafeForwardedHeaders();
 try
 {
     var app = builder.Build();
+    if (args is ["migrate", ..] or ["--migrate", ..])
+    {
+        await app.Services.GetRequiredService<DatabaseMigrationRunner>().RunAsync(CancellationToken.None);
+        return;
+    }
+
     app.UseCodeCafePipeline();
     await app.RunAsync();
 }
@@ -23,6 +30,7 @@ catch (Exception exception) when (
     && exception.GetType().Name != "HostAbortedException")
 {
     Log.Fatal(exception, "CodeCafe API terminated unexpectedly.");
+    Environment.ExitCode = 1;
 }
 finally
 {

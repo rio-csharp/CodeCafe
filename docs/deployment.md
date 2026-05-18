@@ -6,7 +6,9 @@ small deployment metadata artifact containing the image tag.
 
 Deployment workflows do not build application code or Docker images. They
 download the Helm chart and deployment metadata produced by CI, then run
-`helm upgrade`.
+the deployment helper script from the CI scripts artifact. The helper performs
+the remote `helm upgrade`, migration hook execution, rollout wait, and smoke
+test.
 
 CI runs on pushes to `main`, `release/*`, and `feature/*`, and on pull requests
 targeting `release/*`.
@@ -35,8 +37,42 @@ The API expects the PostgreSQL connection string in:
 ConnectionStrings__DefaultConnection
 ```
 
-Deploy workflows create a Kubernetes secret named `<release>-api-config` and
-mount it into the API pod through `envFrom`.
+Deploy workflows create a Kubernetes secret named `<release>-api-config` in the
+target namespace and mount it into the API pod through `envFrom`.
+
+The long-lived manually created database secrets are named `codecafe-db-secret`
+in `codecafe-test` and `codecafe-prod`. Manual Helm runs may reference those
+secrets directly through `api.envFromSecrets`. CI/CD copies only the
+`ConnectionStrings__DefaultConnection` key from that server-side Kubernetes
+Secret into the release-scoped Secret. GitHub does not need database connection
+string secrets for deploys.
+
+## Database Migrations
+
+The Helm chart creates a pre-install/pre-upgrade Job that runs
+`dotnet CodeCafe.WebApi.dll migrate` using the API image before the Deployment
+is rolled out. Migration execution is protected by a PostgreSQL advisory lock.
+
+PR previews currently share the test database, so PR preview deployments disable
+the migration hook with `--set api.migration.enabled=false`. This prevents one
+PR from changing the shared test schema for all other PRs. Schema-changing PRs
+should be validated after merge/deploy to test, or moved to isolated per-PR
+databases before enabling PR migrations.
+
+If production data is synced to test, the sync workflow restores production into
+the test database and then runs the current test API image's migration command so
+the test schema is brought back up to the deployed test application version.
+
+For manual repair or one-off operations, the database console tool can still
+apply migrations through an SSH tunnel:
+
+```sh
+dotnet run --project tools/CodeCafe.DbSync -- migrate-test
+dotnet run --project tools/CodeCafe.DbSync -- migrate-prod
+```
+
+Both commands read the Kubernetes database secret over SSH, open a local tunnel
+to PostgreSQL, and run `dotnet ef database update` against that tunnel.
 
 ## CORS
 
@@ -95,11 +131,9 @@ Repository secrets:
 - `TEST_SSH_HOST`
 - `TEST_SSH_PRIVATE_KEY`
 - `TEST_SSH_KNOWN_HOSTS`
-- `TEST_DATABASE_CONNECTION_STRING`
 - `PRODUCTION_SSH_HOST`
 - `PRODUCTION_SSH_PRIVATE_KEY`
 - `PRODUCTION_SSH_KNOWN_HOSTS`
-- `PRODUCTION_DATABASE_CONNECTION_STRING`
 
 `TEST_SSH_KNOWN_HOSTS` and `PRODUCTION_SSH_KNOWN_HOSTS` must contain the
 expected OpenSSH known_hosts line for the deployment host. The workflows use

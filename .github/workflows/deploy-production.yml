@@ -53,7 +53,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p .artifacts/helm .artifacts/deployment
+          mkdir -p .artifacts/helm .artifacts/deployment .artifacts/scripts
+          gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-ci-scripts --dir .artifacts/scripts
           gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-helm-chart --dir .artifacts/helm
           gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-deployment --dir .artifacts/deployment
 
@@ -84,72 +85,6 @@ jobs:
           tar -czf "$CHART_ARCHIVE" -C .artifacts/helm .
           ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
           scp -P "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
+          scp -P "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/scripts/deploy-helm.sh" "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/deploy-helm.sh"
           ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
-            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' PRODUCTION_FRONTEND_HOST='${{ vars.PRODUCTION_FRONTEND_HOST }}' PRODUCTION_API_HOST='${{ vars.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DATABASE_CONNECTION_STRING='${{ secrets.PRODUCTION_DATABASE_CONNECTION_STRING }}' bash -s" <<'REMOTE'
-          set -euo pipefail
-          trap 'rm -rf "$REMOTE_DIR"' EXIT
-          export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
-          KUBECTL="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl"
-          HELM="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/helm"
-          tar -xzf "$REMOTE_DIR/codecafe-chart.tgz" -C "$REMOTE_DIR/codecafe"
-          $KUBECTL create namespace "$NAMESPACE" --dry-run=client -o yaml | $KUBECTL apply -f -
-          TLS_CERT_FILE="$(mktemp)"
-          TLS_KEY_FILE="$(mktemp)"
-          $KUBECTL get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TLS_CERT_FILE"
-          $KUBECTL get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.key}' | base64 -d > "$TLS_KEY_FILE"
-          $KUBECTL create secret tls "$TLS_SECRET" --cert="$TLS_CERT_FILE" --key="$TLS_KEY_FILE" --namespace "$NAMESPACE" --dry-run=client -o yaml | $KUBECTL apply -f -
-          rm -f "$TLS_CERT_FILE" "$TLS_KEY_FILE"
-          API_CONFIG_SECRET="${RELEASE}-api-config"
-          $KUBECTL create secret generic "$API_CONFIG_SECRET" \
-            --from-literal=ConnectionStrings__DefaultConnection="$DATABASE_CONNECTION_STRING" \
-            --namespace "$NAMESPACE" \
-            --dry-run=client -o yaml | $KUBECTL apply -f -
-          $HELM upgrade --install "$RELEASE" "$REMOTE_DIR/codecafe" \
-            --namespace "$NAMESPACE" \
-            --set frontend.image.repository="$REGISTRY/$IMAGE_NAMESPACE/frontend" \
-            --set frontend.image.tag="$IMAGE_TAG" \
-            --set frontend.env.apiBaseUrl="https://$PRODUCTION_API_HOST" \
-            --set frontend.ingress.host="$PRODUCTION_FRONTEND_HOST" \
-            --set frontend.ingress.tls.secretName="$TLS_SECRET" \
-            --set api.image.repository="$REGISTRY/$IMAGE_NAMESPACE/api" \
-            --set api.image.tag="$IMAGE_TAG" \
-            --set api.envFromSecrets[0]="$API_CONFIG_SECRET" \
-            --set api.cors.allowedOrigins[0]="https://$PRODUCTION_FRONTEND_HOST" \
-            --set api.ingress.host="$PRODUCTION_API_HOST" \
-            --set api.ingress.tls.secretName="$TLS_SECRET"
-          REMOTE
-
-      - name: Wait for rollout
-        if: steps.ci.outputs.skip != 'true'
-        run: |
-          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
-            "sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=frontend --namespace $NAMESPACE --timeout=180s && sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=api --namespace $NAMESPACE --timeout=180s"
-
-      - name: Smoke test
-        if: steps.ci.outputs.skip != 'true'
-        run: |
-          ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
-            "NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' bash -s" <<'REMOTE'
-          set -euo pipefail
-          export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
-          KUBECTL="sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl"
-          frontend_port=18080
-          api_port=18081
-          $KUBECTL port-forward "service/${RELEASE}-frontend" "${frontend_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-frontend-port-forward.log 2>&1 &
-          frontend_pid=$!
-          $KUBECTL port-forward "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-api-port-forward.log 2>&1 &
-          api_pid=$!
-          cleanup() {
-            kill "$frontend_pid" "$api_pid" 2>/dev/null || true
-            wait "$frontend_pid" "$api_pid" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-          for _ in $(seq 1 20); do
-            if curl --silent --fail "http://127.0.0.1:${frontend_port}/" >/dev/null && curl --silent --fail "http://127.0.0.1:${api_port}/health/ready" >/dev/null; then
-              exit 0
-            fi
-            sleep 3
-          done
-          curl --fail "http://127.0.0.1:${frontend_port}/"
-          curl --fail "http://127.0.0.1:${api_port}/health/ready"
-          REMOTE
+            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='${{ vars.PRODUCTION_FRONTEND_HOST }}' API_HOST='${{ vars.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DB_SECRET_NAMESPACE='$NAMESPACE' KUBECTL_BIN='sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl' HELM_BIN='sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/helm' bash '$REMOTE_DIR/deploy-helm.sh'"

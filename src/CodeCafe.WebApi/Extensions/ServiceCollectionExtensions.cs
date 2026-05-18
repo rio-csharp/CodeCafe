@@ -4,6 +4,7 @@ using CodeCafe.WebApi.Auth;
 using CodeCafe.WebApi.Configuration;
 using CodeCafe.WebApi.Errors;
 using CodeCafe.WebApi.Health;
+using CodeCafe.WebApi.Infrastructure;
 using CodeCafe.WebApi.Networking;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
@@ -23,6 +24,7 @@ public static class ServiceCollectionExtensions
         IHostEnvironment environment)
     {
         services.AddSingleton<ReadinessState>();
+        services.AddSingleton<DatabaseMigrationRunner>();
         services.AddHostedService<ReadinessShutdownService>();
         services.AddSingleton<IClientIpAddressAccessor, ClientIpAddressAccessor>();
         services.AddProblemDetails();

@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CodeCafe.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
-    [Migration("20260518101500_MakeUserEmailUnique")]
     public partial class MakeUserEmailUnique : Migration
     {
         /// <inheritdoc />
