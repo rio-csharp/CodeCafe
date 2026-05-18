@@ -1,10 +1,13 @@
 import ErrorBoundary from './components/ErrorBoundary'
 import { AppRouter } from './app/router'
+import AppLayout from './app/AppLayout'
 
 function App() {
   return (
     <ErrorBoundary>
-      <AppRouter />
+      <AppLayout>
+        <AppRouter />
+      </AppLayout>
     </ErrorBoundary>
   )
 }

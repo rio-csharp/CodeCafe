@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
-import { useMe, useLogin, useLogout } from './useAuth'
+import { useMe, useLogin, useLogout, AUTH_ME_KEY } from './useAuth'
 import { clearCsrfToken } from '../../../lib/apiClient'
 
 function createTestQueryClient() {
@@ -105,7 +105,7 @@ describe('useLogin', () => {
     result.current.mutate({ email: 't@t.com', password: 'pass1234' })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(queryClient.getQueryData(['auth', 'me'])).toEqual({
+    expect(queryClient.getQueryData(AUTH_ME_KEY)).toEqual({
       user: { id: '1', email: 't@t.com', displayName: 'T' },
     })
   })
@@ -121,7 +121,7 @@ describe('useLogout', () => {
     vi.unstubAllGlobals()
   })
 
-  it('removes auth/me cache on success', async () => {
+  it('sets auth/me cache to null on success', async () => {
     globalThis.fetch = vi
       .fn()
       .mockResolvedValueOnce({
@@ -134,7 +134,7 @@ describe('useLogout', () => {
       })
 
     const queryClient = createTestQueryClient()
-    queryClient.setQueryData(['auth', 'me'], { user: { id: '1' } })
+    queryClient.setQueryData(AUTH_ME_KEY, { user: { id: '1' } })
 
     const { result } = renderHook(() => useLogout(), {
       wrapper: ({ children }: { children: ReactNode }) => (
@@ -145,6 +145,6 @@ describe('useLogout', () => {
     result.current.mutate()
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(queryClient.getQueryData(['auth', 'me'])).toBeUndefined()
+    expect(queryClient.getQueryData(AUTH_ME_KEY)).toBeNull()
   })
 })
