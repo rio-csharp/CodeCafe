@@ -39,7 +39,16 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- with .Values.api.envFromSecrets }}
+          envFrom:
+            {{- range . }}
+            - secretRef:
+                name: {{ . | quote }}
+            {{- end }}
+          {{- end }}
           env:
+            - name: Auth__RegistrationEnabled
+              value: {{ .Values.api.auth.registrationEnabled | quote }}
             {{- range $index, $origin := .Values.api.cors.allowedOrigins }}
             - name: Cors__AllowedOrigins__{{ $index }}
               value: {{ $origin | quote }}

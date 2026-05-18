@@ -74,6 +74,13 @@ api:
   service:
     port: 80
     targetPort: 8080
+  envFromSecrets: []
+  migration:
+    enabled: true
+    backoffLimit: 1
+    ttlSecondsAfterFinished: 300
+  auth:
+    registrationEnabled: true
   cors:
     allowedOrigins:
       - https://frontend.example.local

@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import logoIcon from '../assets/codecafe-icon.png'
+import { useMe, useLogout } from '../features/auth/hooks/useAuth'
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { data: authData } = useMe()
+  const logout = useLogout()
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10)
@@ -13,6 +17,12 @@ function Navbar() {
   }, [])
 
   const isActive = (path: string) => location.pathname === path
+
+  const handleLogout = () => {
+    logout.mutate(undefined, {
+      onSuccess: () => navigate('/'),
+    })
+  }
 
   return (
     <nav
@@ -63,12 +73,41 @@ function Navbar() {
             </a>
           </div>
 
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-1 rounded-lg bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors duration-200"
-          >
-            Login
-          </Link>
+          <div className="flex items-center gap-3">
+            {authData?.user ? (
+              <>
+                <Link
+                  to="/dashboard"
+                  className={`relative text-sm transition-colors group hidden md:block ${
+                    isActive('/dashboard')
+                      ? 'text-black font-medium'
+                      : 'text-gray-500 hover:text-black'
+                  }`}
+                >
+                  Dashboard
+                  <span
+                    className={`absolute -bottom-1 left-0 h-0.5 bg-black transition-all duration-300 ${
+                      isActive('/dashboard') ? 'w-full' : 'w-0 group-hover:w-full'
+                    }`}
+                  />
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  disabled={logout.isPending}
+                  className="inline-flex items-center gap-1 rounded-lg bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors duration-200 disabled:opacity-50"
+                >
+                  {logout.isPending ? '...' : 'Logout'}
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-1 rounded-lg bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors duration-200"
+              >
+                Login
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </nav>

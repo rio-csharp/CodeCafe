@@ -492,3 +492,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Cookie jars from local API testing
+cookies.txt
+*_cookies.txt
