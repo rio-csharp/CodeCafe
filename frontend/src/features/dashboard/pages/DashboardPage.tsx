@@ -39,13 +39,6 @@ function NotesIllustration() {
         </div>
       </div>
 
-      <div className="mt-8 flex items-center gap-4 rounded-2xl border border-gray-200 bg-stone-50 p-6">
-        <img src={logoIcon} alt="CodeCafe" className="h-10 w-10 shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-black">CodeCafe is just getting started.</p>
-          <p className="text-sm text-gray-500">More features are brewing. Stay tuned! ☕</p>
-        </div>
-      </div>
     </div>
   )
 }
@@ -82,6 +75,22 @@ function CodesIllustration() {
             />
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 flex items-center gap-4 rounded-2xl border border-gray-200 bg-stone-50 p-6">
+        <img src={logoIcon} alt="CodeCafe" className="h-10 w-10 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-black">CodeCafe is just getting started.</p>
+          <p className="text-sm text-gray-500">More features are brewing. Stay tuned! ☕</p>
+        </div>
+      </div>
+
+      <div className="mt-8 flex items-center gap-4 rounded-2xl border border-gray-200 bg-stone-50 p-6">
+        <img src={logoIcon} alt="CodeCafe" className="h-10 w-10 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-black">CodeCafe is just getting started.</p>
+          <p className="text-sm text-gray-500">More features are brewing. Stay tuned! ☕</p>
+        </div>
       </div>
     </div>
   )
@@ -144,6 +153,14 @@ export default function DashboardPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 flex items-center gap-4 rounded-2xl border border-gray-200 bg-stone-50 p-6">
+        <img src={logoIcon} alt="CodeCafe" className="h-10 w-10 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-black">CodeCafe is just getting started.</p>
+          <p className="text-sm text-gray-500">More features are brewing. Stay tuned! ☕</p>
+        </div>
       </div>
     </div>
   )
