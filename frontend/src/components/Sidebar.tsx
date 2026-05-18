@@ -2,12 +2,13 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Home, FileText, Code, ChevronDown, LogOut } from 'lucide-react'
 import logoIcon from '../assets/codecafe-icon.png'
-import { useMe, useLogout } from '../features/auth/hooks/useAuth'
+import { useLogout } from '../features/auth/hooks/useAuth'
+import { useLayout } from '../app/LayoutContext'
 
 export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { data } = useMe()
+  const { user } = useLayout()
   const logout = useLogout()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -26,7 +27,6 @@ export default function Sidebar() {
     })
   }
 
-  const user = data?.user
   const displayName = user?.displayName || 'User'
   const email = user?.email || ''
   const initial = displayName.charAt(0).toUpperCase()
@@ -42,7 +42,10 @@ export default function Sidebar() {
   }, [])
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-60 bg-white border-r border-gray-100 flex flex-col z-50">
+    <aside
+      className="fixed left-0 top-0 h-screen bg-white border-r border-gray-100 flex flex-col z-50"
+      style={{ width: 'var(--sidebar-width)' }}
+    >
       {/* Logo */}
       <div className="pt-8 pb-6 px-6">
         <Link to="/" className="flex flex-col items-center gap-1">
