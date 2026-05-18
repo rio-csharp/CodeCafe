@@ -17,7 +17,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <LayoutContext.Provider value={{ layout: 'sidebar', user }}>
         <div className="min-h-screen bg-white flex">
           <Sidebar />
-          <main className="flex-1" style={{ marginLeft: 'var(--sidebar-width)' }}>
+          <main className="flex-1 ml-[var(--sidebar-width)]">
             {children}
           </main>
         </div>

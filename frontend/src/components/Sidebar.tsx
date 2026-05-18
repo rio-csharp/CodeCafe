@@ -13,7 +13,10 @@ export default function Sidebar() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname.startsWith(path)
+  }
 
   const navItems = [
     { to: '/dashboard', label: 'Workspace', icon: Home },
@@ -42,10 +45,7 @@ export default function Sidebar() {
   }, [])
 
   return (
-    <aside
-      className="fixed left-0 top-0 h-screen bg-white border-r border-gray-100 flex flex-col z-50"
-      style={{ width: 'var(--sidebar-width)' }}
-    >
+    <aside className="fixed left-0 top-0 h-screen w-[var(--sidebar-width)] bg-white border-r border-gray-100 flex flex-col z-50">
       {/* Logo */}
       <div className="pt-8 pb-6 px-6">
         <Link to="/" className="flex flex-col items-center gap-1">

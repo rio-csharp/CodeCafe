@@ -121,7 +121,7 @@ describe('useLogout', () => {
     vi.unstubAllGlobals()
   })
 
-  it('removes auth/me cache on success', async () => {
+  it('sets auth/me cache to null on success', async () => {
     globalThis.fetch = vi
       .fn()
       .mockResolvedValueOnce({

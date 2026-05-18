@@ -5,28 +5,28 @@ import { useLayout } from '../../../app/LayoutContext'
 import NotesIllustration from '../components/NotesIllustration'
 import CodesIllustration from '../components/CodesIllustration'
 
+const CARDS = [
+  {
+    to: '/notes',
+    label: 'Notes',
+    desc: 'Write, organize, and revisit your knowledge. Capture ideas, create tutorials, and build your personal knowledge base.',
+    icon: FileText,
+    illustration: NotesIllustration,
+    btnText: 'Open Notes',
+  },
+  {
+    to: '/codes',
+    label: 'Codes',
+    desc: 'Read and understand code faster with AI-assisted explanations. Explore, learn, and ship better code.',
+    icon: Code,
+    illustration: CodesIllustration,
+    btnText: 'Open Codes',
+  },
+] as const
+
 export default function DashboardPage() {
   const { user } = useLayout()
   const displayName = user?.displayName || 'there'
-
-  const cards = [
-    {
-      to: '/notes',
-      label: 'Notes',
-      desc: 'Write, organize, and revisit your knowledge. Capture ideas, create tutorials, and build your personal knowledge base.',
-      icon: FileText,
-      illustration: NotesIllustration,
-      btnText: 'Open Notes',
-    },
-    {
-      to: '/codes',
-      label: 'Codes',
-      desc: 'Read and understand code faster with AI-assisted explanations. Explore, learn, and ship better code.',
-      icon: Code,
-      illustration: CodesIllustration,
-      btnText: 'Open Codes',
-    },
-  ]
 
   return (
     <div className="p-8 lg:p-12 max-w-6xl">
@@ -35,7 +35,7 @@ export default function DashboardPage() {
       <p className="mt-3 text-gray-500">Choose where you want to focus today.</p>
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
-        {cards.map(({ to, label, desc, icon: Icon, illustration: Illustration, btnText }) => (
+        {CARDS.map(({ to, label, desc, icon: Icon, illustration: Illustration, btnText }) => (
           <div
             key={to}
             className="group relative flex flex-col rounded-2xl border border-gray-200 bg-white p-8 transition-all hover:border-gray-300 hover:shadow-sm"

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import logoIcon from '../assets/codecafe-icon.png'
-import { useMe, useLogout } from '../features/auth/hooks/useAuth'
+import { useLogout } from '../features/auth/hooks/useAuth'
+import { useLayout } from '../app/LayoutContext'
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const { data: authData } = useMe()
+  const { user } = useLayout()
   const logout = useLogout()
 
   useEffect(() => {
@@ -16,7 +17,10 @@ function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) => {
+    if (path === '/') return location.pathname === '/'
+    return location.pathname.startsWith(path)
+  }
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -74,7 +78,7 @@ function Navbar() {
           </div>
 
           <div className="flex items-center gap-3">
-            {authData?.user ? (
+            {user ? (
               <>
                 <Link
                   to="/dashboard"
