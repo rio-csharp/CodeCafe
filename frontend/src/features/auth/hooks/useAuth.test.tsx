@@ -145,6 +145,6 @@ describe('useLogout', () => {
     result.current.mutate()
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(queryClient.getQueryData(['auth', 'me'])).toBeUndefined()
+    expect(queryClient.getQueryData(['auth', 'me'])).toBeNull()
   })
 })
