@@ -36,7 +36,8 @@ export function useLogout() {
   return useMutation({
     mutationFn: logout,
     onSuccess: () => {
-      queryClient.removeQueries({ queryKey: ['auth', 'me'] })
+      queryClient.cancelQueries({ queryKey: ['auth', 'me'] })
+      queryClient.setQueryData(['auth', 'me'], null)
     },
   })
 }

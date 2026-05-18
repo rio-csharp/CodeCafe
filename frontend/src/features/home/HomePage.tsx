@@ -1,4 +1,3 @@
-import Navbar from '../../components/Navbar'
 import HeroSection from './HeroSection'
 import FeaturesSection from './FeaturesSection'
 import CTASection from './CTASection'
@@ -14,7 +13,6 @@ function HomePage() {
       </div>
 
       <div className="relative z-10">
-        <Navbar />
         <main>
           <HeroSection />
           <FeaturesSection />
