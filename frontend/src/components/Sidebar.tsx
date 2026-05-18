@@ -48,7 +48,7 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-screen w-[var(--sidebar-width)] bg-white border-r border-gray-100 flex flex-col z-50">
       {/* Logo */}
       <div className="pt-8 pb-6 px-6">
-        <Link to="/" className="flex flex-col items-center gap-1">
+        <Link to="/dashboard" className="flex flex-col items-center gap-1">
           <img src={logoIcon} alt="CodeCafe" className="h-10 w-10" />
           <span className="text-xl font-bold text-black tracking-tight">CodeCafe</span>
           <span className="text-xs text-gray-400">codes.cafe</span>

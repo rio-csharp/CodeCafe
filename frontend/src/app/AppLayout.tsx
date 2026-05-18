@@ -1,6 +1,7 @@
 import { useMe } from '../features/auth/hooks/useAuth'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
+import RouteGuardSpinner from '../components/RouteGuardSpinner'
 import { LayoutContext } from './LayoutContext'
 
 interface AppLayoutProps {
@@ -8,7 +9,12 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { data: authData } = useMe()
+  const { data: authData, isPending } = useMe()
+
+  if (isPending) {
+    return <RouteGuardSpinner />
+  }
+
   const user = authData?.user ?? null
   const isAuthenticated = !!user
 
