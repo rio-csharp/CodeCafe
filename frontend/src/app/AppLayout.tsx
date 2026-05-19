@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom'
 import { useMe } from '../features/auth/hooks/useAuth'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
@@ -9,6 +10,7 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const location = useLocation()
   const { data: authData, isPending } = useMe()
 
   if (isPending) {
@@ -17,6 +19,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const user = authData?.user ?? null
   const isAuthenticated = !!user
+
+  // Notebook reader routes render their own full-screen chrome
+  const isNotebookRoute = /^\/notes\/[^/]+/.test(location.pathname)
+  if (isNotebookRoute) {
+    return (
+      <LayoutContext.Provider value={{ layout: 'navbar', user }}>
+        {children}
+      </LayoutContext.Provider>
+    )
+  }
 
   if (isAuthenticated) {
     return (

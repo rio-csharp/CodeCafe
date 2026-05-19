@@ -47,7 +47,7 @@ jobs:
             const run = context.payload.workflow_run;
 
             if (!isDispatch) {
-              if (run.conclusion !== 'success' || run.event !== 'pull_request') {
+              if (run.conclusion !== 'success' || !['push', 'pull_request'].includes(run.event)) {
                 core.setOutput('skip', 'true');
                 return;
               }

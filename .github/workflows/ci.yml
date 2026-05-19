@@ -6,13 +6,11 @@ on:
       - main
       - 'release/**'
       - 'feature/**'
-  pull_request:
-    branches:
-      - 'release/**'
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
   packages: write
 
 env:
@@ -30,40 +28,38 @@ jobs:
       - name: Decide artifact policy
         id: artifacts
         env:
-          BASE_REF: ${{ github.base_ref }}
           EVENT_NAME: ${{ github.event_name }}
-          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
           REF_NAME: ${{ github.ref_name }}
           REPOSITORY: ${{ github.repository }}
         run: |
           upload_artifacts=false
+          pr_number=""
+          owner="${REPOSITORY%%/*}"
+          short_sha="${GITHUB_SHA::7}"
+          image_tag="manual-$short_sha"
 
-          if [ "$EVENT_NAME" = "pull_request" ] && [[ "$BASE_REF" == release/* ]] && [ "$HEAD_REPOSITORY" = "$REPOSITORY" ]; then
+          if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "main" ]; then
             upload_artifacts=true
+            image_tag="production-$short_sha"
           fi
 
-          if [ "$EVENT_NAME" = "push" ] && { [ "$REF_NAME" = "main" ] || [[ "$REF_NAME" == release/* ]]; }; then
+          if [ "$EVENT_NAME" = "push" ] && [[ "$REF_NAME" == release/* ]]; then
             upload_artifacts=true
+            image_tag="test-$short_sha"
+          fi
+
+          if [ "$EVENT_NAME" = "push" ] && [[ "$REF_NAME" == feature/* ]]; then
+            pr_number="$(gh api "repos/$REPOSITORY/pulls?state=open&head=$owner:$REF_NAME" \
+              --jq 'map(select(.base.ref | startswith("release/")))[0].number // ""')"
+            if [ -n "$pr_number" ]; then
+              upload_artifacts=true
+              image_tag="pr-$pr_number-$short_sha"
+            fi
           fi
 
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             upload_artifacts=true
-          fi
-
-          short_sha="${GITHUB_SHA::7}"
-          image_tag="manual-$short_sha"
-
-          if [ "$EVENT_NAME" = "pull_request" ] && [[ "$BASE_REF" == release/* ]] && [ "$HEAD_REPOSITORY" = "$REPOSITORY" ]; then
-            image_tag="pr-$PR_NUMBER-$short_sha"
-          fi
-
-          if [ "$EVENT_NAME" = "push" ] && [[ "$REF_NAME" == release/* ]]; then
-            image_tag="test-$short_sha"
-          fi
-
-          if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "main" ]; then
-            image_tag="production-$short_sha"
           fi
 
           echo "upload_artifacts=$upload_artifacts" >> "$GITHUB_OUTPUT"
