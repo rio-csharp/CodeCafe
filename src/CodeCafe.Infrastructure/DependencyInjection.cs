@@ -1,4 +1,6 @@
 using CodeCafe.Application.Common.Interfaces;
+using CodeCafe.Application.Notes;
+using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Infrastructure.Persistence;
 using CodeCafe.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -28,6 +30,10 @@ public static class DependencyInjection
         {
             options.UseNpgsql(connectionString);
         });
+        services.AddScoped<INotebookQueryService, NotebookQueryService>();
+        services.AddScoped<INotebookCommandService, NotebookCommandService>();
+        services.AddScoped<INotebookFavoriteService, NotebookFavoriteService>();
+        services.AddSingleton<ITipTapPlainTextExtractor, TipTapPlainTextExtractor>();
 
         return services;
     }

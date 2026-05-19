@@ -1,5 +1,6 @@
 using CodeCafe.Application.Common.Interfaces;
 using CodeCafe.Domain.Common.Interfaces;
+using CodeCafe.Domain.Notes;
 using CodeCafe.Infrastructure.Identity;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,12 @@ public sealed class ApplicationDbContext(
     : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IDataProtectionKeyContext
 {
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+
+    public DbSet<Notebook> Notebooks { get; set; }
+
+    public DbSet<NotebookItem> NotebookItems { get; set; }
+
+    public DbSet<NotebookFavorite> NotebookFavorites { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

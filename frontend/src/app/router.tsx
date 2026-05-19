@@ -3,7 +3,10 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useMe } from '../features/auth/hooks/useAuth'
 import RouteGuardSpinner from '../components/RouteGuardSpinner'
 import HomePage from '../features/home/HomePage'
-import NotesPage from '../features/notes/NotesPage'
+import NotesSelectionPage from '../features/notes/pages/NotesSelectionPage'
+import NotebookReaderPage from '../features/notes/pages/NotebookReaderPage'
+import CreateNotebookPage from '../features/notes/pages/CreateNotebookPage'
+import EditNotebookPage from '../features/notes/pages/EditNotebookPage'
 import CodesPage from '../features/codes/CodesPage'
 import AboutPage from '../features/about/AboutPage'
 import LoginPage from '../features/auth/pages/LoginPage'
@@ -69,7 +72,35 @@ export function AppRouter() {
           path="/notes"
           element={
             <PageTransition>
-              <NotesPage />
+              <NotesSelectionPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/notes/new"
+          element={
+            <PageTransition>
+              <ProtectedRoute>
+                <CreateNotebookPage />
+              </ProtectedRoute>
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/notes/:notebookSlug/*"
+          element={
+            <PageTransition>
+              <NotebookReaderPage />
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/notes/:notebookSlug/edit"
+          element={
+            <PageTransition>
+              <ProtectedRoute>
+                <EditNotebookPage />
+              </ProtectedRoute>
             </PageTransition>
           }
         />

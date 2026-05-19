@@ -3,6 +3,7 @@ using System;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CodeCafe.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260518153111_AddNotes")]
+    partial class AddNotes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -72,34 +75,6 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
                     b.HasIndex("Visibility", "IsPublished");
 
                     b.ToTable("Notebooks", (string)null);
-                });
-
-            modelBuilder.Entity("CodeCafe.Domain.Notes.NotebookFavorite", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("NotebookId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("NotebookId", "UserId")
-                        .IsUnique();
-
-                    b.ToTable("NotebookFavorites", (string)null);
                 });
 
             modelBuilder.Entity("CodeCafe.Domain.Notes.NotebookItem", b =>
@@ -400,23 +375,6 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("CodeCafe.Domain.Notes.NotebookFavorite", b =>
-                {
-                    b.HasOne("CodeCafe.Domain.Notes.Notebook", "Notebook")
-                        .WithMany("Favorites")
-                        .HasForeignKey("NotebookId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("CodeCafe.Infrastructure.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Notebook");
-                });
-
             modelBuilder.Entity("CodeCafe.Domain.Notes.NotebookItem", b =>
                 {
                     b.HasOne("CodeCafe.Domain.Notes.Notebook", "Notebook")
@@ -488,8 +446,6 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CodeCafe.Domain.Notes.Notebook", b =>
                 {
-                    b.Navigation("Favorites");
-
                     b.Navigation("Items");
                 });
 

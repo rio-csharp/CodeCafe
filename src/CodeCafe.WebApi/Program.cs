@@ -22,6 +22,11 @@ try
         return;
     }
 
+    if (app.Environment.IsDevelopment())
+    {
+        await app.Services.GetRequiredService<DatabaseMigrationRunner>().RunAsync(CancellationToken.None);
+    }
+
     app.UseCodeCafePipeline();
     await app.RunAsync();
 }
