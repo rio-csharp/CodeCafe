@@ -85,7 +85,7 @@ public sealed record CreateNotebookItemRequest(
 public sealed record UpdateNotebookItemRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     JsonElement ParentId,
-    int SortOrder,
+    int? SortOrder,
     JsonElement ContentJson,
     string? PlainTextContent);
 

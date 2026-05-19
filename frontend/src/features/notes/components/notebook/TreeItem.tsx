@@ -33,7 +33,7 @@ interface TreeItemProps {
     onDropOnFolder: (folderId: string) => void
   }
   onCreateItem: (parentId: string | null, type: 'folder' | 'page') => Promise<void>
-  onRenameItem: (itemId: string, title: string) => Promise<void>
+  onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>
   onDeleteItem: (itemId: string) => Promise<void>
 }
 
@@ -83,7 +83,7 @@ export default function TreeItem({
       return
     }
     try {
-      await onRenameItem(node.item.id, editTitle.trim())
+      await onRenameItem(node.item.id, editTitle.trim(), node.item.sortOrder)
       setIsEditing(false)
     } catch {
       /* error handled by parent */

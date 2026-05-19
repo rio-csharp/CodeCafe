@@ -87,20 +87,20 @@ export function AppRouter() {
           }
         />
         <Route
-          path="/notes/:notebookSlug/*"
-          element={
-            <PageTransition>
-              <NotebookReaderPage />
-            </PageTransition>
-          }
-        />
-        <Route
           path="/notes/:notebookSlug/edit"
           element={
             <PageTransition>
               <ProtectedRoute>
                 <EditNotebookPage />
               </ProtectedRoute>
+            </PageTransition>
+          }
+        />
+        <Route
+          path="/notes/:notebookSlug/*"
+          element={
+            <PageTransition>
+              <NotebookReaderPage />
             </PageTransition>
           }
         />

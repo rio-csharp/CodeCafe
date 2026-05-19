@@ -88,10 +88,10 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage 
   )
 
   const handleRenameItem = useCallback(
-    async (itemId: string, title: string) => {
+    async (itemId: string, title: string, sortOrder: number) => {
       await updateItem.mutateAsync({
         itemId,
-        data: { title, sortOrder: 0 },
+        data: { title, sortOrder },
       })
       showTreeToast('Renamed')
     },

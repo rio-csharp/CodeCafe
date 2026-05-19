@@ -67,7 +67,7 @@ export interface CreateNotebookItemRequest {
 export interface UpdateNotebookItemRequest {
   title: string
   parentId?: string | null
-  sortOrder: number
+  sortOrder?: number
   contentJson?: Record<string, unknown> | null
   plainTextContent?: string | null
 }

@@ -38,8 +38,8 @@ public interface INotebookCommandService
         Guid currentUserId,
         string title,
         JsonElement parentId,
-        int sortOrder,
-        JsonElement? contentJson,
+        int? sortOrder,
+        JsonElement contentJson,
         string? plainTextContent,
         CancellationToken cancellationToken);
 

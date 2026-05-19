@@ -174,8 +174,8 @@ public sealed class NotebookCommandService(
         Guid currentUserId,
         string title,
         JsonElement parentId,
-        int sortOrder,
-        JsonElement? contentJson,
+        int? sortOrder,
+        JsonElement contentJson,
         string? plainTextContent,
         CancellationToken cancellationToken)
     {
@@ -232,11 +232,14 @@ public sealed class NotebookCommandService(
         item.Title = title.Trim();
         item.Path = NotesSupport.GenerateItemPath(notebookItems, parentPath, item.Title, item.Id);
         item.Slug = item.Path.Split('/')[^1];
-        item.SortOrder = sortOrder;
+        if (sortOrder.HasValue)
+        {
+            item.SortOrder = sortOrder.Value;
+        }
 
         if (item.Type == NotebookItemType.Page)
         {
-            if (contentJson is { ValueKind: not JsonValueKind.Undefined })
+            if (contentJson.ValueKind != JsonValueKind.Undefined)
             {
                 item.ContentFormat = NotesSupport.PageContentFormat;
                 item.ContentJson = NotesSupport.SerializeContent(contentJson);

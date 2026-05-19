@@ -230,6 +230,30 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
     }
 
     [Fact]
+    public async Task UpdateNotebookItem_RenamePreservesExistingSortOrderWhenSortOrderIsOmitted()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(client, $"rename-preserve-sort+{Guid.NewGuid():N}@example.com", "203.0.113.103");
+        var notebookId = await CreateNotebookAsync(client, "Rename Notes", "private");
+
+        var page = await CreatePageAsync(client, notebookId, null, "Introduction", 25, "Original content");
+        var pageId = page.RootElement.GetProperty("id").GetGuid();
+
+        var update = await SendWithCsrfAsync(client, HttpMethod.Put, $"/api/notes/{notebookId}/items/{pageId}", new
+        {
+            title = "Introduction Updated"
+        });
+        update.EnsureSuccessStatusCode();
+
+        var updatedPage = await ReadJsonAsync(update);
+        Assert.Equal(25, updatedPage.RootElement.GetProperty("sortOrder").GetInt32());
+        Assert.Equal("introduction-updated", updatedPage.RootElement.GetProperty("path").GetString());
+    }
+
+    [Fact]
     public async Task UpdateNotebookItem_OmittedParentId_KeepsExistingParent()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -287,6 +311,45 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
     }
 
     [Fact]
+    public async Task UpdateNotebookItem_ContentUpdateDoesNotRequireSortOrder()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(client, $"content-no-sort+{Guid.NewGuid():N}@example.com", "203.0.113.104");
+        var notebookId = await CreateNotebookAsync(client, "Content Notes", "private");
+
+        var page = await CreatePageAsync(client, notebookId, null, "Introduction", 30, "Original content");
+        var pageId = page.RootElement.GetProperty("id").GetGuid();
+
+        var update = await SendWithCsrfAsync(client, HttpMethod.Put, $"/api/notes/{notebookId}/items/{pageId}", new
+        {
+            title = "Introduction",
+            contentJson = new
+            {
+                type = "doc",
+                content = new object[]
+                {
+                    new
+                    {
+                        type = "paragraph",
+                        content = new object[]
+                        {
+                            new { type = "text", text = "Updated content" }
+                        }
+                    }
+                }
+            }
+        });
+        update.EnsureSuccessStatusCode();
+
+        var updatedPage = await ReadJsonAsync(update);
+        Assert.Equal(30, updatedPage.RootElement.GetProperty("sortOrder").GetInt32());
+        Assert.Equal("Updated content", updatedPage.RootElement.GetProperty("plainTextContent").GetString());
+    }
+
+    [Fact]
     public async Task UpdateNotebookItem_OmittedContentJson_KeepsExistingContent()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -336,6 +399,32 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
         var updatedPage = await ReadJsonAsync(update);
         Assert.Equal(JsonValueKind.Null, updatedPage.RootElement.GetProperty("contentJson").ValueKind);
         Assert.Equal(JsonValueKind.Null, updatedPage.RootElement.GetProperty("plainTextContent").ValueKind);
+    }
+
+    [Fact]
+    public async Task UpdateNotebookItem_RenamingFolderUpdatesDescendantPaths()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(client, $"rename-folder+{Guid.NewGuid():N}@example.com", "203.0.113.105");
+        var notebookId = await CreateNotebookAsync(client, "Nested Notes", "private");
+
+        var folderId = await CreateFolderAsync(client, notebookId, "Guides", 1);
+        await CreatePageAsync(client, notebookId, folderId, "Introduction", 1, "Original content");
+
+        var update = await SendWithCsrfAsync(client, HttpMethod.Put, $"/api/notes/{notebookId}/items/{folderId}", new
+        {
+            title = "Tutorials"
+        });
+        update.EnsureSuccessStatusCode();
+
+        var itemsResponse = await client.GetAsync($"/api/notes/{notebookId}/items");
+        itemsResponse.EnsureSuccessStatusCode();
+        var itemsJson = await ReadJsonAsync(itemsResponse);
+        Assert.Contains(itemsJson.RootElement.EnumerateArray(), value =>
+            value.GetProperty("path").GetString() == "tutorials/introduction");
     }
 
     [Fact]
