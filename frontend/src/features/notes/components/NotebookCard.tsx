@@ -18,7 +18,7 @@ import { useLayout } from '../../../app/LayoutContext'
 import { useClickOutside } from '../../../hooks/useClickOutside'
 import VisibilityBadge from './VisibilityBadge'
 import { useDeleteNotebook, useToggleFavorite } from '../hooks/useNotesQueries'
-import { useToast } from '../../../components/ui/Toast'
+import { useToast } from '../../../components/ui/useToast'
 import type { Notebook } from '../types'
 
 const icons = [FolderOpen, Code2, Database, BookOpen, FileText, Layers]

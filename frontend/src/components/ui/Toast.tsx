@@ -1,22 +1,11 @@
-import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { CheckCircle, AlertCircle, X } from 'lucide-react'
+import { ToastContext } from './useToast'
 
 interface Toast {
   id: string
   message: string
   type: 'success' | 'error'
-}
-
-interface ToastContextValue {
-  showToast: (message: string, type?: 'success' | 'error') => void
-}
-
-const ToastContext = createContext<ToastContextValue | null>(null)
-
-export function useToast() {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be used within ToastProvider')
-  return ctx
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -43,8 +32,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   )
 
   useEffect(() => {
+    const currentTimers = timers.current
     return () => {
-      timers.current.forEach((timer) => window.clearTimeout(timer))
+      currentTimers.forEach((timer) => window.clearTimeout(timer))
     }
   }, [])
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useCreateNotebook } from '../hooks/useNotesQueries'
-import { useToast } from '../../../components/ui/Toast'
+import { useToast } from '../../../components/ui/useToast'
 import type { NotebookVisibility } from '../types'
 
 const visibilityHelp: Record<NotebookVisibility, string> = {

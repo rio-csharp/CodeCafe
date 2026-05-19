@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2, Trash2, AlertTriangle } from 'lucide-react'
 import { useUpdateNotebook, useDeleteNotebook } from '../../hooks/useNotesQueries'
-import { useToast } from '../../../../components/ui/Toast'
+import { useToast } from '../../../../components/ui/useToast'
 import type { Notebook, NotebookVisibility } from '../../types'
 
 const schema = z.object({

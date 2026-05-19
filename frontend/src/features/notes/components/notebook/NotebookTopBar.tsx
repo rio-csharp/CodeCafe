@@ -4,7 +4,7 @@ import { Star, MoreHorizontal, Edit3, Settings, Link2, Trash2 } from 'lucide-rea
 import { useLayout } from '../../../../app/LayoutContext'
 import { useClickOutside } from '../../../../hooks/useClickOutside'
 import { useDeleteNotebook, useToggleFavorite } from '../../hooks/useNotesQueries'
-import { useToast } from '../../../../components/ui/Toast'
+import { useToast } from '../../../../components/ui/useToast'
 import type { Notebook } from '../../types'
 
 interface NotebookTopBarProps {

@@ -11,7 +11,7 @@ import {
 } from '../../hooks/useNotesQueries'
 import { useDebounce } from '../../../../hooks/useDebounce'
 import { useClickOutside } from '../../../../hooks/useClickOutside'
-import { useToast } from '../../../../components/ui/Toast'
+import { useToast } from '../../../../components/ui/useToast'
 import TreeItem from './TreeItem'
 import { findSiblings } from './findSiblings'
 import SearchResultItem from './SearchResultItem'
