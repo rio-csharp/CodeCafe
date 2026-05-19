@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
@@ -8,6 +9,7 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import Highlight from '@tiptap/extension-highlight'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
+import { Copy, Check } from 'lucide-react'
 import { slugifyHeadingId } from '../../utils/extractOutline'
 import type { NotebookItem } from '../../types'
 import './codeHighlight.css'
@@ -18,47 +20,36 @@ interface NotebookPageContentProps {
   page: NotebookItem
 }
 
-const COPY_ICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>'
+function CopyOverlay({ pre }: { pre: HTMLElement }) {
+  const [copied, setCopied] = useState(false)
 
-const CHECK_ICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+  const handleCopy = useCallback(() => {
+    const code = pre.querySelector('code')
+    if (!code) return
+    navigator.clipboard.writeText(code.textContent ?? '').then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [pre])
 
-function addCopyButtons(container: HTMLElement) {
-  // Clean up old buttons before re-adding (prevents duplicates on content sync)
-  container.querySelectorAll('.code-copy-btn').forEach((btn) => btn.remove())
-
-  const codeBlocks = container.querySelectorAll('pre')
-  codeBlocks.forEach((pre) => {
-    const btn = document.createElement('button')
-    btn.className =
-      'code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-white/80 hover:bg-white border border-gray-200/60 text-gray-500 hover:text-gray-800 transition-colors shadow-sm'
-    btn.innerHTML = COPY_ICON
-    btn.title = 'Copy'
-    btn.type = 'button'
-
-    pre.classList.add('relative')
-    pre.appendChild(btn)
-  })
-}
-
-function handleCopyButtonClick(e: MouseEvent) {
-  const btn = (e.target as HTMLElement).closest('.code-copy-btn')
-  if (!btn) return
-  const pre = btn.closest('pre')
-  if (!pre) return
-  const code = pre.querySelector('code')
-  if (!code) return
-  navigator.clipboard.writeText(code.textContent ?? '').then(() => {
-    btn.innerHTML = CHECK_ICON
-    setTimeout(() => {
-      btn.innerHTML = COPY_ICON
-    }, 2000)
-  })
+  return createPortal(
+    <button
+      type="button"
+      onClick={handleCopy}
+      title="Copy"
+      className="absolute top-2 right-2 p-1.5 rounded-md bg-white/80 hover:bg-white border border-gray-200/60 text-gray-500 hover:text-gray-800 transition-colors shadow-sm z-10"
+    >
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+    </button>,
+    pre,
+  )
 }
 
 export default function NotebookPageContent({ page }: NotebookPageContentProps) {
   const contentRef = useRef<HTMLDivElement>(null)
+  const [hoveredPre, setHoveredPre] = useState<HTMLElement | null>(null)
+  const hoveredPreRef = useRef(hoveredPre)
+  useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
 
   const editor = useEditor({
     editable: false,
@@ -81,7 +72,7 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
     }
   }, [editor, page.contentJson])
 
-  // Inject heading IDs + copy buttons (event delegation for cleanup)
+  // Inject heading IDs and track hovered code blocks via event delegation
   useEffect(() => {
     if (!contentRef.current) return
     const container = contentRef.current
@@ -91,11 +82,32 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
       const text = h.textContent ?? ''
       h.id = slugifyHeadingId(text, idx)
     })
-    addCopyButtons(container)
-    container.addEventListener('click', handleCopyButtonClick)
+
+    // Ensure all <pre> elements are positioned relatively for the overlay
+    const codeBlocks = container.querySelectorAll('pre')
+    codeBlocks.forEach((pre) => pre.classList.add('relative'))
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const pre = (e.target as HTMLElement).closest('pre')
+      if (pre && container.contains(pre)) setHoveredPre(pre as HTMLElement)
+    }
+    const handleMouseOut = (e: MouseEvent) => {
+      const pre = (e.target as HTMLElement).closest('pre')
+      if (pre && pre === hoveredPreRef.current) {
+        // Only clear if we're actually leaving the pre, not entering a child
+        const related = e.relatedTarget as HTMLElement | null
+        if (!related || !pre.contains(related)) {
+          setHoveredPre(null)
+        }
+      }
+    }
+
+    container.addEventListener('mouseover', handleMouseOver)
+    container.addEventListener('mouseout', handleMouseOut)
 
     return () => {
-      container.removeEventListener('click', handleCopyButtonClick)
+      container.removeEventListener('mouseover', handleMouseOver)
+      container.removeEventListener('mouseout', handleMouseOut)
     }
   }, [page.id, page.contentJson, editor])
 
@@ -124,6 +136,7 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
         [&_ul[data-type='taskList']_li>div]:flex-1 [&_ul[data-type='taskList']_p]:my-0"
     >
       <EditorContent editor={editor} />
+      {hoveredPre && <CopyOverlay pre={hoveredPre} />}
     </div>
   )
 }

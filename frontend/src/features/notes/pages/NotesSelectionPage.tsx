@@ -5,55 +5,8 @@ import { useLayout } from '../../../app/LayoutContext'
 import { useDebounce } from '../../../hooks/useDebounce'
 import { usePublicNotes, useMyNotes } from '../hooks/useNotesQueries'
 import NotebookCard from '../components/NotebookCard'
-
-function SectionHeader({
-  title,
-  description,
-  action,
-}: {
-  title: string
-  description: string
-  action?: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h2 className="text-xl font-bold text-black">{title}</h2>
-        <p className="mt-1 text-sm text-gray-500">{description}</p>
-      </div>
-      {action}
-    </div>
-  )
-}
-
-function SkeletonCard() {
-  return (
-    <div className="rounded-xl border border-gray-100 bg-white p-5 animate-pulse">
-      <div className="flex items-start gap-4">
-        <div className="h-10 w-10 rounded-lg bg-gray-100 shrink-0" />
-        <div className="flex-1 space-y-2 min-w-0">
-          <div className="h-4 w-28 bg-gray-100 rounded" />
-          <div className="h-3 w-full bg-gray-100 rounded" />
-          <div className="h-3 w-2/3 bg-gray-100 rounded" />
-        </div>
-      </div>
-      <div className="mt-4 flex items-center justify-between">
-        <div className="h-3 w-16 bg-gray-100 rounded" />
-        <div className="h-3 w-20 bg-gray-100 rounded" />
-      </div>
-    </div>
-  )
-}
-
-function SkeletonGrid({ count = 4 }: { count?: number }) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: count }).map((_, i) => (
-        <SkeletonCard key={i} />
-      ))}
-    </div>
-  )
-}
+import SectionHeader from '../components/SectionHeader'
+import SkeletonGrid from '../components/SkeletonGrid'
 
 export default function NotesSelectionPage() {
   const { user } = useLayout()

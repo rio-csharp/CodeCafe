@@ -2,6 +2,7 @@ import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMe } from '../features/auth/hooks/useAuth'
 import RouteGuardSpinner from '../components/RouteGuardSpinner'
+import ErrorBoundary from '../components/ErrorBoundary'
 import HomePage from '../features/home/HomePage'
 import NotesSelectionPage from '../features/notes/pages/NotesSelectionPage'
 import NotebookReaderPage from '../features/notes/pages/NotebookReaderPage'
@@ -81,7 +82,9 @@ export function AppRouter() {
           element={
             <PageTransition>
               <ProtectedRoute>
-                <CreateNotebookPage />
+                <ErrorBoundary>
+                  <CreateNotebookPage />
+                </ErrorBoundary>
               </ProtectedRoute>
             </PageTransition>
           }
@@ -91,7 +94,9 @@ export function AppRouter() {
           element={
             <PageTransition>
               <ProtectedRoute>
-                <EditNotebookPage />
+                <ErrorBoundary>
+                  <EditNotebookPage />
+                </ErrorBoundary>
               </ProtectedRoute>
             </PageTransition>
           }
@@ -100,7 +105,9 @@ export function AppRouter() {
           path="/notes/:notebookSlug/*"
           element={
             <PageTransition>
-              <NotebookReaderPage />
+              <ErrorBoundary>
+                <NotebookReaderPage />
+              </ErrorBoundary>
             </PageTransition>
           }
         />

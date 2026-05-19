@@ -1,41 +1,24 @@
-import { useState, useRef, useCallback } from 'react'
-import { Search, Folder, FileText, Plus, Coffee, FolderOpen, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { Search, FolderOpen, Coffee } from 'lucide-react'
 import type { TreeNode } from '../../utils/buildTree'
-import type { NotebookItem, Notebook } from '../../types'
-import {
-  useCreateNotebookItem,
-  useUpdateNotebookItem,
-  useDeleteNotebookItem,
-  useReorderNotebookItems,
-  useNotebookItems,
-} from '../../hooks/useNotesQueries'
+import type { Notebook } from '../../types'
 import { useDebounce } from '../../../../hooks/useDebounce'
-import { useClickOutside } from '../../../../hooks/useClickOutside'
-import { useToast } from '../../../../components/ui/useToast'
-import TreeItem from './TreeItem'
-import { findSiblings } from './findSiblings'
-import SearchResultItem from './SearchResultItem'
+import { useNotebookItems } from '../../hooks/useNotesQueries'
+import useTreeActions from '../../hooks/useTreeActions'
+import TreeRootActions from './TreeRootActions'
+import TreeContent from './TreeContent'
 
 interface NotebookTreeProps {
   notebook: Notebook
   notebookSlug: string
   tree: TreeNode[]
-  activePage: NotebookItem | null
+  activePage: import('../../types').NotebookItem | null
 }
 
 export default function NotebookTree({ notebook, notebookSlug, tree, activePage }: NotebookTreeProps) {
   const canEdit = !!notebook.canEdit
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
-  const [showRootCreate, setShowRootCreate] = useState(false)
-  const [draggingId, setDraggingId] = useState<string | null>(null)
-  const rootMenuRef = useRef<HTMLDivElement>(null)
-
-  const createItem = useCreateNotebookItem(notebook.id)
-  const updateItem = useUpdateNotebookItem(notebook.id)
-  const deleteItem = useDeleteNotebookItem(notebook.id)
-  const reorderItems = useReorderNotebookItems(notebook.id)
-  const { showToast: showTreeToast } = useToast()
 
   const {
     data: searchResults,
@@ -45,136 +28,15 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage 
 
   const isSearching = debouncedSearch.length > 0
 
-  useClickOutside(rootMenuRef, () => setShowRootCreate(false))
-
-  const handleCreateRoot = (type: 'folder' | 'page') => {
-    const title = type === 'folder' ? 'New Folder' : 'New Page'
-    createItem.mutate(
-      {
-        parentId: null,
-        type,
-        title,
-        sortOrder: 0,
-        contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
-        plainTextContent: type === 'page' ? '' : null,
-      },
-      {
-        onSuccess: () => {
-          setShowRootCreate(false)
-          showTreeToast('Item created')
-        },
-        onError: (err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Failed to create'
-          showTreeToast(msg, 'error')
-        },
-      },
-    )
-  }
-
-  const handleCreateItem = useCallback(
-    async (parentId: string | null, type: 'folder' | 'page') => {
-      const title = type === 'folder' ? 'New Folder' : 'New Page'
-      await createItem.mutateAsync({
-        parentId,
-        type,
-        title,
-        sortOrder: 0,
-        contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
-        plainTextContent: type === 'page' ? '' : null,
-      })
-      showTreeToast('Item created')
-    },
-    [createItem, showTreeToast],
-  )
-
-  const handleRenameItem = useCallback(
-    async (itemId: string, title: string, sortOrder: number) => {
-      await updateItem.mutateAsync({
-        itemId,
-        data: { title, sortOrder },
-      })
-      showTreeToast('Renamed')
-    },
-    [updateItem, showTreeToast],
-  )
-
-  const handleDeleteItem = useCallback(
-    async (itemId: string) => {
-      await deleteItem.mutateAsync(itemId)
-      showTreeToast('Deleted')
-    },
-    [deleteItem, showTreeToast],
-  )
-
-  const computeReorderPayload = useCallback(
-    (siblings: TreeNode[]): { itemId: string; parentId: string | null; sortOrder: number }[] => {
-      return siblings.map((node, idx) => ({
-        itemId: node.item.id,
-        parentId: node.item.parentId,
-        sortOrder: idx * 10,
-      }))
-    },
-    [],
-  )
-
-  const handleMoveUp = useCallback(
-    (itemId: string) => {
-      const { siblings, index } = findSiblings(tree, itemId)
-      if (index <= 0 || siblings.length < 2) return
-      const newSiblings = [...siblings]
-      const temp = newSiblings[index - 1]
-      newSiblings[index - 1] = newSiblings[index]
-      newSiblings[index] = temp
-      reorderItems.mutate({ items: computeReorderPayload(newSiblings) })
-    },
-    [tree, reorderItems, computeReorderPayload],
-  )
-
-  const handleMoveDown = useCallback(
-    (itemId: string) => {
-      const { siblings, index } = findSiblings(tree, itemId)
-      if (index < 0 || index >= siblings.length - 1 || siblings.length < 2) return
-      const newSiblings = [...siblings]
-      const temp = newSiblings[index + 1]
-      newSiblings[index + 1] = newSiblings[index]
-      newSiblings[index] = temp
-      reorderItems.mutate({ items: computeReorderPayload(newSiblings) })
-    },
-    [tree, reorderItems, computeReorderPayload],
-  )
-
-  const handleDropOnFolder = useCallback(
-    (folderId: string) => {
-      if (!draggingId || draggingId === folderId) {
-        setDraggingId(null)
-        return
-      }
-      reorderItems.mutate(
-        {
-          items: [
-            {
-              itemId: draggingId,
-              parentId: folderId,
-              sortOrder: 0,
-            },
-          ],
-        },
-        {
-          onSettled: () => setDraggingId(null),
-        },
-      )
-    },
-    [draggingId, reorderItems],
-  )
-
-  const dragState = canEdit
-    ? {
-        draggingId,
-        onDragStart: setDraggingId,
-        onDragEnd: () => setDraggingId(null),
-        onDropOnFolder: handleDropOnFolder,
-      }
-    : undefined
+  const {
+    handleCreateRoot,
+    handleCreateItem,
+    handleRenameItem,
+    handleDeleteItem,
+    handleMoveUp,
+    handleMoveDown,
+    dragState,
+  } = useTreeActions(notebook, tree)
 
   return (
     <div className="flex flex-col h-full">
@@ -207,93 +69,26 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage 
       </div>
 
       {/* Root actions */}
-      {canEdit && !isSearching && (
-        <div className="px-4 pb-2">
-          <div className="relative" ref={rootMenuRef}>
-            <button
-              onClick={() => setShowRootCreate(!showRootCreate)}
-              className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 px-3 py-1.5 text-xs text-gray-500 hover:border-gray-300 hover:text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add folder or page
-            </button>
-            {showRootCreate && (
-              <div className="absolute left-0 right-0 top-full mt-1 rounded-lg border border-gray-100 bg-white shadow-lg z-50 py-1">
-                <button
-                  onClick={() => handleCreateRoot('folder')}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <Folder className="h-3.5 w-3.5 text-brand-brown" />
-                  New folder
-                </button>
-                <button
-                  onClick={() => handleCreateRoot('page')}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <FileText className="h-3.5 w-3.5 text-gray-400" />
-                  New page
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {canEdit && !isSearching && <TreeRootActions onCreateRoot={handleCreateRoot} />}
 
       {/* Tree or Search Results */}
       <div className="flex-1 overflow-y-auto px-2 pb-4">
-        {isSearching ? (
-          <div>
-            {searchPending ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-              </div>
-            ) : searchError ? (
-              <p className="text-xs text-red-500 text-center py-8">Search failed. Please try again.</p>
-            ) : !searchResults?.length ? (
-              <p className="text-xs text-gray-400 text-center py-8">No results found.</p>
-            ) : (
-              <div className="space-y-0.5">
-                {searchResults.map((item) => (
-                  <SearchResultItem
-                    key={item.id}
-                    item={item}
-                    notebookSlug={notebookSlug}
-                    activePath={activePage?.path ?? null}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            {tree.map((node, idx) => (
-              <TreeItem
-                key={node.item.id}
-                node={node}
-                notebookSlug={notebookSlug}
-                activePath={activePage?.path ?? null}
-                level={0}
-                canEdit={canEdit}
-                onMoveUp={handleMoveUp}
-                onMoveDown={handleMoveDown}
-                siblingCount={tree.length}
-                index={idx}
-                dragState={dragState}
-                onCreateItem={handleCreateItem}
-                onRenameItem={handleRenameItem}
-                onDeleteItem={handleDeleteItem}
-              />
-            ))}
-            {tree.length === 0 && (
-              <div className="px-4 py-6 text-center">
-                <p className="text-xs text-gray-400">This notebook is empty.</p>
-                {canEdit && (
-                  <p className="text-xs text-gray-400 mt-1">Add a folder or page to get started.</p>
-                )}
-              </div>
-            )}
-          </>
-        )}
+        <TreeContent
+          isSearching={isSearching}
+          searchPending={searchPending}
+          searchError={searchError}
+          searchResults={searchResults}
+          tree={tree}
+          notebookSlug={notebookSlug}
+          activePage={activePage}
+          canEdit={canEdit}
+          dragState={dragState}
+          onMoveUp={handleMoveUp}
+          onMoveDown={handleMoveDown}
+          onCreateItem={handleCreateItem}
+          onRenameItem={handleRenameItem}
+          onDeleteItem={handleDeleteItem}
+        />
       </div>
 
       {/* Footer */}

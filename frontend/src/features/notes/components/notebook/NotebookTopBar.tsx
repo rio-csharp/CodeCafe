@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Star, MoreHorizontal, Edit3, Settings, Link2, Trash2 } from 'lucide-react'
+import { Star, MoreHorizontal, Edit3 } from 'lucide-react'
 import { useLayout } from '../../../../app/LayoutContext'
 import { useClickOutside } from '../../../../hooks/useClickOutside'
+import TopBarActionMenu from './TopBarActionMenu'
 import { useDeleteNotebook, useToggleFavorite } from '../../hooks/useNotesQueries'
 import { useToast } from '../../../../components/ui/useToast'
 import type { Notebook } from '../../types'
@@ -109,56 +110,16 @@ export default function NotebookTopBar({ notebook }: NotebookTopBarProps) {
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 mt-1.5 w-48 rounded-lg border border-gray-100 bg-white shadow-lg z-50 py-1">
-              <button
-                onClick={handleCopyLink}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <Link2 className="h-4 w-4" />
-                Copy link
-              </button>
-              {notebook.canEdit && (
-                <>
-                  <Link
-                    to={`/notes/${notebook.slug}/edit`}
-                    onClick={() => setMenuOpen(false)}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Settings className="h-4 w-4" />
-                    Notebook settings
-                  </Link>
-                  <div className="my-1 border-t border-gray-100" />
-                  {!showDeleteConfirm ? (
-                    <button
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete notebook
-                    </button>
-                  ) : (
-                    <div className="px-3 py-2 space-y-2">
-                      <p className="text-xs text-red-600">Are you sure? This cannot be undone.</p>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={handleDelete}
-                          disabled={deleteNotebook.isPending}
-                          className="rounded-md bg-red-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
-                        >
-                          {deleteNotebook.isPending ? 'Deleting...' : 'Delete'}
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteConfirm(false)}
-                          className="rounded-md border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            <TopBarActionMenu
+              notebook={notebook}
+              onCopyLink={handleCopyLink}
+              onDelete={handleDelete}
+              isDeleting={deleteNotebook.isPending}
+              showDeleteConfirm={showDeleteConfirm}
+              onShowDeleteConfirm={() => setShowDeleteConfirm(true)}
+              onCancelDelete={() => setShowDeleteConfirm(false)}
+              onClose={() => setMenuOpen(false)}
+            />
           )}
         </div>
 
