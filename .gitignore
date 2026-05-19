@@ -12,6 +12,7 @@ deploy/cloudflare/*.private.*
 
 # Local development configuration can contain secrets.
 appsettings.Development.json
+appsettings.development.json
 appsettings.*.local.json
 
 # User-specific files
@@ -491,3 +492,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Cookie jars from local API testing
+cookies.txt
+*_cookies.txt

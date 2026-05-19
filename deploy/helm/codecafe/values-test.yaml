@@ -1,18 +1,7 @@
 frontend:
   replicaCount: 1
-  env:
-    apiBaseUrl: https://api.example.local
-  ingress:
-    host: frontend.example.local
-    tls:
-      secretName: codecafe-test-frontend-tls
 
 api:
   replicaCount: 1
-  cors:
-    allowedOrigins:
-      - https://frontend.example.local
-  ingress:
-    host: api.example.local
-    tls:
-      secretName: codecafe-test-api-tls
+  envFromSecrets:
+    - codecafe-db-secret

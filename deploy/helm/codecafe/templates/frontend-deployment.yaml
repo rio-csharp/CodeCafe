@@ -29,7 +29,7 @@ spec:
       {{- end }}
       containers:
         - name: frontend
-          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+          image: "{{ required "frontend.image.repository is required" .Values.frontend.image.repository }}:{{ required "frontend.image.tag is required" .Values.frontend.image.tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           env:
             - name: API_BASE_URL

@@ -23,45 +23,46 @@ spec:
         app.kubernetes.io/component: api
     spec:
       terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
+      {{- with .Values.api.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
         - name: api
-          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
+          image: "{{ required "api.image.repository is required" .Values.api.image.repository }}:{{ required "api.image.tag is required" .Values.api.image.tag }}"
           imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          {{- with .Values.api.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.api.envFromSecrets }}
+          envFrom:
+            {{- range . }}
+            - secretRef:
+                name: {{ . | quote }}
+            {{- end }}
+          {{- end }}
           env:
-            - name: ASPNETCORE_ENVIRONMENT
-              value: {{ .Release.Namespace | quote }}
-            - name: Notes__RootPath
-              value: {{ .Values.api.notes.rootPath | quote }}
+            - name: Auth__RegistrationEnabled
+              value: {{ .Values.api.auth.registrationEnabled | quote }}
             {{- range $index, $origin := .Values.api.cors.allowedOrigins }}
             - name: Cors__AllowedOrigins__{{ $index }}
               value: {{ $origin | quote }}
             {{- end }}
-            - name: Authentication__Username
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "codecafe.fullname" . }}-api-auth
-                  key: username
-            - name: Authentication__Password
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "codecafe.fullname" . }}-api-auth
-                  key: password
-            - name: Authentication__JwtSigningKey
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "codecafe.fullname" . }}-api-auth
-                  key: jwt-signing-key
           ports:
             - name: http
               containerPort: {{ .Values.api.service.targetPort }}
-          volumeMounts:
-            - name: notes-content
-              mountPath: {{ .Values.api.notes.rootPath | quote }}
-              readOnly: true
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - sleep {{ .Values.api.preStopSleepSeconds }}
           readinessProbe:
             httpGet:
               path: {{ .Values.api.probes.readiness.path }}
@@ -80,8 +81,3 @@ spec:
             failureThreshold: {{ .Values.api.probes.liveness.failureThreshold }}
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
-      volumes:
-        - name: notes-content
-          hostPath:
-            path: {{ .Values.api.notes.hostPath | quote }}
-            type: DirectoryOrCreate

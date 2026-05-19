@@ -1,58 +1,140 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { apiDelete, apiJson, apiSend, checkBackendHealth } from './apiClient'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { apiFetch, ApiError, clearCsrfToken, fetchCsrfToken } from './apiClient'
 
-describe('apiClient', () => {
+describe('ApiError', () => {
+  it('stores status and message', () => {
+    const err = new ApiError(403, 'Forbidden')
+    expect(err.status).toBe(403)
+    expect(err.message).toBe('Forbidden')
+    expect(err.name).toBe('ApiError')
+  })
+})
+
+describe('apiFetch', () => {
+  beforeEach(() => {
+    clearCsrfToken()
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
   afterEach(() => {
-    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
-  it('returns true when the health endpoint succeeds', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('Healthy', { status: 200 }))
+  it('does not attach CSRF token for GET requests', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue(JSON.stringify({ data: 'ok' })),
+    })
 
-    await expect(checkBackendHealth()).resolves.toBe(true)
+    await apiFetch('/test', { method: 'GET' })
+
+    expect(globalThis.fetch).toHaveBeenCalledOnce()
+    const [, options] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(options.headers.get('X-CSRF-TOKEN')).toBeNull()
   })
 
-  it('returns false when the health endpoint fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 503 }))
+  it('fetches CSRF token and attaches it for POST requests', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ token: 'csrf-123' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue(JSON.stringify({ success: true })),
+      })
 
-    await expect(checkBackendHealth()).resolves.toBe(false)
+    globalThis.fetch = mockFetch
+
+    await apiFetch('/test', { method: 'POST', body: JSON.stringify({}) })
+
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+
+    const [csrfUrl] = mockFetch.mock.calls[0]
+    expect(csrfUrl).toContain('/api/auth/csrf')
+
+    const [, options] = mockFetch.mock.calls[1]
+    expect(options.headers.get('X-CSRF-TOKEN')).toBe('csrf-123')
   })
 
-  it('returns parsed JSON for successful requests', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ value: 42 }))
+  it('reuses cached CSRF token for subsequent mutating requests', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ token: 'cached-token' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue(''),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue(''),
+      })
 
-    await expect(apiJson<{ value: number }>('/api/example')).resolves.toEqual({ value: 42 })
+    globalThis.fetch = mockFetch
+
+    await apiFetch('/first', { method: 'POST', body: '{}' })
+    await apiFetch('/second', { method: 'POST', body: '{}' })
+
+    expect(mockFetch).toHaveBeenCalledTimes(3)
+    const [, secondOptions] = mockFetch.mock.calls[2]
+    expect(secondOptions.headers.get('X-CSRF-TOKEN')).toBe('cached-token')
   })
 
-  it('throws when a JSON request fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 500 }))
+  it('returns undefined for empty body responses', async () => {
+    globalThis.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ token: 'csrf-empty' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue(''),
+      })
 
-    await expect(apiJson('/api/example')).rejects.toThrow('API request failed with status 500')
+    const result = await apiFetch<void>('/test', { method: 'POST' })
+    expect(result).toBeUndefined()
   })
 
-  it('sends JSON payloads with apiSend', async () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ ok: true }))
+  it('throws ApiError on non-ok response', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      json: vi.fn().mockResolvedValue({ detail: 'Invalid input' }),
+    })
 
-    await expect(apiSend('/api/example', 'PUT', { value: 42 })).resolves.toEqual({ ok: true })
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'http://localhost:5000/api/example',
-      expect.objectContaining({
-        body: JSON.stringify({ value: 42 }),
-        credentials: 'include',
-        method: 'PUT',
-      }),
+    await expect(apiFetch('/test', { method: 'GET' })).rejects.toThrow(ApiError)
+    await expect(apiFetch('/test', { method: 'GET' })).rejects.toThrow(
+      'Invalid input',
     )
   })
+})
 
-  it('deletes successfully with apiDelete', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }))
-
-    await expect(apiDelete('/api/example')).resolves.toBeUndefined()
+describe('fetchCsrfToken', () => {
+  beforeEach(() => {
+    clearCsrfToken()
+    vi.stubGlobal('fetch', vi.fn())
   })
 
-  it('throws when apiDelete fails', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 403 }))
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
 
-    await expect(apiDelete('/api/example')).rejects.toThrow('API request failed with status 403')
+  it('fetches and caches the token', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ token: 'abc-xyz' }),
+    })
+
+    const token = await fetchCsrfToken()
+    expect(token).toBe('abc-xyz')
+
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ token: 'should-not-use' }),
+    })
+    const cached = await fetchCsrfToken()
+    expect(cached).toBe('abc-xyz')
   })
 })

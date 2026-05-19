@@ -1,189 +1,164 @@
 # Deployment
 
-CodeCafe uses Kubernetes deployments for the permanent test environment and PR
-preview environments. Production uses a separate Kubernetes cluster/server.
+CI builds and tests the backend and frontend in parallel. For deployable refs, CI
+also publishes the API and frontend images to GHCR in parallel, then writes a
+small deployment metadata artifact containing the image tag.
 
-For the full test server runbook, see
-[`docs/test-environment-setup.md`](test-environment-setup.md).
+Deployment workflows do not build application code or Docker images. They
+download the Helm chart and deployment metadata produced by CI, then run
+the deployment helper script from the CI scripts artifact. The helper performs
+the remote `helm upgrade`, migration hook execution, rollout wait, and smoke
+test.
 
-For note content sync from the separate `Notes` repository, see
-[`docs/notes-content-sync.md`](notes-content-sync.md).
+CI runs on pushes to `main`, `release/*`, and `feature/*`, and on pull requests
+targeting `release/*`.
 
-## Test Server Prerequisites
+The workflows deploy the images produced by CI:
 
-- k3s installed and healthy
-- Traefik enabled, which is the k3s default ingress controller
-- Ports `80/tcp` and `443/tcp` open on the server firewall
-- Cloudflare DNS records pointing at the test server
-- A shared Kubernetes TLS secret named `codecafe-test-wildcard-tls`
+- PRs targeting `release/*` deploy to `https://pr-<number>.<PREVIEW_BASE_DOMAIN>`.
+- Pushes to `release/*` deploy to test.
+- Pushes to `main` deploy to production.
+- Production rollback is manual through the `Rollback Production` workflow.
 
-## Cloudflare DNS
+Deploy workflows intentionally do not accept an arbitrary Git ref. Manual
+dispatches deploy artifacts from a specific successful CI run id, which keeps
+the deployment input tied to an already-built image and Helm chart.
 
-Point these records to the test server public IP:
+`appsettings.json` is committed with template/default values only and acts as the
+configuration reference. Local secrets belong in
+`src/CodeCafe.WebApi/appsettings.Development.json`, which is ignored by Git and
+excluded from Docker build context and publish output. Deployed values should be
+provided through environment variables, GitHub secrets, Kubernetes secrets, or
+Helm values.
 
-```text
-<TEST_FRONTEND_HOST>      A      <test-server-ip>    Proxied
-<TEST_API_HOST>           A      <test-server-ip>    Proxied
-*.<PREVIEW_BASE_DOMAIN>   A      <test-server-ip>    Proxied
-```
-
-PR previews use:
-
-```text
-pr-<number>.<PREVIEW_BASE_DOMAIN>
-api-pr-<number>.<PREVIEW_BASE_DOMAIN>
-```
-
-## GitHub Variables and Secrets
-
-Create these repository variables for the test cluster:
+The API expects the PostgreSQL connection string in:
 
 ```text
-TEST_FRONTEND_HOST
-TEST_API_HOST
-PREVIEW_BASE_DOMAIN
-TEST_SSH_PORT
-TEST_SSH_USER
-TEST_APP_USERNAME
+ConnectionStrings__DefaultConnection
 ```
 
-Create these repository variables for the production cluster:
+Deploy workflows create a Kubernetes secret named `<release>-api-config` in the
+target namespace and mount it into the API pod through `envFrom`.
 
-```text
-PRODUCTION_FRONTEND_HOST
-PRODUCTION_API_HOST
-PRODUCTION_SSH_PORT
-PRODUCTION_SSH_USER
-PRODUCTION_APP_USERNAME
+The long-lived manually created database secrets are named `codecafe-db-secret`
+in `codecafe-test` and `codecafe-prod`. Manual Helm runs may reference those
+secrets directly through `api.envFromSecrets`. CI/CD copies only the
+`ConnectionStrings__DefaultConnection` key from that server-side Kubernetes
+Secret into the release-scoped Secret. GitHub does not need database connection
+string secrets for deploys.
+
+## Database Migrations
+
+The Helm chart creates a pre-install/pre-upgrade Job that runs
+`dotnet CodeCafe.WebApi.dll migrate` using the API image before the Deployment
+is rolled out. Migration execution is protected by a PostgreSQL advisory lock.
+
+PR previews currently share the test database, so PR preview deployments disable
+the migration hook with `--set api.migration.enabled=false`. This prevents one
+PR from changing the shared test schema for all other PRs. Schema-changing PRs
+should be validated after merge/deploy to test, or moved to isolated per-PR
+databases before enabling PR migrations.
+
+If production data is synced to test, the sync workflow restores production into
+the test database and then runs the current test API image's migration command so
+the test schema is brought back up to the deployed test application version.
+
+For manual repair or one-off operations, the database console tool can still
+apply migrations through an SSH tunnel:
+
+```sh
+dotnet run --project tools/CodeCafe.DbSync -- migrate-test
+dotnet run --project tools/CodeCafe.DbSync -- migrate-prod
 ```
 
-Create these repository secrets:
+Both commands read the Kubernetes database secret over SSH, open a local tunnel
+to PostgreSQL, and run `dotnet ef database update` against that tunnel.
 
-```text
-TEST_SSH_HOST
-TEST_SSH_PRIVATE_KEY
-TEST_APP_PASSWORD
-TEST_APP_JWT_SIGNING_KEY
-PRODUCTION_SSH_HOST
-PRODUCTION_SSH_PRIVATE_KEY
-PRODUCTION_APP_PASSWORD
-PRODUCTION_APP_JWT_SIGNING_KEY
+## CORS
+
+The backend reads allowed frontend origins from:
+
+```json
+{
+  "Cors": {
+    "AllowedOrigins": []
+  }
+}
 ```
 
-Create this additional repository variable:
+For local development, if no CORS origins are configured and the API runs in the
+`Development` environment, the API allows the Vite dev server origins:
 
-```text
-IMAGE_NAMESPACE
+- `http://localhost:5173`
+- `https://localhost:5173`
+- `http://127.0.0.1:5173`
+- `https://127.0.0.1:5173`
+
+Deployed environments are configured by Helm. CORS values must be the frontend
+page origin, not the API origin:
+
+- PR preview frontend: `https://pr-<number>.<PREVIEW_BASE_DOMAIN>`
+- PR preview API: `https://api-pr-<number>.<PREVIEW_BASE_DOMAIN>`
+- Test: `https://<TEST_FRONTEND_HOST>`
+- Production: `https://<PRODUCTION_FRONTEND_HOST>`
+
+These values are injected into the API container as
+`Cors__AllowedOrigins__0`. Add more indexed values only when the API must accept
+multiple frontend origins in the same environment.
+
+If the frontend and API are served from exactly the same origin, for example the
+same scheme, host, and port, CORS is not involved for browser requests. Local
+development usually still needs CORS because Vite and the API run on different
+ports, such as `http://localhost:5173` calling `https://localhost:7239`.
+
+## Required GitHub Variables
+
+Repository variables:
+
+- `IMAGE_NAMESPACE`
+- `PREVIEW_BASE_DOMAIN`
+- `TEST_SSH_PORT`
+- `TEST_SSH_USER`
+- `TEST_FRONTEND_HOST`
+- `TEST_API_HOST`
+- `PRODUCTION_SSH_PORT`
+- `PRODUCTION_SSH_USER`
+- `PRODUCTION_FRONTEND_HOST`
+- `PRODUCTION_API_HOST`
+
+Repository secrets:
+
+- `TEST_SSH_HOST`
+- `TEST_SSH_PRIVATE_KEY`
+- `TEST_SSH_KNOWN_HOSTS`
+- `PRODUCTION_SSH_HOST`
+- `PRODUCTION_SSH_PRIVATE_KEY`
+- `PRODUCTION_SSH_KNOWN_HOSTS`
+
+`TEST_SSH_KNOWN_HOSTS` and `PRODUCTION_SSH_KNOWN_HOSTS` must contain the
+expected OpenSSH known_hosts line for the deployment host. The workflows use
+`StrictHostKeyChecking=yes`; they should fail closed if the host key is missing
+or changes unexpectedly.
+
+## Cluster Assumptions
+
+The test cluster is expected to have a wildcard TLS secret named
+`codecafe-test-wildcard-tls` in the `codecafe-shared` namespace.
+
+The production cluster is expected to have a wildcard TLS secret named
+`codecafe-production-wildcard-tls` in the `codecafe-shared` namespace.
+
+The deployment user must be able to run `kubectl` and `helm`. Production follows
+the previous project pattern and runs them through:
+
+```sh
+sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 ```
 
-Keep local copies in `deploy/secrets.env`. That file is ignored by Git. Use
-`deploy/secrets.example.env` as the committed format reference.
+If GHCR packages are private, configure image pull credentials in the cluster or
+set `imagePullSecrets` in the Helm values.
 
-The test and production workflows use SSH to connect to the target server and
-run `kubectl` and `helm` there. Do not expose the Kubernetes API publicly for
-GitHub Actions.
-
-The deploy workflows also create or update a Kubernetes secret named
-`<release>-api-auth` in the target namespace. The API reads its login
-credentials from that secret via `Authentication__Username` and
-`Authentication__Password` environment variables, and reads the JWT signing key
-via `Authentication__JwtSigningKey`.
-
-## Notes Content
-
-The deployed API reads notes from a mounted server directory instead of from the
-application image.
-
-Default paths:
-
-```text
-server host path:   /home/deploy/codecafe/notes
-container path:     /data/notes
-```
-
-The separate `Notes` repository is responsible for syncing Markdown files into
-that server path. This keeps note updates independent from CodeCafe application
-deploys.
-
-## TLS
-
-Cloudflare Universal SSL protects visitor traffic to Cloudflare. The Kubernetes
-ingress still needs a certificate for Cloudflare-to-origin traffic when the zone
-uses `Full (strict)`.
-
-For the first version, use a Cloudflare Origin Certificate and create one shared
-wildcard TLS secret. The GitHub workflows copy this secret into each deployment
-namespace. Later, replace this with cert-manager.
-
-Create a Cloudflare Origin Certificate that covers:
-
-```text
-<TEST_FRONTEND_HOST>
-<TEST_API_HOST>
-*.<PREVIEW_BASE_DOMAIN>
-```
-
-Then create the shared secret:
-
-```bash
-kubectl create namespace codecafe-shared
-kubectl create secret tls codecafe-test-wildcard-tls \
-  --cert=cloudflare-origin.pem \
-  --key=cloudflare-origin.key \
-  --namespace codecafe-shared
-```
-
-The workflows copy this secret into `codecafe-test` and each `codecafe-pr-*`
-namespace before deploying.
-
-To replace an existing certificate, use:
-
-```bash
-kubectl create secret tls codecafe-test-wildcard-tls \
-  --cert=cloudflare-origin.pem \
-  --key=cloudflare-origin.key \
-  --namespace codecafe-shared \
-  --dry-run=client -o yaml | kubectl apply -f -
-```
-
-For production, create a separate shared TLS secret in the production cluster:
-
-```bash
-kubectl create namespace codecafe-shared
-kubectl create secret tls codecafe-production-wildcard-tls \
-  --cert=origin.pem \
-  --key=origin.key \
-  --namespace codecafe-shared
-```
-
-Use a production origin certificate that covers the production frontend and API
-hosts.
-
-## Workflows
-
-- `CI`: runs backend and frontend checks on every push, so each commit gets a
-  GitHub check status.
-- `CI`: detects whether the pushed branch has an open PR. If it does, CI
-  uploads API and frontend build artifacts after backend and frontend checks
-  pass. The PR image jobs download those artifacts and package them into thin
-  runtime images in parallel.
-- `CI`: triggers the separate `Deploy PR Preview` workflow after PR images are
-  published.
-- `Deploy PR Preview`: deploys the existing PR images published by CI to
-  `pr-<number>.<PREVIEW_BASE_DOMAIN>`.
-- `Deploy PR Preview`: writes a PR comment with preview URL formats only. It
-  does not expose the real preview base domain.
-- `Cleanup PR Preview`: deletes the PR namespace when the PR closes.
-- `Deploy Test`: deploys `main` to `<TEST_FRONTEND_HOST>`.
-- `Deploy Production`: deploys `main` to `<PRODUCTION_FRONTEND_HOST>`.
-- `Rollback Production`: manually rolls the production Helm release back to the
-  previous revision, or to a specific Helm revision if one is provided.
-
-`Deploy Test` and `Deploy Production` both support manual runs. Use the
-`git_ref` input to deploy a branch, tag, or commit SHA.
-
-Production deploys run automatically when changes merge to `main`. If a
-production deploy is bad, use `Rollback Production` for the fastest rollback
-because it reuses the previous Helm release revision and does not rebuild
-images. If you need to redeploy a specific commit instead, manually run
-`Deploy Production` and set `git_ref` to the target branch, tag, or commit SHA.
+Ingress defaults target Traefik's `websecure` entrypoint. If a cluster uses a
+different HTTPS enforcement model, override `frontend.ingress.annotations` and
+`api.ingress.annotations` in Helm values instead of disabling TLS at the
+application layer.

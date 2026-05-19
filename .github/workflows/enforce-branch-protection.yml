@@ -19,14 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check source branch
+        env:
+          SOURCE_BRANCH: ${{ github.head_ref }}
         run: |
-          source_branch="${{ github.head_ref }}"
+          source_branch="$SOURCE_BRANCH"
           echo "Source branch: $source_branch"
           if [[ "$source_branch" == release/* ]]; then
-            echo "✅ Source branch is a release branch. Merge to main is allowed."
+            echo "Source branch is a release branch. Merge to main is allowed."
             exit 0
-          else
-            echo "❌ Only branches matching 'release/*' are allowed to merge into main."
-            echo "Source branch '$source_branch' is not allowed."
-            exit 1
           fi
+
+          echo "Only branches matching 'release/*' are allowed to merge into main."
+          echo "Source branch '$source_branch' is not allowed."
+          exit 1

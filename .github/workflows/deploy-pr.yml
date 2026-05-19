@@ -1,16 +1,22 @@
 name: Deploy PR Preview
 
 on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       pr_number:
-        description: Pull request number used for namespace and host names.
+        description: Pull request number to deploy.
         required: true
-      image_tag:
-        description: Existing image tag to deploy.
+      ci_run_id:
+        description: CI workflow run id that produced artifacts.
         required: true
 
 permissions:
+  actions: read
   contents: read
   issues: write
   pull-requests: write
@@ -18,7 +24,8 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
-  HELM_CHART: deploy/helm/codecafe
+  NAMESPACE_PREFIX: codecafe-pr
+  TLS_SECRET: codecafe-test-wildcard-tls
 
 jobs:
   deploy:
@@ -26,130 +33,136 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: test
+    outputs:
+      skip: ${{ steps.pr.outputs.skip }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - name: Resolve PR
+        id: pr
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const isDispatch = context.eventName === 'workflow_dispatch';
+            const run = context.payload.workflow_run;
+
+            if (!isDispatch) {
+              if (run.conclusion !== 'success' || !['push', 'pull_request'].includes(run.event)) {
+                core.setOutput('skip', 'true');
+                return;
+              }
+            }
+
+            let prNumber = isDispatch ? Number('${{ inputs.pr_number }}') : run.pull_requests?.[0]?.number;
+
+            if (!prNumber && run?.head_sha) {
+              const associated = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner,
+                repo,
+                commit_sha: run.head_sha,
+              });
+              prNumber = associated.data.find(pr => pr.base.ref.startsWith('release/'))?.number;
+            }
+
+            if (!prNumber) {
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            const { data: pr } = await github.rest.pulls.get({
+              owner,
+              repo,
+              pull_number: prNumber,
+            });
+
+            if (pr.state !== 'open' || !pr.base.ref.startsWith('release/')) {
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            if (pr.head.repo.full_name !== `${owner}/${repo}`) {
+              core.warning('Skipping preview deploy for forked PR to avoid exposing deployment secrets.');
+              core.setOutput('skip', 'true');
+              return;
+            }
+
+            core.setOutput('skip', 'false');
+            core.setOutput('pr_number', String(pr.number));
+            core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('ci_run_id', isDispatch ? '${{ inputs.ci_run_id }}' : String(run.id));
+
+      - name: Download CI artifacts
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .artifacts/helm .artifacts/deployment .artifacts/scripts
+          gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-ci-scripts --dir .artifacts/scripts
+          gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-helm-chart --dir .artifacts/helm
+          gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-deployment --dir .artifacts/deployment
 
       - name: Set deployment variables
+        if: steps.pr.outputs.skip != 'true'
         run: |
-          echo "IMAGE_TAG=${{ inputs.image_tag }}" >> "$GITHUB_ENV"
-          echo "NAMESPACE=codecafe-pr-${{ inputs.pr_number }}" >> "$GITHUB_ENV"
-          echo "RELEASE=codecafe-pr-${{ inputs.pr_number }}" >> "$GITHUB_ENV"
-          echo "FRONTEND_HOST=pr-${{ inputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
-          echo "API_HOST=api-pr-${{ inputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}" >> "$GITHUB_ENV"
-          echo "TLS_SECRET=codecafe-test-wildcard-tls" >> "$GITHUB_ENV"
+          . .artifacts/deployment/deployment.env
+          {
+            echo "IMAGE_TAG=$IMAGE_TAG"
+            echo "NAMESPACE=${{ env.NAMESPACE_PREFIX }}-${{ steps.pr.outputs.pr_number }}"
+            echo "RELEASE=codecafe-pr-${{ steps.pr.outputs.pr_number }}"
+            echo "FRONTEND_HOST=pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}"
+            echo "API_HOST=api-pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}"
+          } >> "$GITHUB_ENV"
 
       - name: Configure SSH
+        if: steps.pr.outputs.skip != 'true'
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
 
+      - name: Configure SSH known hosts
+        if: steps.pr.outputs.skip != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' "${{ secrets.TEST_SSH_KNOWN_HOSTS }}" > "$RUNNER_TEMP/ssh/known_hosts"
+          echo "SSH_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
+
       - name: Deploy preview
+        if: steps.pr.outputs.skip != 'true'
         run: |
           CHART_ARCHIVE="codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
           REMOTE_DIR="/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          tar -czf "$CHART_ARCHIVE" -C deploy/helm codecafe
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR'"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='$FRONTEND_HOST' API_HOST='$API_HOST' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' APP_USERNAME='${{ vars.TEST_APP_USERNAME }}' APP_PASSWORD='${{ secrets.TEST_APP_PASSWORD }}' APP_JWT_SIGNING_KEY='${{ secrets.TEST_APP_JWT_SIGNING_KEY }}' bash -s" <<'REMOTE'
-          set -euo pipefail
-          trap 'rm -rf "$REMOTE_DIR"' EXIT
-          export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
-          AUTH_SECRET="${RELEASE}-api-auth"
-          tar -xzf "$REMOTE_DIR/codecafe-chart.tgz" -C "$REMOTE_DIR"
-          kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
-          TLS_CERT_FILE="$(mktemp)"
-          TLS_KEY_FILE="$(mktemp)"
-          kubectl get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.crt}' | base64 -d > "$TLS_CERT_FILE"
-          kubectl get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.key}' | base64 -d > "$TLS_KEY_FILE"
-          kubectl create secret tls "$TLS_SECRET" \
-            --cert="$TLS_CERT_FILE" \
-            --key="$TLS_KEY_FILE" \
-            --namespace "$NAMESPACE" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          kubectl create secret generic "$AUTH_SECRET" \
-            --from-literal=username="$APP_USERNAME" \
-            --from-literal=password="$APP_PASSWORD" \
-            --from-literal=jwt-signing-key="$APP_JWT_SIGNING_KEY" \
-            --namespace "$NAMESPACE" \
-            --dry-run=client -o yaml | kubectl apply -f -
-          rm -f "$TLS_CERT_FILE" "$TLS_KEY_FILE"
-          helm upgrade --install "$RELEASE" "$REMOTE_DIR/codecafe" \
-            --namespace "$NAMESPACE" \
-            --set frontend.replicaCount=1 \
-            --set frontend.image.repository="$REGISTRY/$IMAGE_NAMESPACE/frontend" \
-            --set frontend.image.tag="$IMAGE_TAG" \
-            --set api.replicaCount=1 \
-            --set api.image.repository="$REGISTRY/$IMAGE_NAMESPACE/api" \
-            --set api.image.tag="$IMAGE_TAG" \
-            --set frontend.env.apiBaseUrl="https://$API_HOST" \
-            --set frontend.ingress.host="$FRONTEND_HOST" \
-            --set frontend.ingress.tls.secretName="$TLS_SECRET" \
-            --set api.cors.allowedOrigins[0]="https://$FRONTEND_HOST" \
-            --set api.ingress.host="$API_HOST" \
-            --set api.ingress.tls.secretName="$TLS_SECRET"
-          REMOTE
-
-      - name: Wait for rollout
-        run: |
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o StrictHostKeyChecking=accept-new "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-            "export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin; kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=frontend --namespace $NAMESPACE --timeout=180s && kubectl rollout status deployment --selector app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=api --namespace $NAMESPACE --timeout=180s"
-
-      - name: Summarize preview
-        run: |
-          {
-            echo "## PR Preview"
-            echo
-            echo "| Service | URL |"
-            echo "| --- | --- |"
-            echo "| Frontend | \`https://$FRONTEND_HOST\` |"
-            echo "| API health | \`https://$API_HOST/health\` |"
-            echo
-            echo "Namespace: \`$NAMESPACE\`"
-            echo "Image tag: \`$IMAGE_TAG\`"
-          } >> "$GITHUB_STEP_SUMMARY"
+          tar -czf "$CHART_ARCHIVE" -C .artifacts/helm .
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
+          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
+          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/scripts/deploy-helm.sh" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/deploy-helm.sh"
+          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
+            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='${{ env.TLS_SECRET }}' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='$FRONTEND_HOST' API_HOST='$API_HOST' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DB_SECRET_NAMESPACE='codecafe-test' FRONTEND_REPLICA_COUNT='1' API_REPLICA_COUNT='1' API_MIGRATION_ENABLED='false' bash '$REMOTE_DIR/deploy-helm.sh'"
 
       - name: Comment preview
+        if: steps.pr.outputs.skip != 'true'
         uses: actions/github-script@v9
         with:
           script: |
             const marker = '<!-- codecafe-pr-preview -->';
-            const prNumber = Number('${{ inputs.pr_number }}');
-            const frontendHost = process.env.FRONTEND_HOST;
-            const apiHost = process.env.API_HOST;
+            const prNumber = Number('${{ steps.pr.outputs.pr_number }}');
             const body = `${marker}
             ## PR Preview
 
             | Service | URL |
             | --- | --- |
-            | Frontend | \`https://${frontendHost}\` |
-            | API health | \`https://${apiHost}/health\` |
+            | Frontend | \`https://${process.env.FRONTEND_HOST}\` |
+            | API readiness | \`https://${process.env.API_HOST}/health/ready\` |
 
             Namespace: \`${process.env.NAMESPACE}\`
             Image tag: \`${process.env.IMAGE_TAG}\`
             `;
 
             const { owner, repo } = context.repo;
-            const comments = await github.rest.issues.listComments({
-              owner,
-              repo,
-              issue_number: prNumber,
-            });
+            const comments = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber });
             const existing = comments.data.find(comment => comment.body?.includes(marker));
 
             if (existing) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: existing.id,
-                body,
-              });
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
             } else {
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number: prNumber,
-                body,
-              });
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
             }

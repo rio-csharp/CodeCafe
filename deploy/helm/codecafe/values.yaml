@@ -18,7 +18,7 @@ frontend:
     port: 80
     targetPort: 8080
   env:
-    apiBaseUrl: http://localhost:5000
+    apiBaseUrl: https://api.example.local
   probes:
     readiness:
       path: /
@@ -35,6 +35,8 @@ frontend:
   ingress:
     enabled: true
     className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
     host: frontend.example.local
     tls:
       enabled: true
@@ -50,6 +52,17 @@ frontend:
 api:
   replicaCount: 2
   terminationGracePeriodSeconds: 60
+  preStopSleepSeconds: 10
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
   strategy:
     rollingUpdate:
       maxUnavailable: 0
@@ -61,12 +74,16 @@ api:
   service:
     port: 80
     targetPort: 8080
+  envFromSecrets: []
+  migration:
+    enabled: true
+    backoffLimit: 1
+    ttlSecondsAfterFinished: 300
+  auth:
+    registrationEnabled: true
   cors:
     allowedOrigins:
       - https://frontend.example.local
-  notes:
-    rootPath: /data/notes
-    hostPath: /home/deploy/codecafe/notes
   probes:
     readiness:
       path: /health/ready
@@ -83,6 +100,8 @@ api:
   ingress:
     enabled: true
     className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
     host: api.example.local
     tls:
       enabled: true

@@ -1,11 +1,15 @@
-import { RouterProvider } from 'react-router-dom'
-import { AuthProvider } from './features/auth/AuthProvider'
-import { router } from './app/router'
+import ErrorBoundary from './components/ErrorBoundary'
+import { AppRouter } from './app/router'
+import AppLayout from './app/AppLayout'
 
-export default function App() {
+function App() {
   return (
-    <AuthProvider>
-      <RouterProvider router={router} />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AppLayout>
+        <AppRouter />
+      </AppLayout>
+    </ErrorBoundary>
   )
 }
+
+export default App
