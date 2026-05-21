@@ -25,7 +25,6 @@ API_REPLICA_COUNT="${API_REPLICA_COUNT:-}"
 API_MIGRATION_ENABLED="${API_MIGRATION_ENABLED:-}"
 OAUTH_SECRET_NAME="${OAUTH_SECRET_NAME:-codecafe-oauth-secret}"
 OAUTH_SECRET_NAMESPACE="${OAUTH_SECRET_NAMESPACE:-$NAMESPACE}"
-OAUTH_TLS_FALLBACK_NAMESPACE="${OAUTH_TLS_FALLBACK_NAMESPACE:-codecafe-shared}"
 
 cleanup() {
   rm -rf "$REMOTE_DIR"
@@ -49,37 +48,6 @@ append_secret_key() {
   fi
 
   printf '%s=%s\n' "$key" "$(printf '%s' "$encoded" | base64 -d)" >> "$REMOTE_DIR/api.env"
-}
-
-append_oauth_certificate_from_tls_secret() {
-  local tls_namespace="$1"
-  local cert_file
-  local key_file
-  local pfx_file
-
-  cert_file="$(mktemp)"
-  key_file="$(mktemp)"
-  pfx_file="$(mktemp)"
-
-  $KUBECTL_BIN get secret "$TLS_SECRET" \
-    --namespace "$tls_namespace" \
-    -o "jsonpath={.data.tls\.crt}" \
-    | base64 -d > "$cert_file"
-  $KUBECTL_BIN get secret "$TLS_SECRET" \
-    --namespace "$tls_namespace" \
-    -o "jsonpath={.data.tls\.key}" \
-    | base64 -d > "$key_file"
-
-  if ! openssl pkcs12 -export -out "$pfx_file" -inkey "$key_file" -in "$cert_file" -passout pass: >/dev/null 2>&1; then
-    echo "Failed to derive OAuth certificate material from $tls_namespace/$TLS_SECRET" >&2
-    rm -f "$cert_file" "$key_file" "$pfx_file"
-    exit 1
-  fi
-
-  printf '%s=%s\n' AuthorizationServer__SigningCertificateBase64 "$(base64 < "$pfx_file" | tr -d '\n')" >> "$REMOTE_DIR/api.env"
-  printf '%s=%s\n' AuthorizationServer__EncryptionCertificateBase64 "$(base64 < "$pfx_file" | tr -d '\n')" >> "$REMOTE_DIR/api.env"
-
-  rm -f "$cert_file" "$key_file" "$pfx_file"
 }
 
 chart_dir="$REMOTE_DIR/codecafe"
@@ -112,17 +80,10 @@ AuthorizationServer__Issuer=https://$API_HOST/
 AuthorizationServer__FrontendBaseUrl=https://$FRONTEND_HOST
 EOF
 
-if $KUBECTL_BIN get secret "$OAUTH_SECRET_NAME" --namespace "$OAUTH_SECRET_NAMESPACE" >/dev/null 2>&1; then
-  append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificateBase64
-  append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificatePassword false
-  append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__EncryptionCertificateBase64
-  append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__EncryptionCertificatePassword false
-elif [ "${NAMESPACE}" = "codecafe-test" ]; then
-  append_oauth_certificate_from_tls_secret "$OAUTH_TLS_FALLBACK_NAMESPACE"
-else
-  echo "Missing required secret: $OAUTH_SECRET_NAMESPACE/$OAUTH_SECRET_NAME" >&2
-  exit 1
-fi
+append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificateBase64
+append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificatePassword false
+append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__EncryptionCertificateBase64
+append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__EncryptionCertificatePassword false
 
 $KUBECTL_BIN create secret generic "$api_config_secret" \
   --from-env-file="$REMOTE_DIR/api.env" \
