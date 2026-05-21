@@ -32,6 +32,14 @@ public sealed class NotebookItem : IAuditableEntity
 
     public string? PlainTextContent { get; set; }
 
+    public int Revision { get; set; }
+
+    public bool IsArchived { get; set; }
+
+    public DateTimeOffset? ArchivedAtUtc { get; set; }
+
+    public Guid? ArchivedByUserId { get; set; }
+
     public DateTimeOffset CreatedAtUtc { get; set; }
 
     public DateTimeOffset? UpdatedAtUtc { get; set; }

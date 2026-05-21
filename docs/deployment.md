@@ -47,6 +47,20 @@ secrets directly through `api.envFromSecrets`. CI/CD copies only the
 Secret into the release-scoped Secret. GitHub does not need database connection
 string secrets for deploys.
 
+For OAuth/OpenIddict, manual cluster setup must also create a long-lived Secret
+named `codecafe-oauth-secret` in the test and production namespaces. CI/CD
+copies these keys from that server-side Secret into the same release-scoped API
+config Secret:
+
+```text
+AuthorizationServer__SigningCertificateBase64
+AuthorizationServer__SigningCertificatePassword
+AuthorizationServer__EncryptionCertificateBase64
+AuthorizationServer__EncryptionCertificatePassword
+```
+
+The password keys are optional if the PFX payloads are not password protected.
+
 ## Database Migrations
 
 The Helm chart creates a pre-install/pre-upgrade Job that runs
@@ -162,3 +176,15 @@ Ingress defaults target Traefik's `websecure` entrypoint. If a cluster uses a
 different HTTPS enforcement model, override `frontend.ingress.annotations` and
 `api.ingress.annotations` in Helm values instead of disabling TLS at the
 application layer.
+
+Cloudflare only changes the public edge for HTTP/TLS. It does not remove the
+need for OpenIddict signing and encryption material in production. If the API
+is the OAuth authorization server, keep its token-signing keys in Kubernetes
+secrets or another secret store. Do not rely on a shared symmetric `SigningKey`
+for production MCP auth.
+
+OAuth client registrations are application configuration, not deploy workflow
+inputs. The deploy workflows only set the issuer and frontend base URL. If you
+need to support more MCP clients than Claude Code, add them under
+`AuthorizationServer:PublicClients` in environment-specific app configuration
+or secret-backed environment variables.
