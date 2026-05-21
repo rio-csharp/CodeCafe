@@ -47,21 +47,19 @@ secrets directly through `api.envFromSecrets`. CI/CD copies only the
 Secret into the release-scoped Secret. GitHub does not need database connection
 string secrets for deploys.
 
-For OAuth/OpenIddict, manual cluster setup must also create a long-lived Secret
-named `codecafe-oauth-secret` in the test and production namespaces. CI/CD
-copies these keys from that server-side Secret into the same release-scoped API
-config Secret:
+For OAuth/OpenIddict, the deploy workflows read GitHub Environment Secrets for
+the `test` and `production` environments and recreate a Kubernetes Secret named
+`codecafe-oauth-secret` in the target namespace on every deploy.
+
+Configure these environment secrets:
 
 ```text
-AuthorizationServer__SigningCertificateBase64
-AuthorizationServer__SigningCertificatePassword
-AuthorizationServer__EncryptionCertificateBase64
-AuthorizationServer__EncryptionCertificatePassword
+OAUTH_CERT_BASE64
+OAUTH_CERT_PASSWORD
 ```
 
-The password keys are optional if the PFX payloads are not password protected.
-The test namespace must have `codecafe-oauth-secret` before deploys can pass.
-Production must have the same secret in `codecafe-prod`.
+`OAUTH_CERT_BASE64` should contain a single-line base64-encoded PFX. Test and
+production should use different environment-secret values.
 
 ## Database Migrations
 

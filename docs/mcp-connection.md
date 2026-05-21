@@ -157,8 +157,9 @@ Current Notes tools:
 ## Production setup
 
 Production needs real OpenIddict signing and encryption credentials, but they
-do not need to be mounted as files. The deployment flow now supports base64 PFX
-values from Kubernetes Secrets.
+do not need to be mounted as files. The deployment flow reads the PFX material
+from GitHub Environment Secrets and recreates the runtime Kubernetes Secret on
+deploy.
 
 Set these values in production configuration:
 

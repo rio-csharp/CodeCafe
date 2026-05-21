@@ -98,30 +98,19 @@ kubectl create secret generic codecafe-db-secret \
   --namespace '<namespace>'
 ```
 
-Manual cluster setup must also create a long-lived Secret named
-`codecafe-oauth-secret` in the test and production namespaces. Deployments copy
-these keys into the same release-scoped API config Secret:
+For OAuth/OpenIddict, the deploy workflows read GitHub Environment Secrets for
+the `test` and `production` environments and recreate a Kubernetes Secret named
+`codecafe-oauth-secret` in the target namespace on every deploy.
+
+Configure these environment secrets:
 
 ```text
-AuthorizationServer__SigningCertificateBase64=<base64-pfx>
-AuthorizationServer__SigningCertificatePassword=<optional-password>
-AuthorizationServer__EncryptionCertificateBase64=<base64-pfx>
-AuthorizationServer__EncryptionCertificatePassword=<optional-password>
+OAUTH_CERT_BASE64
+OAUTH_CERT_PASSWORD
 ```
 
-Example manual shape:
-
-```bash
-kubectl create secret generic codecafe-oauth-secret \
-  --from-literal=AuthorizationServer__SigningCertificateBase64='<base64-pfx>' \
-  --from-literal=AuthorizationServer__SigningCertificatePassword='<password>' \
-  --from-literal=AuthorizationServer__EncryptionCertificateBase64='<base64-pfx>' \
-  --from-literal=AuthorizationServer__EncryptionCertificatePassword='<password>' \
-  --namespace '<namespace>'
-```
-
-The test and production namespaces must each have `codecafe-oauth-secret`
-before deploys can pass.
+`OAUTH_CERT_BASE64` should contain a single-line base64-encoded PFX. Test and
+production should use different environment-secret values.
 
 ## PostgreSQL Requirements
 
