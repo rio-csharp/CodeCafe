@@ -60,6 +60,10 @@ AuthorizationServer__EncryptionCertificatePassword
 ```
 
 The password keys are optional if the PFX payloads are not password protected.
+If the test namespace does not have `codecafe-oauth-secret` yet, the deploy
+helper falls back to the existing `codecafe-test-wildcard-tls` secret in
+`codecafe-shared` and derives the OAuth certificate material from it. Production
+still requires `codecafe-oauth-secret`.
 
 ## Database Migrations
 

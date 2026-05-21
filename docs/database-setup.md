@@ -120,6 +120,11 @@ kubectl create secret generic codecafe-oauth-secret \
   --namespace '<namespace>'
 ```
 
+Test deploys can bootstrap from the existing `codecafe-test-wildcard-tls`
+secret in `codecafe-shared` if `codecafe-oauth-secret` has not been created yet.
+That fallback is for test only; production still expects the dedicated OAuth
+secret.
+
 ## PostgreSQL Requirements
 
 Each environment should provide:
