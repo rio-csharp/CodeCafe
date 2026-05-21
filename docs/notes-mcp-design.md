@@ -2,10 +2,11 @@
 
 ## Status
 
-- Status: Accepted; Notes REST refactor phase 1 completed
+- Status: Accepted design; Notes REST refactor phase 1 completed; MCP setup plan ready
 - Scope: CodeCafe Notes / Notebook backend
 - Primary audience: backend engineers, AI integration engineers
-- Related code: [D:\Repos\CodeCafe\src\CodeCafe.WebApi\Notes\NotesController.cs](D:/Repos/CodeCafe/src/CodeCafe.WebApi/Notes/NotesController.cs:1)
+- Related setup plan: [mcp-server-setup-plan.md](mcp-server-setup-plan.md)
+- Related code: [NotesController.cs](../src/CodeCafe.WebApi/Notes/NotesController.cs)
 
 ---
 
@@ -50,6 +51,10 @@ This document defines:
 4. Existing Notes authorization rules remain the foundation for MCP access.
 5. `NotesController` will be decomposed into smaller application/backend
    services before it becomes the execution path for MCP operations.
+6. The product MCP server should start as an ASP.NET Core Streamable HTTP
+   endpoint using the official C# SDK package `ModelContextProtocol.AspNetCore`.
+7. MCP write tools are blocked until TipTap validation and optimistic
+   concurrency are implemented.
 
 ### Rejected for now
 
@@ -58,6 +63,25 @@ This document defines:
 2. Letting MCP tools bypass existing business rules and write directly through
    EF entities.
 3. Keeping all Notes behavior in one controller while adding MCP support on top.
+4. Exposing remote MCP write tools without real user authentication, scopes, and
+   audit logging.
+
+### Implementation baseline
+
+The setup plan is intentionally separate from this design record:
+
+- this file defines product and domain decisions
+- [mcp-server-setup-plan.md](mcp-server-setup-plan.md) defines the next
+  implementation checklist
+
+Current baseline:
+
+- MCP protocol baseline: `2025-11-25`
+- transport: Streamable HTTP for the deployed product server
+- SDK: official C# SDK, `ModelContextProtocol.AspNetCore`
+- endpoint: `/mcp`, gated by configuration and authentication
+- delivery mode: full implementation in phases; read tools first, then resources,
+  write tools, prompts, operations, and conformance hardening
 
 ---
 
@@ -109,7 +133,7 @@ secondary fields from it.
 5. Preserve existing notebook visibility and ownership rules.
 6. Make MCP implementation reuse backend business logic rather than duplicate it.
 
-## Non-Goals for MVP
+## Non-Goals for Initial Production Release
 
 1. Real-time collaborative editing
 2. Version history UI
@@ -150,6 +174,11 @@ We should expose Notes through **MCP tools** first. MCP resources are useful for
 read-heavy scenarios, but tools are the core write path.
 
 ## 6.1 Core MCP tools
+
+Implementation should use the namespaced tool names in
+[mcp-server-setup-plan.md](mcp-server-setup-plan.md), such as `notes.search`
+and `notes.get_page`. The tool sections below describe the capability and
+payload shape.
 
 ### `search_notes`
 
@@ -331,7 +360,8 @@ We may later expose read-only MCP resources such as:
 These are useful when an agent wants passive context rather than imperative tool
  calls.
 
-For MVP, tools are enough.
+For the first production release, tools are enough. Full implementation should
+add resource templates once read tools are stable.
 
 ---
 
@@ -369,6 +399,14 @@ input.
 This protects search quality and avoids drift between stored JSON and stored
 plain text.
 
+Current implementation note:
+
+- REST page writes still accept `plainTextContent` as a fallback when the
+  extractor returns no text.
+- Before MCP write tools are enabled, page writes should move to a single
+  content service where `contentJson` is validated and `PlainTextContent` is
+  always derived server-side.
+
 ---
 
 ## 8. Concurrency and Conflict Handling
@@ -394,8 +432,9 @@ Without this, an agent can overwrite:
 - another AI write
 - a second tab's pending save
 
-MVP can start with `expectedUpdatedAtUtc`, since that matches the current model
- more naturally. A dedicated integer `Revision` can come later if needed.
+The first implementation can start with `expectedUpdatedAtUtc`, since that
+matches the current model more naturally. A dedicated integer `Revision` should
+be considered before high-volume or collaborative agent writes.
 
 ---
 
@@ -597,16 +636,64 @@ MCP and REST should share the same service layer, not call each other.
 MCP should authenticate as a real CodeCafe user or as an explicitly delegated
 agent identity tied to a CodeCafe user.
 
+For the product HTTP endpoint, prefer bearer-token or OAuth-compatible
+authentication. Browser cookie auth plus CSRF is the right model for the React
+app, but it should not become the long-term MCP client authentication model.
+
+Current CodeCafe gap:
+
+- the API currently has cookie-based Identity auth for the React app
+- deployed MCP needs a bearer-token/OAuth path before it is enabled outside
+  local development
+- the MCP token must identify both the actor and the token audience/resource
+
+MCP should be treated as an OAuth protected resource:
+
+- clients send `Authorization: Bearer <token>` on every `/mcp` request
+- the server validates issuer, expiry, signature or introspection result,
+  audience/resource, and scopes
+- tokens issued for another API are rejected
+- tokens are not accepted in query strings
+- received MCP tokens are not passed through to downstream services
+- OAuth protected resource metadata should advertise the authorization server
+  and supported scopes once the endpoint is public
+
 ### Suggested scopes
 
 - `notes.read`
 - `notes.write`
 
+### Scope and permission matrix
+
+| Operation | Scope | Permission rule |
+|-----------|-------|-----------------|
+| Search notebooks/items | `notes.read` | actor can only see readable notebooks/items |
+| Read notebook metadata | `notes.read` | existing public, unlisted, private owner rules |
+| List notebook items | `notes.read` | existing public, unlisted, private owner rules |
+| Read page content | `notes.read` | existing read rules and item must be a page |
+| Create page/folder | `notes.write` | notebook owner only |
+| Update page content | `notes.write` | notebook owner only plus concurrency check |
+| Append page blocks | `notes.write` | notebook owner only plus conflict protection |
+| Move/reorder/delete items | `notes.write` | notebook owner only |
+
 ### Rules
 
+- deployed MCP should require an authenticated actor for all tools, including
+  reads; anonymous public reads remain available through REST
 - read tools enforce current read rules
 - write tools enforce owner-only write rules
 - scopes do not bypass notebook ownership
+- missing or invalid HTTP credentials fail before tool execution
+- insufficient scopes fail as authorization errors, not as successful tool
+  results
+- agent identities must resolve to a CodeCafe user id or delegated actor tied to
+  a CodeCafe user id before Notes services are called
+
+### Exposure rule
+
+Do not enable `Mcp:Enabled` in production until bearer-token validation,
+audience/resource validation, protected resource metadata, host/origin controls,
+rate limiting, and audit logging are configured.
 
 ### Audit recommendation
 
@@ -619,8 +706,8 @@ Every MCP write should record:
 - item id if applicable
 - timestamp
 
-This can begin as structured logging if we do not want a separate audit table in
-MVP.
+This can begin as structured logging, but the full implementation should add a
+queryable audit trail before broad write-tool exposure.
 
 ---
 
@@ -689,35 +776,86 @@ Status: done
 
 1. implement TipTap JSON validator
 2. implement plain text extractor
-3. route REST page writes through content service
-4. add conflict handling hooks
+3. route REST page writes through a single content service
+4. stop trusting client-supplied `plainTextContent` as a persistence fallback
+5. add conflict handling hooks
 
 Success condition:
 
 - all page content writes use one canonical path
+- invalid TipTap documents are rejected before persistence
+- page write responses have reliable `UpdatedAtUtc` values for future
+  concurrency checks
 
-## Phase 3: MCP read tools
+## Phase 3: MCP server skeleton and read tools
 
-1. `get_notebook`
-2. `list_items`
-3. `get_page`
-4. `search_notes`
+1. add `ModelContextProtocol.AspNetCore`
+2. add `McpOptions` and keep the endpoint disabled by default
+3. map Streamable HTTP at `/mcp`
+4. apply host/origin, auth, and rate-limit boundaries
+5. add read tools:
+   - `notes.get_notebook`
+   - `notes.list_items`
+   - `notes.get_page`
+   - `notes.search`
 
 Success condition:
 
 - agents can inspect notebooks safely
+- MCP endpoint is not publicly writable
+- read tools reuse Notes query services
 
 ## Phase 4: MCP write tools
 
-1. `create_page`
-2. `update_page_content_json`
-3. `append_blocks_to_page`
-4. `move_item`
-5. `reorder_items`
+1. `notes.create_page`
+2. `notes.update_page_content_json`
+3. `notes.append_blocks_to_page`
+4. `notes.move_item`
+5. `notes.reorder_items`
+6. archive/restore/delete only after recoverability is available
 
 Success condition:
 
 - agents can draft and maintain notes
+- write tools require `notes.write`, owner permissions, validated TipTap JSON,
+  and optimistic concurrency
+
+## Phase 5: MCP resources
+
+1. add `notebook://{slug}`
+2. add `notebook://{slug}/items`
+3. add `page://{slug}/{path}`
+4. include modification annotations where supported
+
+Success condition:
+
+- clients can attach notebook/page context without invoking write tools
+- resources enforce the same `notes.read` and visibility rules
+
+## Phase 6: MCP prompts and workflows
+
+1. add prompts for summarizing pages
+2. add prompts for organizing notebooks
+3. add prompts for expanding outlines
+4. add prompts for reviewing stale pages
+
+Success condition:
+
+- prompts guide agent workflows without embedding secrets or bypassing tools
+- prompts lead to reviewable plans before write tools are invoked
+
+## Phase 7: Operations and conformance
+
+1. add dashboards/alerts for tool calls, failures, conflicts, and auth failures
+2. add queryable audit trail for write tools
+3. document client setup and troubleshooting
+4. add SDK-client smoke tests and MCP Inspector/manual verification checklist
+5. add fuzz and authorization regression tests
+
+Success condition:
+
+- MCP can be operated, audited, tested, and disabled independently from the rest
+  of the API
 
 ---
 
@@ -755,11 +893,8 @@ Mitigation:
 
 ## 19. Immediate Next Steps
 
-### Next coding step
-
-Build MCP on top of the extracted Notes services, not on top of controller internals.
-
-### Exact first refactor move
+Use [mcp-server-setup-plan.md](mcp-server-setup-plan.md) as the implementation
+checklist.
 
 Completed:
 
@@ -771,9 +906,13 @@ Completed:
 
 Next:
 
-6. TipTap JSON validation
-7. optimistic concurrency for page writes
-8. MCP read tools
+1. add the disabled-by-default MCP endpoint with `ModelContextProtocol.AspNetCore`
+2. wire configuration, auth, host/origin, and rate-limit boundaries
+3. implement read tools on `INotebookQueryService`
+4. add TipTap JSON validation
+5. make page writes derive `PlainTextContent` server-side
+6. add optimistic concurrency before any MCP write tool
+7. implement write tools only after the blockers above are complete
 
 ---
 
@@ -784,7 +923,8 @@ The right path for CodeCafe is:
 1. keep TipTap JSON as the MCP write format
 2. add strict backend validation and plain-text derivation
 3. refactor Notes into cohesive services
-4. build MCP on top of those services, not on top of controllers
+4. expose MCP through the official C# SDK over Streamable HTTP
+5. build MCP on top of those services, not on top of controllers
 
 This keeps the current Notes model intact while making the backend clean enough
 to support AI-native workflows without turning Notes into a maintenance trap.

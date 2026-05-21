@@ -238,7 +238,6 @@ public sealed class NotesController(
             request.Title,
             request.SortOrder,
             request.ContentJson,
-            request.PlainTextContent,
             cancellationToken);
 
         if (!result.Succeeded)
@@ -271,7 +270,6 @@ public sealed class NotesController(
                 request.ParentId,
                 request.SortOrder,
                 request.ContentJson,
-                request.PlainTextContent,
                 cancellationToken),
             ToItemResponse);
     }

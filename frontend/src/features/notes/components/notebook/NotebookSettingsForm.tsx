@@ -44,19 +44,19 @@ export default function NotebookSettingsForm({
     resolver: zodResolver(schema),
     defaultValues: {
       title: notebook.title,
-      description: notebook.description,
+      description: notebook.description ?? '',
       visibility: notebook.visibility,
     },
   })
 
   useEffect(() => {
-    reset({ title: notebook.title, description: notebook.description, visibility: notebook.visibility })
+    reset({ title: notebook.title, description: notebook.description ?? '', visibility: notebook.visibility })
   }, [notebook, reset])
 
   const onSubmit = (data: FormData) => {
     const isPublished = data.visibility === 'public'
     update.mutate(
-      { title: data.title.trim(), description: data.description.trim(), visibility: data.visibility, isPublished },
+      { title: data.title.trim(), description: data.description.trim() || null, visibility: data.visibility, isPublished },
       {
         onSuccess: (responseData) => {
           showToast('Notebook updated')

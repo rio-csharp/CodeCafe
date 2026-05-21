@@ -29,7 +29,6 @@ public interface INotebookCommandService
         string title,
         int sortOrder,
         JsonElement? contentJson,
-        string? plainTextContent,
         CancellationToken cancellationToken);
 
     Task<NotesResult<NotebookItemModel>> UpdateNotebookItemAsync(
@@ -40,7 +39,6 @@ public interface INotebookCommandService
         JsonElement parentId,
         int? sortOrder,
         JsonElement contentJson,
-        string? plainTextContent,
         CancellationToken cancellationToken);
 
     Task<NotesResult<IReadOnlyList<NotebookItemModel>>> ReorderNotebookItemsAsync(

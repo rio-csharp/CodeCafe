@@ -93,6 +93,53 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
     }
 
     [Fact]
+    public async Task CreateNotebookItem_DerivesPlainTextFromContentJsonAndIgnoresClientPlainText()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(client, $"derived-text+{Guid.NewGuid():N}@example.com", "203.0.113.106");
+        var notebookId = await CreateNotebookAsync(client, "Derived Text Notes", "private");
+
+        var createPage = await SendWithCsrfAsync(client, HttpMethod.Post, $"/api/notes/{notebookId}/items", new
+        {
+            type = "page",
+            title = "Search Source",
+            sortOrder = 1,
+            contentJson = CreateDoc("Server derived text"),
+            plainTextContent = "Client supplied text"
+        });
+        createPage.EnsureSuccessStatusCode();
+
+        var page = await ReadJsonAsync(createPage);
+        Assert.Equal("Server derived text", page.RootElement.GetProperty("plainTextContent").GetString());
+    }
+
+    [Fact]
+    public async Task CreateNotebookItem_InvalidTipTapDocument_ReturnsBadRequest()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(client, $"invalid-content+{Guid.NewGuid():N}@example.com", "203.0.113.107");
+        var notebookId = await CreateNotebookAsync(client, "Invalid Content Notes", "private");
+
+        var createPage = await SendWithCsrfAsync(client, HttpMethod.Post, $"/api/notes/{notebookId}/items", new
+        {
+            type = "page",
+            title = "Broken Page",
+            sortOrder = 1,
+            contentJson = new { type = "paragraph" }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, createPage.StatusCode);
+        var error = await ReadJsonAsync(createPage);
+        Assert.Equal("invalid_tiptap_document", error.RootElement.GetProperty("title").GetString());
+    }
+
+    [Fact]
     public async Task PublicEndpoints_DoNotReturnPrivateOrUnpublishedNotebooks()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -347,6 +394,37 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
         var updatedPage = await ReadJsonAsync(update);
         Assert.Equal(30, updatedPage.RootElement.GetProperty("sortOrder").GetInt32());
         Assert.Equal("Updated content", updatedPage.RootElement.GetProperty("plainTextContent").GetString());
+    }
+
+    [Fact]
+    public async Task UpdateNotebookItem_InvalidTipTapDocument_ReturnsBadRequest()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(client, $"invalid-update-content+{Guid.NewGuid():N}@example.com", "203.0.113.108");
+        var notebookId = await CreateNotebookAsync(client, "Invalid Update Content Notes", "private");
+
+        var page = await CreatePageAsync(client, notebookId, null, "Introduction", 30, "Original content");
+        var pageId = page.RootElement.GetProperty("id").GetGuid();
+
+        var update = await SendWithCsrfAsync(client, HttpMethod.Put, $"/api/notes/{notebookId}/items/{pageId}", new
+        {
+            title = "Introduction",
+            contentJson = new
+            {
+                type = "doc",
+                content = new object[]
+                {
+                    "not-a-node"
+                }
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
+        var error = await ReadJsonAsync(update);
+        Assert.Equal("invalid_tiptap_document", error.RootElement.GetProperty("title").GetString());
     }
 
     [Fact]
@@ -874,11 +952,30 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
             type = "page",
             title,
             sortOrder,
-            contentJson = new { type = "doc" },
+            contentJson = CreateDoc(plainTextContent),
             plainTextContent
         });
         response.EnsureSuccessStatusCode();
 
         return await ReadJsonAsync(response);
+    }
+
+    private static object CreateDoc(string text)
+    {
+        return new
+        {
+            type = "doc",
+            content = new object[]
+            {
+                new
+                {
+                    type = "paragraph",
+                    content = new object[]
+                    {
+                        new { type = "text", text }
+                    }
+                }
+            }
+        };
     }
 }

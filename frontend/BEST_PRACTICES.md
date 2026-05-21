@@ -1,7 +1,7 @@
 # CodeCafe Frontend Best Practices
 
 > This guide is for the CodeCafe frontend development team to maintain code consistency and maintainability.
-> Tech Stack: React 19 + TypeScript + Vite + Tailwind CSS + TanStack Query + Zustand
+> Tech Stack: React 19 + TypeScript + Vite + Tailwind CSS + TanStack Query + Zustand + TipTap
 
 ---
 
@@ -241,6 +241,11 @@ const data: Note[] = await response.json()
 
 All API calls should live in feature modules or `lib/api`.
 
+Allowed direct `fetch` locations:
+
+- `src/lib/apiClient.ts` for normal authenticated API calls
+- `src/lib/api/health.ts` for lightweight health checks
+
 ```
 src/
 ├── features/
@@ -271,7 +276,38 @@ function NotesPage() {
 }
 ```
 
+### CodeCafe API Rules
+
+- Use `apiFetch` for product API calls so cookies, JSON parsing, CSRF headers,
+  and retry-on-stale-CSRF behavior stay consistent.
+- Mutating requests must go through `apiFetch`; do not manually fetch
+  `/api/auth/csrf` from feature code.
+- Keep API functions small and transport-shaped. React components should call
+  hooks or feature API functions, not assemble URLs and request headers.
+- Preserve backend contracts exactly. If the backend returns nullable fields,
+  model them as nullable in TypeScript instead of assuming success data exists.
+- Treat `updatedAtUtc` as a meaningful contract field. When backend optimistic
+  concurrency lands, note/page writes should send the expected timestamp or
+  revision from the current item.
+
 **Review rule of thumb**: If you see `fetch(` or `axios(` inside a component, request extraction to the API layer.
+
+### TipTap Content Contract
+
+Notebook page content is TipTap JSON. The frontend owns editor UX, but the
+backend owns persistence validation and derived search text.
+
+Rules:
+
+- Use `{ type: 'doc', content: [] }` for an empty page document.
+- Do not hand-edit TipTap JSON in components outside editor or content utility
+  code.
+- Keep outline extraction, plain-text previews, and display helpers in feature
+  utilities so page components stay focused.
+- Do not make search depend on frontend-generated `plainTextContent`. The
+  backend should derive searchable text from saved `contentJson`.
+- When adding editor extensions, update content rendering, tests, and backend
+  validation expectations together.
 
 ---
 
@@ -349,6 +385,19 @@ function NotesPage() {
 **Never assume data always exists.**
 
 **Review rule of thumb**: Every `useQuery` call must have explicit handling for loading, error, empty, and success.
+
+### Mutation Cache Rules
+
+Mutations should leave TanStack Query cache in a predictable state:
+
+- Invalidate affected list/detail keys after create, update, delete, favorite,
+  and reorder operations.
+- Use `setQueryData` only when the replacement is complete enough to render
+  immediately.
+- If a mutation can change a route identity, such as a notebook slug, write the
+  returned object under the new query key before navigating.
+- Avoid optimistic updates for tree moves or document writes until conflict
+  handling exists; stale page content is better than silently losing edits.
 
 ---
 
@@ -503,6 +552,26 @@ body {
 
 **Review rule of thumb**: If a CSS rule only applies to one component, it belongs in that component (as Tailwind classes). If it applies to the entire app, `index.css` is acceptable.
 
+### Inline Style Exceptions
+
+Prefer Tailwind utilities for static styles. Inline styles are acceptable only
+for runtime values Tailwind cannot know ahead of time, such as editor-selected
+colors, calculated tree indentation, CSS variables, or third-party library
+integration points.
+
+Keep inline styles small:
+
+```tsx
+// ✅ Acceptable: dynamic value from editor state
+<Type style={{ color: currentColor }} />
+
+// ❌ Bad smell: static styles belong in className
+<div style={{ padding: 16, borderRadius: 8, background: '#fff' }} />
+```
+
+**Review rule of thumb**: `style={{ ... }}` should explain a dynamic runtime
+value. Static visual design belongs in Tailwind classes.
+
 ---
 
 ## 14. Error Handling
@@ -637,10 +706,13 @@ frontend/
 | `key={index}` | Require unique ID |
 | `: any` / `@ts-ignore` | Require proper types |
 | `fetch(` or `axios(` inside a component | Request extraction to API layer |
+| Mutating API call bypasses `apiFetch` | Require shared CSRF/credentials handling |
+| Mutation does not refresh affected query keys | Add invalidation or complete cache replacement |
+| Page write relies on frontend `plainTextContent` | Treat `contentJson` as source of truth |
 | Form with 3+ fields without React Hook Form | Suggest RHF + Zod |
 | Async UI missing loading/error/empty states | Request explicit handling |
 | `useMemo` wrapping simple calculations | Suggest removal |
-| `style={{` | Suggest Tailwind |
+| `style={{` for static styling | Suggest Tailwind; allow narrow dynamic runtime values |
 | Long logic inside JSX | Suggest extraction to function |
 | Large `App.css` or `global.css` | Suggest Tailwind + component-local styles |
 | `!important` usage | Usually a specificity war loser, question it |
