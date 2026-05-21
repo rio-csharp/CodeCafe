@@ -1,5 +1,6 @@
 using CodeCafe.Application.Common.Interfaces;
 using CodeCafe.Domain.Common.Interfaces;
+using CodeCafe.Domain.Mcp;
 using CodeCafe.Domain.Notes;
 using CodeCafe.Infrastructure.Identity;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
@@ -21,6 +22,8 @@ public sealed class ApplicationDbContext(
     public DbSet<NotebookItem> NotebookItems { get; set; }
 
     public DbSet<NotebookFavorite> NotebookFavorites { get; set; }
+
+    public DbSet<McpToolAuditEntry> McpToolAuditEntries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -53,11 +56,21 @@ public sealed class ApplicationDbContext(
             {
                 entry.Entity.CreatedAtUtc = now;
                 entry.Entity.UpdatedAtUtc = now;
+
+                if (entry.Entity is NotebookItem notebookItem && notebookItem.Revision <= 0)
+                {
+                    notebookItem.Revision = 1;
+                }
             }
             else if (entry.State == EntityState.Modified)
             {
                 entry.Property(x => x.CreatedAtUtc).IsModified = false;
                 entry.Entity.UpdatedAtUtc = now;
+
+                if (entry.Entity is NotebookItem notebookItem)
+                {
+                    notebookItem.Revision += 1;
+                }
             }
         }
     }

@@ -295,6 +295,38 @@ public sealed class NotesController(
     }
 
     [Authorize]
+    [HttpPost("{notebookId:guid}/items/{itemId:guid}/archive")]
+    [ProducesResponseType<NotebookItemResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<NotebookItemResponse>> ArchiveNotebookItem(
+        Guid notebookId,
+        Guid itemId,
+        CancellationToken cancellationToken)
+    {
+        return ToActionResult(
+            await notebookCommandService.ArchiveNotebookItemAsync(notebookId, itemId, GetCurrentUserId(), cancellationToken),
+            ToItemResponse);
+    }
+
+    [Authorize]
+    [HttpPost("{notebookId:guid}/items/{itemId:guid}/restore")]
+    [ProducesResponseType<NotebookItemResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<NotebookItemResponse>> RestoreNotebookItem(
+        Guid notebookId,
+        Guid itemId,
+        CancellationToken cancellationToken)
+    {
+        return ToActionResult(
+            await notebookCommandService.RestoreNotebookItemAsync(notebookId, itemId, GetCurrentUserId(), cancellationToken),
+            ToItemResponse);
+    }
+
+    [Authorize]
     [HttpDelete("{notebookId:guid}/items/{itemId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]

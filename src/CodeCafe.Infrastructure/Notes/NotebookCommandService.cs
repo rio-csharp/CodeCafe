@@ -187,7 +187,8 @@ public sealed class NotebookCommandService(
         JsonElement parentId,
         int? sortOrder,
         JsonElement contentJson,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        DateTimeOffset? expectedUpdatedAtUtc = null)
     {
         var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
         if (notebook is null)
@@ -198,15 +199,23 @@ public sealed class NotebookCommandService(
         }
 
         var item = await dbContext.NotebookItems.SingleOrDefaultAsync(
-            existingItem => existingItem.NotebookId == notebookId && existingItem.Id == itemId,
+            existingItem => existingItem.NotebookId == notebookId && existingItem.Id == itemId && !existingItem.IsArchived,
             cancellationToken);
         if (item is null)
         {
             return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.");
         }
 
+        if (expectedUpdatedAtUtc.HasValue && item.UpdatedAtUtc != expectedUpdatedAtUtc.Value)
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Conflict,
+                "content_conflict",
+                "The page changed after the expected timestamp.");
+        }
+
         var notebookItems = await dbContext.NotebookItems
-            .Where(existingItem => existingItem.NotebookId == notebookId)
+            .Where(existingItem => existingItem.NotebookId == notebookId && !existingItem.IsArchived)
             .ToListAsync(cancellationToken);
         var requestedParentId = item.ParentId;
         var currentParent = NotesSupport.ValidateRequestedParent(notebookItems, item.Id, item.ParentId);
@@ -271,7 +280,17 @@ public sealed class NotebookCommandService(
             await UpdateDescendantPathsAsync(notebookId, item.Id, oldPath, item.Path, cancellationToken);
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Conflict,
+                "notebook_item_conflict",
+                "The notebook item changed while the update was being applied.");
+        }
 
         return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
     }
@@ -291,7 +310,7 @@ public sealed class NotebookCommandService(
         }
 
         var notebookItems = await dbContext.NotebookItems
-            .Where(existingItem => existingItem.NotebookId == notebookId)
+            .Where(existingItem => existingItem.NotebookId == notebookId && !existingItem.IsArchived)
             .ToListAsync(cancellationToken);
         var notebookItemsById = notebookItems.ToDictionary(existingItem => existingItem.Id);
 
@@ -340,7 +359,17 @@ public sealed class NotebookCommandService(
             }
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
+                NotesFailureKind.Conflict,
+                "notebook_item_conflict",
+                "One or more notebook items changed while the reorder was being applied.");
+        }
 
         var orderedItems = notebookItems
             .OrderBy(item => item.ParentId)
@@ -371,12 +400,156 @@ public sealed class NotebookCommandService(
             return NotesResult.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.");
         }
 
+        if (!item.IsArchived)
+        {
+            return NotesResult.Failure(
+                NotesFailureKind.Validation,
+                "notebook_item_not_archived",
+                "Archive the notebook item before deleting it permanently.");
+        }
+
         var idsToDelete = NotesSupport.GetDescendantIds(items, itemId);
         idsToDelete.Add(itemId);
         dbContext.NotebookItems.RemoveRange(items.Where(existingItem => idsToDelete.Contains(existingItem.Id)));
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return NotesResult.Failure(
+                NotesFailureKind.Conflict,
+                "notebook_item_conflict",
+                "The notebook item changed while the delete was being applied.");
+        }
 
         return NotesResult.Success();
+    }
+
+    public async Task<NotesResult<NotebookItemModel>> ArchiveNotebookItemAsync(
+        Guid notebookId,
+        Guid itemId,
+        Guid currentUserId,
+        CancellationToken cancellationToken)
+    {
+        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
+        if (notebook is null)
+        {
+            return await NotebookExistsAsync(notebookId, cancellationToken)
+                ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
+                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+        }
+
+        var items = await dbContext.NotebookItems
+            .Where(item => item.NotebookId == notebookId)
+            .ToListAsync(cancellationToken);
+        var item = items.SingleOrDefault(existingItem => existingItem.Id == itemId);
+        if (item is null)
+        {
+            return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.");
+        }
+
+        if (item.IsArchived)
+        {
+            return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "notebook_item_archived", "Notebook item is already archived.");
+        }
+
+        var idsToArchive = NotesSupport.GetDescendantIds(items, itemId);
+        idsToArchive.Add(itemId);
+        var now = dateTimeProvider.UtcNow;
+
+        foreach (var existingItem in items.Where(candidate => idsToArchive.Contains(candidate.Id)))
+        {
+            existingItem.IsArchived = true;
+            existingItem.ArchivedAtUtc = now;
+            existingItem.ArchivedByUserId = currentUserId;
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Conflict,
+                "notebook_item_conflict",
+                "The notebook item changed while the archive was being applied.");
+        }
+
+        return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
+    }
+
+    public async Task<NotesResult<NotebookItemModel>> RestoreNotebookItemAsync(
+        Guid notebookId,
+        Guid itemId,
+        Guid currentUserId,
+        CancellationToken cancellationToken)
+    {
+        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
+        if (notebook is null)
+        {
+            return await NotebookExistsAsync(notebookId, cancellationToken)
+                ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
+                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+        }
+
+        var items = await dbContext.NotebookItems
+            .Where(item => item.NotebookId == notebookId)
+            .ToListAsync(cancellationToken);
+        var item = items.SingleOrDefault(existingItem => existingItem.Id == itemId);
+        if (item is null)
+        {
+            return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.");
+        }
+
+        if (!item.IsArchived)
+        {
+            return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "notebook_item_not_archived", "Notebook item is not archived.");
+        }
+
+        if (item.ParentId is Guid parentId)
+        {
+            var parent = items.SingleOrDefault(existingItem => existingItem.Id == parentId);
+            if (parent is null)
+            {
+                return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item was not found in this notebook.");
+            }
+
+            var subtreeIds = NotesSupport.GetDescendantIds(items, itemId);
+            subtreeIds.Add(itemId);
+            if (parent.IsArchived && !subtreeIds.Contains(parent.Id))
+            {
+                return NotesResult<NotebookItemModel>.Failure(
+                    NotesFailureKind.Validation,
+                    "parent_archived",
+                    "Restore the parent folder before restoring this item.");
+            }
+        }
+
+        var idsToRestore = NotesSupport.GetDescendantIds(items, itemId);
+        idsToRestore.Add(itemId);
+
+        foreach (var existingItem in items.Where(candidate => idsToRestore.Contains(candidate.Id)))
+        {
+            existingItem.IsArchived = false;
+            existingItem.ArchivedAtUtc = null;
+            existingItem.ArchivedByUserId = null;
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Conflict,
+                "notebook_item_conflict",
+                "The notebook item changed while the restore was being applied.");
+        }
+
+        return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
     }
 
     private async Task<Notebook?> GetOwnedNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)

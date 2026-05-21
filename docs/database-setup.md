@@ -98,6 +98,28 @@ kubectl create secret generic codecafe-db-secret \
   --namespace '<namespace>'
 ```
 
+Manual cluster setup must also create a long-lived Secret named
+`codecafe-oauth-secret` in the test and production namespaces. Deployments copy
+these keys into the same release-scoped API config Secret:
+
+```text
+AuthorizationServer__SigningCertificateBase64=<base64-pfx>
+AuthorizationServer__SigningCertificatePassword=<optional-password>
+AuthorizationServer__EncryptionCertificateBase64=<base64-pfx>
+AuthorizationServer__EncryptionCertificatePassword=<optional-password>
+```
+
+Example manual shape:
+
+```bash
+kubectl create secret generic codecafe-oauth-secret \
+  --from-literal=AuthorizationServer__SigningCertificateBase64='<base64-pfx>' \
+  --from-literal=AuthorizationServer__SigningCertificatePassword='<password>' \
+  --from-literal=AuthorizationServer__EncryptionCertificateBase64='<base64-pfx>' \
+  --from-literal=AuthorizationServer__EncryptionCertificatePassword='<password>' \
+  --namespace '<namespace>'
+```
+
 ## PostgreSQL Requirements
 
 Each environment should provide:

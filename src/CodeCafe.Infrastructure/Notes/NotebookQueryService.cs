@@ -64,11 +64,12 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
     public async Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
         string slug,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var notebook = await dbContext.Notebooks
             .AsNoTracking()
-            .Include(existingNotebook => existingNotebook.Items)
+            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
             .SingleOrDefaultAsync(existingNotebook =>
                 existingNotebook.Slug == slug
                 && existingNotebook.Visibility == NotebookVisibility.Public
@@ -95,7 +96,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
 
         var items = await dbContext.NotebookItems
             .AsNoTracking()
-            .Where(item => item.NotebookId == notebook.Id)
+            .Where(item => item.NotebookId == notebook.Id && !item.IsArchived)
             .OrderBy(item => item.ParentId)
             .ThenBy(item => item.SortOrder)
             .ThenBy(item => item.Title)
@@ -123,7 +124,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         var item = await dbContext.NotebookItems
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                existingItem => existingItem.NotebookId == notebook.Id && existingItem.Path == normalizedPath,
+                existingItem => existingItem.NotebookId == notebook.Id && existingItem.Path == normalizedPath && !existingItem.IsArchived,
                 cancellationToken);
 
         return item is null
@@ -134,11 +135,12 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
     public async Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
         Guid notebookId,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var notebook = await dbContext.Notebooks
             .AsNoTracking()
-            .Include(existingNotebook => existingNotebook.Items)
+            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
             .SingleOrDefaultAsync(existingNotebook => existingNotebook.Id == notebookId, cancellationToken);
 
         if (notebook is null)
@@ -157,11 +159,12 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
     public async Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
         string slug,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var notebook = await dbContext.Notebooks
             .AsNoTracking()
-            .Include(existingNotebook => existingNotebook.Items)
+            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
             .SingleOrDefaultAsync(existingNotebook => existingNotebook.Slug == slug, cancellationToken);
 
         if (notebook is null)
@@ -181,7 +184,8 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         Guid notebookId,
         Guid currentUserId,
         string? search,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var notebook = await dbContext.Notebooks
             .AsNoTracking()
@@ -201,7 +205,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         var usePostgresCaseInsensitiveSearch = UsesPostgresCaseInsensitiveSearch();
         var query = dbContext.NotebookItems
             .AsNoTracking()
-            .Where(item => item.NotebookId == notebookId);
+            .Where(item => item.NotebookId == notebookId && (includeArchived || !item.IsArchived));
 
         if (normalizedSearch is not null)
         {
@@ -306,7 +310,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         var notebookIds = notebooks.Select(notebook => notebook.Id).ToList();
         var notebookItems = await dbContext.NotebookItems
             .AsNoTracking()
-            .Where(item => notebookIds.Contains(item.NotebookId))
+            .Where(item => notebookIds.Contains(item.NotebookId) && !item.IsArchived)
             .ToListAsync(cancellationToken);
         var itemAggregates = notebookItems
             .GroupBy(item => item.NotebookId)
