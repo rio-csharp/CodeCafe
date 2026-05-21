@@ -50,7 +50,7 @@ export default function NotebookReaderPage() {
   }, [notebook, tree, pagePath])
 
   const handleSavePage = useCallback(
-    (contentJson: Record<string, unknown>, plainText: string) => {
+    (contentJson: Record<string, unknown>) => {
       if (!activePage) return
       updateItem.mutate(
         {
@@ -59,7 +59,6 @@ export default function NotebookReaderPage() {
             title: activePage.title,
             sortOrder: activePage.sortOrder,
             contentJson,
-            plainTextContent: plainText,
           },
         },
         {

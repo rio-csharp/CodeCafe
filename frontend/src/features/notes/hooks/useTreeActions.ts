@@ -28,7 +28,6 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         title,
         sortOrder: 0,
         contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
-        plainTextContent: type === 'page' ? '' : null,
       },
       {
         onSuccess: () => showTreeToast('Item created'),
@@ -49,7 +48,6 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         title,
         sortOrder: 0,
         contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
-        plainTextContent: type === 'page' ? '' : null,
       })
       showTreeToast('Item created')
     },

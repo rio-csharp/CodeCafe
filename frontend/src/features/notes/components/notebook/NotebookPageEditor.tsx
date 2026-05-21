@@ -17,7 +17,7 @@ const lowlight = createLowlight(common)
 
 interface NotebookPageEditorProps {
   page: NotebookItem
-  onSave: (contentJson: Record<string, unknown>, plainText: string) => void
+  onSave: (contentJson: Record<string, unknown>) => void
   onCancel: () => void
   isSaving?: boolean
 }
@@ -60,8 +60,7 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
   const handleSave = useCallback(() => {
     if (!editor) return
     const json = editor.getJSON() as Record<string, unknown>
-    const text = editor.getText()
-    onSave(json, text)
+    onSave(json)
   }, [editor, onSave])
 
   useEffect(() => {

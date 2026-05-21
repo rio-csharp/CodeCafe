@@ -11,7 +11,7 @@ public sealed class NotebookCommandService(
     ApplicationDbContext dbContext,
     IDateTimeProvider dateTimeProvider,
     INotebookQueryService notebookQueryService,
-    ITipTapPlainTextExtractor tipTapPlainTextExtractor) : INotebookCommandService
+    ITipTapContentService tipTapContentService) : INotebookCommandService
 {
     public async Task<NotesResult<NotebookDetailModel>> CreateNotebookAsync(
         Guid currentUserId,
@@ -117,7 +117,6 @@ public sealed class NotebookCommandService(
         string title,
         int sortOrder,
         JsonElement? contentJson,
-        string? plainTextContent,
         CancellationToken cancellationToken)
     {
         var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
@@ -146,7 +145,19 @@ public sealed class NotebookCommandService(
 
         var trimmedTitle = title.Trim();
         var path = await GenerateItemPathAsync(notebookId, parent?.Path, trimmedTitle, null, cancellationToken);
-        var normalizedPlainText = GetPlainTextContent(contentJson, plainTextContent);
+        var normalizedContent = NotesResult<TipTapContentModel>.Success(new TipTapContentModel(null, null));
+        if (itemType == NotebookItemType.Page)
+        {
+            normalizedContent = tipTapContentService.NormalizePageContent(contentJson);
+            if (!normalizedContent.Succeeded)
+            {
+                return NotesResult<NotebookItemModel>.Failure(
+                    normalizedContent.Error!.Kind,
+                    normalizedContent.Error.Code,
+                    normalizedContent.Error.Message);
+            }
+        }
+
         var item = new NotebookItem
         {
             Id = Guid.NewGuid(),
@@ -158,8 +169,8 @@ public sealed class NotebookCommandService(
             Path = path,
             SortOrder = sortOrder,
             ContentFormat = itemType == NotebookItemType.Page ? NotesSupport.PageContentFormat : null,
-            ContentJson = itemType == NotebookItemType.Page ? NotesSupport.SerializeContent(contentJson) : null,
-            PlainTextContent = itemType == NotebookItemType.Page ? normalizedPlainText : null
+            ContentJson = itemType == NotebookItemType.Page ? normalizedContent.Value!.ContentJson : null,
+            PlainTextContent = itemType == NotebookItemType.Page ? normalizedContent.Value!.PlainTextContent : null
         };
 
         dbContext.NotebookItems.Add(item);
@@ -176,7 +187,6 @@ public sealed class NotebookCommandService(
         JsonElement parentId,
         int? sortOrder,
         JsonElement contentJson,
-        string? plainTextContent,
         CancellationToken cancellationToken)
     {
         var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
@@ -241,9 +251,18 @@ public sealed class NotebookCommandService(
         {
             if (contentJson.ValueKind != JsonValueKind.Undefined)
             {
+                var normalizedContent = tipTapContentService.NormalizePageContent(contentJson);
+                if (!normalizedContent.Succeeded)
+                {
+                    return NotesResult<NotebookItemModel>.Failure(
+                        normalizedContent.Error!.Kind,
+                        normalizedContent.Error.Code,
+                        normalizedContent.Error.Message);
+                }
+
                 item.ContentFormat = NotesSupport.PageContentFormat;
-                item.ContentJson = NotesSupport.SerializeContent(contentJson);
-                item.PlainTextContent = GetPlainTextContent(contentJson, plainTextContent);
+                item.ContentJson = normalizedContent.Value!.ContentJson;
+                item.PlainTextContent = normalizedContent.Value!.PlainTextContent;
             }
         }
 
@@ -358,12 +377,6 @@ public sealed class NotebookCommandService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return NotesResult.Success();
-    }
-
-    private string? GetPlainTextContent(JsonElement? contentJson, string? fallbackPlainTextContent)
-    {
-        var extractedPlainText = tipTapPlainTextExtractor.Extract(contentJson);
-        return NotesSupport.NormalizeOptionalText(extractedPlainText ?? fallbackPlainTextContent);
     }
 
     private async Task<Notebook?> GetOwnedNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)

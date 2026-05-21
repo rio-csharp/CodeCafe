@@ -5,7 +5,7 @@ export interface Notebook {
   ownerId: string
   title: string
   slug: string
-  description: string
+  description: string | null
   visibility: NotebookVisibility
   isPublished: boolean
   authorDisplayName: string
@@ -16,7 +16,8 @@ export interface Notebook {
   isFavoritedByMe: boolean
   lastActivityAtUtc: string
   createdAtUtc: string
-  updatedAtUtc: string
+  updatedAtUtc: string | null
+  publishedAtUtc: string | null
   canEdit?: boolean
 }
 
@@ -35,11 +36,11 @@ export interface NotebookItem {
   slug: string
   path: string
   sortOrder: number
-  contentFormat: 'tiptap_json'
+  contentFormat: 'tiptap_json' | null
   contentJson: Record<string, unknown> | null
   plainTextContent: string | null
   createdAtUtc: string
-  updatedAtUtc: string
+  updatedAtUtc: string | null
 }
 
 export interface CreateNotebookRequest {
@@ -50,7 +51,7 @@ export interface CreateNotebookRequest {
 
 export interface UpdateNotebookRequest {
   title?: string
-  description?: string
+  description?: string | null
   visibility?: NotebookVisibility
   isPublished?: boolean
 }
@@ -61,7 +62,6 @@ export interface CreateNotebookItemRequest {
   title: string
   sortOrder: number
   contentJson?: Record<string, unknown> | null
-  plainTextContent?: string | null
 }
 
 export interface UpdateNotebookItemRequest {
@@ -69,7 +69,6 @@ export interface UpdateNotebookItemRequest {
   parentId?: string | null
   sortOrder?: number
   contentJson?: Record<string, unknown> | null
-  plainTextContent?: string | null
 }
 
 export interface ReorderItemRequest {

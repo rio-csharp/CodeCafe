@@ -79,15 +79,13 @@ public sealed record CreateNotebookItemRequest(
     [Required] string Type,
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     int SortOrder,
-    JsonElement? ContentJson,
-    string? PlainTextContent);
+    JsonElement? ContentJson);
 
 public sealed record UpdateNotebookItemRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     JsonElement ParentId,
     int? SortOrder,
-    JsonElement ContentJson,
-    string? PlainTextContent);
+    JsonElement ContentJson);
 
 public sealed record ReorderNotebookItemsRequest(
     [Required] IReadOnlyList<ReorderNotebookItemRequest> Items);

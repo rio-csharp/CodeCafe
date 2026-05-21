@@ -17,6 +17,30 @@ GitHub Secrets, Kubernetes Secrets, or server-local files such as `.pgpass`.
 - Production-to-test data sync is one-way and overwrites the test database after
   taking a test backup.
 
+## Local Development
+
+For local development you need a running PostgreSQL 16+ instance and a database named `codecafe`.
+
+Quick setup:
+
+1. **Start PostgreSQL** (see [README.md](../README.md) for installation options).
+2. **Create the application role and database:**
+   ```sql
+   CREATE USER codecafe WITH PASSWORD 'codecafe' CREATEDB;
+   CREATE DATABASE codecafe OWNER codecafe;
+   ```
+3. **Configure the connection string** in `src/CodeCafe.WebApi/appsettings.Development.json`:
+   ```json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "Host=localhost;Database=codecafe;Username=codecafe;Password=codecafe"
+     }
+   }
+   ```
+4. **Run the API.** Migrations apply automatically in Development mode on startup.
+
+> Do not commit `appsettings.Development.json`. It is already gitignored.
+
 ## Required Configuration
 
 Repository variables:

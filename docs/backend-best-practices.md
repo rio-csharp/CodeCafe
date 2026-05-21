@@ -18,6 +18,7 @@ We optimize for:
 - **Simple code first**: abstractions are earned by repeated need, not created just in case.
 - **SOLID design**: responsibilities, dependencies, and extension points should stay intentional.
 - **Test-guided development**: tests should shape business behavior before implementation hardens.
+- **Shared business paths**: REST, background jobs, MCP tools, and future adapters should reuse the same application behavior instead of reimplementing rules.
 
 We do not optimize for:
 
@@ -278,6 +279,11 @@ Use HTTP status codes deliberately:
 
 Use stable request/response contracts. Do not return domain entities directly from controllers.
 
+For non-REST adapters such as MCP tools, keep the same business semantics even
+when the transport schema is different. A tool can expose agent-friendly inputs
+such as `notebookSlug` and `path`, but ownership, visibility, validation, slug
+generation, and conflict rules must match the API path.
+
 **Review rule of thumb**: API models belong to the HTTP boundary; domain entities belong to the domain.
 
 ---
@@ -295,6 +301,12 @@ Validate at the boundary first:
 Then enforce business invariants in the domain or application layer.
 
 Do not rely only on frontend validation. The backend owns data integrity.
+
+For JSON document payloads, especially TipTap content, validation must check the
+shape that the backend actually depends on. Do not treat a `JsonElement` as
+safe just because it parsed. For page content, the backend should validate and
+normalize `contentJson`, then derive `PlainTextContent` from that JSON instead
+of trusting a client-supplied text shadow.
 
 Bad smell:
 
@@ -402,6 +414,13 @@ Security defaults:
 - Cookie-authenticated write endpoints must enforce CSRF protection. The
   frontend should fetch `/api/auth/csrf` with credentials and send the returned
   token in the `X-CSRF-TOKEN` header on mutating requests.
+- Non-browser automation surfaces, including MCP over HTTP, should use an
+  explicit bearer-token or OAuth-style authentication path rather than relying
+  on browser cookies and CSRF exceptions.
+- Do not weaken `/api` CSRF validation to make a tool easier to call. Put the
+  tool behind its own authenticated adapter boundary.
+- Bearer tokens must be audience/resource-bound to the API that accepts them.
+  Do not accept or forward tokens issued for another service.
 
 Authentication answers “who are you?” Authorization answers “may you do this?” Keep them separate.
 
@@ -560,7 +579,42 @@ Organize by feature when it improves cohesion. Avoid broad folders that become j
 
 ---
 
-## 16. Pull Request Review Checklist
+## 16. MCP and AI Adapter Rules
+
+MCP is another adapter over CodeCafe business behavior. Treat it like a first-class
+API boundary, not as a shortcut around the backend.
+
+Rules:
+
+- MCP tools must call application/backend services, not controllers and not
+  self-HTTP.
+- MCP tools must not write EF entities directly unless the same path is already
+  the application service implementation.
+- Tool schemas should be narrow, explicit, and stable. Prefer strings, GUIDs,
+  timestamps, and structured objects over loosely typed blobs.
+- Tool outputs should include machine-readable structured data and concise text
+  summaries when useful for clients.
+- Write tools must enforce ownership, scopes, validation, and rate limits before
+  changing state.
+- Deployed MCP endpoints must require bearer-token authentication, validate token
+  audience/resource and scopes, and reject tokens supplied through query strings.
+- Production startup should fail if MCP is enabled without auth, audience
+  validation, host/origin controls, and rate limiting.
+- Page write tools must validate TipTap JSON and derive searchable plain text
+  server-side.
+- Agent writes that replace documents must require optimistic concurrency, such
+  as `expectedUpdatedAtUtc` or a future integer revision.
+- Every agent write should be observable through structured logs at minimum:
+  actor id, actor type, operation, notebook id, item id when present, and result.
+- Prompt injection and data exfiltration risks are part of tool design. Never
+  include secrets, hidden system data, or unrelated user data in tool results.
+
+**Review rule of thumb**: if an MCP tool can do something the product user could
+not do through normal authorization, the tool is wrong.
+
+---
+
+## 17. Pull Request Review Checklist
 
 | When you see... | Action |
 |-----------------|--------|
@@ -580,6 +634,11 @@ Organize by feature when it improves cohesion. Avoid broad folders that become j
 | Expected error handled ad hoc in controller | Use central mapping |
 | No tests for new business rule | Add domain/application tests |
 | Infrastructure detail in domain/application | Move behind interface |
+| MCP tool calls a controller or self-HTTP | Call the shared service layer instead |
+| MCP endpoint enabled without bearer auth and audience validation | Block production exposure |
+| MCP token accepted from query string or forwarded downstream | Reject the design |
+| MCP or REST page write trusts `PlainTextContent` | Derive it from validated `contentJson` |
+| Full-document write without a concurrency check | Require `expectedUpdatedAtUtc` or revision |
 | New package for a tiny problem | Question whether built-in code is enough |
 
 ---

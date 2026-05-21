@@ -34,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<INotebookCommandService, NotebookCommandService>();
         services.AddScoped<INotebookFavoriteService, NotebookFavoriteService>();
         services.AddSingleton<ITipTapPlainTextExtractor, TipTapPlainTextExtractor>();
+        services.AddSingleton<ITipTapContentService, TipTapContentService>();
 
         return services;
     }
