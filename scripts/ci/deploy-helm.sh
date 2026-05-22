@@ -104,6 +104,11 @@ $KUBECTL_BIN get secret codecafe-db-secret \
 cat <<EOF >> "$REMOTE_DIR/api.env"
 AuthorizationServer__Issuer=https://$API_HOST/
 AuthorizationServer__FrontendBaseUrl=https://$FRONTEND_HOST
+AllowedHosts=$FRONTEND_HOST;$API_HOST
+Mcp__Enabled=true
+Mcp__AllowedOrigins__0=https://$FRONTEND_HOST
+Mcp__RequireAuthorization=true
+Mcp__RequiredAudience=codecafe-mcp
 EOF
 
 append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificateBase64
