@@ -57,17 +57,12 @@ append_secret_key() {
 }
 
 seed_oauth_secret() {
-  if $KUBECTL_BIN get secret "$OAUTH_SECRET_NAME" --namespace "$OAUTH_SECRET_NAMESPACE" >/dev/null 2>&1; then
+  if [ -z "${OAUTH_CERT_BASE64:-}" ]; then
+    if [ -n "${OAUTH_CERT_PASSWORD:-}" ]; then
+      echo "OAuth secret injection is partial. OAUTH_CERT_PASSWORD is set but OAUTH_CERT_BASE64 is missing." >&2
+      exit 1
+    fi
     return
-  fi
-
-  if [ -z "${OAUTH_CERT_BASE64:-}" ] && [ -z "${OAUTH_CERT_PASSWORD:-}" ]; then
-    return
-  fi
-
-  if [ -z "${OAUTH_CERT_BASE64:-}" ] || [ -z "${OAUTH_CERT_PASSWORD:-}" ]; then
-    echo "OAuth secret injection is partial. Set both OAUTH_CERT_BASE64 and OAUTH_CERT_PASSWORD, or neither." >&2
-    exit 1
   fi
 
   $KUBECTL_BIN create secret generic "$OAUTH_SECRET_NAME" \
