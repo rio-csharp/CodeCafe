@@ -5,6 +5,7 @@ using CodeCafe.WebApi.Configuration;
 using CodeCafe.WebApi.Errors;
 using CodeCafe.WebApi.Health;
 using CodeCafe.WebApi.Infrastructure;
+using CodeCafe.WebApi.Mcp;
 using CodeCafe.WebApi.Networking;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
@@ -12,6 +13,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using ModelContextProtocol.Server;
+using OpenIddict.Validation.AspNetCore;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 
 namespace CodeCafe.WebApi.Extensions;
@@ -47,6 +51,8 @@ public static class ServiceCollectionExtensions
         services.AddCodeCafeAntiforgery(environment);
         services.AddCodeCafeRateLimiting();
         services.AddCodeCafeCookieAuthentication(environment);
+        services.AddCodeCafeOpenIddict(configuration, environment);
+        services.AddCodeCafeMcp(configuration, environment);
 
         return services;
     }
@@ -58,6 +64,43 @@ public static class ServiceCollectionExtensions
     {
         services.AddOptions<AuthOptions>()
             .Bind(configuration.GetSection(AuthOptions.SectionName))
+            .ValidateOnStart();
+
+        services.AddOptions<AuthorizationServerOptions>()
+            .Bind(configuration.GetSection(AuthorizationServerOptions.SectionName))
+            .PostConfigure(options =>
+            {
+                if (string.IsNullOrWhiteSpace(options.FrontendBaseUrl)
+                    && (environment.IsDevelopment() || environment.IsEnvironment("Testing")))
+                {
+                    options.FrontendBaseUrl = "http://localhost:5173";
+                }
+
+                if (string.IsNullOrWhiteSpace(options.Issuer))
+                {
+                    if (environment.IsDevelopment())
+                    {
+                        options.Issuer = "https://localhost:7239/";
+                    }
+                    else if (environment.IsEnvironment("Testing"))
+                    {
+                        options.Issuer = "https://codecafe.test/";
+                    }
+                }
+            })
+            .Validate(options => Uri.TryCreate(options.Issuer, UriKind.Absolute, out _),
+                "AuthorizationServer:Issuer must be an absolute URI.")
+            .Validate(options => Uri.TryCreate(options.FrontendBaseUrl, UriKind.Absolute, out _),
+                "AuthorizationServer:FrontendBaseUrl must be an absolute URI.")
+            .Validate(options => options.PublicClients.Length > 0,
+                "AuthorizationServer:PublicClients must define at least one OAuth client.")
+            .Validate(options => options.PublicClients.All(client =>
+                    !string.IsNullOrWhiteSpace(client.ClientId)
+                    && client.RedirectUris.Length > 0
+                    && client.RedirectUris.All(uri => Uri.TryCreate(uri, UriKind.Absolute, out _))),
+                "AuthorizationServer:PublicClients entries must have a client id and absolute redirect URIs.")
+            .Validate(options => !environment.IsProduction() || HasProductionCertificates(options),
+                "Production AuthorizationServer configuration requires signing and encryption certificates via path or base64 value.")
             .ValidateOnStart();
 
         services.AddOptions<CorsOptions>()
@@ -77,6 +120,137 @@ public static class ServiceCollectionExtensions
                 "Cors:AllowedOrigins values must be absolute HTTP or HTTPS origins.")
             .ValidateOnStart();
 
+        services.AddOptions<McpOptions>()
+            .Bind(configuration.GetSection(McpOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.EndpointPath)
+                && options.EndpointPath.StartsWith("/", StringComparison.Ordinal),
+                "Mcp:EndpointPath must start with '/'.")
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ProtectedResourceMetadataPath)
+                && options.ProtectedResourceMetadataPath.StartsWith("/", StringComparison.Ordinal),
+                "Mcp:ProtectedResourceMetadataPath must start with '/'.")
+            .Validate(options => options.AllowedOrigins.All(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)),
+                "Mcp:AllowedOrigins values must be absolute HTTP or HTTPS origins.")
+            .Validate(options => !options.Enabled
+                || !options.RequireAuthorization
+                || !string.IsNullOrWhiteSpace(options.RequiredAudience),
+                "Mcp protected resource auth requires RequiredAudience when enabled.")
+            .Validate(options => !options.Enabled
+                || !environment.IsProduction()
+                || (options.RequireAuthorization
+                    && !string.Equals(configuration["AllowedHosts"], "*", StringComparison.Ordinal)
+                    && options.AllowedOrigins.Length > 0
+                    && !string.IsNullOrWhiteSpace(options.RequiredAudience)),
+                "Production MCP exposure requires authorization, explicit AllowedHosts, origins, and a configured audience/resource identifier.")
+            .ValidateOnStart();
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeMcp(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        if (!environment.IsProduction())
+        {
+            services.AddHttpContextAccessor();
+        }
+
+        services.AddMcpServer()
+            .WithHttpTransport(transportOptions =>
+            {
+                transportOptions.Stateless = true;
+            })
+            .WithTools<NotesMcpTools>()
+            .WithResources<NotesMcpResources>()
+            .WithPrompts<NotesMcpPrompts>();
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeOpenIddict(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        services.AddHostedService<OpenIddictSeedHostedService>();
+
+        services.AddOpenIddict()
+            .AddCore(options =>
+            {
+                options.UseEntityFrameworkCore()
+                    .UseDbContext<ApplicationDbContext>()
+                    .ReplaceDefaultEntities<Guid>();
+            })
+            .AddServer(options =>
+            {
+                var authOptions = configuration
+                    .GetSection(AuthorizationServerOptions.SectionName)
+                    .Get<AuthorizationServerOptions>()
+                    ?? new AuthorizationServerOptions();
+
+                if (string.IsNullOrWhiteSpace(authOptions.FrontendBaseUrl)
+                    && (environment.IsDevelopment() || environment.IsEnvironment("Testing")))
+                {
+                    authOptions.FrontendBaseUrl = "http://localhost:5173";
+                }
+
+                if (string.IsNullOrWhiteSpace(authOptions.Issuer))
+                {
+                    if (environment.IsDevelopment())
+                    {
+                        authOptions.Issuer = "https://localhost:7239/";
+                    }
+                    else if (environment.IsEnvironment("Testing"))
+                    {
+                        authOptions.Issuer = "https://codecafe.test/";
+                    }
+                }
+
+                options.SetIssuer(new Uri(authOptions.Issuer, UriKind.Absolute));
+                options.SetAuthorizationEndpointUris("/connect/authorize");
+                options.SetTokenEndpointUris("/connect/token");
+
+                options.AllowAuthorizationCodeFlow();
+                options.AllowRefreshTokenFlow();
+                options.RequireProofKeyForCodeExchange();
+                options.RegisterScopes("notes.read", "notes.write");
+                var aspNetCoreBuilder = options.UseAspNetCore()
+                    .EnableAuthorizationEndpointPassthrough()
+                    .EnableTokenEndpointPassthrough();
+
+                if (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
+                {
+                    options.AddDevelopmentEncryptionCertificate();
+                    options.AddDevelopmentSigningCertificate();
+                    aspNetCoreBuilder.DisableTransportSecurityRequirement();
+                }
+                else
+                {
+                    options.AddEncryptionCertificate(LoadCertificate(
+                        authOptions.EncryptionCertificatePath,
+                        authOptions.EncryptionCertificateBase64,
+                        authOptions.EncryptionCertificatePassword));
+                    options.AddSigningCertificate(LoadCertificate(
+                        authOptions.SigningCertificatePath,
+                        authOptions.SigningCertificateBase64,
+                        authOptions.SigningCertificatePassword));
+                }
+            })
+            .AddValidation(options =>
+            {
+                var mcpOptions = configuration
+                    .GetSection(McpOptions.SectionName)
+                    .Get<McpOptions>()
+                    ?? new McpOptions();
+
+                options.UseLocalServer();
+                options.AddAudiences(mcpOptions.RequiredAudience);
+                options.UseAspNetCore();
+            });
+
         return services;
     }
 
@@ -87,6 +261,33 @@ public static class ServiceCollectionExtensions
             .PersistKeysToDbContext<ApplicationDbContext>();
 
         return services;
+    }
+
+    private static bool HasProductionCertificates(AuthorizationServerOptions options)
+    {
+        return HasCertificate(options.SigningCertificatePath, options.SigningCertificateBase64)
+            && HasCertificate(options.EncryptionCertificatePath, options.EncryptionCertificateBase64);
+    }
+
+    private static bool HasCertificate(string path, string base64Value)
+    {
+        return !string.IsNullOrWhiteSpace(path) || !string.IsNullOrWhiteSpace(base64Value);
+    }
+
+    private static X509Certificate2 LoadCertificate(string path, string base64Value, string password)
+    {
+        if (!string.IsNullOrWhiteSpace(base64Value))
+        {
+            return X509CertificateLoader.LoadPkcs12(
+                Convert.FromBase64String(base64Value),
+                password,
+                X509KeyStorageFlags.MachineKeySet);
+        }
+
+        return X509CertificateLoader.LoadPkcs12FromFile(
+            path,
+            password,
+            X509KeyStorageFlags.MachineKeySet);
     }
 
     private static IServiceCollection AddCodeCafeIdentity(this IServiceCollection services)
@@ -197,6 +398,20 @@ public static class ServiceCollectionExtensions
                 return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                });
+            });
+
+            options.AddPolicy("mcp", httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                var clientIp = clientIpAddressAccessor.GetClientIpAddress(httpContext);
+
+                return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 120,
                     Window = TimeSpan.FromMinutes(1),
                     QueueLimit = 0,
                     AutoReplenishment = true

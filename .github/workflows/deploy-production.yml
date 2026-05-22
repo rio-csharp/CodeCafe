@@ -64,6 +64,18 @@ jobs:
           . .artifacts/deployment/deployment.env
           echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
 
+      - name: Prepare OAuth secret payload
+        if: steps.ci.outputs.skip != 'true'
+        env:
+          OAUTH_CERT_BASE64: ${{ secrets.OAUTH_CERT_BASE64 }}
+          OAUTH_CERT_PASSWORD: ${{ secrets.OAUTH_CERT_PASSWORD }}
+        run: |
+          umask 077
+          {
+            printf 'OAUTH_CERT_BASE64=%q\n' "$OAUTH_CERT_BASE64"
+            printf 'OAUTH_CERT_PASSWORD=%q\n' "$OAUTH_CERT_PASSWORD"
+          } > .artifacts/deployment/oauth.env
+
       - name: Configure SSH
         if: steps.ci.outputs.skip != 'true'
         uses: webfactory/ssh-agent@v0.10.0
@@ -86,5 +98,6 @@ jobs:
           ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
           scp -P "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
           scp -P "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/scripts/deploy-helm.sh" "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/deploy-helm.sh"
+          scp -P "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/deployment/oauth.env" "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}:$REMOTE_DIR/oauth.env"
           ssh -p "${{ vars.PRODUCTION_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }}" \
-            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='${{ vars.PRODUCTION_FRONTEND_HOST }}' API_HOST='${{ vars.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DB_SECRET_NAMESPACE='$NAMESPACE' KUBECTL_BIN='sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl' HELM_BIN='sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/helm' bash '$REMOTE_DIR/deploy-helm.sh'"
+            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='${{ vars.PRODUCTION_FRONTEND_HOST }}' API_HOST='${{ vars.PRODUCTION_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DB_SECRET_NAMESPACE='$NAMESPACE' OAUTH_ENV_FILE='$REMOTE_DIR/oauth.env' KUBECTL_BIN='sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/kubectl' HELM_BIN='sudo KUBECONFIG=/etc/rancher/k3s/k3s.yaml /usr/local/bin/helm' bash '$REMOTE_DIR/deploy-helm.sh'"

@@ -1,4 +1,6 @@
 using CodeCafe.Infrastructure.Persistence;
+using ModelContextProtocol.Client;
+using ModelContextProtocol.Protocol;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
@@ -337,6 +339,72 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFactory>
         Assert.Equal("registration_disabled", await ReadErrorCodeAsync(response));
     }
 
+    [Fact]
+    public async Task McpEndpoint_WhenDisabled_ReturnsNotFound()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/mcp", new { });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task McpEndpoint_WhenEnabled_AnonymousRequestIsUnauthorized()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/mcp", new { });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task McpGetNotebookTool_ReturnsStructuredNotebookMetadata()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        var email = $"mcp+{Guid.NewGuid():N}@example.com";
+        await RegisterAsync(client, email, "203.0.113.60");
+
+        var createNotebookResponse = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/notes", new
+        {
+            title = "MCP Notebook",
+            description = "Tool test",
+            visibility = "private"
+        });
+        createNotebookResponse.EnsureSuccessStatusCode();
+
+        using var notebookJson = JsonDocument.Parse(await createNotebookResponse.Content.ReadAsStringAsync());
+        var slug = notebookJson.RootElement.GetProperty("slug").GetString() ?? throw new InvalidOperationException("Missing notebook slug.");
+        await using var mcpClient = await Mcp.McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read");
+        var tools = await mcpClient.ListToolsAsync();
+        Assert.Contains(tools, tool => tool.Name == "notes.get_notebook");
+
+        var result = await mcpClient.CallToolAsync(
+            "notes.get_notebook",
+            new Dictionary<string, object?> { ["slug"] = slug },
+            cancellationToken: CancellationToken.None);
+
+        Assert.NotEqual(true, result.IsError);
+        Assert.True(result.StructuredContent.HasValue);
+        Assert.Equal("MCP Notebook", result.StructuredContent.Value.GetProperty("title").GetString());
+        Assert.Equal(slug, result.StructuredContent.Value.GetProperty("slug").GetString());
+        Assert.Equal("private", result.StructuredContent.Value.GetProperty("visibility").GetString());
+    }
+
     private static async Task<HttpResponseMessage> RegisterAsync(HttpClient client, string email, string clientIp)
     {
         var csrf = await GetCsrfTokenAsync(client);
@@ -393,6 +461,22 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFactory>
             : document.RootElement.GetProperty("Code").GetString();
     }
 
+    private static async Task<HttpResponseMessage> SendWithCsrfAsync(
+        HttpClient client,
+        HttpMethod method,
+        string requestUri,
+        object body)
+    {
+        var csrf = await GetCsrfTokenAsync(client);
+        using var request = new HttpRequestMessage(method, requestUri)
+        {
+            Content = JsonContent.Create(body)
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        return await client.SendAsync(request);
+    }
+
     private static void AssertAuthCookieSet(HttpResponseMessage response)
     {
         Assert.Contains(response.Headers.GetValues("Set-Cookie"), value =>
@@ -418,6 +502,18 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
 
     public bool RegistrationEnabled { get; set; } = true;
 
+    public bool McpEnabled { get; set; }
+
+    public string McpAudience { get; set; } = "codecafe-mcp";
+
+    public string AuthorizationServerIssuer { get; set; } = "https://codecafe.test/";
+
+    public string FrontendBaseUrl { get; set; } = "http://localhost:5173";
+
+    public string McpClientId { get; set; } = "codecafe-claude";
+
+    public string McpClientRedirectUri { get; set; } = "http://localhost/";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -426,6 +522,18 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
             configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Auth:RegistrationEnabled"] = RegistrationEnabled.ToString(),
+                ["Mcp:Enabled"] = McpEnabled.ToString(),
+                ["Mcp:EndpointPath"] = "/mcp",
+                ["Mcp:ProtectedResourceMetadataPath"] = "/.well-known/oauth-protected-resource/mcp",
+                ["Mcp:RequireAuthorization"] = "true",
+                ["Mcp:RequiredAudience"] = McpAudience,
+                ["Mcp:RequiredReadScopes:0"] = "notes.read",
+                ["Mcp:RequiredWriteScopes:0"] = "notes.write",
+                ["AuthorizationServer:Issuer"] = AuthorizationServerIssuer,
+                ["AuthorizationServer:FrontendBaseUrl"] = FrontendBaseUrl,
+                ["AuthorizationServer:PublicClients:0:ClientId"] = McpClientId,
+                ["AuthorizationServer:PublicClients:0:DisplayName"] = "Claude Code Tests",
+                ["AuthorizationServer:PublicClients:0:RedirectUris:0"] = McpClientRedirectUri,
                 ["Cors:AllowedOrigins:0"] = "http://localhost"
             });
         });
@@ -436,6 +544,7 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
             services.AddDbContext<ApplicationDbContext>(options =>
             {
                 options.UseSqlite(_connection);
+                options.UseOpenIddict<Guid>();
             });
 
             if (_connection.State != System.Data.ConnectionState.Open)

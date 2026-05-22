@@ -197,6 +197,7 @@ Domain <- Application <- Infrastructure
 Backend development guidelines are documented in [docs/backend-best-practices.md](docs/backend-best-practices.md).
 Frontend development guidelines are documented in [frontend/BEST_PRACTICES.md](frontend/BEST_PRACTICES.md).
 The Notes MCP design and full implementation plan are documented in [docs/notes-mcp-design.md](docs/notes-mcp-design.md) and [docs/mcp-server-setup-plan.md](docs/mcp-server-setup-plan.md).
+Local Claude Code connection steps for the current MCP implementation are documented in [docs/mcp-connection.md](docs/mcp-connection.md).
 
 ## Frontend
 

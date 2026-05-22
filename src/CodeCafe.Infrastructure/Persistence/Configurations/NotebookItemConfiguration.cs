@@ -40,6 +40,17 @@ public sealed class NotebookItemConfiguration : IEntityTypeConfiguration<Noteboo
 
         entity.Property(item => item.PlainTextContent);
 
+        entity.Property(item => item.Revision)
+            .IsConcurrencyToken()
+            .IsRequired();
+
+        entity.Property(item => item.IsArchived)
+            .IsRequired();
+
+        entity.Property(item => item.ArchivedAtUtc);
+
+        entity.Property(item => item.ArchivedByUserId);
+
         entity.Property(item => item.CreatedAtUtc)
             .IsRequired();
 
@@ -54,5 +65,6 @@ public sealed class NotebookItemConfiguration : IEntityTypeConfiguration<Noteboo
             .IsUnique();
 
         entity.HasIndex(item => new { item.NotebookId, item.ParentId, item.SortOrder });
+        entity.HasIndex(item => new { item.NotebookId, item.IsArchived });
     }
 }
