@@ -9,9 +9,12 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using OpenIddict.Abstractions;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using CodeCafe.WebApi.Auth;
 
 namespace CodeCafe.WebApi.Tests.Auth;
 
@@ -403,6 +406,53 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFactory>
         Assert.Equal("MCP Notebook", result.StructuredContent.Value.GetProperty("title").GetString());
         Assert.Equal(slug, result.StructuredContent.Value.GetProperty("slug").GetString());
         Assert.Equal("private", result.StructuredContent.Value.GetProperty("visibility").GetString());
+    }
+
+    [Fact]
+    public async Task OpenIddictSeedHostedService_RemovesStaleRedirectUrisAndPermissions()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient();
+
+        await client.GetAsync("/health/live");
+
+        using var scope = factory.Services.CreateScope();
+        var applicationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var seedService = scope.ServiceProvider
+            .GetServices<IHostedService>()
+            .Single(service => service is OpenIddictSeedHostedService);
+
+        var application = await applicationManager.FindByClientIdAsync(factory.McpClientId, CancellationToken.None);
+        Assert.NotNull(application);
+
+        var descriptor = new OpenIddictApplicationDescriptor();
+        await applicationManager.PopulateAsync(descriptor, application!, CancellationToken.None);
+        descriptor.RedirectUris.Add(new Uri("http://localhost:9999/callback"));
+        descriptor.Permissions.Add(OpenIddictConstants.Permissions.Prefixes.Scope + "notes.admin");
+        await applicationManager.UpdateAsync(application!, descriptor, CancellationToken.None);
+
+        await seedService.StartAsync(CancellationToken.None);
+
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationApplicationManager = verificationScope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var refreshedApplication = await verificationApplicationManager.FindByClientIdAsync(factory.McpClientId, CancellationToken.None);
+        Assert.NotNull(refreshedApplication);
+
+        var refreshedDescriptor = new OpenIddictApplicationDescriptor();
+        await verificationApplicationManager.PopulateAsync(refreshedDescriptor, refreshedApplication!, CancellationToken.None);
+
+        Assert.DoesNotContain(
+            refreshedDescriptor.RedirectUris.Select(uri => uri.AbsoluteUri),
+            uri => uri == "http://localhost:9999/callback");
+        Assert.DoesNotContain(
+            refreshedDescriptor.Permissions,
+            permission => permission == OpenIddictConstants.Permissions.Prefixes.Scope + "notes.admin");
+        Assert.Contains(
+            refreshedDescriptor.RedirectUris.Select(uri => uri.AbsoluteUri),
+            uri => uri == factory.McpClientRedirectUri);
     }
 
     private static async Task<HttpResponseMessage> RegisterAsync(HttpClient client, string email, string clientIp)

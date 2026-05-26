@@ -43,29 +43,7 @@ public sealed class OpenIddictSeedHostedService(
             var existingDescriptor = new OpenIddictApplicationDescriptor();
             await applicationManager.PopulateAsync(existingDescriptor, existingApplication, cancellationToken);
             var desiredDescriptor = CreateApplicationDescriptor(client, mcpOptions);
-            var changed = false;
-
-            foreach (var redirectUri in desiredDescriptor.RedirectUris)
-            {
-                if (existingDescriptor.RedirectUris.Add(redirectUri))
-                {
-                    changed = true;
-                }
-            }
-
-            foreach (var permission in desiredDescriptor.Permissions)
-            {
-                if (existingDescriptor.Permissions.Add(permission))
-                {
-                    changed = true;
-                }
-            }
-
-            if (!string.Equals(existingDescriptor.DisplayName, desiredDescriptor.DisplayName, StringComparison.Ordinal))
-            {
-                existingDescriptor.DisplayName = desiredDescriptor.DisplayName;
-                changed = true;
-            }
+            var changed = ReconcileDescriptor(existingDescriptor, desiredDescriptor);
 
             if (changed)
             {
@@ -77,6 +55,81 @@ public sealed class OpenIddictSeedHostedService(
                     string.Join(", ", existingDescriptor.RedirectUris.Select(uri => uri.AbsoluteUri)));
             }
         }
+    }
+
+    private static bool ReconcileDescriptor(
+        OpenIddictApplicationDescriptor existingDescriptor,
+        OpenIddictApplicationDescriptor desiredDescriptor)
+    {
+        var changed = false;
+
+        if (!string.Equals(existingDescriptor.DisplayName, desiredDescriptor.DisplayName, StringComparison.Ordinal))
+        {
+            existingDescriptor.DisplayName = desiredDescriptor.DisplayName;
+            changed = true;
+        }
+
+        if (!string.Equals(existingDescriptor.ApplicationType, desiredDescriptor.ApplicationType, StringComparison.Ordinal))
+        {
+            existingDescriptor.ApplicationType = desiredDescriptor.ApplicationType;
+            changed = true;
+        }
+
+        if (!string.Equals(existingDescriptor.ClientType, desiredDescriptor.ClientType, StringComparison.Ordinal))
+        {
+            existingDescriptor.ClientType = desiredDescriptor.ClientType;
+            changed = true;
+        }
+
+        if (!string.Equals(existingDescriptor.ConsentType, desiredDescriptor.ConsentType, StringComparison.Ordinal))
+        {
+            existingDescriptor.ConsentType = desiredDescriptor.ConsentType;
+            changed = true;
+        }
+
+        changed |= ReplaceUris(existingDescriptor.RedirectUris, desiredDescriptor.RedirectUris);
+        changed |= ReplaceStrings(existingDescriptor.Permissions, desiredDescriptor.Permissions);
+        return changed;
+    }
+
+    private static bool ReplaceUris(
+        ISet<Uri> existingValues,
+        ISet<Uri> desiredValues)
+    {
+        var existing = existingValues.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var desired = desiredValues.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        if (existing.SequenceEqual(desired, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        existingValues.Clear();
+        foreach (var value in desiredValues)
+        {
+            existingValues.Add(value);
+        }
+
+        return true;
+    }
+
+    private static bool ReplaceStrings(
+        ISet<string> existingValues,
+        ISet<string> desiredValues)
+    {
+        var existing = existingValues.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var desired = desiredValues.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        if (existing.SequenceEqual(desired, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        existingValues.Clear();
+        foreach (var value in desiredValues)
+        {
+            existingValues.Add(value);
+        }
+
+        return true;
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

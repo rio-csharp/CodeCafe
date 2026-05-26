@@ -10,6 +10,8 @@ namespace CodeCafe.WebApi.Mcp;
 internal static class NotesMcpSupport
 {
     internal static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+    private const string AuthenticatedActorRequiredCode = "authenticated_actor_required";
+    private const string AuthenticatedActorRequiredMessage = "The MCP endpoint requires an authenticated CodeCafe user.";
 
     public static Guid GetCurrentUserId(ClaimsPrincipal user)
     {
@@ -41,6 +43,25 @@ internal static class NotesMcpSupport
                 $"The authenticated actor is missing required scope: {string.Join(" or ", requiredScopes)}.");
     }
 
+    public static NotesResult<Guid> RequireActor(
+        ClaimsPrincipal user,
+        params string[] requiredScopes)
+    {
+        var scopeResult = RequireScope(user, requiredScopes);
+        if (!scopeResult.Succeeded)
+        {
+            return NotesResult<Guid>.Failure(scopeResult.Error!.Kind, scopeResult.Error.Code, scopeResult.Error.Message);
+        }
+
+        var currentUserId = GetCurrentUserId(user);
+        return currentUserId == Guid.Empty
+            ? NotesResult<Guid>.Failure(
+                NotesFailureKind.Forbidden,
+                AuthenticatedActorRequiredCode,
+                AuthenticatedActorRequiredMessage)
+            : NotesResult<Guid>.Success(currentUserId);
+    }
+
     public static string NormalizePath(string path) => path.Trim().Trim('/');
 
     public static async Task<NotesResult<NotebookDetailModel>> RequireNotebookAsync(
@@ -54,8 +75,8 @@ internal static class NotesMcpSupport
         {
             return NotesResult<NotebookDetailModel>.Failure(
                 NotesFailureKind.Forbidden,
-                "authenticated_actor_required",
-                "The MCP endpoint requires an authenticated CodeCafe user.");
+                AuthenticatedActorRequiredCode,
+                AuthenticatedActorRequiredMessage);
         }
 
         if (string.IsNullOrWhiteSpace(notebookSlug))
@@ -163,6 +184,29 @@ internal static class NotesMcpSupport
     }
 
     public static GetNotebookToolResponse ToGetNotebookToolResponse(NotebookDetailModel notebook)
+    {
+        return new GetNotebookToolResponse(
+            notebook.Id,
+            notebook.OwnerId,
+            notebook.Slug,
+            notebook.Title,
+            notebook.Description,
+            notebook.Visibility,
+            notebook.IsPublished,
+            notebook.AuthorDisplayName,
+            notebook.CanEdit,
+            notebook.ItemCount,
+            notebook.FolderCount,
+            notebook.PageCount,
+            notebook.FavoriteCount,
+            notebook.IsFavoritedByMe,
+            notebook.LastActivityAtUtc,
+            notebook.CreatedAtUtc,
+            notebook.UpdatedAtUtc,
+            notebook.PublishedAtUtc);
+    }
+
+    public static GetNotebookToolResponse ToGetNotebookToolResponse(NotebookSummaryModel notebook)
     {
         return new GetNotebookToolResponse(
             notebook.Id,

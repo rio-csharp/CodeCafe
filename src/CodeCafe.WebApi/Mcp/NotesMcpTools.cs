@@ -31,21 +31,13 @@ public sealed class NotesMcpTools
         [Description("Maximum number of notebooks to return.")] int? limit = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
+        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredReadScopes);
+        if (!actorResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(actorResult.Error!);
         }
 
-        var currentUserId = NotesMcpSupport.GetCurrentUserId(user);
-        if (currentUserId == Guid.Empty)
-        {
-            return NotesMcpResultMapper.Failure(new NotesError(
-                NotesFailureKind.Forbidden,
-                "authenticated_actor_required",
-                "The MCP endpoint requires an authenticated CodeCafe user."));
-        }
-
+        var currentUserId = actorResult.Value;
         var normalizedScope = string.IsNullOrWhiteSpace(scope) ? "all" : scope.Trim().ToLowerInvariant();
         if (normalizedScope is not ("all" or "mine" or "public"))
         {
@@ -60,29 +52,20 @@ public sealed class NotesMcpTools
 
         if (normalizedScope is "all" or "mine")
         {
-            notebooks.AddRange(await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken));
+            notebooks.AddRange(await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken, maxResults));
         }
 
         if (normalizedScope is "all" or "public")
         {
-            notebooks.AddRange(await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken));
+            notebooks.AddRange(await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken, maxResults));
         }
 
-        var uniqueSummaries = notebooks
+        var notebookDetails = notebooks
             .GroupBy(notebook => notebook.Id)
             .Select(group => group.First())
             .Take(maxResults)
+            .Select(NotesMcpSupport.ToGetNotebookToolResponse)
             .ToList();
-
-        var notebookDetails = new List<GetNotebookToolResponse>();
-        foreach (var summary in uniqueSummaries)
-        {
-            var notebookResult = await notebookQueryService.GetNotebookBySlugAsync(summary.Slug, currentUserId, cancellationToken);
-            if (notebookResult.Succeeded)
-            {
-                notebookDetails.Add(NotesMcpSupport.ToGetNotebookToolResponse(notebookResult.Value!));
-            }
-        }
 
         var response = new ListNotebooksToolResponse(normalizedScope, notebookDetails.Count, notebookDetails);
         return NotesMcpResultMapper.Success(response, $"Listed {response.TotalCount} notebook(s) for scope '{response.Scope}'.");
@@ -141,10 +124,10 @@ public sealed class NotesMcpTools
         [Description("Maximum number of results to return.")] int? limit = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
+        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredReadScopes);
+        if (!actorResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(actorResult.Error!);
         }
 
         if (string.IsNullOrWhiteSpace(query))
@@ -164,15 +147,7 @@ public sealed class NotesMcpTools
                 "Scope must be all, notebooks, or items."));
         }
 
-        var currentUserId = NotesMcpSupport.GetCurrentUserId(user);
-        if (currentUserId == Guid.Empty)
-        {
-            return NotesMcpResultMapper.Failure(new NotesError(
-                NotesFailureKind.Forbidden,
-                "authenticated_actor_required",
-                "The MCP endpoint requires an authenticated CodeCafe user."));
-        }
-
+        var currentUserId = actorResult.Value;
         var maxResults = Math.Clamp(limit ?? 25, 1, 100);
         var results = new List<NotebookSearchResultResponse>();
         var notebooks = new List<NotebookDetailModel>();
@@ -341,14 +316,14 @@ public sealed class NotesMcpTools
         [Description("Notebook visibility: private, unlisted, or public. Defaults to private.")] string? visibility = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredWriteScopes);
+        if (!actorResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(actorResult.Error!);
         }
 
         var createResult = await notebookCommandService.CreateNotebookAsync(
-            NotesMcpSupport.GetCurrentUserId(user),
+            actorResult.Value,
             title,
             description,
             visibility,
