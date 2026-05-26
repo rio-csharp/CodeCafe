@@ -29,6 +29,12 @@ public sealed class McpApiTests
         var resourceTemplates = await mcpClient.ListResourceTemplatesAsync();
         var prompts = await mcpClient.ListPromptsAsync();
 
+        Assert.Contains(tools, tool => tool.Name == "notes.list_notebooks");
+        Assert.Contains(tools, tool => tool.Name == "notes.create_notebook");
+        Assert.Contains(tools, tool => tool.Name == "notes.update_notebook");
+        Assert.Contains(tools, tool => tool.Name == "notes.delete_notebook");
+        Assert.Contains(tools, tool => tool.Name == "notes.create_folder");
+        Assert.Contains(tools, tool => tool.Name == "notes.rename_item");
         Assert.Contains(tools, tool => tool.Name == "notes.search");
         Assert.Contains(tools, tool => tool.Name == "notes.get_page");
         Assert.Contains(tools, tool => tool.Name == "notes.append_blocks_to_page");
@@ -229,6 +235,131 @@ public sealed class McpApiTests
                 ["path"] = movedPath
             });
         Assert.Equal("deleted", deleted.StructuredContent!.Value.GetProperty("result").GetString());
+    }
+
+    [Fact]
+    public async Task McpNotebookTools_ListCreateUpdateRenameAndDeleteNotebook()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"notebook-tools+{Guid.NewGuid():N}@example.com", "203.0.113.124");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var createdNotebook = await mcpClient.CallToolAsync(
+            "notes.create_notebook",
+            new Dictionary<string, object?>
+            {
+                ["title"] = "Ship Plan",
+                ["description"] = "Initial draft",
+                ["visibility"] = "private"
+            });
+        var notebookSlug = createdNotebook.StructuredContent!.Value.GetProperty("slug").GetString();
+        Assert.Equal("Ship Plan", createdNotebook.StructuredContent!.Value.GetProperty("title").GetString());
+        Assert.Equal("private", createdNotebook.StructuredContent!.Value.GetProperty("visibility").GetString());
+
+        var listedNotebook = await mcpClient.CallToolAsync(
+            "notes.list_notebooks",
+            new Dictionary<string, object?>
+            {
+                ["scope"] = "mine"
+            });
+        Assert.Contains(
+            listedNotebook.StructuredContent!.Value.GetProperty("notebooks").EnumerateArray(),
+            notebook => notebook.GetProperty("slug").GetString() == notebookSlug);
+
+        var createdFolder = await mcpClient.CallToolAsync(
+            "notes.create_folder",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebookSlug,
+                ["title"] = "Drafts",
+                ["sortOrder"] = 1
+            });
+        Assert.Equal("folder", createdFolder.StructuredContent!.Value.GetProperty("type").GetString());
+        Assert.Equal("drafts", createdFolder.StructuredContent!.Value.GetProperty("path").GetString());
+
+        var createdPage = await mcpClient.CallToolAsync(
+            "notes.create_page",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebookSlug,
+                ["title"] = "Release Checklist",
+                ["parentPath"] = "drafts",
+                ["contentJson"] = CreateDocElement("Checklist draft")
+            });
+        var createdPagePath = createdPage.StructuredContent!.Value.GetProperty("path").GetString();
+        Assert.Equal("drafts/release-checklist", createdPagePath);
+
+        var renamedFolder = await mcpClient.CallToolAsync(
+            "notes.rename_item",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebookSlug,
+                ["path"] = "drafts",
+                ["title"] = "Planning"
+            });
+        Assert.Equal("planning", renamedFolder.StructuredContent!.Value.GetProperty("path").GetString());
+
+        var renamedPage = await mcpClient.CallToolAsync(
+            "notes.get_page",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebookSlug,
+                ["path"] = "planning/release-checklist"
+            });
+        Assert.Equal("Release Checklist", renamedPage.StructuredContent!.Value.GetProperty("title").GetString());
+
+        var updatedNotebook = await mcpClient.CallToolAsync(
+            "notes.update_notebook",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebookSlug,
+                ["title"] = "Ship Plan Final",
+                ["description"] = "",
+                ["visibility"] = "public"
+            });
+        var updatedSlug = updatedNotebook.StructuredContent!.Value.GetProperty("slug").GetString();
+        Assert.Equal("Ship Plan Final", updatedNotebook.StructuredContent!.Value.GetProperty("title").GetString());
+        Assert.Equal("public", updatedNotebook.StructuredContent!.Value.GetProperty("visibility").GetString());
+        Assert.True(updatedNotebook.StructuredContent!.Value.GetProperty("isPublished").GetBoolean());
+        Assert.True(string.IsNullOrEmpty(updatedNotebook.StructuredContent!.Value.GetProperty("description").GetString()));
+        Assert.NotEqual(notebookSlug, updatedSlug);
+
+        var publicNotebooks = await mcpClient.CallToolAsync(
+            "notes.list_notebooks",
+            new Dictionary<string, object?>
+            {
+                ["scope"] = "public",
+                ["query"] = "Ship Plan Final"
+            });
+        Assert.Contains(
+            publicNotebooks.StructuredContent!.Value.GetProperty("notebooks").EnumerateArray(),
+            notebook => notebook.GetProperty("slug").GetString() == updatedSlug);
+
+        var deletedNotebook = await mcpClient.CallToolAsync(
+            "notes.delete_notebook",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = updatedSlug
+            });
+        Assert.Equal("deleted", deletedNotebook.StructuredContent!.Value.GetProperty("result").GetString());
+
+        var missingNotebook = await mcpClient.CallToolAsync(
+            "notes.get_notebook",
+            new Dictionary<string, object?>
+            {
+                ["slug"] = updatedSlug
+            });
+        Assert.True(missingNotebook.IsError);
+        Assert.Equal("notebook_not_found", missingNotebook.StructuredContent!.Value.GetProperty("code").GetString());
     }
 
     [Fact]

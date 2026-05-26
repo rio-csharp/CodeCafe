@@ -162,6 +162,29 @@ internal static class NotesMcpSupport
             item.UpdatedAtUtc);
     }
 
+    public static GetNotebookToolResponse ToGetNotebookToolResponse(NotebookDetailModel notebook)
+    {
+        return new GetNotebookToolResponse(
+            notebook.Id,
+            notebook.OwnerId,
+            notebook.Slug,
+            notebook.Title,
+            notebook.Description,
+            notebook.Visibility,
+            notebook.IsPublished,
+            notebook.AuthorDisplayName,
+            notebook.CanEdit,
+            notebook.ItemCount,
+            notebook.FolderCount,
+            notebook.PageCount,
+            notebook.FavoriteCount,
+            notebook.IsFavoritedByMe,
+            notebook.LastActivityAtUtc,
+            notebook.CreatedAtUtc,
+            notebook.UpdatedAtUtc,
+            notebook.PublishedAtUtc);
+    }
+
     public static GetPageToolResponse ToGetPageToolResponse(NotebookDetailModel notebook, NotebookItemModel page)
     {
         return new GetPageToolResponse(
@@ -193,6 +216,21 @@ internal static class NotesMcpSupport
             page.PlainTextContent,
             page.CreatedAtUtc,
             page.UpdatedAtUtc);
+    }
+
+    public static CreateItemToolResponse ToCreateItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
+    {
+        return new CreateItemToolResponse(
+            item.Id,
+            notebook.Id,
+            notebook.Slug,
+            item.Title,
+            item.Type,
+            item.Path,
+            item.ParentId,
+            item.SortOrder,
+            item.CreatedAtUtc,
+            item.UpdatedAtUtc);
     }
 
     public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookDetailModel notebook, NotebookItemModel page)

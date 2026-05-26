@@ -13,6 +13,82 @@ namespace CodeCafe.WebApi.Mcp;
 public sealed class NotesMcpTools
 {
     [McpServerTool(
+        Name = "notes.list_notebooks",
+        Title = "List Notebooks",
+        ReadOnly = true,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(ListNotebooksToolResponse))]
+    [Description("List notebooks visible to the authenticated actor.")]
+    public async Task<CallToolResult> ListNotebooksAsync(
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        CancellationToken cancellationToken,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        [Description("Notebook scope: all, mine, or public.")] string? scope = null,
+        [Description("Optional search query to filter notebooks by title or description.")] string? query = null,
+        [Description("Maximum number of notebooks to return.")] int? limit = null)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
+        if (!scopeResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+        }
+
+        var currentUserId = NotesMcpSupport.GetCurrentUserId(user);
+        if (currentUserId == Guid.Empty)
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Forbidden,
+                "authenticated_actor_required",
+                "The MCP endpoint requires an authenticated CodeCafe user."));
+        }
+
+        var normalizedScope = string.IsNullOrWhiteSpace(scope) ? "all" : scope.Trim().ToLowerInvariant();
+        if (normalizedScope is not ("all" or "mine" or "public"))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_scope",
+                "Scope must be all, mine, or public."));
+        }
+
+        var maxResults = Math.Clamp(limit ?? 25, 1, 100);
+        var notebooks = new List<NotebookSummaryModel>();
+
+        if (normalizedScope is "all" or "mine")
+        {
+            notebooks.AddRange(await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken));
+        }
+
+        if (normalizedScope is "all" or "public")
+        {
+            notebooks.AddRange(await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken));
+        }
+
+        var uniqueSummaries = notebooks
+            .GroupBy(notebook => notebook.Id)
+            .Select(group => group.First())
+            .Take(maxResults)
+            .ToList();
+
+        var notebookDetails = new List<GetNotebookToolResponse>();
+        foreach (var summary in uniqueSummaries)
+        {
+            var notebookResult = await notebookQueryService.GetNotebookBySlugAsync(summary.Slug, currentUserId, cancellationToken);
+            if (notebookResult.Succeeded)
+            {
+                notebookDetails.Add(NotesMcpSupport.ToGetNotebookToolResponse(notebookResult.Value!));
+            }
+        }
+
+        var response = new ListNotebooksToolResponse(normalizedScope, notebookDetails.Count, notebookDetails);
+        return NotesMcpResultMapper.Success(response, $"Listed {response.TotalCount} notebook(s) for scope '{response.Scope}'.");
+    }
+
+    [McpServerTool(
         Name = "notes.get_notebook",
         Title = "Get Notebook",
         ReadOnly = true,
@@ -41,27 +117,7 @@ public sealed class NotesMcpTools
             return NotesMcpResultMapper.Failure(notebookResult.Error!);
         }
 
-        var notebook = notebookResult.Value!;
-        var response = new GetNotebookToolResponse(
-            notebook.Id,
-            notebook.OwnerId,
-            notebook.Slug,
-            notebook.Title,
-            notebook.Description,
-            notebook.Visibility,
-            notebook.IsPublished,
-            notebook.AuthorDisplayName,
-            notebook.CanEdit,
-            notebook.ItemCount,
-            notebook.FolderCount,
-            notebook.PageCount,
-            notebook.FavoriteCount,
-            notebook.IsFavoritedByMe,
-            notebook.LastActivityAtUtc,
-            notebook.CreatedAtUtc,
-            notebook.UpdatedAtUtc,
-            notebook.PublishedAtUtc);
-
+        var response = NotesMcpSupport.ToGetNotebookToolResponse(notebookResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Notebook '{response.Title}' loaded.");
     }
 
@@ -266,6 +322,157 @@ public sealed class NotesMcpTools
     }
 
     [McpServerTool(
+        Name = "notes.create_notebook",
+        Title = "Create Notebook",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(GetNotebookToolResponse))]
+    [Description("Create a notebook owned by the authenticated actor.")]
+    public async Task<CallToolResult> CreateNotebookAsync(
+        [Description("Notebook title.")] string title,
+        ClaimsPrincipal user,
+        INotebookCommandService notebookCommandService,
+        IMcpAuditService auditService,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken,
+        [Description("Optional notebook description.")] string? description = null,
+        [Description("Notebook visibility: private, unlisted, or public. Defaults to private.")] string? visibility = null)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
+        if (!scopeResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+        }
+
+        var createResult = await notebookCommandService.CreateNotebookAsync(
+            NotesMcpSupport.GetCurrentUserId(user),
+            title,
+            description,
+            visibility,
+            cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_notebook", createResult.Value?.Id, null, createResult, cancellationToken);
+
+        if (!createResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(createResult.Error!);
+        }
+
+        var response = NotesMcpSupport.ToGetNotebookToolResponse(createResult.Value!);
+        return NotesMcpResultMapper.Success(response, $"Notebook '{response.Title}' created.");
+    }
+
+    [McpServerTool(
+        Name = "notes.update_notebook",
+        Title = "Update Notebook",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(GetNotebookToolResponse))]
+    [Description("Update notebook title, description, or visibility.")]
+    public async Task<CallToolResult> UpdateNotebookAsync(
+        [Description("The notebook slug.")] string notebookSlug,
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        INotebookCommandService notebookCommandService,
+        IMcpAuditService auditService,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken,
+        [Description("Optional new notebook title.")] string? title = null,
+        [Description("Optional new notebook description. Use an empty string to clear it.")] string? description = null,
+        [Description("Optional new notebook visibility: private, unlisted, or public.")] string? visibility = null)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
+        if (!scopeResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+        }
+
+        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
+        if (!notebookResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(notebookResult.Error!);
+        }
+
+        if (string.IsNullOrWhiteSpace(title) && description is null && string.IsNullOrWhiteSpace(visibility))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "missing_changes",
+                "Specify at least one notebook field to update."));
+        }
+
+        var notebook = notebookResult.Value!;
+        var updateResult = await notebookCommandService.UpdateNotebookAsync(
+            notebook.Id,
+            NotesMcpSupport.GetCurrentUserId(user),
+            string.IsNullOrWhiteSpace(title) ? notebook.Title : title,
+            description is null ? notebook.Description : description,
+            string.IsNullOrWhiteSpace(visibility) ? notebook.Visibility : visibility,
+            cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.update_notebook", notebook.Id, null, updateResult, cancellationToken);
+
+        if (!updateResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(updateResult.Error!);
+        }
+
+        var response = NotesMcpSupport.ToGetNotebookToolResponse(updateResult.Value!);
+        return NotesMcpResultMapper.Success(response, $"Notebook '{response.Title}' updated.");
+    }
+
+    [McpServerTool(
+        Name = "notes.delete_notebook",
+        Title = "Delete Notebook",
+        ReadOnly = false,
+        Destructive = true,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(DeleteNotebookToolResponse))]
+    [Description("Delete a notebook and all of its contents.")]
+    public async Task<CallToolResult> DeleteNotebookAsync(
+        [Description("The notebook slug.")] string notebookSlug,
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        INotebookCommandService notebookCommandService,
+        IMcpAuditService auditService,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
+        if (!scopeResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+        }
+
+        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
+        if (!notebookResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(notebookResult.Error!);
+        }
+
+        var notebook = notebookResult.Value!;
+        var deleteResult = await notebookCommandService.DeleteNotebookAsync(
+            notebook.Id,
+            NotesMcpSupport.GetCurrentUserId(user),
+            cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.delete_notebook", notebook.Id, null, deleteResult, cancellationToken);
+
+        if (!deleteResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(deleteResult.Error!);
+        }
+
+        var response = new DeleteNotebookToolResponse(notebook.Id, notebook.Slug, "deleted");
+        return NotesMcpResultMapper.Success(response, $"Notebook '{notebook.Title}' deleted.");
+    }
+
+    [McpServerTool(
         Name = "notes.get_page",
         Title = "Get Page",
         ReadOnly = true,
@@ -303,6 +510,66 @@ public sealed class NotesMcpTools
 
         var response = NotesMcpSupport.ToGetPageToolResponse(notebookResult.Value!, pageResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Page '{response.Title}' loaded.");
+    }
+
+    [McpServerTool(
+        Name = "notes.create_folder",
+        Title = "Create Folder",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(CreateItemToolResponse))]
+    [Description("Create a folder in a notebook under an optional parent folder path.")]
+    public async Task<CallToolResult> CreateFolderAsync(
+        [Description("The notebook slug.")] string notebookSlug,
+        [Description("The folder title.")] string title,
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        INotebookCommandService notebookCommandService,
+        IMcpAuditService auditService,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken,
+        [Description("Optional parent folder path. Null creates the folder at the notebook root.")] string? parentPath = null,
+        [Description("Sort order within the parent folder.")] int? sortOrder = null)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
+        if (!scopeResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+        }
+
+        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
+        if (!notebookResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(notebookResult.Error!);
+        }
+
+        var parentResult = NotesMcpSupport.ResolveParent(notebookResult.Value!, parentPath);
+        if (!parentResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(parentResult.Error!);
+        }
+
+        var createResult = await notebookCommandService.CreateNotebookItemAsync(
+            notebookResult.Value!.Id,
+            NotesMcpSupport.GetCurrentUserId(user),
+            parentResult.Value?.Id,
+            "folder",
+            title,
+            sortOrder ?? 0,
+            null,
+            cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_folder", notebookResult.Value!.Id, createResult.Value?.Id, createResult, cancellationToken);
+
+        if (!createResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(createResult.Error!);
+        }
+
+        var response = NotesMcpSupport.ToCreateItemToolResponse(notebookResult.Value!, createResult.Value!);
+        return NotesMcpResultMapper.Success(response, $"Folder '{response.Title}' created.");
     }
 
     [McpServerTool(
@@ -495,6 +762,73 @@ public sealed class NotesMcpTools
 
         var response = NotesMcpSupport.ToUpdatePageContentToolResponse(notebookResult.Value!, updateResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Appended blocks to page '{response.Title}'.");
+    }
+
+    [McpServerTool(
+        Name = "notes.rename_item",
+        Title = "Rename Item",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(MoveItemToolResponse))]
+    [Description("Rename a page or folder while keeping its current parent and content.")]
+    public async Task<CallToolResult> RenameItemAsync(
+        [Description("The notebook slug.")] string notebookSlug,
+        [Description("The current item path.")] string path,
+        [Description("The new title for the page or folder.")] string title,
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        INotebookCommandService notebookCommandService,
+        IMcpAuditService auditService,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken,
+        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
+        if (!scopeResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+        }
+
+        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
+        if (!notebookResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(notebookResult.Error!);
+        }
+
+        var itemResult = NotesMcpSupport.RequireItem(notebookResult.Value!, path);
+        if (!itemResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(itemResult.Error!);
+        }
+
+        var renameResult = await notebookCommandService.UpdateNotebookItemAsync(
+            notebookResult.Value!.Id,
+            itemResult.Value!.Id,
+            NotesMcpSupport.GetCurrentUserId(user),
+            title,
+            default,
+            null,
+            default,
+            cancellationToken,
+            expectedUpdatedAtUtc);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.rename_item", notebookResult.Value!.Id, itemResult.Value!.Id, renameResult, cancellationToken);
+
+        if (!renameResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(renameResult.Error!);
+        }
+
+        var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, NotesMcpSupport.GetCurrentUserId(user), cancellationToken);
+        if (!refreshedNotebook.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(refreshedNotebook.Error!);
+        }
+
+        var response = NotesMcpSupport.ToMoveItemToolResponse(refreshedNotebook.Value!, renameResult.Value!);
+        return NotesMcpResultMapper.Success(response, $"Item renamed to '{response.Title}'.");
     }
 
     [McpServerTool(
