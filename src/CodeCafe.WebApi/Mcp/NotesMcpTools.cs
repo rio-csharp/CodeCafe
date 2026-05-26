@@ -133,12 +133,13 @@ public sealed class NotesMcpTools
         }
         else
         {
-            var publicNotebooks = await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken);
-            var myNotebooks = await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken);
+            var publicNotebooks = await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken, maxResults);
+            var myNotebooks = await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken, maxResults);
             var summaries = publicNotebooks
                 .Concat(myNotebooks)
                 .GroupBy(notebook => notebook.Id)
                 .Select(group => group.First())
+                .Take(maxResults)
                 .ToList();
 
             foreach (var summary in summaries)
@@ -173,7 +174,18 @@ public sealed class NotesMcpTools
 
             if (normalizedScope is "all" or "items")
             {
-                var itemResults = await notebookQueryService.GetNotebookItemsAsync(notebook.Id, currentUserId, query, cancellationToken);
+                var remainingResults = maxResults - results.Count;
+                if (remainingResults <= 0)
+                {
+                    break;
+                }
+
+                var itemResults = await notebookQueryService.GetNotebookItemsAsync(
+                    notebook.Id,
+                    currentUserId,
+                    query,
+                    cancellationToken,
+                    limit: remainingResults);
                 if (itemResults.Succeeded)
                 {
                     results.AddRange(itemResults.Value!.Select(item => new NotebookSearchResultResponse(

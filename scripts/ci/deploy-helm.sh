@@ -164,11 +164,27 @@ $KUBECTL_BIN rollout status deployment \
   --namespace "$NAMESPACE" \
   --timeout=180s
 
-frontend_port=18080
-api_port=18081
-$KUBECTL_BIN port-forward "service/${RELEASE}-frontend" "${frontend_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-frontend-port-forward.log 2>&1 &
+pick_port() {
+  python3 - <<'PY'
+import socket
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.bind(("127.0.0.1", 0))
+    print(sock.getsockname()[1])
+PY
+}
+
+dump_port_forward_logs() {
+  echo "Frontend port-forward log:" >&2
+  cat /tmp/codecafe-frontend-port-forward.log >&2 || true
+  echo "API port-forward log:" >&2
+  cat /tmp/codecafe-api-port-forward.log >&2 || true
+}
+
+frontend_port="$(pick_port)"
+api_port="$(pick_port)"
+$KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-frontend" "${frontend_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-frontend-port-forward.log 2>&1 &
 frontend_pid=$!
-$KUBECTL_BIN port-forward "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-api-port-forward.log 2>&1 &
+$KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-api-port-forward.log 2>&1 &
 api_pid=$!
 
 port_forward_cleanup() {
@@ -178,12 +194,20 @@ port_forward_cleanup() {
 trap 'port_forward_cleanup; cleanup' EXIT
 
 for _ in $(seq 1 20); do
-  if curl --silent --fail "http://127.0.0.1:${frontend_port}/" >/dev/null \
-    && curl --silent --fail "http://127.0.0.1:${api_port}/health/ready" >/dev/null; then
+  if ! kill -0 "$frontend_pid" 2>/dev/null || ! kill -0 "$api_pid" 2>/dev/null; then
+    dump_port_forward_logs
+    exit 1
+  fi
+
+  if curl --silent --fail --header "Host: $FRONTEND_HOST" "http://127.0.0.1:${frontend_port}/" >/dev/null \
+    && curl --silent --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/health/ready" >/dev/null \
+    && curl --silent --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/.well-known/oauth-protected-resource/mcp" >/dev/null; then
     exit 0
   fi
   sleep 3
 done
 
-curl --fail "http://127.0.0.1:${frontend_port}/"
-curl --fail "http://127.0.0.1:${api_port}/health/ready"
+dump_port_forward_logs
+curl --fail --header "Host: $FRONTEND_HOST" "http://127.0.0.1:${frontend_port}/"
+curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/health/ready"
+curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/.well-known/oauth-protected-resource/mcp"

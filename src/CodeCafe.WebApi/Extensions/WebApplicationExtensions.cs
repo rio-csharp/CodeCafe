@@ -31,8 +31,8 @@ public static class WebApplicationExtensions
 
         app.UseCodeCafeCors();
         app.UseCodeCafeMcpOriginValidation();
-        app.UseRateLimiter();
         app.UseAuthentication();
+        app.UseRateLimiter();
         app.UseCodeCafeAntiforgery();
         app.UseAuthorization();
 

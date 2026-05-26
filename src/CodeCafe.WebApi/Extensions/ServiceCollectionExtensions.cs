@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using OpenIddict.Validation.AspNetCore;
+using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
 
@@ -68,26 +69,7 @@ public static class ServiceCollectionExtensions
 
         services.AddOptions<AuthorizationServerOptions>()
             .Bind(configuration.GetSection(AuthorizationServerOptions.SectionName))
-            .PostConfigure(options =>
-            {
-                if (string.IsNullOrWhiteSpace(options.FrontendBaseUrl)
-                    && (environment.IsDevelopment() || environment.IsEnvironment("Testing")))
-                {
-                    options.FrontendBaseUrl = "http://localhost:5173";
-                }
-
-                if (string.IsNullOrWhiteSpace(options.Issuer))
-                {
-                    if (environment.IsDevelopment())
-                    {
-                        options.Issuer = "https://localhost:7239/";
-                    }
-                    else if (environment.IsEnvironment("Testing"))
-                    {
-                        options.Issuer = "https://codecafe.test/";
-                    }
-                }
-            })
+            .PostConfigure(options => options.ApplyEnvironmentDefaults(environment))
             .Validate(options => Uri.TryCreate(options.Issuer, UriKind.Absolute, out _),
                 "AuthorizationServer:Issuer must be an absolute URI.")
             .Validate(options => Uri.TryCreate(options.FrontendBaseUrl, UriKind.Absolute, out _),
@@ -186,28 +168,7 @@ public static class ServiceCollectionExtensions
             })
             .AddServer(options =>
             {
-                var authOptions = configuration
-                    .GetSection(AuthorizationServerOptions.SectionName)
-                    .Get<AuthorizationServerOptions>()
-                    ?? new AuthorizationServerOptions();
-
-                if (string.IsNullOrWhiteSpace(authOptions.FrontendBaseUrl)
-                    && (environment.IsDevelopment() || environment.IsEnvironment("Testing")))
-                {
-                    authOptions.FrontendBaseUrl = "http://localhost:5173";
-                }
-
-                if (string.IsNullOrWhiteSpace(authOptions.Issuer))
-                {
-                    if (environment.IsDevelopment())
-                    {
-                        authOptions.Issuer = "https://localhost:7239/";
-                    }
-                    else if (environment.IsEnvironment("Testing"))
-                    {
-                        authOptions.Issuer = "https://codecafe.test/";
-                    }
-                }
+                var authOptions = GetAuthorizationServerOptions(configuration, environment);
 
                 options.SetIssuer(new Uri(authOptions.Issuer, UriKind.Absolute));
                 options.SetAuthorizationEndpointUris("/connect/authorize");
@@ -269,6 +230,19 @@ public static class ServiceCollectionExtensions
             && HasCertificate(options.EncryptionCertificatePath, options.EncryptionCertificateBase64);
     }
 
+    private static AuthorizationServerOptions GetAuthorizationServerOptions(
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        var options = configuration
+            .GetSection(AuthorizationServerOptions.SectionName)
+            .Get<AuthorizationServerOptions>()
+            ?? new AuthorizationServerOptions();
+
+        options.ApplyEnvironmentDefaults(environment);
+        return options;
+    }
+
     private static bool HasCertificate(string path, string base64Value)
     {
         return !string.IsNullOrWhiteSpace(path) || !string.IsNullOrWhiteSpace(base64Value);
@@ -281,13 +255,13 @@ public static class ServiceCollectionExtensions
             return X509CertificateLoader.LoadPkcs12(
                 Convert.FromBase64String(base64Value),
                 password,
-                X509KeyStorageFlags.MachineKeySet);
+                X509KeyStorageFlags.EphemeralKeySet);
         }
 
         return X509CertificateLoader.LoadPkcs12FromFile(
             path,
             password,
-            X509KeyStorageFlags.MachineKeySet);
+            X509KeyStorageFlags.EphemeralKeySet);
     }
 
     private static IServiceCollection AddCodeCafeIdentity(this IServiceCollection services)
@@ -328,7 +302,7 @@ public static class ServiceCollectionExtensions
         {
             options.HeaderName = "X-CSRF-TOKEN";
             options.Cookie.Name = "CodeCafe.Csrf";
-            options.Cookie.HttpOnly = false;
+            options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Lax;
             options.Cookie.SecurePolicy = environment.IsProduction()
                 ? CookieSecurePolicy.Always
@@ -365,9 +339,9 @@ public static class ServiceCollectionExtensions
             options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
             {
                 var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
-                var clientIp = clientIpAddressAccessor.GetClientIpAddress(httpContext);
+                var partitionKey = GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: true);
 
-                return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 300,
                     Window = TimeSpan.FromMinutes(1),
@@ -379,9 +353,9 @@ public static class ServiceCollectionExtensions
             options.AddPolicy("registration", httpContext =>
             {
                 var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
-                var clientIp = clientIpAddressAccessor.GetClientIpAddress(httpContext);
+                var partitionKey = GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: false);
 
-                return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 3,
                     Window = TimeSpan.FromHours(1),
@@ -393,9 +367,9 @@ public static class ServiceCollectionExtensions
             options.AddPolicy("login", httpContext =>
             {
                 var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
-                var clientIp = clientIpAddressAccessor.GetClientIpAddress(httpContext);
+                var partitionKey = GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: false);
 
-                return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 10,
                     Window = TimeSpan.FromMinutes(1),
@@ -407,9 +381,9 @@ public static class ServiceCollectionExtensions
             options.AddPolicy("mcp", httpContext =>
             {
                 var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
-                var clientIp = clientIpAddressAccessor.GetClientIpAddress(httpContext);
+                var partitionKey = GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: true);
 
-                return RateLimitPartition.GetFixedWindowLimiter(clientIp, _ => new FixedWindowRateLimiterOptions
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
                 {
                     PermitLimit = 120,
                     Window = TimeSpan.FromMinutes(1),
@@ -420,6 +394,24 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
+    }
+
+    private static string GetRateLimitPartitionKey(
+        HttpContext httpContext,
+        IClientIpAddressAccessor clientIpAddressAccessor,
+        bool allowAuthenticatedUserKey)
+    {
+        if (allowAuthenticatedUserKey && httpContext.User.Identity?.IsAuthenticated == true)
+        {
+            var subject = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? httpContext.User.FindFirstValue("sub");
+            if (!string.IsNullOrWhiteSpace(subject))
+            {
+                return $"user:{subject}";
+            }
+        }
+
+        return $"ip:{clientIpAddressAccessor.GetClientIpAddress(httpContext)}";
     }
 
     private static IServiceCollection AddCodeCafeCookieAuthentication(

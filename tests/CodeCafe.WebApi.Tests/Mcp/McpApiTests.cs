@@ -278,6 +278,24 @@ public sealed class McpApiTests
             value => value == "notes.read");
     }
 
+    [Fact]
+    public async Task OpenIdConnectDiscovery_WhenMcpEnabled_IsAnonymous()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/.well-known/openid-configuration");
+        response.EnsureSuccessStatusCode();
+
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("https://codecafe.test/", json.RootElement.GetProperty("issuer").GetString());
+        Assert.EndsWith("/connect/authorize", json.RootElement.GetProperty("authorization_endpoint").GetString(), StringComparison.Ordinal);
+        Assert.EndsWith("/connect/token", json.RootElement.GetProperty("token_endpoint").GetString(), StringComparison.Ordinal);
+    }
+
     private static async Task RegisterAsync(HttpClient client, string email, string clientIp)
     {
         var csrf = await GetCsrfTokenAsync(client);

@@ -26,48 +26,56 @@ public sealed class OpenIddictSeedHostedService(
 
         foreach (var client in authorizationServerOptions.PublicClients)
         {
-            if (await applicationManager.FindByClientIdAsync(client.ClientId, cancellationToken) is not null)
+            var existingApplication = await applicationManager.FindByClientIdAsync(client.ClientId, cancellationToken);
+            if (existingApplication is null)
             {
+                var descriptor = CreateApplicationDescriptor(client, mcpOptions);
+                await applicationManager.CreateAsync(descriptor, cancellationToken);
+
+                logger.LogInformation(
+                    "Seeded OpenIddict client application. ClientId={ClientId}; RedirectUris={RedirectUris}",
+                    descriptor.ClientId,
+                    string.Join(", ", descriptor.RedirectUris.Select(uri => uri.AbsoluteUri)));
+
                 continue;
             }
 
-            var descriptor = new OpenIddictApplicationDescriptor
-            {
-                ApplicationType = ApplicationTypes.Native,
-                ClientType = ClientTypes.Public,
-                ClientId = client.ClientId,
-                ConsentType = ConsentTypes.Implicit,
-                DisplayName = string.IsNullOrWhiteSpace(client.DisplayName) ? client.ClientId : client.DisplayName
-            };
+            var existingDescriptor = new OpenIddictApplicationDescriptor();
+            await applicationManager.PopulateAsync(existingDescriptor, existingApplication, cancellationToken);
+            var desiredDescriptor = CreateApplicationDescriptor(client, mcpOptions);
+            var changed = false;
 
-            foreach (var redirectUri in client.RedirectUris)
+            foreach (var redirectUri in desiredDescriptor.RedirectUris)
             {
-                if (Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
+                if (existingDescriptor.RedirectUris.Add(redirectUri))
                 {
-                    descriptor.RedirectUris.Add(uri);
+                    changed = true;
                 }
             }
 
-            descriptor.Permissions.UnionWith(
-            [
-                Permissions.Endpoints.Authorization,
-                Permissions.Endpoints.Token,
-                Permissions.GrantTypes.AuthorizationCode,
-                Permissions.GrantTypes.RefreshToken,
-                Permissions.ResponseTypes.Code
-            ]);
-
-            foreach (var scopeName in mcpOptions.RequiredReadScopes.Concat(mcpOptions.RequiredWriteScopes).Distinct(StringComparer.Ordinal))
+            foreach (var permission in desiredDescriptor.Permissions)
             {
-                descriptor.Permissions.Add(Permissions.Prefixes.Scope + scopeName);
+                if (existingDescriptor.Permissions.Add(permission))
+                {
+                    changed = true;
+                }
             }
 
-            await applicationManager.CreateAsync(descriptor, cancellationToken);
+            if (!string.Equals(existingDescriptor.DisplayName, desiredDescriptor.DisplayName, StringComparison.Ordinal))
+            {
+                existingDescriptor.DisplayName = desiredDescriptor.DisplayName;
+                changed = true;
+            }
 
-            logger.LogInformation(
-                "Seeded OpenIddict client application. ClientId={ClientId}; RedirectUris={RedirectUris}",
-                descriptor.ClientId,
-                string.Join(", ", descriptor.RedirectUris.Select(uri => uri.AbsoluteUri)));
+            if (changed)
+            {
+                await applicationManager.UpdateAsync(existingApplication, existingDescriptor, cancellationToken);
+
+                logger.LogInformation(
+                    "Updated OpenIddict client application. ClientId={ClientId}; RedirectUris={RedirectUris}",
+                    existingDescriptor.ClientId,
+                    string.Join(", ", existingDescriptor.RedirectUris.Select(uri => uri.AbsoluteUri)));
+            }
         }
     }
 
@@ -95,5 +103,43 @@ public sealed class OpenIddictSeedHostedService(
 
             await scopeManager.CreateAsync(descriptor, cancellationToken);
         }
+    }
+
+    private static OpenIddictApplicationDescriptor CreateApplicationDescriptor(
+        OAuthClientOptions client,
+        McpOptions mcpOptions)
+    {
+        var descriptor = new OpenIddictApplicationDescriptor
+        {
+            ApplicationType = ApplicationTypes.Native,
+            ClientType = ClientTypes.Public,
+            ClientId = client.ClientId,
+            ConsentType = ConsentTypes.Implicit,
+            DisplayName = string.IsNullOrWhiteSpace(client.DisplayName) ? client.ClientId : client.DisplayName
+        };
+
+        foreach (var redirectUri in client.RedirectUris)
+        {
+            if (Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
+            {
+                descriptor.RedirectUris.Add(uri);
+            }
+        }
+
+        descriptor.Permissions.UnionWith(
+        [
+            Permissions.Endpoints.Authorization,
+            Permissions.Endpoints.Token,
+            Permissions.GrantTypes.AuthorizationCode,
+            Permissions.GrantTypes.RefreshToken,
+            Permissions.ResponseTypes.Code
+        ]);
+
+        foreach (var scopeName in mcpOptions.RequiredReadScopes.Concat(mcpOptions.RequiredWriteScopes).Distinct(StringComparer.Ordinal))
+        {
+            descriptor.Permissions.Add(Permissions.Prefixes.Scope + scopeName);
+        }
+
+        return descriptor;
     }
 }

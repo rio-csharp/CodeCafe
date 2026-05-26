@@ -113,6 +113,18 @@ jobs:
             echo "API_HOST=api-pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}"
           } >> "$GITHUB_ENV"
 
+      - name: Prepare OAuth secret payload
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          OAUTH_CERT_BASE64: ${{ secrets.OAUTH_CERT_BASE64 }}
+          OAUTH_CERT_PASSWORD: ${{ secrets.OAUTH_CERT_PASSWORD }}
+        run: |
+          umask 077
+          {
+            printf 'OAUTH_CERT_BASE64=%q\n' "$OAUTH_CERT_BASE64"
+            printf 'OAUTH_CERT_PASSWORD=%q\n' "$OAUTH_CERT_PASSWORD"
+          } > .artifacts/deployment/oauth.env
+
       - name: Configure SSH
         if: steps.pr.outputs.skip != 'true'
         uses: webfactory/ssh-agent@v0.10.0
@@ -135,8 +147,9 @@ jobs:
           ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
           scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
           scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/scripts/deploy-helm.sh" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/deploy-helm.sh"
+          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/deployment/oauth.env" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/oauth.env"
           ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='${{ env.TLS_SECRET }}' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='$FRONTEND_HOST' API_HOST='$API_HOST' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DB_SECRET_NAMESPACE='codecafe-test' FRONTEND_REPLICA_COUNT='1' API_REPLICA_COUNT='1' API_MIGRATION_ENABLED='false' bash '$REMOTE_DIR/deploy-helm.sh'"
+            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='${{ env.TLS_SECRET }}' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='$FRONTEND_HOST' API_HOST='$API_HOST' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DB_SECRET_NAMESPACE='codecafe-test' FRONTEND_REPLICA_COUNT='1' API_REPLICA_COUNT='1' API_MIGRATION_ENABLED='false' OAUTH_ENV_FILE='$REMOTE_DIR/oauth.env' bash '$REMOTE_DIR/deploy-helm.sh'"
 
       - name: Comment preview
         if: steps.pr.outputs.skip != 'true'

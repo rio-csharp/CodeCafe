@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace CodeCafe.Infrastructure.Notes;
@@ -40,6 +41,6 @@ public static class SlugGenerator
     {
         return suffix == 0
             ? baseSlug
-            : $"{baseSlug}-{Random.Shared.Next(0x1000, 0xffff):x4}";
+            : $"{baseSlug}-{RandomNumberGenerator.GetInt32(0x1000, 0x10000):x4}";
     }
 }
