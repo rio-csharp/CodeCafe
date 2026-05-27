@@ -30,22 +30,22 @@ public sealed class NotesMcpItemTools
         [Description("Optional search term to filter notebook items.")] string? search = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
+        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+            notebookSlug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredReadScopes);
+        if (!notebookContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var notebook = notebookResult.Value!;
+        var notebookContext = notebookContextResult.Value;
+        var notebook = notebookContext.Notebook;
         var itemsResult = await notebookQueryService.GetNotebookItemsAsync(
             notebook.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            notebookContext.ActorId,
             search,
             cancellationToken);
 
@@ -82,25 +82,20 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
+        var pageContextResult = await NotesMcpSupport.RequirePageContextAsync(
+            notebookSlug,
+            path,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredReadScopes);
+        if (!pageContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(pageContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
-        if (!pageResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(pageResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToGetPageToolResponse(notebookResult.Value!, pageResult.Value!);
+        var pageContext = pageContextResult.Value;
+        var response = NotesMcpSupport.ToGetPageToolResponse(pageContext.Notebook, pageContext.Item);
         return NotesMcpResultMapper.Success(response, $"Page '{response.Title}' loaded.");
     }
 
@@ -126,41 +121,41 @@ public sealed class NotesMcpItemTools
         [Description("Sort order within the parent folder.")] int? sortOrder = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+            notebookSlug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!notebookContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var parentResult = NotesMcpSupport.ResolveParent(notebookResult.Value!, parentPath);
+        var notebookContext = notebookContextResult.Value;
+        var parentResult = NotesMcpSupport.ResolveParent(notebookContext.Notebook, parentPath);
         if (!parentResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(parentResult.Error!);
         }
 
         var createResult = await notebookCommandService.CreateNotebookItemAsync(
-            notebookResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            notebookContext.Notebook.Id,
+            notebookContext.ActorId,
             parentResult.Value?.Id,
             "folder",
             title,
             sortOrder ?? 0,
             null,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_folder", notebookResult.Value!.Id, createResult.Value?.Id, createResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_folder", notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
 
         if (!createResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(createResult.Error!);
         }
 
-        var response = NotesMcpSupport.ToCreateItemToolResponse(notebookResult.Value!, createResult.Value!);
+        var response = NotesMcpSupport.ToCreateItemToolResponse(notebookContext.Notebook, createResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Folder '{response.Title}' created.");
     }
 
@@ -187,41 +182,41 @@ public sealed class NotesMcpItemTools
         [Description("Optional TipTap JSON document for the page content.")] JsonElement? contentJson = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+            notebookSlug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!notebookContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var parentResult = NotesMcpSupport.ResolveParent(notebookResult.Value!, parentPath);
+        var notebookContext = notebookContextResult.Value;
+        var parentResult = NotesMcpSupport.ResolveParent(notebookContext.Notebook, parentPath);
         if (!parentResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(parentResult.Error!);
         }
 
         var createResult = await notebookCommandService.CreateNotebookItemAsync(
-            notebookResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            notebookContext.Notebook.Id,
+            notebookContext.ActorId,
             parentResult.Value?.Id,
             "page",
             title,
             sortOrder ?? 0,
             contentJson,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_page", notebookResult.Value!.Id, createResult.Value?.Id, createResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_page", notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
 
         if (!createResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(createResult.Error!);
         }
 
-        var response = NotesMcpSupport.ToCreatePageToolResponse(notebookResult.Value!, createResult.Value!);
+        var response = NotesMcpSupport.ToCreatePageToolResponse(notebookContext.Notebook, createResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Page '{response.Title}' created.");
     }
 
@@ -247,42 +242,37 @@ public sealed class NotesMcpItemTools
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var pageContextResult = await NotesMcpSupport.RequirePageContextAsync(
+            notebookSlug,
+            path,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!pageContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(pageContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
-        if (!pageResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(pageResult.Error!);
-        }
-
+        var pageContext = pageContextResult.Value;
         var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
-            notebookResult.Value!.Id,
-            pageResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
-            pageResult.Value.Title,
+            pageContext.Notebook.Id,
+            pageContext.Item.Id,
+            pageContext.ActorId,
+            pageContext.Item.Title,
             default,
             null,
             contentJson,
             cancellationToken,
             expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.update_page_content_json", notebookResult.Value!.Id, pageResult.Value!.Id, updateResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.update_page_content_json", pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
 
         if (!updateResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(updateResult.Error!);
         }
 
-        var response = NotesMcpSupport.ToUpdatePageContentToolResponse(notebookResult.Value!, updateResult.Value!);
+        var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Page '{response.Title}' content updated.");
     }
 
@@ -308,22 +298,16 @@ public sealed class NotesMcpItemTools
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var pageContextResult = await NotesMcpSupport.RequirePageContextAsync(
+            notebookSlug,
+            path,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!pageContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
-        if (!pageResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(pageResult.Error!);
+            return NotesMcpResultMapper.Failure(pageContextResult.Error!);
         }
 
         if (blocks.ValueKind != JsonValueKind.Array)
@@ -334,25 +318,26 @@ public sealed class NotesMcpItemTools
                 "Blocks must be a JSON array."));
         }
 
-        var nextContentJson = NotesMcpSupport.AppendBlocks(pageResult.Value!.ContentJson, blocks);
+        var pageContext = pageContextResult.Value;
+        var nextContentJson = NotesMcpSupport.AppendBlocks(pageContext.Item.ContentJson, blocks);
         var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
-            notebookResult.Value!.Id,
-            pageResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
-            pageResult.Value.Title,
+            pageContext.Notebook.Id,
+            pageContext.Item.Id,
+            pageContext.ActorId,
+            pageContext.Item.Title,
             default,
             null,
             nextContentJson,
             cancellationToken,
             expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.append_blocks_to_page", notebookResult.Value!.Id, pageResult.Value!.Id, updateResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.append_blocks_to_page", pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
 
         if (!updateResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(updateResult.Error!);
         }
 
-        var response = NotesMcpSupport.ToUpdatePageContentToolResponse(notebookResult.Value!, updateResult.Value!);
+        var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Appended blocks to page '{response.Title}'.");
     }
 
@@ -378,42 +363,37 @@ public sealed class NotesMcpItemTools
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
+            notebookSlug,
+            path,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!itemContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var itemResult = NotesMcpSupport.RequireItem(notebookResult.Value!, path);
-        if (!itemResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemResult.Error!);
-        }
-
+        var itemContext = itemContextResult.Value;
         var renameResult = await notebookCommandService.UpdateNotebookItemAsync(
-            notebookResult.Value!.Id,
-            itemResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            itemContext.Notebook.Id,
+            itemContext.Item.Id,
+            itemContext.ActorId,
             title,
             default,
             null,
             default,
             cancellationToken,
             expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.rename_item", notebookResult.Value!.Id, itemResult.Value!.Id, renameResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.rename_item", itemContext.Notebook.Id, itemContext.Item.Id, renameResult, cancellationToken);
 
         if (!renameResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(renameResult.Error!);
         }
 
-        var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, NotesMcpSupport.GetCurrentUserId(user), cancellationToken);
+        var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, cancellationToken);
         if (!refreshedNotebook.Succeeded)
         {
             return NotesMcpResultMapper.Failure(refreshedNotebook.Error!);
@@ -445,47 +425,42 @@ public sealed class NotesMcpItemTools
         [Description("Optional new sort order.")] int? sortOrder = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
+            notebookSlug,
+            path,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!itemContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var itemResult = NotesMcpSupport.RequireItem(notebookResult.Value!, path);
-        if (!itemResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemResult.Error!);
-        }
-
-        var parentResult = NotesMcpSupport.ResolveParent(notebookResult.Value!, targetParentPath);
+        var itemContext = itemContextResult.Value;
+        var parentResult = NotesMcpSupport.ResolveParent(itemContext.Notebook, targetParentPath);
         if (!parentResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(parentResult.Error!);
         }
 
         var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
-            notebookResult.Value!.Id,
-            itemResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
-            itemResult.Value.Title,
+            itemContext.Notebook.Id,
+            itemContext.Item.Id,
+            itemContext.ActorId,
+            itemContext.Item.Title,
             NotesMcpSupport.ToGuidJsonElement(parentResult.Value?.Id),
             sortOrder,
             default,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.move_item", notebookResult.Value!.Id, itemResult.Value!.Id, updateResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.move_item", itemContext.Notebook.Id, itemContext.Item.Id, updateResult, cancellationToken);
 
         if (!updateResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(updateResult.Error!);
         }
 
-        var response = NotesMcpSupport.ToMoveItemToolResponse(notebookResult.Value!, updateResult.Value!);
+        var response = NotesMcpSupport.ToMoveItemToolResponse(itemContext.Notebook, updateResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Item '{response.Title}' moved to '{response.Path}'.");
     }
 
@@ -509,12 +484,6 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
-        }
-
         if (items.Count == 0)
         {
             return NotesMcpResultMapper.Failure(new NotesError(
@@ -523,22 +492,28 @@ public sealed class NotesMcpItemTools
                 "At least one reorder item is required."));
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
+        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+            notebookSlug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!notebookContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
+            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
         }
 
+        var notebookContext = notebookContextResult.Value;
         var reorderModels = new List<ReorderNotebookItemModel>();
         foreach (var item in items)
         {
-            var resolvedItem = NotesMcpSupport.RequireItem(notebookResult.Value!, item.Path);
+            var resolvedItem = NotesMcpSupport.RequireItem(notebookContext.Notebook, item.Path);
             if (!resolvedItem.Succeeded)
             {
                 return NotesMcpResultMapper.Failure(resolvedItem.Error!);
             }
 
-            var resolvedParent = NotesMcpSupport.ResolveParent(notebookResult.Value!, item.ParentPath);
+            var resolvedParent = NotesMcpSupport.ResolveParent(notebookContext.Notebook, item.ParentPath);
             if (!resolvedParent.Succeeded)
             {
                 return NotesMcpResultMapper.Failure(resolvedParent.Error!);
@@ -551,11 +526,11 @@ public sealed class NotesMcpItemTools
         }
 
         var reorderResult = await notebookCommandService.ReorderNotebookItemsAsync(
-            notebookResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            notebookContext.Notebook.Id,
+            notebookContext.ActorId,
             reorderModels,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.reorder_items", notebookResult.Value!.Id, null, reorderResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.reorder_items", notebookContext.Notebook.Id, null, reorderResult, cancellationToken);
 
         if (!reorderResult.Succeeded)
         {
@@ -563,8 +538,8 @@ public sealed class NotesMcpItemTools
         }
 
         var response = new ReorderItemsToolResponse(
-            notebookResult.Value!.Id,
-            notebookResult.Value!.Slug,
+            notebookContext.Notebook.Id,
+            notebookContext.Notebook.Slug,
             reorderResult.Value!.Select(NotesMcpSupport.ToNotebookItemToolResponse).ToList());
 
         return NotesMcpResultMapper.Success(response, $"Reordered {items.Count} item(s) in notebook '{response.NotebookSlug}'.");
@@ -590,34 +565,26 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
-        }
-
-        var notebookResult = await notebookQueryService.GetNotebookBySlugAsync(
+        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
             notebookSlug,
-            NotesMcpSupport.GetCurrentUserId(user),
+            path,
+            user,
+            notebookQueryService,
             cancellationToken,
+            mcpOptions.RequiredWriteScopes,
             includeArchived: true);
-        if (!notebookResult.Succeeded)
+        if (!itemContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
+            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
         }
 
-        var itemResult = NotesMcpSupport.RequireItem(notebookResult.Value!, path);
-        if (!itemResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemResult.Error!);
-        }
-
+        var itemContext = itemContextResult.Value;
         var deleteResult = await notebookCommandService.DeleteNotebookItemAsync(
-            notebookResult.Value!.Id,
-            itemResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            itemContext.Notebook.Id,
+            itemContext.Item.Id,
+            itemContext.ActorId,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.delete_item", notebookResult.Value!.Id, itemResult.Value!.Id, deleteResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.delete_item", itemContext.Notebook.Id, itemContext.Item.Id, deleteResult, cancellationToken);
 
         if (!deleteResult.Succeeded)
         {
@@ -625,10 +592,10 @@ public sealed class NotesMcpItemTools
         }
 
         var response = new DeleteItemToolResponse(
-            notebookResult.Value!.Id,
-            notebookResult.Value!.Slug,
-            itemResult.Value!.Id,
-            itemResult.Value!.Path,
+            itemContext.Notebook.Id,
+            itemContext.Notebook.Slug,
+            itemContext.Item.Id,
+            itemContext.Item.Path,
             "deleted");
 
         return NotesMcpResultMapper.Success(response, $"Deleted item '{response.Path}'.");
@@ -654,37 +621,32 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
+            notebookSlug,
+            path,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!itemContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var itemResult = NotesMcpSupport.RequireItem(notebookResult.Value!, path);
-        if (!itemResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemResult.Error!);
-        }
-
+        var itemContext = itemContextResult.Value;
         var archiveResult = await notebookCommandService.ArchiveNotebookItemAsync(
-            notebookResult.Value!.Id,
-            itemResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            itemContext.Notebook.Id,
+            itemContext.Item.Id,
+            itemContext.ActorId,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.archive_item", notebookResult.Value!.Id, itemResult.Value!.Id, archiveResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.archive_item", itemContext.Notebook.Id, itemContext.Item.Id, archiveResult, cancellationToken);
 
         if (!archiveResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(archiveResult.Error!);
         }
 
-        var response = NotesMcpSupport.ToMoveItemToolResponse(notebookResult.Value!, archiveResult.Value!);
+        var response = NotesMcpSupport.ToMoveItemToolResponse(itemContext.Notebook, archiveResult.Value!);
         return NotesMcpResultMapper.Success(response, $"Archived item '{response.Path}'.");
     }
 
@@ -708,41 +670,33 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
-        }
-
-        var notebookResult = await notebookQueryService.GetNotebookBySlugAsync(
+        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
             notebookSlug,
-            NotesMcpSupport.GetCurrentUserId(user),
+            path,
+            user,
+            notebookQueryService,
             cancellationToken,
+            mcpOptions.RequiredWriteScopes,
             includeArchived: true);
-        if (!notebookResult.Succeeded)
+        if (!itemContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
+            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
         }
 
-        var itemResult = NotesMcpSupport.RequireItem(notebookResult.Value!, path);
-        if (!itemResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemResult.Error!);
-        }
-
+        var itemContext = itemContextResult.Value;
         var restoreResult = await notebookCommandService.RestoreNotebookItemAsync(
-            notebookResult.Value!.Id,
-            itemResult.Value!.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            itemContext.Notebook.Id,
+            itemContext.Item.Id,
+            itemContext.ActorId,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.restore_item", notebookResult.Value!.Id, itemResult.Value!.Id, restoreResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.restore_item", itemContext.Notebook.Id, itemContext.Item.Id, restoreResult, cancellationToken);
 
         if (!restoreResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(restoreResult.Error!);
         }
 
-        var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, NotesMcpSupport.GetCurrentUserId(user), cancellationToken);
+        var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, cancellationToken);
         if (!refreshedNotebook.Succeeded)
         {
             return NotesMcpResultMapper.Failure(refreshedNotebook.Error!);

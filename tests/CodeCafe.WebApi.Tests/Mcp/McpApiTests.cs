@@ -363,6 +363,119 @@ public sealed class McpApiTests
     }
 
     [Fact]
+    public async Task McpWriteTools_RejectMissingWriteScope()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"scope+{Guid.NewGuid():N}@example.com", "203.0.113.125");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read");
+
+        var result = await mcpClient.CallToolAsync(
+            "notes.create_notebook",
+            new Dictionary<string, object?>
+            {
+                ["title"] = "Should Fail"
+            });
+
+        AssertToolError(result, "insufficient_scope");
+    }
+
+    [Fact]
+    public async Task McpNotebookUpdate_RequiresAtLeastOneChange()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"update-validation+{Guid.NewGuid():N}@example.com", "203.0.113.126");
+        var notebook = await CreateNotebookAsync(client, "No-Op Notebook");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var result = await mcpClient.CallToolAsync(
+            "notes.update_notebook",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug
+            });
+
+        AssertToolError(result, "missing_changes");
+    }
+
+    [Fact]
+    public async Task McpCreateFolder_RejectsPageParent()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"parent-validation+{Guid.NewGuid():N}@example.com", "203.0.113.127");
+        var notebook = await CreateNotebookAsync(client, "Parent Validation Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Leaf Page", "Content");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var result = await mcpClient.CallToolAsync(
+            "notes.create_folder",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["title"] = "Should Fail",
+                ["parentPath"] = page.Path
+            });
+
+        AssertToolError(result, "invalid_parent");
+    }
+
+    [Fact]
+    public async Task McpAppendBlocks_RejectsNonArrayPayload()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"append-validation+{Guid.NewGuid():N}@example.com", "203.0.113.128");
+        var notebook = await CreateNotebookAsync(client, "Append Validation Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Append Target", "Content");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var result = await mcpClient.CallToolAsync(
+            "notes.append_blocks_to_page",
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path,
+                ["blocks"] = CreateDocElement("not-an-array")
+            });
+
+        AssertToolError(result, "invalid_blocks");
+    }
+
+    [Fact]
     public async Task McpPrompt_GetPromptReturnsMessages()
     {
         using var factory = new AuthApiFactory
@@ -539,5 +652,11 @@ public sealed class McpApiTests
                 }
             }
         });
+    }
+
+    private static void AssertToolError(CallToolResult result, string code)
+    {
+        Assert.True(result.IsError);
+        Assert.Equal(code, result.StructuredContent!.Value.GetProperty("code").GetString());
     }
 }

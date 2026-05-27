@@ -9,6 +9,9 @@ namespace CodeCafe.WebApi.Mcp;
 
 internal static class NotesMcpSupport
 {
+    internal readonly record struct NotebookContext(Guid ActorId, NotebookDetailModel Notebook);
+    internal readonly record struct ItemContext(Guid ActorId, NotebookDetailModel Notebook, NotebookItemModel Item);
+
     internal static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private const string AuthenticatedActorRequiredCode = "authenticated_actor_required";
     private const string AuthenticatedActorRequiredMessage = "The MCP endpoint requires an authenticated CodeCafe user.";
@@ -90,6 +93,44 @@ internal static class NotesMcpSupport
         return await notebookQueryService.GetNotebookBySlugAsync(notebookSlug.Trim(), currentUserId, cancellationToken);
     }
 
+    public static async Task<NotesResult<NotebookContext>> RequireNotebookContextAsync(
+        string notebookSlug,
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        CancellationToken cancellationToken,
+        string[] requiredScopes,
+        bool includeArchived = false)
+    {
+        var actorResult = RequireActor(user, requiredScopes);
+        if (!actorResult.Succeeded)
+        {
+            return NotesResult<NotebookContext>.Failure(actorResult.Error!.Kind, actorResult.Error.Code, actorResult.Error.Message);
+        }
+
+        if (string.IsNullOrWhiteSpace(notebookSlug))
+        {
+            return NotesResult<NotebookContext>.Failure(
+                NotesFailureKind.Validation,
+                "invalid_slug",
+                "The notebook slug is required.");
+        }
+
+        var notebookResult = await notebookQueryService.GetNotebookBySlugAsync(
+            notebookSlug.Trim(),
+            actorResult.Value,
+            cancellationToken,
+            includeArchived);
+        if (!notebookResult.Succeeded)
+        {
+            return NotesResult<NotebookContext>.Failure(
+                notebookResult.Error!.Kind,
+                notebookResult.Error.Code,
+                notebookResult.Error.Message);
+        }
+
+        return NotesResult<NotebookContext>.Success(new NotebookContext(actorResult.Value, notebookResult.Value!));
+    }
+
     public static NotesResult<NotebookItemModel> RequireItem(
         NotebookDetailModel notebook,
         string path)
@@ -130,6 +171,78 @@ internal static class NotesMcpSupport
                 NotesFailureKind.Validation,
                 "page_required",
                 "The requested notebook item is not a page.");
+    }
+
+    public static async Task<NotesResult<ItemContext>> RequireItemContextAsync(
+        string notebookSlug,
+        string path,
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        CancellationToken cancellationToken,
+        string[] requiredScopes,
+        bool includeArchived = false)
+    {
+        var notebookContextResult = await RequireNotebookContextAsync(
+            notebookSlug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            requiredScopes,
+            includeArchived);
+        if (!notebookContextResult.Succeeded)
+        {
+            return NotesResult<ItemContext>.Failure(
+                notebookContextResult.Error!.Kind,
+                notebookContextResult.Error.Code,
+                notebookContextResult.Error.Message);
+        }
+
+        var notebookContext = notebookContextResult.Value;
+        var itemResult = RequireItem(notebookContext.Notebook, path);
+        if (!itemResult.Succeeded)
+        {
+            return NotesResult<ItemContext>.Failure(
+                itemResult.Error!.Kind,
+                itemResult.Error.Code,
+                itemResult.Error.Message);
+        }
+
+        return NotesResult<ItemContext>.Success(new ItemContext(notebookContext.ActorId, notebookContext.Notebook, itemResult.Value!));
+    }
+
+    public static async Task<NotesResult<ItemContext>> RequirePageContextAsync(
+        string notebookSlug,
+        string path,
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        CancellationToken cancellationToken,
+        string[] requiredScopes)
+    {
+        var notebookContextResult = await RequireNotebookContextAsync(
+            notebookSlug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            requiredScopes);
+        if (!notebookContextResult.Succeeded)
+        {
+            return NotesResult<ItemContext>.Failure(
+                notebookContextResult.Error!.Kind,
+                notebookContextResult.Error.Code,
+                notebookContextResult.Error.Message);
+        }
+
+        var notebookContext = notebookContextResult.Value;
+        var pageResult = RequirePage(notebookContext.Notebook, path);
+        if (!pageResult.Succeeded)
+        {
+            return NotesResult<ItemContext>.Failure(
+                pageResult.Error!.Kind,
+                pageResult.Error.Code,
+                pageResult.Error.Message);
+        }
+
+        return NotesResult<ItemContext>.Success(new ItemContext(notebookContext.ActorId, notebookContext.Notebook, pageResult.Value!));
     }
 
     public static NotesResult<NotebookItemModel> ResolveParent(

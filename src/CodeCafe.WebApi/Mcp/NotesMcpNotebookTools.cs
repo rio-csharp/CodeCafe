@@ -87,19 +87,18 @@ public sealed class NotesMcpNotebookTools
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
+        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+            slug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredReadScopes);
+        if (!notebookContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToGetNotebookToolResponse(notebookResult.Value!);
+        var response = NotesMcpSupport.ToGetNotebookToolResponse(notebookContextResult.Value.Notebook);
         return NotesMcpResultMapper.Success(response, $"Notebook '{response.Title}' loaded.");
     }
 
@@ -308,16 +307,15 @@ public sealed class NotesMcpNotebookTools
         [Description("Optional new notebook visibility: private, unlisted, or public.")] string? visibility = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+            notebookSlug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!notebookContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
+            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
         }
 
         if (string.IsNullOrWhiteSpace(title) && description is null && string.IsNullOrWhiteSpace(visibility))
@@ -328,10 +326,11 @@ public sealed class NotesMcpNotebookTools
                 "Specify at least one notebook field to update."));
         }
 
-        var notebook = notebookResult.Value!;
+        var notebookContext = notebookContextResult.Value;
+        var notebook = notebookContext.Notebook;
         var updateResult = await notebookCommandService.UpdateNotebookAsync(
             notebook.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            notebookContext.ActorId,
             string.IsNullOrWhiteSpace(title) ? notebook.Title : title,
             description is null ? notebook.Description : description,
             string.IsNullOrWhiteSpace(visibility) ? notebook.Visibility : visibility,
@@ -366,22 +365,22 @@ public sealed class NotesMcpNotebookTools
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredWriteScopes);
-        if (!scopeResult.Succeeded)
+        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+            notebookSlug,
+            user,
+            notebookQueryService,
+            cancellationToken,
+            mcpOptions.RequiredWriteScopes);
+        if (!notebookContextResult.Succeeded)
         {
-            return NotesMcpResultMapper.Failure(scopeResult.Error!);
+            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
         }
 
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookResult.Error!);
-        }
-
-        var notebook = notebookResult.Value!;
+        var notebookContext = notebookContextResult.Value;
+        var notebook = notebookContext.Notebook;
         var deleteResult = await notebookCommandService.DeleteNotebookAsync(
             notebook.Id,
-            NotesMcpSupport.GetCurrentUserId(user),
+            notebookContext.ActorId,
             cancellationToken);
         await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.delete_notebook", notebook.Id, null, deleteResult, cancellationToken);
 
