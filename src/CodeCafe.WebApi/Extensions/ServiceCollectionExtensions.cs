@@ -145,7 +145,8 @@ public static class ServiceCollectionExtensions
             {
                 transportOptions.Stateless = true;
             })
-            .WithTools<NotesMcpTools>()
+            .WithTools<NotesMcpNotebookTools>()
+            .WithTools<NotesMcpItemTools>()
             .WithResources<NotesMcpResources>()
             .WithPrompts<NotesMcpPrompts>();
 
