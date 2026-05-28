@@ -414,6 +414,52 @@ internal static class NotesMcpSupport
         return value.Value.GetRawText();
     }
 
+    public static NotesResult<JsonElement?> ParseOptionalJsonArgument(
+        string? json,
+        string code,
+        string invalidMessage)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return NotesResult<JsonElement?>.Success(null);
+        }
+
+        var result = ParseRequiredJsonArgument(json, code, invalidMessage);
+        if (!result.Succeeded)
+        {
+            return NotesResult<JsonElement?>.Failure(result.Error!.Kind, result.Error.Code, result.Error.Message);
+        }
+
+        return NotesResult<JsonElement?>.Success(result.Value);
+    }
+
+    public static NotesResult<JsonElement> ParseRequiredJsonArgument(
+        string json,
+        string code,
+        string invalidMessage)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return NotesResult<JsonElement>.Failure(
+                NotesFailureKind.Validation,
+                code,
+                invalidMessage);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            return NotesResult<JsonElement>.Success(document.RootElement.Clone());
+        }
+        catch (JsonException)
+        {
+            return NotesResult<JsonElement>.Failure(
+                NotesFailureKind.Validation,
+                code,
+                invalidMessage);
+        }
+    }
+
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
     {
         return new MoveItemToolResponse(

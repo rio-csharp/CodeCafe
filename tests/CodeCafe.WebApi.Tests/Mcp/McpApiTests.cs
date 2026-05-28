@@ -128,7 +128,7 @@ public sealed class McpApiTests
                 ["title"] = "API Contracts",
                 ["parentPath"] = "source",
                 ["sortOrder"] = 3,
-                ["contentJson"] = CreateDocElement("Contract draft")
+                ["contentJson"] = CreateDocJsonString("Contract draft")
             });
         var createdPath = created.StructuredContent!.Value.GetProperty("path").GetString();
         Assert.Equal("source/api-contracts", createdPath);
@@ -139,7 +139,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = createdPath,
-                ["contentJson"] = CreateDocElement("Updated draft")
+                ["contentJson"] = CreateDocJsonString("Updated draft")
             });
         Assert.False(
             updated.IsError ?? false,
@@ -160,17 +160,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = createdPath,
-                ["blocks"] = JsonSerializer.SerializeToElement(new object[]
-                {
-                    new
-                    {
-                        type = "paragraph",
-                        content = new object[]
-                        {
-                            new { type = "text", text = "Appended block" }
-                        }
-                    }
-                })
+                ["blocks"] = CreateBlocksJsonString("Appended block")
             });
         Assert.NotEqual(true, appended.IsError);
 
@@ -343,7 +333,7 @@ public sealed class McpApiTests
                 ["notebookSlug"] = notebookSlug,
                 ["title"] = "Release Checklist",
                 ["parentPath"] = "drafts",
-                ["contentJson"] = CreateDocElement("Checklist draft")
+                ["contentJson"] = CreateDocJsonString("Checklist draft")
             });
         var createdPagePath = createdPage.StructuredContent!.Value.GetProperty("path").GetString();
         Assert.Equal("drafts/release-checklist", createdPagePath);
@@ -519,7 +509,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = page.Path,
-                ["blocks"] = CreateDocElement("not-an-array")
+                ["blocks"] = CreateDocJsonString("not-an-array")
             });
 
         AssertToolError(result, "invalid_blocks");
@@ -699,6 +689,26 @@ public sealed class McpApiTests
                     {
                         new { type = "text", text }
                     }
+                }
+            }
+        });
+    }
+
+    private static string CreateDocJsonString(string text)
+    {
+        return CreateDocElement(text).GetRawText();
+    }
+
+    private static string CreateBlocksJsonString(string text)
+    {
+        return JsonSerializer.Serialize(new object[]
+        {
+            new
+            {
+                type = "paragraph",
+                content = new object[]
+                {
+                    new { type = "text", text }
                 }
             }
         });
