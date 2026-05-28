@@ -290,7 +290,7 @@ internal static class NotesMcpSupport
             item.Path,
             item.SortOrder,
             item.ContentFormat,
-            item.ContentJson,
+            SerializeJsonElement(item.ContentJson),
             item.PlainTextContent,
             item.CreatedAtUtc,
             item.UpdatedAtUtc);
@@ -351,7 +351,7 @@ internal static class NotesMcpSupport
             page.Title,
             page.Path,
             page.ContentFormat ?? "tiptap_json",
-            page.ContentJson,
+            SerializeJsonElement(page.ContentJson),
             page.PlainTextContent,
             notebook.CanEdit,
             page.CreatedAtUtc,
@@ -369,7 +369,7 @@ internal static class NotesMcpSupport
             page.ParentId,
             page.SortOrder,
             page.ContentFormat,
-            page.ContentJson,
+            SerializeJsonElement(page.ContentJson),
             page.PlainTextContent,
             page.CreatedAtUtc,
             page.UpdatedAtUtc);
@@ -399,9 +399,19 @@ internal static class NotesMcpSupport
             page.Title,
             page.Path,
             page.ContentFormat,
-            page.ContentJson,
+            SerializeJsonElement(page.ContentJson),
             page.PlainTextContent,
             page.UpdatedAtUtc);
+    }
+
+    public static string? SerializeJsonElement(JsonElement? value)
+    {
+        if (!value.HasValue || value.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return null;
+        }
+
+        return value.Value.GetRawText();
     }
 
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
