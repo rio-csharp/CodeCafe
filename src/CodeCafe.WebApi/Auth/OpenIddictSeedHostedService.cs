@@ -20,16 +20,18 @@ public sealed class OpenIddictSeedHostedService(
         var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
         var authorizationServerOptions = authorizationServerOptionsAccessor.Value;
         var mcpOptions = mcpOptionsAccessor.Value;
+        var mcpAudienceIdentifiers = McpResourceIdentifiers.GetAudienceValues(mcpOptions, authorizationServerOptions);
+        var mcpResourceIdentifiers = McpResourceIdentifiers.GetResourceValues(mcpOptions, authorizationServerOptions);
 
-        await EnsureScopeAsync(scopeManager, mcpOptions.RequiredReadScopes, mcpOptions.RequiredAudience, cancellationToken);
-        await EnsureScopeAsync(scopeManager, mcpOptions.RequiredWriteScopes, mcpOptions.RequiredAudience, cancellationToken);
+        await EnsureScopeAsync(scopeManager, mcpOptions.RequiredReadScopes, mcpAudienceIdentifiers, cancellationToken);
+        await EnsureScopeAsync(scopeManager, mcpOptions.RequiredWriteScopes, mcpAudienceIdentifiers, cancellationToken);
 
         foreach (var client in authorizationServerOptions.PublicClients)
         {
             var existingApplication = await applicationManager.FindByClientIdAsync(client.ClientId, cancellationToken);
             if (existingApplication is null)
             {
-                var descriptor = CreateApplicationDescriptor(client, mcpOptions);
+                var descriptor = CreateApplicationDescriptor(client, mcpOptions, authorizationServerOptions);
                 await applicationManager.CreateAsync(descriptor, cancellationToken);
 
                 logger.LogInformation(
@@ -42,7 +44,7 @@ public sealed class OpenIddictSeedHostedService(
 
             var existingDescriptor = new OpenIddictApplicationDescriptor();
             await applicationManager.PopulateAsync(existingDescriptor, existingApplication, cancellationToken);
-            var desiredDescriptor = CreateApplicationDescriptor(client, mcpOptions);
+            var desiredDescriptor = CreateApplicationDescriptor(client, mcpOptions, authorizationServerOptions);
             var changed = ReconcileDescriptor(existingDescriptor, desiredDescriptor);
 
             if (changed)
@@ -93,18 +95,19 @@ public sealed class OpenIddictSeedHostedService(
     }
 
     private static bool ReplaceUris(
-        ISet<Uri> existingValues,
-        ISet<Uri> desiredValues)
+        ICollection<Uri> existingValues,
+        IEnumerable<Uri> desiredValues)
     {
+        var desiredArray = desiredValues.ToArray();
         var existing = existingValues.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
-        var desired = desiredValues.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var desired = desiredArray.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
         if (existing.SequenceEqual(desired, StringComparer.Ordinal))
         {
             return false;
         }
 
         existingValues.Clear();
-        foreach (var value in desiredValues)
+        foreach (var value in desiredArray)
         {
             existingValues.Add(value);
         }
@@ -113,18 +116,19 @@ public sealed class OpenIddictSeedHostedService(
     }
 
     private static bool ReplaceStrings(
-        ISet<string> existingValues,
-        ISet<string> desiredValues)
+        ICollection<string> existingValues,
+        IEnumerable<string> desiredValues)
     {
+        var desiredArray = desiredValues.Distinct(StringComparer.Ordinal).ToArray();
         var existing = existingValues.OrderBy(value => value, StringComparer.Ordinal).ToArray();
-        var desired = desiredValues.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var desired = desiredArray.OrderBy(value => value, StringComparer.Ordinal).ToArray();
         if (existing.SequenceEqual(desired, StringComparer.Ordinal))
         {
             return false;
         }
 
         existingValues.Clear();
-        foreach (var value in desiredValues)
+        foreach (var value in desiredArray)
         {
             existingValues.Add(value);
         }
@@ -137,30 +141,41 @@ public sealed class OpenIddictSeedHostedService(
     private static async Task EnsureScopeAsync(
         IOpenIddictScopeManager scopeManager,
         IEnumerable<string> scopeNames,
-        string resource,
+        IReadOnlyCollection<string> resources,
         CancellationToken cancellationToken)
     {
         foreach (var scopeName in scopeNames.Distinct(StringComparer.Ordinal))
         {
-            if (await scopeManager.FindByNameAsync(scopeName, cancellationToken) is not null)
+            var existingScope = await scopeManager.FindByNameAsync(scopeName, cancellationToken);
+            if (existingScope is null)
             {
+                var scopeDescriptor = new OpenIddictScopeDescriptor
+                {
+                    DisplayName = scopeName,
+                    Name = scopeName
+                };
+                foreach (var resource in resources)
+                {
+                    scopeDescriptor.Resources.Add(resource);
+                }
+
+                await scopeManager.CreateAsync(scopeDescriptor, cancellationToken);
                 continue;
             }
 
-            var descriptor = new OpenIddictScopeDescriptor
+            var descriptor = new OpenIddictScopeDescriptor();
+            await scopeManager.PopulateAsync(descriptor, existingScope, cancellationToken);
+            if (ReplaceStrings(descriptor.Resources, resources))
             {
-                DisplayName = scopeName,
-                Name = scopeName
-            };
-            descriptor.Resources.Add(resource);
-
-            await scopeManager.CreateAsync(descriptor, cancellationToken);
+                await scopeManager.UpdateAsync(existingScope, descriptor, cancellationToken);
+            }
         }
     }
 
     private static OpenIddictApplicationDescriptor CreateApplicationDescriptor(
         OAuthClientOptions client,
-        McpOptions mcpOptions)
+        McpOptions mcpOptions,
+        AuthorizationServerOptions authorizationServerOptions)
     {
         var descriptor = new OpenIddictApplicationDescriptor
         {
@@ -192,6 +207,9 @@ public sealed class OpenIddictSeedHostedService(
         {
             descriptor.Permissions.Add(Permissions.Prefixes.Scope + scopeName);
         }
+
+        descriptor.AddAudiencePermissions(McpResourceIdentifiers.GetAudienceValues(mcpOptions, authorizationServerOptions));
+        descriptor.AddResourcePermissions(McpResourceIdentifiers.GetResourceValues(mcpOptions, authorizationServerOptions));
 
         return descriptor;
     }
