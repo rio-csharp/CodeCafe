@@ -11,6 +11,48 @@ namespace CodeCafe.WebApi.Mcp;
 public sealed class NotesMcpResources
 {
     [McpServerResource(
+        UriTemplate = "notebooks://mine",
+        Name = "my_notebooks",
+        Title = "My Notebooks",
+        MimeType = "application/json")]
+    [Description("Discover notebooks owned by the authenticated actor, including URIs for deeper notebook resources.")]
+    public async Task<TextResourceContents> GetMyNotebooksResourceAsync(
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken)
+    {
+        return await CreateNotebookDiscoveryResourceAsync(
+            "notebooks://mine",
+            "mine",
+            user,
+            notebookQueryService,
+            mcpOptionsAccessor.Value,
+            cancellationToken);
+    }
+
+    [McpServerResource(
+        UriTemplate = "notebooks://public",
+        Name = "public_notebooks",
+        Title = "Public Notebooks",
+        MimeType = "application/json")]
+    [Description("Discover public notebooks visible to the authenticated actor, including URIs for deeper notebook resources.")]
+    public async Task<TextResourceContents> GetPublicNotebooksResourceAsync(
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken)
+    {
+        return await CreateNotebookDiscoveryResourceAsync(
+            "notebooks://public",
+            "public",
+            user,
+            notebookQueryService,
+            mcpOptionsAccessor.Value,
+            cancellationToken);
+    }
+
+    [McpServerResource(
         UriTemplate = "notebook://{slug}",
         Name = "notebook",
         Title = "Notebook",
@@ -158,4 +200,61 @@ public sealed class NotesMcpResources
             Text = NotesMcpSupport.SerializeToJson(payload)
         };
     }
+
+    private static async Task<TextResourceContents> CreateNotebookDiscoveryResourceAsync(
+        string resourceUri,
+        string scope,
+        ClaimsPrincipal user,
+        INotebookQueryService notebookQueryService,
+        McpOptions mcpOptions,
+        CancellationToken cancellationToken)
+    {
+        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredReadScopes);
+        if (!actorResult.Succeeded)
+        {
+            throw new InvalidOperationException(actorResult.Error!.Message);
+        }
+
+        var actorId = actorResult.Value;
+        IReadOnlyList<NotebookSummaryModel> notebooks = scope switch
+        {
+            "mine" => await notebookQueryService.GetMyNotebooksAsync(actorId, search: null, cancellationToken, limit: 25),
+            "public" => await notebookQueryService.GetPublicNotebooksAsync(search: null, actorId, cancellationToken, limit: 25),
+            _ => []
+        };
+
+        var payload = new NotebookDiscoveryResourceResponse(
+            scope,
+            notebooks.Count,
+            notebooks.Select(notebook => new NotebookDiscoveryItem(
+                notebook.Title,
+                notebook.Slug,
+                notebook.Visibility,
+                notebook.CanEdit,
+                notebook.UpdatedAtUtc ?? notebook.CreatedAtUtc,
+                $"notebook://{notebook.Slug}",
+                $"notebook://{notebook.Slug}/items"))
+            .ToList());
+
+        return new TextResourceContents
+        {
+            Uri = resourceUri,
+            MimeType = "application/json",
+            Text = NotesMcpSupport.SerializeToJson(payload)
+        };
+    }
+
+    private sealed record NotebookDiscoveryResourceResponse(
+        string Scope,
+        int TotalCount,
+        IReadOnlyList<NotebookDiscoveryItem> Notebooks);
+
+    private sealed record NotebookDiscoveryItem(
+        string Title,
+        string Slug,
+        string Visibility,
+        bool CanEdit,
+        DateTimeOffset LastUpdatedAtUtc,
+        string NotebookUri,
+        string ItemsUri);
 }

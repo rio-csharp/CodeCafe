@@ -26,6 +26,7 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
 
         var tools = await mcpClient.ListToolsAsync();
+        var resources = await mcpClient.ListResourcesAsync();
         var resourceTemplates = await mcpClient.ListResourceTemplatesAsync();
         var prompts = await mcpClient.ListPromptsAsync();
 
@@ -40,6 +41,8 @@ public sealed class McpApiTests
         Assert.Contains(tools, tool => tool.Name == "notes.append_blocks_to_page");
         Assert.Contains(tools, tool => tool.Name == "notes.archive_item");
         Assert.Contains(tools, tool => tool.Name == "notes.restore_item");
+        Assert.Contains(resources, resource => resource.Uri == "notebooks://mine");
+        Assert.Contains(resources, resource => resource.Uri == "notebooks://public");
         Assert.Contains(resourceTemplates, resource => resource.UriTemplate == "notebook://{slug}");
         Assert.Contains(resourceTemplates, resource => resource.UriTemplate == "notebook://{slug}/items");
         Assert.Contains(resourceTemplates, resource => resource.UriTemplate == "page://{slug}/{path}");
@@ -79,6 +82,15 @@ public sealed class McpApiTests
             });
         Assert.Equal("Overview", pageResult.StructuredContent!.Value.GetProperty("title").GetString());
         Assert.Equal("Initial text", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
+
+        var discoveryResult = await mcpClient.ReadResourceAsync("notebooks://mine");
+        var discoveryTextResource = Assert.IsType<TextResourceContents>(Assert.Single(discoveryResult.Contents));
+        using var discoveryJson = JsonDocument.Parse(discoveryTextResource.Text);
+        Assert.Contains(
+            discoveryJson.RootElement.GetProperty("notebooks").EnumerateArray(),
+            item => item.GetProperty("slug").GetString() == notebook.Slug
+                && item.GetProperty("notebookUri").GetString() == $"notebook://{notebook.Slug}"
+                && item.GetProperty("itemsUri").GetString() == $"notebook://{notebook.Slug}/items");
 
         var resourceResult = await mcpClient.ReadResourceAsync($"page://{notebook.Slug}/{page.Path}");
         var textResource = Assert.IsType<TextResourceContents>(Assert.Single(resourceResult.Contents));
