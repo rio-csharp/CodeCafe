@@ -83,6 +83,7 @@ public sealed class McpApiTests
                 ["path"] = page.Path
             });
         Assert.Equal("Overview", pageResult.StructuredContent!.Value.GetProperty("title").GetString());
+        Assert.Equal(JsonValueKind.String, pageResult.StructuredContent.Value.GetProperty("contentJson").ValueKind);
         Assert.Equal("Initial text", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
 
         var discoveryResult = await mcpClient.ReadResourceAsync("notebooks://mine");
