@@ -11,7 +11,7 @@ namespace CodeCafe.WebApi.Mcp;
 public sealed class NotesMcpPrompts
 {
     [McpServerPrompt(Name = "notes.summarize_page", Title = "Summarize Page")]
-    [Description("Guide a client to summarize a notebook page with notes.get_page.")]
+    [Description("Guide a client to summarize a notebook page with notes_get_page.")]
     public async Task<IEnumerable<ChatMessage>> SummarizePageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
@@ -40,7 +40,7 @@ public sealed class NotesMcpPrompts
         }
 
         return NotesMcpSupport.CreatePromptMessages(
-            $"Use `notes.get_page` for notebook `{notebookResult.Value!.Slug}` and path `{pageResult.Value!.Path}`.",
+            $"Use `{NotesMcpToolNames.GetPage}` for notebook `{notebookResult.Value!.Slug}` and path `{pageResult.Value!.Path}`.",
             "Summarize the page, preserve technical accuracy, and propose a tighter heading structure if the content suggests one.");
     }
 
@@ -67,8 +67,8 @@ public sealed class NotesMcpPrompts
         }
 
         return NotesMcpSupport.CreatePromptMessages(
-            $"Inspect notebook `{notebookResult.Value!.Slug}` with `notes.get_notebook` and `notes.list_items`.",
-            "Propose a reorganization plan first. Only after review should `notes.move_item` or `notes.reorder_items` be used.");
+            $"Inspect notebook `{notebookResult.Value!.Slug}` with `{NotesMcpToolNames.GetNotebook}` and `{NotesMcpToolNames.ListItems}`.",
+            $"Propose a reorganization plan first. Only after review should `{NotesMcpToolNames.MoveItem}` or `{NotesMcpToolNames.ReorderItems}` be used.");
     }
 
     [McpServerPrompt(Name = "notes.expand_outline", Title = "Expand Outline")]
@@ -101,8 +101,8 @@ public sealed class NotesMcpPrompts
         }
 
         return NotesMcpSupport.CreatePromptMessages(
-            $"Read page `{pageResult.Value!.Path}` in notebook `{notebookResult.Value!.Slug}` with `notes.get_page`.",
-            "Expand the outline into a fuller draft while preserving the existing structure. When applying edits, use `notes.update_page_content_json` or `notes.append_blocks_to_page`.");
+            $"Read page `{pageResult.Value!.Path}` in notebook `{notebookResult.Value!.Slug}` with `{NotesMcpToolNames.GetPage}`.",
+            $"Expand the outline into a fuller draft while preserving the existing structure. When applying edits, use `{NotesMcpToolNames.UpdatePageContentJson}` or `{NotesMcpToolNames.AppendBlocksToPage}`.");
     }
 
     [McpServerPrompt(Name = "notes.review_for_staleness", Title = "Review For Staleness")]
@@ -128,7 +128,7 @@ public sealed class NotesMcpPrompts
         }
 
         return NotesMcpSupport.CreatePromptMessages(
-            $"Inspect notebook `{notebookResult.Value!.Slug}` with `notes.get_notebook`, `notes.list_items`, and `notes.get_page` as needed.",
+            $"Inspect notebook `{notebookResult.Value!.Slug}` with `{NotesMcpToolNames.GetNotebook}`, `{NotesMcpToolNames.ListItems}`, and `{NotesMcpToolNames.GetPage}` as needed.",
             "Identify pages that appear stale based on timestamps, structure, and content drift. Produce findings before proposing edits.");
     }
 }

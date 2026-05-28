@@ -1,3 +1,4 @@
+using CodeCafe.WebApi.Mcp;
 using CodeCafe.WebApi.Tests.Auth;
 using ModelContextProtocol.Protocol;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -30,17 +31,18 @@ public sealed class McpApiTests
         var resourceTemplates = await mcpClient.ListResourceTemplatesAsync();
         var prompts = await mcpClient.ListPromptsAsync();
 
-        Assert.Contains(tools, tool => tool.Name == "notes.list_notebooks");
-        Assert.Contains(tools, tool => tool.Name == "notes.create_notebook");
-        Assert.Contains(tools, tool => tool.Name == "notes.update_notebook");
-        Assert.Contains(tools, tool => tool.Name == "notes.delete_notebook");
-        Assert.Contains(tools, tool => tool.Name == "notes.create_folder");
-        Assert.Contains(tools, tool => tool.Name == "notes.rename_item");
-        Assert.Contains(tools, tool => tool.Name == "notes.search");
-        Assert.Contains(tools, tool => tool.Name == "notes.get_page");
-        Assert.Contains(tools, tool => tool.Name == "notes.append_blocks_to_page");
-        Assert.Contains(tools, tool => tool.Name == "notes.archive_item");
-        Assert.Contains(tools, tool => tool.Name == "notes.restore_item");
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.ListNotebooks);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.CreateNotebook);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.UpdateNotebook);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.DeleteNotebook);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.CreateFolder);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.RenameItem);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.Search);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.GetPage);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.AppendBlocksToPage);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.ArchiveItem);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.RestoreItem);
+        Assert.All(tools, tool => Assert.Matches("^[a-zA-Z0-9_-]{1,64}$", tool.Name));
         Assert.Contains(resources, resource => resource.Uri == "notebooks://mine");
         Assert.Contains(resources, resource => resource.Uri == "notebooks://public");
         Assert.Contains(resourceTemplates, resource => resource.UriTemplate == "notebook://{slug}");
@@ -69,12 +71,12 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read");
 
         var notebookResult = await mcpClient.CallToolAsync(
-            "notes.get_notebook",
+            NotesMcpToolNames.GetNotebook,
             new Dictionary<string, object?> { ["slug"] = notebook.Slug });
         Assert.Equal("MCP Read Notebook", notebookResult.StructuredContent!.Value.GetProperty("title").GetString());
 
         var pageResult = await mcpClient.CallToolAsync(
-            "notes.get_page",
+            NotesMcpToolNames.GetPage,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -118,7 +120,7 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
 
         var created = await mcpClient.CallToolAsync(
-            "notes.create_page",
+            NotesMcpToolNames.CreatePage,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -131,7 +133,7 @@ public sealed class McpApiTests
         Assert.Equal("source/api-contracts", createdPath);
 
         var updated = await mcpClient.CallToolAsync(
-            "notes.update_page_content_json",
+            NotesMcpToolNames.UpdatePageContentJson,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -143,7 +145,7 @@ public sealed class McpApiTests
             string.Join(" | ", updated.Content.OfType<TextContentBlock>().Select(block => block.Text)));
 
         var pageAfterUpdate = await mcpClient.CallToolAsync(
-            "notes.get_page",
+            NotesMcpToolNames.GetPage,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -152,7 +154,7 @@ public sealed class McpApiTests
         Assert.Equal("Updated draft", pageAfterUpdate.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
 
         var appended = await mcpClient.CallToolAsync(
-            "notes.append_blocks_to_page",
+            NotesMcpToolNames.AppendBlocksToPage,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -172,7 +174,7 @@ public sealed class McpApiTests
         Assert.NotEqual(true, appended.IsError);
 
         var pageAfterAppend = await mcpClient.CallToolAsync(
-            "notes.get_page",
+            NotesMcpToolNames.GetPage,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -181,7 +183,7 @@ public sealed class McpApiTests
         Assert.Contains("Appended block", pageAfterAppend.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
 
         var moved = await mcpClient.CallToolAsync(
-            "notes.move_item",
+            NotesMcpToolNames.MoveItem,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -193,7 +195,7 @@ public sealed class McpApiTests
         Assert.Equal("target/api-contracts", movedPath);
 
         var reordered = await mcpClient.CallToolAsync(
-            "notes.reorder_items",
+            NotesMcpToolNames.ReorderItems,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -213,7 +215,7 @@ public sealed class McpApiTests
                 && item.GetProperty("sortOrder").GetInt32() == 1);
 
         var archived = await mcpClient.CallToolAsync(
-            "notes.archive_item",
+            NotesMcpToolNames.ArchiveItem,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -222,7 +224,7 @@ public sealed class McpApiTests
         Assert.Equal(movedPath, archived.StructuredContent!.Value.GetProperty("path").GetString());
 
         var restored = await mcpClient.CallToolAsync(
-            "notes.restore_item",
+            NotesMcpToolNames.RestoreItem,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -231,7 +233,7 @@ public sealed class McpApiTests
         Assert.Equal(movedPath, restored.StructuredContent!.Value.GetProperty("path").GetString());
 
         var archivedAgain = await mcpClient.CallToolAsync(
-            "notes.archive_item",
+            NotesMcpToolNames.ArchiveItem,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -240,7 +242,7 @@ public sealed class McpApiTests
         Assert.Equal(movedPath, archivedAgain.StructuredContent!.Value.GetProperty("path").GetString());
 
         var deleted = await mcpClient.CallToolAsync(
-            "notes.delete_item",
+            NotesMcpToolNames.DeleteItem,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -268,7 +270,7 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read");
 
         var result = await mcpClient.CallToolAsync(
-            "notes.search",
+            NotesMcpToolNames.Search,
             new Dictionary<string, object?>
             {
                 ["query"] = "banana",
@@ -301,7 +303,7 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
 
         var createdNotebook = await mcpClient.CallToolAsync(
-            "notes.create_notebook",
+            NotesMcpToolNames.CreateNotebook,
             new Dictionary<string, object?>
             {
                 ["title"] = "Ship Plan",
@@ -313,7 +315,7 @@ public sealed class McpApiTests
         Assert.Equal("private", createdNotebook.StructuredContent!.Value.GetProperty("visibility").GetString());
 
         var listedNotebook = await mcpClient.CallToolAsync(
-            "notes.list_notebooks",
+            NotesMcpToolNames.ListNotebooks,
             new Dictionary<string, object?>
             {
                 ["scope"] = "mine"
@@ -323,7 +325,7 @@ public sealed class McpApiTests
             notebook => notebook.GetProperty("slug").GetString() == notebookSlug);
 
         var createdFolder = await mcpClient.CallToolAsync(
-            "notes.create_folder",
+            NotesMcpToolNames.CreateFolder,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebookSlug,
@@ -334,7 +336,7 @@ public sealed class McpApiTests
         Assert.Equal("drafts", createdFolder.StructuredContent!.Value.GetProperty("path").GetString());
 
         var createdPage = await mcpClient.CallToolAsync(
-            "notes.create_page",
+            NotesMcpToolNames.CreatePage,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebookSlug,
@@ -346,7 +348,7 @@ public sealed class McpApiTests
         Assert.Equal("drafts/release-checklist", createdPagePath);
 
         var renamedFolder = await mcpClient.CallToolAsync(
-            "notes.rename_item",
+            NotesMcpToolNames.RenameItem,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebookSlug,
@@ -356,7 +358,7 @@ public sealed class McpApiTests
         Assert.Equal("planning", renamedFolder.StructuredContent!.Value.GetProperty("path").GetString());
 
         var renamedPage = await mcpClient.CallToolAsync(
-            "notes.get_page",
+            NotesMcpToolNames.GetPage,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebookSlug,
@@ -365,7 +367,7 @@ public sealed class McpApiTests
         Assert.Equal("Release Checklist", renamedPage.StructuredContent!.Value.GetProperty("title").GetString());
 
         var updatedNotebook = await mcpClient.CallToolAsync(
-            "notes.update_notebook",
+            NotesMcpToolNames.UpdateNotebook,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebookSlug,
@@ -381,7 +383,7 @@ public sealed class McpApiTests
         Assert.NotEqual(notebookSlug, updatedSlug);
 
         var publicNotebooks = await mcpClient.CallToolAsync(
-            "notes.list_notebooks",
+            NotesMcpToolNames.ListNotebooks,
             new Dictionary<string, object?>
             {
                 ["scope"] = "public",
@@ -392,7 +394,7 @@ public sealed class McpApiTests
             notebook => notebook.GetProperty("slug").GetString() == updatedSlug);
 
         var deletedNotebook = await mcpClient.CallToolAsync(
-            "notes.delete_notebook",
+            NotesMcpToolNames.DeleteNotebook,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = updatedSlug
@@ -400,7 +402,7 @@ public sealed class McpApiTests
         Assert.Equal("deleted", deletedNotebook.StructuredContent!.Value.GetProperty("result").GetString());
 
         var missingNotebook = await mcpClient.CallToolAsync(
-            "notes.get_notebook",
+            NotesMcpToolNames.GetNotebook,
             new Dictionary<string, object?>
             {
                 ["slug"] = updatedSlug
@@ -426,7 +428,7 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read");
 
         var result = await mcpClient.CallToolAsync(
-            "notes.create_notebook",
+            NotesMcpToolNames.CreateNotebook,
             new Dictionary<string, object?>
             {
                 ["title"] = "Should Fail"
@@ -453,7 +455,7 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
 
         var result = await mcpClient.CallToolAsync(
-            "notes.update_notebook",
+            NotesMcpToolNames.UpdateNotebook,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug
@@ -481,7 +483,7 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
 
         var result = await mcpClient.CallToolAsync(
-            "notes.create_folder",
+            NotesMcpToolNames.CreateFolder,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
@@ -511,7 +513,7 @@ public sealed class McpApiTests
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
 
         var result = await mcpClient.CallToolAsync(
-            "notes.append_blocks_to_page",
+            NotesMcpToolNames.AppendBlocksToPage,
             new Dictionary<string, object?>
             {
                 ["notebookSlug"] = notebook.Slug,
