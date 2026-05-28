@@ -67,6 +67,9 @@ spec:
             httpGet:
               path: {{ .Values.api.probes.readiness.path }}
               port: http
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.api.ingress.host | quote }}
             initialDelaySeconds: {{ .Values.api.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.api.probes.readiness.periodSeconds }}
             timeoutSeconds: {{ .Values.api.probes.readiness.timeoutSeconds }}
@@ -75,6 +78,9 @@ spec:
             httpGet:
               path: {{ .Values.api.probes.liveness.path }}
               port: http
+              httpHeaders:
+                - name: Host
+                  value: {{ .Values.api.ingress.host | quote }}
             initialDelaySeconds: {{ .Values.api.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.api.probes.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.api.probes.liveness.timeoutSeconds }}

@@ -137,4 +137,22 @@ describe('fetchCsrfToken', () => {
     const cached = await fetchCsrfToken()
     expect(cached).toBe('abc-xyz')
   })
+
+  it('shares a single in-flight token request', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ token: 'shared-token' }),
+    })
+
+    const [first, second, third] = await Promise.all([
+      fetchCsrfToken(),
+      fetchCsrfToken(),
+      fetchCsrfToken(),
+    ])
+
+    expect(first).toBe('shared-token')
+    expect(second).toBe('shared-token')
+    expect(third).toBe('shared-token')
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
 })

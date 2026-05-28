@@ -98,6 +98,20 @@ kubectl create secret generic codecafe-db-secret \
   --namespace '<namespace>'
 ```
 
+For OAuth/OpenIddict, the deploy workflows read GitHub Environment Secrets for
+the `test` and `production` environments and recreate a Kubernetes Secret named
+`codecafe-oauth-secret` in the target namespace on every deploy.
+
+Configure these environment secrets:
+
+```text
+OAUTH_CERT_BASE64
+OAUTH_CERT_PASSWORD
+```
+
+`OAUTH_CERT_BASE64` should contain a single-line base64-encoded PFX. Test and
+production should use different environment-secret values.
+
 ## PostgreSQL Requirements
 
 Each environment should provide:

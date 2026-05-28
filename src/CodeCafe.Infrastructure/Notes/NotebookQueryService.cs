@@ -10,10 +10,11 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
     public async Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(
         string? search,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? limit = null)
     {
         var normalizedSearch = NotesSupport.NormalizeSearch(search);
-        var usePostgresCaseInsensitiveSearch = UsesPostgresCaseInsensitiveSearch();
+        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.Notebooks
             .AsNoTracking()
             .Where(notebook => notebook.Visibility == NotebookVisibility.Public && notebook.IsPublished);
@@ -30,17 +31,21 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
                         && EF.Functions.Like(notebook.Description.ToLower(), normalizedSearch.ToLower())));
         }
 
-        var notebooks = await query.ToListAsync(cancellationToken);
+        var notebooks = await ApplyLimit(
+                query.OrderBy(notebook => notebook.Title).ThenBy(notebook => notebook.Id),
+                limit)
+            .ToListAsync(cancellationToken);
         return await ToSummaryModelsAsync(notebooks, currentUserId, cancellationToken);
     }
 
     public async Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(
         Guid currentUserId,
         string? search,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? limit = null)
     {
         var normalizedSearch = NotesSupport.NormalizeSearch(search);
-        var usePostgresCaseInsensitiveSearch = UsesPostgresCaseInsensitiveSearch();
+        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.Notebooks
             .AsNoTracking()
             .Where(notebook => notebook.OwnerId == currentUserId);
@@ -57,18 +62,72 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
                         && EF.Functions.Like(notebook.Description.ToLower(), normalizedSearch.ToLower())));
         }
 
-        var notebooks = await query.ToListAsync(cancellationToken);
+        var notebooks = await ApplyLimit(
+                query.OrderBy(notebook => notebook.Title).ThenBy(notebook => notebook.Id),
+                limit)
+            .ToListAsync(cancellationToken);
         return await ToSummaryModelsAsync(notebooks, currentUserId, cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(
+        Guid currentUserId,
+        string search,
+        CancellationToken cancellationToken,
+        int? limit = null)
+    {
+        var normalizedSearch = NotesSupport.NormalizeSearch(search);
+        if (normalizedSearch is null)
+        {
+            return [];
+        }
+
+        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
+        var query = dbContext.NotebookItems
+            .AsNoTracking()
+            .Where(item => !item.IsArchived)
+            .Where(item =>
+                item.Notebook.OwnerId == currentUserId
+                || item.Notebook.Visibility == NotebookVisibility.Unlisted
+                || (item.Notebook.Visibility == NotebookVisibility.Public && item.Notebook.IsPublished));
+
+        query = usePostgresCaseInsensitiveSearch
+            ? query.Where(item =>
+                EF.Functions.ILike(item.Title, normalizedSearch)
+                || (item.PlainTextContent != null && EF.Functions.ILike(item.PlainTextContent, normalizedSearch)))
+            : query.Where(item =>
+                EF.Functions.Like(item.Title.ToLower(), normalizedSearch.ToLower())
+                || (item.PlainTextContent != null
+                    && EF.Functions.Like(item.PlainTextContent.ToLower(), normalizedSearch.ToLower())));
+
+        return await ApplyLimit(
+                query.OrderBy(item => item.Notebook.Title)
+                    .ThenBy(item => item.NotebookId)
+                    .ThenBy(item => item.Path),
+                limit)
+            .Select(item => new NotebookItemSearchModel(
+                item.NotebookId,
+                item.Notebook.Slug,
+                item.Notebook.Title,
+                item.Notebook.OwnerId == currentUserId,
+                item.Id,
+                item.Path,
+                item.Title,
+                item.Type.ToString().ToLowerInvariant(),
+                item.PlainTextContent,
+                item.CreatedAtUtc,
+                item.UpdatedAtUtc))
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
         string slug,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var notebook = await dbContext.Notebooks
             .AsNoTracking()
-            .Include(existingNotebook => existingNotebook.Items)
+            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
             .SingleOrDefaultAsync(existingNotebook =>
                 existingNotebook.Slug == slug
                 && existingNotebook.Visibility == NotebookVisibility.Public
@@ -95,7 +154,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
 
         var items = await dbContext.NotebookItems
             .AsNoTracking()
-            .Where(item => item.NotebookId == notebook.Id)
+            .Where(item => item.NotebookId == notebook.Id && !item.IsArchived)
             .OrderBy(item => item.ParentId)
             .ThenBy(item => item.SortOrder)
             .ThenBy(item => item.Title)
@@ -123,7 +182,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         var item = await dbContext.NotebookItems
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                existingItem => existingItem.NotebookId == notebook.Id && existingItem.Path == normalizedPath,
+                existingItem => existingItem.NotebookId == notebook.Id && existingItem.Path == normalizedPath && !existingItem.IsArchived,
                 cancellationToken);
 
         return item is null
@@ -134,11 +193,12 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
     public async Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
         Guid notebookId,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var notebook = await dbContext.Notebooks
             .AsNoTracking()
-            .Include(existingNotebook => existingNotebook.Items)
+            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
             .SingleOrDefaultAsync(existingNotebook => existingNotebook.Id == notebookId, cancellationToken);
 
         if (notebook is null)
@@ -157,11 +217,12 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
     public async Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
         string slug,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var notebook = await dbContext.Notebooks
             .AsNoTracking()
-            .Include(existingNotebook => existingNotebook.Items)
+            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
             .SingleOrDefaultAsync(existingNotebook => existingNotebook.Slug == slug, cancellationToken);
 
         if (notebook is null)
@@ -181,7 +242,9 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         Guid notebookId,
         Guid currentUserId,
         string? search,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        int? limit = null)
     {
         var notebook = await dbContext.Notebooks
             .AsNoTracking()
@@ -198,10 +261,10 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         }
 
         var normalizedSearch = NotesSupport.NormalizeSearch(search);
-        var usePostgresCaseInsensitiveSearch = UsesPostgresCaseInsensitiveSearch();
+        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.NotebookItems
             .AsNoTracking()
-            .Where(item => item.NotebookId == notebookId);
+            .Where(item => item.NotebookId == notebookId && (includeArchived || !item.IsArchived));
 
         if (normalizedSearch is not null)
         {
@@ -215,10 +278,12 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
                         && EF.Functions.Like(item.PlainTextContent.ToLower(), normalizedSearch.ToLower())));
         }
 
-        var items = await query
+        var orderedQuery = query
             .OrderBy(item => item.ParentId)
             .ThenBy(item => item.SortOrder)
-            .ThenBy(item => item.Title)
+            .ThenBy(item => item.Title);
+
+        var items = await ApplyLimit(orderedQuery, limit)
             .Select(item => NotesSupport.ToItemModel(item))
             .ToListAsync(cancellationToken);
 
@@ -234,9 +299,16 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
             cancellationToken);
     }
 
-    private bool UsesPostgresCaseInsensitiveSearch()
+    private bool UsesPostgresProvider()
     {
         return string.Equals(dbContext.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal);
+    }
+
+    private static IQueryable<T> ApplyLimit<T>(IQueryable<T> query, int? limit)
+    {
+        return limit.HasValue
+            ? query.Take(Math.Max(1, limit.Value))
+            : query;
     }
 
     private async Task<IReadOnlyList<NotebookSummaryModel>> ToSummaryModelsAsync(
@@ -304,21 +376,9 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         }
 
         var notebookIds = notebooks.Select(notebook => notebook.Id).ToList();
-        var notebookItems = await dbContext.NotebookItems
-            .AsNoTracking()
-            .Where(item => notebookIds.Contains(item.NotebookId))
-            .ToListAsync(cancellationToken);
-        var itemAggregates = notebookItems
-            .GroupBy(item => item.NotebookId)
-            .ToDictionary(
-                group => group.Key,
-                group => new
-                {
-                    ItemCount = group.Count(),
-                    FolderCount = group.Count(item => item.Type == NotebookItemType.Folder),
-                    PageCount = group.Count(item => item.Type == NotebookItemType.Page),
-                    LastItemActivityAtUtc = group.Max(item => item.UpdatedAtUtc ?? item.CreatedAtUtc)
-                });
+        var itemAggregates = UsesPostgresProvider()
+            ? await GetNotebookItemAggregatesFromDatabaseAsync(notebookIds, cancellationToken)
+            : await GetNotebookItemAggregatesInMemoryAsync(notebookIds, cancellationToken);
 
         var favoriteCounts = await dbContext.NotebookFavorites
             .AsNoTracking()
@@ -376,4 +436,49 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
 
         return new NotebookFavoriteModel(notebookId, isFavorited, favoriteCount);
     }
+
+    private async Task<IReadOnlyDictionary<Guid, NotebookItemAggregate>> GetNotebookItemAggregatesFromDatabaseAsync(
+        IReadOnlyList<Guid> notebookIds,
+        CancellationToken cancellationToken)
+    {
+        return await dbContext.NotebookItems
+            .AsNoTracking()
+            .Where(item => notebookIds.Contains(item.NotebookId) && !item.IsArchived)
+            .GroupBy(item => item.NotebookId)
+            .Select(group => new NotebookItemAggregate(
+                group.Key,
+                group.Count(),
+                group.Count(item => item.Type == NotebookItemType.Folder),
+                group.Count(item => item.Type == NotebookItemType.Page),
+                group.Max(item => item.UpdatedAtUtc ?? item.CreatedAtUtc)))
+            .ToDictionaryAsync(group => group.NotebookId, cancellationToken);
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, NotebookItemAggregate>> GetNotebookItemAggregatesInMemoryAsync(
+        IReadOnlyList<Guid> notebookIds,
+        CancellationToken cancellationToken)
+    {
+        var notebookItems = await dbContext.NotebookItems
+            .AsNoTracking()
+            .Where(item => notebookIds.Contains(item.NotebookId) && !item.IsArchived)
+            .ToListAsync(cancellationToken);
+
+        return notebookItems
+            .GroupBy(item => item.NotebookId)
+            .ToDictionary(
+                group => group.Key,
+                group => new NotebookItemAggregate(
+                    group.Key,
+                    group.Count(),
+                    group.Count(item => item.Type == NotebookItemType.Folder),
+                    group.Count(item => item.Type == NotebookItemType.Page),
+                    group.Max(item => item.UpdatedAtUtc ?? item.CreatedAtUtc)));
+    }
 }
+
+internal sealed record NotebookItemAggregate(
+    Guid NotebookId,
+    int ItemCount,
+    int FolderCount,
+    int PageCount,
+    DateTimeOffset LastItemActivityAtUtc);

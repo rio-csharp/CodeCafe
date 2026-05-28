@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -7,6 +7,7 @@ import AuthLayout from '../components/AuthLayout'
 import PasswordInput from '../components/PasswordInput'
 import GitHubIcon from '../../../components/icons/GitHubIcon'
 import { useLogin } from '../hooks/useAuth'
+import { completePostAuthRedirect } from '../lib/postAuthRedirect'
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -17,6 +18,7 @@ type LoginFormData = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const loginMutation = useLogin()
 
   const {
@@ -29,7 +31,7 @@ export default function LoginPage() {
 
   const onSubmit = (data: LoginFormData) => {
     loginMutation.mutate(data, {
-      onSuccess: () => navigate('/dashboard'),
+      onSuccess: () => completePostAuthRedirect(location.search, navigate),
     })
   }
 
@@ -40,7 +42,7 @@ export default function LoginPage() {
       footer={
         <p className="text-sm text-gray-500">
           Don&apos;t have an account?{' '}
-          <Link to="/register" className="text-brand-brown hover:underline">
+          <Link to={`/register${location.search}`} className="text-brand-brown hover:underline">
             Create an account
           </Link>
         </p>

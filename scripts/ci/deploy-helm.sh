@@ -23,11 +23,56 @@ VALUES_FILE="${VALUES_FILE:-}"
 FRONTEND_REPLICA_COUNT="${FRONTEND_REPLICA_COUNT:-}"
 API_REPLICA_COUNT="${API_REPLICA_COUNT:-}"
 API_MIGRATION_ENABLED="${API_MIGRATION_ENABLED:-}"
+OAUTH_SECRET_NAME="${OAUTH_SECRET_NAME:-codecafe-oauth-secret}"
+OAUTH_SECRET_NAMESPACE="${OAUTH_SECRET_NAMESPACE:-$NAMESPACE}"
+OAUTH_ENV_FILE="${OAUTH_ENV_FILE:-}"
 
 cleanup() {
   rm -rf "$REMOTE_DIR"
 }
 trap cleanup EXIT
+
+if [ -n "$OAUTH_ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$OAUTH_ENV_FILE"
+fi
+
+append_secret_key() {
+  local secret_name="$1"
+  local secret_namespace="$2"
+  local key="$3"
+  local required="${4:-true}"
+  local encoded
+  encoded="$($KUBECTL_BIN get secret "$secret_name" --namespace "$secret_namespace" -o "jsonpath={.data.$key}")"
+
+  if [ -z "$encoded" ]; then
+    if [ "$required" = "true" ]; then
+      echo "Missing required secret key '$key' in $secret_namespace/$secret_name" >&2
+      exit 1
+    fi
+    return
+  fi
+
+  printf '%s=%s\n' "$key" "$(printf '%s' "$encoded" | base64 -d)" >> "$REMOTE_DIR/api.env"
+}
+
+seed_oauth_secret() {
+  if [ -z "${OAUTH_CERT_BASE64:-}" ]; then
+    if [ -n "${OAUTH_CERT_PASSWORD:-}" ]; then
+      echo "OAuth secret injection is partial. OAUTH_CERT_PASSWORD is set but OAUTH_CERT_BASE64 is missing." >&2
+      exit 1
+    fi
+    return
+  fi
+
+  $KUBECTL_BIN create secret generic "$OAUTH_SECRET_NAME" \
+    --from-literal=AuthorizationServer__SigningCertificateBase64="$OAUTH_CERT_BASE64" \
+    --from-literal=AuthorizationServer__SigningCertificatePassword="$OAUTH_CERT_PASSWORD" \
+    --from-literal=AuthorizationServer__EncryptionCertificateBase64="$OAUTH_CERT_BASE64" \
+    --from-literal=AuthorizationServer__EncryptionCertificatePassword="$OAUTH_CERT_PASSWORD" \
+    --namespace "$OAUTH_SECRET_NAMESPACE" \
+    --dry-run=client -o yaml | $KUBECTL_BIN apply -f -
+}
 
 chart_dir="$REMOTE_DIR/codecafe"
 api_config_secret="${RELEASE}-api-config"
@@ -47,12 +92,29 @@ $KUBECTL_BIN create secret tls "$TLS_SECRET" \
   --dry-run=client -o yaml | $KUBECTL_BIN apply -f -
 rm -f "$tls_cert_file" "$tls_key_file"
 
+seed_oauth_secret
+
 umask 077
 $KUBECTL_BIN get secret codecafe-db-secret \
   --namespace "$DB_SECRET_NAMESPACE" \
   -o jsonpath='{.data.ConnectionStrings__DefaultConnection}' \
   | base64 -d \
   | awk '{ printf "ConnectionStrings__DefaultConnection=%s\n", $0 }' > "$REMOTE_DIR/api.env"
+
+cat <<EOF >> "$REMOTE_DIR/api.env"
+AuthorizationServer__Issuer=https://$API_HOST/
+AuthorizationServer__FrontendBaseUrl=https://$FRONTEND_HOST
+AllowedHosts=$FRONTEND_HOST;$API_HOST
+Mcp__Enabled=true
+Mcp__AllowedOrigins__0=https://$FRONTEND_HOST
+Mcp__RequireAuthorization=true
+Mcp__RequiredAudience=codecafe-mcp
+EOF
+
+append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificateBase64
+append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificatePassword false
+append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__EncryptionCertificateBase64
+append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__EncryptionCertificatePassword false
 
 $KUBECTL_BIN create secret generic "$api_config_secret" \
   --from-env-file="$REMOTE_DIR/api.env" \
@@ -102,11 +164,27 @@ $KUBECTL_BIN rollout status deployment \
   --namespace "$NAMESPACE" \
   --timeout=180s
 
-frontend_port=18080
-api_port=18081
-$KUBECTL_BIN port-forward "service/${RELEASE}-frontend" "${frontend_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-frontend-port-forward.log 2>&1 &
+pick_port() {
+  python3 - <<'PY'
+import socket
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.bind(("127.0.0.1", 0))
+    print(sock.getsockname()[1])
+PY
+}
+
+dump_port_forward_logs() {
+  echo "Frontend port-forward log:" >&2
+  cat /tmp/codecafe-frontend-port-forward.log >&2 || true
+  echo "API port-forward log:" >&2
+  cat /tmp/codecafe-api-port-forward.log >&2 || true
+}
+
+frontend_port="$(pick_port)"
+api_port="$(pick_port)"
+$KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-frontend" "${frontend_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-frontend-port-forward.log 2>&1 &
 frontend_pid=$!
-$KUBECTL_BIN port-forward "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-api-port-forward.log 2>&1 &
+$KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-api-port-forward.log 2>&1 &
 api_pid=$!
 
 port_forward_cleanup() {
@@ -116,12 +194,20 @@ port_forward_cleanup() {
 trap 'port_forward_cleanup; cleanup' EXIT
 
 for _ in $(seq 1 20); do
-  if curl --silent --fail "http://127.0.0.1:${frontend_port}/" >/dev/null \
-    && curl --silent --fail "http://127.0.0.1:${api_port}/health/ready" >/dev/null; then
+  if ! kill -0 "$frontend_pid" 2>/dev/null || ! kill -0 "$api_pid" 2>/dev/null; then
+    dump_port_forward_logs
+    exit 1
+  fi
+
+  if curl --silent --fail --header "Host: $FRONTEND_HOST" "http://127.0.0.1:${frontend_port}/" >/dev/null \
+    && curl --silent --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/health/ready" >/dev/null \
+    && curl --silent --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/.well-known/oauth-protected-resource/mcp" >/dev/null; then
     exit 0
   fi
   sleep 3
 done
 
-curl --fail "http://127.0.0.1:${frontend_port}/"
-curl --fail "http://127.0.0.1:${api_port}/health/ready"
+dump_port_forward_logs
+curl --fail --header "Host: $FRONTEND_HOST" "http://127.0.0.1:${frontend_port}/"
+curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/health/ready"
+curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/.well-known/oauth-protected-resource/mcp"
