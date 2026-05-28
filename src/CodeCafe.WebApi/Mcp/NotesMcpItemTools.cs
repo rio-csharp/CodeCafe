@@ -179,7 +179,7 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken,
         [Description("Optional parent folder path. Null creates the page at the notebook root.")] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
-        [Description("Optional TipTap JSON document for the page content.")] JsonElement? contentJson = null)
+        [Description("Optional TipTap JSON document string for the page content.")] string? contentJson = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
@@ -200,6 +200,15 @@ public sealed class NotesMcpItemTools
             return NotesMcpResultMapper.Failure(parentResult.Error!);
         }
 
+        var contentJsonResult = NotesMcpSupport.ParseOptionalJsonArgument(
+            contentJson,
+            "invalid_content_json",
+            "ContentJson must be valid JSON.");
+        if (!contentJsonResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(contentJsonResult.Error!);
+        }
+
         var createResult = await notebookCommandService.CreateNotebookItemAsync(
             notebookContext.Notebook.Id,
             notebookContext.ActorId,
@@ -207,7 +216,7 @@ public sealed class NotesMcpItemTools
             "page",
             title,
             sortOrder ?? 0,
-            contentJson,
+            contentJsonResult.Value,
             cancellationToken);
         await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.CreatePage, notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
 
@@ -232,7 +241,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The full TipTap JSON document to store.")] JsonElement contentJson,
+        [Description("The full TipTap JSON document string to store.")] string contentJson,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
@@ -254,6 +263,15 @@ public sealed class NotesMcpItemTools
             return NotesMcpResultMapper.Failure(pageContextResult.Error!);
         }
 
+        var contentJsonResult = NotesMcpSupport.ParseRequiredJsonArgument(
+            contentJson,
+            "invalid_content_json",
+            "ContentJson must be valid JSON.");
+        if (!contentJsonResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(contentJsonResult.Error!);
+        }
+
         var pageContext = pageContextResult.Value;
         var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
             pageContext.Notebook.Id,
@@ -262,7 +280,7 @@ public sealed class NotesMcpItemTools
             pageContext.Item.Title,
             default,
             null,
-            contentJson,
+            contentJsonResult.Value,
             cancellationToken,
             expectedUpdatedAtUtc);
         await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.UpdatePageContentJson, pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
@@ -288,7 +306,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The TipTap block nodes to append.")] JsonElement blocks,
+        [Description("The TipTap block nodes JSON string to append.")] string blocks,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
@@ -310,7 +328,16 @@ public sealed class NotesMcpItemTools
             return NotesMcpResultMapper.Failure(pageContextResult.Error!);
         }
 
-        if (blocks.ValueKind != JsonValueKind.Array)
+        var blocksResult = NotesMcpSupport.ParseRequiredJsonArgument(
+            blocks,
+            "invalid_blocks",
+            "Blocks must be valid JSON.");
+        if (!blocksResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(blocksResult.Error!);
+        }
+
+        if (blocksResult.Value.ValueKind != JsonValueKind.Array)
         {
             return NotesMcpResultMapper.Failure(new NotesError(
                 NotesFailureKind.Validation,
@@ -319,7 +346,7 @@ public sealed class NotesMcpItemTools
         }
 
         var pageContext = pageContextResult.Value;
-        var nextContentJson = NotesMcpSupport.AppendBlocks(pageContext.Item.ContentJson, blocks);
+        var nextContentJson = NotesMcpSupport.AppendBlocks(pageContext.Item.ContentJson, blocksResult.Value);
         var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
             pageContext.Notebook.Id,
             pageContext.Item.Id,
