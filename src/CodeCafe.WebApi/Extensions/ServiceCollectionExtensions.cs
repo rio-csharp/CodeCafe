@@ -179,6 +179,8 @@ public static class ServiceCollectionExtensions
                 options.AllowRefreshTokenFlow();
                 options.RequireProofKeyForCodeExchange();
                 options.RegisterScopes("notes.read", "notes.write");
+                options.RegisterAudiences(GetMcpAudienceValues(configuration, environment));
+                options.RegisterResources(GetMcpResourceValues(configuration, environment));
                 var aspNetCoreBuilder = options.UseAspNetCore()
                     .EnableAuthorizationEndpointPassthrough()
                     .EnableTokenEndpointPassthrough();
@@ -209,7 +211,7 @@ public static class ServiceCollectionExtensions
                     ?? new McpOptions();
 
                 options.UseLocalServer();
-                options.AddAudiences(mcpOptions.RequiredAudience);
+                options.AddAudiences(GetMcpAudienceValues(configuration, environment));
                 options.UseAspNetCore();
             });
 
@@ -247,6 +249,32 @@ public static class ServiceCollectionExtensions
     private static bool HasCertificate(string path, string base64Value)
     {
         return !string.IsNullOrWhiteSpace(path) || !string.IsNullOrWhiteSpace(base64Value);
+    }
+
+    private static string[] GetMcpAudienceValues(
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        var mcpOptions = configuration
+            .GetSection(McpOptions.SectionName)
+            .Get<McpOptions>()
+            ?? new McpOptions();
+        var authOptions = GetAuthorizationServerOptions(configuration, environment);
+
+        return McpResourceIdentifiers.GetAudienceValues(mcpOptions, authOptions);
+    }
+
+    private static string[] GetMcpResourceValues(
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        var mcpOptions = configuration
+            .GetSection(McpOptions.SectionName)
+            .Get<McpOptions>()
+            ?? new McpOptions();
+        var authOptions = GetAuthorizationServerOptions(configuration, environment);
+
+        return McpResourceIdentifiers.GetResourceValues(mcpOptions, authOptions);
     }
 
     private static X509Certificate2 LoadCertificate(string path, string base64Value, string password)

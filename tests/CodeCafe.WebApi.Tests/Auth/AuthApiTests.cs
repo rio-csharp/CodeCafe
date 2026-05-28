@@ -451,8 +451,85 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFactory>
             refreshedDescriptor.Permissions,
             permission => permission == OpenIddictConstants.Permissions.Prefixes.Scope + "notes.admin");
         Assert.Contains(
+            refreshedDescriptor.Permissions,
+            permission => permission == OpenIddictConstants.Permissions.Prefixes.Audience + factory.McpAudience);
+        Assert.Contains(
+            refreshedDescriptor.Permissions,
+            permission => permission == OpenIddictConstants.Permissions.Prefixes.Resource + factory.CanonicalMcpResource);
+        Assert.Contains(
             refreshedDescriptor.RedirectUris.Select(uri => uri.AbsoluteUri),
             uri => uri == factory.McpClientRedirectUri);
+    }
+
+    [Fact]
+    public async Task OpenIddictSeedHostedService_ReconcilesScopeResources()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient();
+
+        await client.GetAsync("/health/live");
+
+        using var scope = factory.Services.CreateScope();
+        var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
+        var seedService = scope.ServiceProvider
+            .GetServices<IHostedService>()
+            .Single(service => service is OpenIddictSeedHostedService);
+
+        var scopeEntry = await scopeManager.FindByNameAsync("notes.read", CancellationToken.None);
+        Assert.NotNull(scopeEntry);
+
+        var descriptor = new OpenIddictScopeDescriptor();
+        await scopeManager.PopulateAsync(descriptor, scopeEntry!, CancellationToken.None);
+        descriptor.Resources.Clear();
+        descriptor.Resources.Add("stale-resource");
+        await scopeManager.UpdateAsync(scopeEntry!, descriptor, CancellationToken.None);
+
+        await seedService.StartAsync(CancellationToken.None);
+
+        using var verificationScope = factory.Services.CreateScope();
+        var verificationScopeManager = verificationScope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
+        var refreshedScope = await verificationScopeManager.FindByNameAsync("notes.read", CancellationToken.None);
+        Assert.NotNull(refreshedScope);
+
+        var refreshedDescriptor = new OpenIddictScopeDescriptor();
+        await verificationScopeManager.PopulateAsync(refreshedDescriptor, refreshedScope!, CancellationToken.None);
+
+        Assert.DoesNotContain(refreshedDescriptor.Resources, resource => resource == "stale-resource");
+        Assert.Contains(refreshedDescriptor.Resources, resource => resource == factory.McpAudience);
+        Assert.Contains(refreshedDescriptor.Resources, resource => resource == factory.CanonicalMcpResource);
+    }
+
+    [Fact]
+    public async Task Authorize_WithCanonicalMcpResource_RedirectsToFrontendLogin()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true,
+            McpClientRedirectUri = "http://localhost:3334/callback"
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var authorizeUrl =
+            $"/connect/authorize?response_type=code" +
+            $"&client_id={Uri.EscapeDataString(factory.McpClientId)}" +
+            $"&code_challenge=test-challenge" +
+            $"&code_challenge_method=S256" +
+            $"&redirect_uri={Uri.EscapeDataString(factory.McpClientRedirectUri)}" +
+            $"&state=test-state" +
+            $"&scope={Uri.EscapeDataString("notes.read notes.write offline_access")}" +
+            $"&resource={Uri.EscapeDataString(factory.CanonicalMcpResource)}";
+
+        using var response = await client.GetAsync(authorizeUrl);
+
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.NotNull(response.Headers.Location);
+        Assert.StartsWith($"{factory.FrontendBaseUrl}/login", response.Headers.Location!.AbsoluteUri, StringComparison.Ordinal);
     }
 
     private static async Task<HttpResponseMessage> RegisterAsync(HttpClient client, string email, string clientIp)
@@ -563,6 +640,8 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
     public string McpClientId { get; set; } = "codecafe-claude";
 
     public string McpClientRedirectUri { get; set; } = "http://localhost/";
+
+    public string CanonicalMcpResource => new Uri(new Uri(AuthorizationServerIssuer, UriKind.Absolute), "/mcp").AbsoluteUri;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
