@@ -13,7 +13,7 @@ namespace CodeCafe.WebApi.Mcp;
 public sealed class NotesMcpItemTools
 {
     [McpServerTool(
-        Name = "notes.list_items",
+        Name = NotesMcpToolNames.ListItems,
         Title = "List Notebook Items",
         ReadOnly = true,
         Destructive = false,
@@ -65,7 +65,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.get_page",
+        Name = NotesMcpToolNames.GetPage,
         Title = "Get Page",
         ReadOnly = true,
         Destructive = false,
@@ -100,7 +100,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.create_folder",
+        Name = NotesMcpToolNames.CreateFolder,
         Title = "Create Folder",
         ReadOnly = false,
         Destructive = false,
@@ -148,7 +148,7 @@ public sealed class NotesMcpItemTools
             sortOrder ?? 0,
             null,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_folder", notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.CreateFolder, notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
 
         if (!createResult.Succeeded)
         {
@@ -160,7 +160,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.create_page",
+        Name = NotesMcpToolNames.CreatePage,
         Title = "Create Page",
         ReadOnly = false,
         Destructive = false,
@@ -179,7 +179,7 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken,
         [Description("Optional parent folder path. Null creates the page at the notebook root.")] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
-        [Description("Optional TipTap JSON document for the page content.")] JsonElement? contentJson = null)
+        [Description("Optional TipTap JSON document string for the page content.")] string? contentJson = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
@@ -200,6 +200,15 @@ public sealed class NotesMcpItemTools
             return NotesMcpResultMapper.Failure(parentResult.Error!);
         }
 
+        var contentJsonResult = NotesMcpSupport.ParseOptionalJsonArgument(
+            contentJson,
+            "invalid_content_json",
+            "ContentJson must be valid JSON.");
+        if (!contentJsonResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(contentJsonResult.Error!);
+        }
+
         var createResult = await notebookCommandService.CreateNotebookItemAsync(
             notebookContext.Notebook.Id,
             notebookContext.ActorId,
@@ -207,9 +216,9 @@ public sealed class NotesMcpItemTools
             "page",
             title,
             sortOrder ?? 0,
-            contentJson,
+            contentJsonResult.Value,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_page", notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.CreatePage, notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
 
         if (!createResult.Succeeded)
         {
@@ -221,7 +230,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.update_page_content_json",
+        Name = NotesMcpToolNames.UpdatePageContentJson,
         Title = "Update Page Content",
         ReadOnly = false,
         Destructive = false,
@@ -232,7 +241,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The full TipTap JSON document to store.")] JsonElement contentJson,
+        [Description("The full TipTap JSON document string to store.")] string contentJson,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
@@ -254,6 +263,15 @@ public sealed class NotesMcpItemTools
             return NotesMcpResultMapper.Failure(pageContextResult.Error!);
         }
 
+        var contentJsonResult = NotesMcpSupport.ParseRequiredJsonArgument(
+            contentJson,
+            "invalid_content_json",
+            "ContentJson must be valid JSON.");
+        if (!contentJsonResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(contentJsonResult.Error!);
+        }
+
         var pageContext = pageContextResult.Value;
         var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
             pageContext.Notebook.Id,
@@ -262,10 +280,10 @@ public sealed class NotesMcpItemTools
             pageContext.Item.Title,
             default,
             null,
-            contentJson,
+            contentJsonResult.Value,
             cancellationToken,
             expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.update_page_content_json", pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.UpdatePageContentJson, pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
 
         if (!updateResult.Succeeded)
         {
@@ -277,7 +295,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.append_blocks_to_page",
+        Name = NotesMcpToolNames.AppendBlocksToPage,
         Title = "Append Blocks To Page",
         ReadOnly = false,
         Destructive = false,
@@ -288,7 +306,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The TipTap block nodes to append.")] JsonElement blocks,
+        [Description("The TipTap block nodes JSON string to append.")] string blocks,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
@@ -310,7 +328,16 @@ public sealed class NotesMcpItemTools
             return NotesMcpResultMapper.Failure(pageContextResult.Error!);
         }
 
-        if (blocks.ValueKind != JsonValueKind.Array)
+        var blocksResult = NotesMcpSupport.ParseRequiredJsonArgument(
+            blocks,
+            "invalid_blocks",
+            "Blocks must be valid JSON.");
+        if (!blocksResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(blocksResult.Error!);
+        }
+
+        if (blocksResult.Value.ValueKind != JsonValueKind.Array)
         {
             return NotesMcpResultMapper.Failure(new NotesError(
                 NotesFailureKind.Validation,
@@ -319,7 +346,7 @@ public sealed class NotesMcpItemTools
         }
 
         var pageContext = pageContextResult.Value;
-        var nextContentJson = NotesMcpSupport.AppendBlocks(pageContext.Item.ContentJson, blocks);
+        var nextContentJson = NotesMcpSupport.AppendBlocks(pageContext.Item.ContentJson, blocksResult.Value);
         var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
             pageContext.Notebook.Id,
             pageContext.Item.Id,
@@ -330,7 +357,7 @@ public sealed class NotesMcpItemTools
             nextContentJson,
             cancellationToken,
             expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.append_blocks_to_page", pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.AppendBlocksToPage, pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
 
         if (!updateResult.Succeeded)
         {
@@ -342,7 +369,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.rename_item",
+        Name = NotesMcpToolNames.RenameItem,
         Title = "Rename Item",
         ReadOnly = false,
         Destructive = false,
@@ -386,7 +413,7 @@ public sealed class NotesMcpItemTools
             default,
             cancellationToken,
             expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.rename_item", itemContext.Notebook.Id, itemContext.Item.Id, renameResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.RenameItem, itemContext.Notebook.Id, itemContext.Item.Id, renameResult, cancellationToken);
 
         if (!renameResult.Succeeded)
         {
@@ -404,7 +431,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.move_item",
+        Name = NotesMcpToolNames.MoveItem,
         Title = "Move Item",
         ReadOnly = false,
         Destructive = false,
@@ -453,7 +480,7 @@ public sealed class NotesMcpItemTools
             sortOrder,
             default,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.move_item", itemContext.Notebook.Id, itemContext.Item.Id, updateResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.MoveItem, itemContext.Notebook.Id, itemContext.Item.Id, updateResult, cancellationToken);
 
         if (!updateResult.Succeeded)
         {
@@ -465,7 +492,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.reorder_items",
+        Name = NotesMcpToolNames.ReorderItems,
         Title = "Reorder Items",
         ReadOnly = false,
         Destructive = false,
@@ -530,7 +557,7 @@ public sealed class NotesMcpItemTools
             notebookContext.ActorId,
             reorderModels,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.reorder_items", notebookContext.Notebook.Id, null, reorderResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.ReorderItems, notebookContext.Notebook.Id, null, reorderResult, cancellationToken);
 
         if (!reorderResult.Succeeded)
         {
@@ -546,7 +573,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.delete_item",
+        Name = NotesMcpToolNames.DeleteItem,
         Title = "Delete Item",
         ReadOnly = false,
         Destructive = true,
@@ -584,7 +611,7 @@ public sealed class NotesMcpItemTools
             itemContext.Item.Id,
             itemContext.ActorId,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.delete_item", itemContext.Notebook.Id, itemContext.Item.Id, deleteResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.DeleteItem, itemContext.Notebook.Id, itemContext.Item.Id, deleteResult, cancellationToken);
 
         if (!deleteResult.Succeeded)
         {
@@ -602,7 +629,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.archive_item",
+        Name = NotesMcpToolNames.ArchiveItem,
         Title = "Archive Item",
         ReadOnly = false,
         Destructive = false,
@@ -639,7 +666,7 @@ public sealed class NotesMcpItemTools
             itemContext.Item.Id,
             itemContext.ActorId,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.archive_item", itemContext.Notebook.Id, itemContext.Item.Id, archiveResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.ArchiveItem, itemContext.Notebook.Id, itemContext.Item.Id, archiveResult, cancellationToken);
 
         if (!archiveResult.Succeeded)
         {
@@ -651,7 +678,7 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = "notes.restore_item",
+        Name = NotesMcpToolNames.RestoreItem,
         Title = "Restore Item",
         ReadOnly = false,
         Destructive = false,
@@ -689,7 +716,7 @@ public sealed class NotesMcpItemTools
             itemContext.Item.Id,
             itemContext.ActorId,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.restore_item", itemContext.Notebook.Id, itemContext.Item.Id, restoreResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.RestoreItem, itemContext.Notebook.Id, itemContext.Item.Id, restoreResult, cancellationToken);
 
         if (!restoreResult.Succeeded)
         {

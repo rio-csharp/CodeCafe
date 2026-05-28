@@ -116,16 +116,16 @@ Tool scope matrix:
 
 | Tool | Scope | Additional authorization |
 |------|-------|--------------------------|
-| `notes.search` | `notes.read` | Return only notebooks/items readable by actor |
-| `notes.get_notebook` | `notes.read` | Existing visibility and owner rules |
-| `notes.list_items` | `notes.read` | Existing visibility and owner rules |
-| `notes.get_page` | `notes.read` | Existing visibility and owner rules; item must be a page |
-| `notes.create_page` | `notes.write` | Actor must own notebook |
-| `notes.update_page_content_json` | `notes.write` | Actor must own notebook; concurrency token must match |
-| `notes.append_blocks_to_page` | `notes.write` | Actor must own notebook; concurrency token should match |
-| `notes.move_item` | `notes.write` | Actor must own notebook |
-| `notes.reorder_items` | `notes.write` | Actor must own notebook |
-| `notes.delete_item` | `notes.write` | Actor must own notebook; require soft-delete/versioning first |
+| `notes_search` | `notes.read` | Return only notebooks/items readable by actor |
+| `notes_get_notebook` | `notes.read` | Existing visibility and owner rules |
+| `notes_list_items` | `notes.read` | Existing visibility and owner rules |
+| `notes_get_page` | `notes.read` | Existing visibility and owner rules; item must be a page |
+| `notes_create_page` | `notes.write` | Actor must own notebook |
+| `notes_update_page_content_json` | `notes.write` | Actor must own notebook; concurrency token must match |
+| `notes_append_blocks_to_page` | `notes.write` | Actor must own notebook; concurrency token should match |
+| `notes_move_item` | `notes.write` | Actor must own notebook |
+| `notes_reorder_items` | `notes.write` | Actor must own notebook |
+| `notes_delete_item` | `notes.write` | Actor must own notebook; require soft-delete/versioning first |
 
 Authorization rules:
 
@@ -220,18 +220,18 @@ Use namespaced tool names to avoid collisions:
 
 | Tool | Phase | Purpose |
 |------|-----------|---------|
-| `notes.search` | Read | Search visible notebooks/items |
-| `notes.get_notebook` | Read | Read notebook metadata by slug |
-| `notes.list_items` | Read | List folder/page tree items |
-| `notes.get_page` | Read | Read one page by notebook slug and path |
-| `notes.create_page` | Write | Create page under parent path/id |
-| `notes.update_page_content_json` | Write | Replace page TipTap document |
-| `notes.append_blocks_to_page` | Write | Append TipTap block nodes |
-| `notes.move_item` | Write | Move page/folder |
-| `notes.reorder_items` | Write | Batch reorder tree items |
-| `notes.archive_item` | Versioned write | Hide/remove item without immediate hard delete |
-| `notes.restore_item` | Versioned write | Restore archived item |
-| `notes.delete_item` | Destructive write | Hard delete only after explicit product approval and recoverability |
+| `notes_search` | Read | Search visible notebooks/items |
+| `notes_get_notebook` | Read | Read notebook metadata by slug |
+| `notes_list_items` | Read | List folder/page tree items |
+| `notes_get_page` | Read | Read one page by notebook slug and path |
+| `notes_create_page` | Write | Create page under parent path/id |
+| `notes_update_page_content_json` | Write | Replace page TipTap document |
+| `notes_append_blocks_to_page` | Write | Append TipTap block nodes |
+| `notes_move_item` | Write | Move page/folder |
+| `notes_reorder_items` | Write | Batch reorder tree items |
+| `notes_archive_item` | Versioned write | Hide/remove item without immediate hard delete |
+| `notes_restore_item` | Versioned write | Restore archived item |
+| `notes_delete_item` | Destructive write | Hard delete only after explicit product approval and recoverability |
 
 Tool schema rules:
 
@@ -317,10 +317,10 @@ Implement read tools before writes.
 
 Read tool acceptance criteria:
 
-- `notes.get_notebook` returns metadata for a readable notebook.
-- `notes.list_items` returns tree items without leaking private notebooks.
-- `notes.get_page` returns TipTap JSON only for page items.
-- `notes.search` reuses the same case-insensitive search behavior as REST.
+- `notes_get_notebook` returns metadata for a readable notebook.
+- `notes_list_items` returns tree items without leaking private notebooks.
+- `notes_get_page` returns TipTap JSON only for page items.
+- `notes_search` reuses the same case-insensitive search behavior as REST.
 - Tool results include `canEdit`, `updatedAtUtc`, and stable item identifiers
   where available.
 - Unauthorized private reads do not leak whether hidden content exists beyond

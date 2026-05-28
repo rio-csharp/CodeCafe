@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace CodeCafe.WebApi.Mcp;
 
 public sealed record NotebookSearchResultResponse(
@@ -41,7 +39,7 @@ public sealed record NotebookItemToolResponse(
     string Path,
     int SortOrder,
     string? ContentFormat,
-    JsonElement? ContentJson,
+    string? ContentJson,
     string? PlainTextContent,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
@@ -73,7 +71,7 @@ public sealed record GetPageToolResponse(
     string Title,
     string Path,
     string ContentFormat,
-    JsonElement? ContentJson,
+    string? ContentJson,
     string? PlainTextContent,
     bool CanEdit,
     DateTimeOffset CreatedAtUtc,
@@ -88,7 +86,7 @@ public sealed record CreatePageToolResponse(
     Guid? ParentId,
     int SortOrder,
     string? ContentFormat,
-    JsonElement? ContentJson,
+    string? ContentJson,
     string? PlainTextContent,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
@@ -112,7 +110,7 @@ public sealed record UpdatePageContentToolResponse(
     string Title,
     string Path,
     string? ContentFormat,
-    JsonElement? ContentJson,
+    string? ContentJson,
     string? PlainTextContent,
     DateTimeOffset? UpdatedAtUtc);
 

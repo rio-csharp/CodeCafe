@@ -12,7 +12,7 @@ namespace CodeCafe.WebApi.Mcp;
 public sealed class NotesMcpNotebookTools
 {
     [McpServerTool(
-        Name = "notes.list_notebooks",
+        Name = NotesMcpToolNames.ListNotebooks,
         Title = "List Notebooks",
         ReadOnly = true,
         Destructive = false,
@@ -71,7 +71,7 @@ public sealed class NotesMcpNotebookTools
     }
 
     [McpServerTool(
-        Name = "notes.get_notebook",
+        Name = NotesMcpToolNames.GetNotebook,
         Title = "Get Notebook",
         ReadOnly = true,
         Destructive = false,
@@ -103,7 +103,7 @@ public sealed class NotesMcpNotebookTools
     }
 
     [McpServerTool(
-        Name = "notes.search",
+        Name = NotesMcpToolNames.Search,
         Title = "Search Notes",
         ReadOnly = true,
         Destructive = false,
@@ -260,7 +260,7 @@ public sealed class NotesMcpNotebookTools
     }
 
     [McpServerTool(
-        Name = "notes.create_notebook",
+        Name = NotesMcpToolNames.CreateNotebook,
         Title = "Create Notebook",
         ReadOnly = false,
         Destructive = false,
@@ -291,7 +291,7 @@ public sealed class NotesMcpNotebookTools
             description,
             visibility,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.create_notebook", createResult.Value?.Id, null, createResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.CreateNotebook, createResult.Value?.Id, null, createResult, cancellationToken);
 
         if (!createResult.Succeeded)
         {
@@ -303,7 +303,7 @@ public sealed class NotesMcpNotebookTools
     }
 
     [McpServerTool(
-        Name = "notes.update_notebook",
+        Name = NotesMcpToolNames.UpdateNotebook,
         Title = "Update Notebook",
         ReadOnly = false,
         Destructive = false,
@@ -352,7 +352,7 @@ public sealed class NotesMcpNotebookTools
             description is null ? notebook.Description : description,
             string.IsNullOrWhiteSpace(visibility) ? notebook.Visibility : visibility,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.update_notebook", notebook.Id, null, updateResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.UpdateNotebook, notebook.Id, null, updateResult, cancellationToken);
 
         if (!updateResult.Succeeded)
         {
@@ -364,7 +364,7 @@ public sealed class NotesMcpNotebookTools
     }
 
     [McpServerTool(
-        Name = "notes.delete_notebook",
+        Name = NotesMcpToolNames.DeleteNotebook,
         Title = "Delete Notebook",
         ReadOnly = false,
         Destructive = true,
@@ -399,7 +399,7 @@ public sealed class NotesMcpNotebookTools
             notebook.Id,
             notebookContext.ActorId,
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, "notes.delete_notebook", notebook.Id, null, deleteResult, cancellationToken);
+        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.DeleteNotebook, notebook.Id, null, deleteResult, cancellationToken);
 
         if (!deleteResult.Succeeded)
         {

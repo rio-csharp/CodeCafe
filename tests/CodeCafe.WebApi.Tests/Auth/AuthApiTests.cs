@@ -1,4 +1,5 @@
 using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.WebApi.Mcp;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using Microsoft.AspNetCore.Hosting;
@@ -394,10 +395,10 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFactory>
         var slug = notebookJson.RootElement.GetProperty("slug").GetString() ?? throw new InvalidOperationException("Missing notebook slug.");
         await using var mcpClient = await Mcp.McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read");
         var tools = await mcpClient.ListToolsAsync();
-        Assert.Contains(tools, tool => tool.Name == "notes.get_notebook");
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.GetNotebook);
 
         var result = await mcpClient.CallToolAsync(
-            "notes.get_notebook",
+            NotesMcpToolNames.GetNotebook,
             new Dictionary<string, object?> { ["slug"] = slug },
             cancellationToken: CancellationToken.None);
 
