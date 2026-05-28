@@ -140,24 +140,24 @@ claude mcp list
 
 Then ask Claude to use read tools first:
 
-- `notes.get_notebook`
-- `notes.list_items`
-- `notes.get_page`
+- `notes_get_notebook`
+- `notes_list_items`
+- `notes_get_page`
 
 Current Notes tools:
 
-- `notes.get_notebook`
-- `notes.search`
-- `notes.list_items`
-- `notes.get_page`
-- `notes.create_page`
-- `notes.update_page_content_json`
-- `notes.append_blocks_to_page`
-- `notes.move_item`
-- `notes.reorder_items`
-- `notes.archive_item`
-- `notes.restore_item`
-- `notes.delete_item`
+- `notes_get_notebook`
+- `notes_search`
+- `notes_list_items`
+- `notes_get_page`
+- `notes_create_page`
+- `notes_update_page_content_json`
+- `notes_append_blocks_to_page`
+- `notes_move_item`
+- `notes_reorder_items`
+- `notes_archive_item`
+- `notes_restore_item`
+- `notes_delete_item`
 
 ## Production setup
 

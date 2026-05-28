@@ -176,8 +176,8 @@ read-heavy scenarios, but tools are the core write path.
 ## 6.1 Core MCP tools
 
 Implementation should use the namespaced tool names in
-[mcp-server-setup-plan.md](mcp-server-setup-plan.md), such as `notes.search`
-and `notes.get_page`. The tool sections below describe the capability and
+[mcp-server-setup-plan.md](mcp-server-setup-plan.md), such as `notes_search`
+and `notes_get_page`. The tool sections below describe the capability and
 payload shape.
 
 ### `search_notes`
@@ -794,10 +794,10 @@ Success condition:
 3. map Streamable HTTP at `/mcp`
 4. apply host/origin, auth, and rate-limit boundaries
 5. add read tools:
-   - `notes.get_notebook`
-   - `notes.list_items`
-   - `notes.get_page`
-   - `notes.search`
+   - `notes_get_notebook`
+   - `notes_list_items`
+   - `notes_get_page`
+   - `notes_search`
 
 Success condition:
 
@@ -807,11 +807,11 @@ Success condition:
 
 ## Phase 4: MCP write tools
 
-1. `notes.create_page`
-2. `notes.update_page_content_json`
-3. `notes.append_blocks_to_page`
-4. `notes.move_item`
-5. `notes.reorder_items`
+1. `notes_create_page`
+2. `notes_update_page_content_json`
+3. `notes_append_blocks_to_page`
+4. `notes_move_item`
+5. `notes_reorder_items`
 6. archive/restore/delete only after recoverability is available
 
 Success condition:
