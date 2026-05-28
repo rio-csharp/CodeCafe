@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import type { TreeNode } from '../utils/buildTree'
+import { useToast } from '../../../components/ui/useToast'
 
 interface UseTreeNodeActionsOptions {
   node: TreeNode
@@ -10,6 +11,7 @@ interface UseTreeNodeActionsOptions {
 export default function useTreeNodeActions({ node, onRenameItem, onDeleteItem }: UseTreeNodeActionsOptions) {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(node.item.title)
+  const { showToast } = useToast()
 
   const handleRename = useCallback(async () => {
     if (!editTitle.trim() || editTitle.trim() === node.item.title) {
@@ -20,19 +22,21 @@ export default function useTreeNodeActions({ node, onRenameItem, onDeleteItem }:
     try {
       await onRenameItem(node.item.id, editTitle.trim(), node.item.sortOrder)
       setIsEditing(false)
-    } catch {
-      /* error handled by parent */
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to rename'
+      showToast(message, 'error')
     }
-  }, [editTitle, node.item.id, node.item.title, node.item.sortOrder, onRenameItem])
+  }, [editTitle, node.item.id, node.item.title, node.item.sortOrder, onRenameItem, showToast])
 
   const handleDelete = useCallback(async () => {
     if (!confirm(`Delete "${node.item.title}"? This cannot be undone.`)) return
     try {
       await onDeleteItem(node.item.id)
-    } catch {
-      /* error handled by parent */
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete'
+      showToast(message, 'error')
     }
-  }, [node.item.id, node.item.title, onDeleteItem])
+  }, [node.item.id, node.item.title, onDeleteItem, showToast])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleRename()

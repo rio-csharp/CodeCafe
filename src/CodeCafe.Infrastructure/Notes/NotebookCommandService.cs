@@ -340,28 +340,31 @@ public sealed class NotebookCommandService(
             }
         }
 
-        foreach (var reorderItem in items)
-        {
-            var item = notebookItemsById[reorderItem.ItemId];
-            var oldPath = item.Path;
-            item.ParentId = reorderItem.ParentId;
-            item.SortOrder = reorderItem.SortOrder;
-
-            var parentPath = reorderItem.ParentId is null
-                ? null
-                : notebookItemsById[reorderItem.ParentId.Value].Path;
-            item.Path = NotesSupport.GenerateItemPath(notebookItems, parentPath, item.Title, item.Id);
-            item.Slug = item.Path.Split('/')[^1];
-
-            if (!string.Equals(oldPath, item.Path, StringComparison.Ordinal))
-            {
-                NotesSupport.ApplyDescendantPathUpdate(notebookItems, item.Id, oldPath, item.Path);
-            }
-        }
-
         try
         {
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+
+            foreach (var reorderItem in items)
+            {
+                var item = notebookItemsById[reorderItem.ItemId];
+                var oldPath = item.Path;
+                item.ParentId = reorderItem.ParentId;
+                item.SortOrder = reorderItem.SortOrder;
+
+                var parentPath = reorderItem.ParentId is null
+                    ? null
+                    : notebookItemsById[reorderItem.ParentId.Value].Path;
+                item.Path = NotesSupport.GenerateItemPath(notebookItems, parentPath, item.Title, item.Id);
+                item.Slug = item.Path.Split('/')[^1];
+
+                if (!string.Equals(oldPath, item.Path, StringComparison.Ordinal))
+                {
+                    NotesSupport.ApplyDescendantPathUpdate(notebookItems, item.Id, oldPath, item.Path);
+                }
+            }
+
             await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
         catch (DbUpdateConcurrencyException)
         {

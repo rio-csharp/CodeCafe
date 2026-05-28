@@ -63,6 +63,19 @@ public sealed record NotebookItemModel(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
 
+public sealed record NotebookItemSearchModel(
+    Guid NotebookId,
+    string NotebookSlug,
+    string NotebookTitle,
+    bool NotebookCanEdit,
+    Guid ItemId,
+    string Path,
+    string Title,
+    string Type,
+    string? PlainTextContent,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset? UpdatedAtUtc);
+
 public sealed record ReorderNotebookItemModel(
     Guid ItemId,
     Guid? ParentId,

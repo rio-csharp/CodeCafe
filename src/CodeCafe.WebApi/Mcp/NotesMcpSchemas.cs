@@ -19,6 +19,11 @@ public sealed record SearchNotesToolResponse(
     int TotalCount,
     IReadOnlyList<NotebookSearchResultResponse> Results);
 
+public sealed record ListNotebooksToolResponse(
+    string Scope,
+    int TotalCount,
+    IReadOnlyList<GetNotebookToolResponse> Notebooks);
+
 public sealed record ListNotebookItemsToolResponse(
     Guid NotebookId,
     string NotebookSlug,
@@ -88,6 +93,18 @@ public sealed record CreatePageToolResponse(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
 
+public sealed record CreateItemToolResponse(
+    Guid ItemId,
+    Guid NotebookId,
+    string NotebookSlug,
+    string Title,
+    string Type,
+    string Path,
+    Guid? ParentId,
+    int SortOrder,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset? UpdatedAtUtc);
+
 public sealed record UpdatePageContentToolResponse(
     Guid PageId,
     Guid NotebookId,
@@ -120,6 +137,11 @@ public sealed record DeleteItemToolResponse(
     string NotebookSlug,
     Guid ItemId,
     string Path,
+    string Result);
+
+public sealed record DeleteNotebookToolResponse(
+    Guid NotebookId,
+    string NotebookSlug,
     string Result);
 
 public sealed record ReorderNotesItemRequest(

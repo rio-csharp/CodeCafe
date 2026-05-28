@@ -57,7 +57,12 @@ Set these values in
       {
         "ClientId": "codecafe-claude",
         "DisplayName": "Claude Code",
-        "RedirectUris": [ "http://localhost/", "http://127.0.0.1/" ]
+        "RedirectUris": [
+          "http://localhost/",
+          "http://127.0.0.1/",
+          "http://localhost:3334/callback",
+          "http://127.0.0.1:3334/callback"
+        ]
       }
     ]
   },
@@ -114,7 +119,7 @@ Expected local URLs:
 Use the registered client id for Claude Code:
 
 ```powershell
-claude mcp add --transport http codecafe https://localhost:7239/mcp --client-id codecafe-claude
+claude mcp add --transport http codecafe https://localhost:7239/mcp --client-id codecafe-claude --callback-port 3334
 ```
 
 What happens next:
@@ -172,7 +177,12 @@ Set these values in production configuration:
       {
         "ClientId": "codecafe-claude",
         "DisplayName": "Claude Code",
-        "RedirectUris": [ "http://localhost/", "http://127.0.0.1/" ]
+        "RedirectUris": [
+          "http://localhost/",
+          "http://127.0.0.1/",
+          "http://localhost:3334/callback",
+          "http://127.0.0.1:3334/callback"
+        ]
       }
     ],
     "SigningCertificateBase64": "<base64-pfx>",
@@ -217,7 +227,7 @@ The cleaner split is:
 
 - verify the MCP URL is HTTPS and reachable
 - verify `Mcp:Enabled` is `true`
-- verify Claude was added with `--client-id codecafe-claude`
+- verify Claude was added with `--client-id codecafe-claude --callback-port 3334`
 
 ### `401 Unauthorized` from `/mcp`
 

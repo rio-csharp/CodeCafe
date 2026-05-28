@@ -1,8 +1,16 @@
+using Microsoft.Extensions.Hosting;
+
 namespace CodeCafe.WebApi.Auth;
 
 public sealed class AuthorizationServerOptions
 {
     public const string SectionName = "AuthorizationServer";
+
+    public const string DevelopmentIssuer = "https://localhost:7239/";
+
+    public const string TestingIssuer = "https://codecafe.test/";
+
+    public const string DevelopmentFrontendBaseUrl = "http://localhost:5173";
 
     public string Issuer { get; set; } = string.Empty;
 
@@ -17,7 +25,9 @@ public sealed class AuthorizationServerOptions
             RedirectUris =
             [
                 "http://localhost/",
-                "http://127.0.0.1/"
+                "http://127.0.0.1/",
+                "http://localhost:3334/callback",
+                "http://127.0.0.1:3334/callback"
             ]
         }
     ];
@@ -33,6 +43,29 @@ public sealed class AuthorizationServerOptions
     public string EncryptionCertificateBase64 { get; set; } = string.Empty;
 
     public string EncryptionCertificatePassword { get; set; } = string.Empty;
+
+    public void ApplyEnvironmentDefaults(IHostEnvironment environment)
+    {
+        if (string.IsNullOrWhiteSpace(FrontendBaseUrl)
+            && (environment.IsDevelopment() || environment.IsEnvironment("Testing")))
+        {
+            FrontendBaseUrl = DevelopmentFrontendBaseUrl;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Issuer))
+        {
+            return;
+        }
+
+        if (environment.IsDevelopment())
+        {
+            Issuer = DevelopmentIssuer;
+        }
+        else if (environment.IsEnvironment("Testing"))
+        {
+            Issuer = TestingIssuer;
+        }
+    }
 }
 
 public sealed class OAuthClientOptions
