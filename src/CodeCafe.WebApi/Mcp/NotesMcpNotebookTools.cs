@@ -148,7 +148,6 @@ public sealed class NotesMcpNotebookTools
         var currentUserId = actorResult.Value;
         var maxResults = Math.Clamp(limit ?? 25, 1, 100);
         var results = new List<NotebookSearchResultResponse>();
-        var notebooks = new List<NotebookDetailModel>();
 
         if (!string.IsNullOrWhiteSpace(notebookSlug))
         {
@@ -158,31 +157,7 @@ public sealed class NotesMcpNotebookTools
                 return NotesMcpResultMapper.Failure(scopedNotebook.Error!);
             }
 
-            notebooks.Add(scopedNotebook.Value!);
-        }
-        else
-        {
-            var publicNotebooks = await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken, maxResults);
-            var myNotebooks = await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken, maxResults);
-            var summaries = publicNotebooks
-                .Concat(myNotebooks)
-                .GroupBy(notebook => notebook.Id)
-                .Select(group => group.First())
-                .Take(maxResults)
-                .ToList();
-
-            foreach (var summary in summaries)
-            {
-                var notebookResult = await notebookQueryService.GetNotebookBySlugAsync(summary.Slug, currentUserId, cancellationToken);
-                if (notebookResult.Succeeded)
-                {
-                    notebooks.Add(notebookResult.Value!);
-                }
-            }
-        }
-
-        foreach (var notebook in notebooks)
-        {
+            var notebook = scopedNotebook.Value!;
             if (normalizedScope is "all" or "notebooks")
             {
                 if (NotesMcpSupport.MatchesNotebook(notebook, query))
@@ -204,36 +179,78 @@ public sealed class NotesMcpNotebookTools
             if (normalizedScope is "all" or "items")
             {
                 var remainingResults = maxResults - results.Count;
-                if (remainingResults <= 0)
+                if (remainingResults > 0)
                 {
-                    break;
-                }
-
-                var itemResults = await notebookQueryService.GetNotebookItemsAsync(
-                    notebook.Id,
-                    currentUserId,
-                    query,
-                    cancellationToken,
-                    limit: remainingResults);
-                if (itemResults.Succeeded)
-                {
-                    results.AddRange(itemResults.Value!.Select(item => new NotebookSearchResultResponse(
+                    var itemResults = await notebookQueryService.GetNotebookItemsAsync(
                         notebook.Id,
-                        notebook.Slug,
-                        notebook.Title,
-                        item.Id,
+                        currentUserId,
+                        query,
+                        cancellationToken,
+                        limit: remainingResults);
+                    if (itemResults.Succeeded)
+                    {
+                        results.AddRange(itemResults.Value!.Select(item => new NotebookSearchResultResponse(
+                            notebook.Id,
+                            notebook.Slug,
+                            notebook.Title,
+                            item.Id,
+                            item.Path,
+                            item.Title,
+                            item.Type,
+                            NotesMcpSupport.BuildPlainTextSnippet(item.PlainTextContent, query),
+                            notebook.CanEdit,
+                            item.UpdatedAtUtc)));
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (normalizedScope is "all" or "notebooks")
+            {
+                var publicNotebooks = await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken, maxResults);
+                var myNotebooks = await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken, maxResults);
+                var summaries = publicNotebooks
+                    .Concat(myNotebooks)
+                    .GroupBy(notebook => notebook.Id)
+                    .Select(group => group.First())
+                    .Take(maxResults);
+
+                results.AddRange(summaries.Select(notebook => new NotebookSearchResultResponse(
+                    notebook.Id,
+                    notebook.Slug,
+                    notebook.Title,
+                    null,
+                    null,
+                    null,
+                    "notebook",
+                    notebook.Description,
+                    notebook.CanEdit,
+                    notebook.UpdatedAtUtc)));
+            }
+
+            if (normalizedScope is "all" or "items")
+            {
+                var remainingResults = maxResults - results.Count;
+                if (remainingResults > 0)
+                {
+                    var itemResults = await notebookQueryService.SearchVisibleNotebookItemsAsync(
+                        currentUserId,
+                        query,
+                        cancellationToken,
+                        remainingResults);
+                    results.AddRange(itemResults.Select(item => new NotebookSearchResultResponse(
+                        item.NotebookId,
+                        item.NotebookSlug,
+                        item.NotebookTitle,
+                        item.ItemId,
                         item.Path,
                         item.Title,
                         item.Type,
                         NotesMcpSupport.BuildPlainTextSnippet(item.PlainTextContent, query),
-                        notebook.CanEdit,
+                        item.NotebookCanEdit,
                         item.UpdatedAtUtc)));
                 }
-            }
-
-            if (results.Count >= maxResults)
-            {
-                break;
             }
         }
 

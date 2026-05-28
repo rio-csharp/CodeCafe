@@ -238,6 +238,41 @@ public sealed class McpApiTests
     }
 
     [Fact]
+    public async Task McpSearch_FindsItemMatchesOutsideNotebookMetadataMatches()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"search+{Guid.NewGuid():N}@example.com", "203.0.113.129");
+        var notebook = await CreateNotebookAsync(client, "Alpha Project");
+        var page = await CreatePageAsync(client, notebook.Id, "Research Notes", "Blue banana launch checklist");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read");
+
+        var result = await mcpClient.CallToolAsync(
+            "notes.search",
+            new Dictionary<string, object?>
+            {
+                ["query"] = "banana",
+                ["scope"] = "items"
+            });
+
+        Assert.False(
+            result.IsError ?? false,
+            string.Join(" | ", result.Content.OfType<TextContentBlock>().Select(block => block.Text)));
+        Assert.Contains(
+            result.StructuredContent!.Value.GetProperty("results").EnumerateArray(),
+            item => item.GetProperty("path").GetString() == page.Path
+                && item.GetProperty("notebookSlug").GetString() == notebook.Slug);
+    }
+
+    [Fact]
     public async Task McpNotebookTools_ListCreateUpdateRenameAndDeleteNotebook()
     {
         using var factory = new AuthApiFactory

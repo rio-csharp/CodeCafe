@@ -69,6 +69,56 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         return await ToSummaryModelsAsync(notebooks, currentUserId, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(
+        Guid currentUserId,
+        string search,
+        CancellationToken cancellationToken,
+        int? limit = null)
+    {
+        var normalizedSearch = NotesSupport.NormalizeSearch(search);
+        if (normalizedSearch is null)
+        {
+            return [];
+        }
+
+        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
+        var query = dbContext.NotebookItems
+            .AsNoTracking()
+            .Where(item => !item.IsArchived)
+            .Where(item =>
+                item.Notebook.OwnerId == currentUserId
+                || item.Notebook.Visibility == NotebookVisibility.Unlisted
+                || (item.Notebook.Visibility == NotebookVisibility.Public && item.Notebook.IsPublished));
+
+        query = usePostgresCaseInsensitiveSearch
+            ? query.Where(item =>
+                EF.Functions.ILike(item.Title, normalizedSearch)
+                || (item.PlainTextContent != null && EF.Functions.ILike(item.PlainTextContent, normalizedSearch)))
+            : query.Where(item =>
+                EF.Functions.Like(item.Title.ToLower(), normalizedSearch.ToLower())
+                || (item.PlainTextContent != null
+                    && EF.Functions.Like(item.PlainTextContent.ToLower(), normalizedSearch.ToLower())));
+
+        return await ApplyLimit(
+                query.OrderBy(item => item.Notebook.Title)
+                    .ThenBy(item => item.NotebookId)
+                    .ThenBy(item => item.Path),
+                limit)
+            .Select(item => new NotebookItemSearchModel(
+                item.NotebookId,
+                item.Notebook.Slug,
+                item.Notebook.Title,
+                item.Notebook.OwnerId == currentUserId,
+                item.Id,
+                item.Path,
+                item.Title,
+                item.Type.ToString().ToLowerInvariant(),
+                item.PlainTextContent,
+                item.CreatedAtUtc,
+                item.UpdatedAtUtc))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
         string slug,
         Guid currentUserId,

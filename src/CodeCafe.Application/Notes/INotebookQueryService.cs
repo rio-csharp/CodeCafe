@@ -14,6 +14,12 @@ public interface INotebookQueryService
         CancellationToken cancellationToken,
         int? limit = null);
 
+    Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(
+        Guid currentUserId,
+        string search,
+        CancellationToken cancellationToken,
+        int? limit = null);
+
     Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false);
 
     Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken);
