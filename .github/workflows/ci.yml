@@ -6,6 +6,9 @@ on:
       - main
       - 'release/**'
       - 'feature/**'
+  pull_request:
+    branches:
+      - 'release/**'
   workflow_dispatch:
 
 permissions:
