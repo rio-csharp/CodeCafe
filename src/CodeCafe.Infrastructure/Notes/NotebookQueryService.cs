@@ -31,11 +31,9 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
                         && EF.Functions.Like(notebook.Description.ToLower(), normalizedSearch.ToLower())));
         }
 
-        var notebooks = await ApplyLimit(
-                query.OrderBy(notebook => notebook.Title).ThenBy(notebook => notebook.Id),
-                limit)
-            .ToListAsync(cancellationToken);
-        return await ToSummaryModelsAsync(notebooks, currentUserId, cancellationToken);
+        var notebooks = await query.ToListAsync(cancellationToken);
+        var summaries = await ToSummaryModelsAsync(notebooks, currentUserId, cancellationToken);
+        return ApplyLimit(summaries, limit);
     }
 
     public async Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(
@@ -62,11 +60,9 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
                         && EF.Functions.Like(notebook.Description.ToLower(), normalizedSearch.ToLower())));
         }
 
-        var notebooks = await ApplyLimit(
-                query.OrderBy(notebook => notebook.Title).ThenBy(notebook => notebook.Id),
-                limit)
-            .ToListAsync(cancellationToken);
-        return await ToSummaryModelsAsync(notebooks, currentUserId, cancellationToken);
+        var notebooks = await query.ToListAsync(cancellationToken);
+        var summaries = await ToSummaryModelsAsync(notebooks, currentUserId, cancellationToken);
+        return ApplyLimit(summaries, limit);
     }
 
     public async Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(
@@ -87,7 +83,6 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
             .Where(item => !item.IsArchived)
             .Where(item =>
                 item.Notebook.OwnerId == currentUserId
-                || item.Notebook.Visibility == NotebookVisibility.Unlisted
                 || (item.Notebook.Visibility == NotebookVisibility.Public && item.Notebook.IsPublished));
 
         query = usePostgresCaseInsensitiveSearch
@@ -309,6 +304,13 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         return limit.HasValue
             ? query.Take(Math.Max(1, limit.Value))
             : query;
+    }
+
+    private static IReadOnlyList<T> ApplyLimit<T>(IReadOnlyList<T> values, int? limit)
+    {
+        return limit.HasValue
+            ? values.Take(Math.Max(1, limit.Value)).ToList()
+            : values;
     }
 
     private async Task<IReadOnlyList<NotebookSummaryModel>> ToSummaryModelsAsync(

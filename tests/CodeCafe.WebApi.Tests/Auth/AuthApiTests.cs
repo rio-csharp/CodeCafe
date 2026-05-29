@@ -625,6 +625,38 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFactory>
         Assert.Equal("invalid_redirect_uri", document.RootElement.GetProperty("error").GetString());
     }
 
+    [Fact]
+    public async Task DynamicClientRegistration_ReusesExistingClientForSameRedirectUris()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient();
+
+        var payload = new
+        {
+            client_name = "Repeatable Client",
+            application_type = "native",
+            token_endpoint_auth_method = "none",
+            grant_types = new[] { "authorization_code", "refresh_token" },
+            response_types = new[] { "code" },
+            redirect_uris = new[] { "http://127.0.0.1:50100/callback" }
+        };
+
+        using var firstResponse = await client.PostAsJsonAsync("/connect/register", payload);
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        using var firstDocument = JsonDocument.Parse(await firstResponse.Content.ReadAsStringAsync());
+        var firstClientId = firstDocument.RootElement.GetProperty("client_id").GetString();
+
+        using var secondResponse = await client.PostAsJsonAsync("/connect/register", payload);
+        Assert.Equal(HttpStatusCode.OK, secondResponse.StatusCode);
+        using var secondDocument = JsonDocument.Parse(await secondResponse.Content.ReadAsStringAsync());
+        var secondClientId = secondDocument.RootElement.GetProperty("client_id").GetString();
+
+        Assert.Equal(firstClientId, secondClientId);
+    }
+
     private static async Task<HttpResponseMessage> RegisterAsync(HttpClient client, string email, string clientIp)
     {
         var csrf = await GetCsrfTokenAsync(client);
