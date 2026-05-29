@@ -24,19 +24,19 @@ public sealed class NotesMcpPrompts
         var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
         if (!scopeResult.Succeeded)
         {
-            throw new InvalidOperationException(scopeResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
         }
 
         var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
         if (!notebookResult.Succeeded)
         {
-            throw new InvalidOperationException(notebookResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
         }
 
         var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
         if (!pageResult.Succeeded)
         {
-            throw new InvalidOperationException(pageResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(pageResult.Error!);
         }
 
         return NotesMcpSupport.CreatePromptMessages(
@@ -57,13 +57,13 @@ public sealed class NotesMcpPrompts
         var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
         if (!scopeResult.Succeeded)
         {
-            throw new InvalidOperationException(scopeResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
         }
 
         var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
         if (!notebookResult.Succeeded)
         {
-            throw new InvalidOperationException(notebookResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
         }
 
         return NotesMcpSupport.CreatePromptMessages(
@@ -85,19 +85,19 @@ public sealed class NotesMcpPrompts
         var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
         if (!scopeResult.Succeeded)
         {
-            throw new InvalidOperationException(scopeResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
         }
 
         var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
         if (!notebookResult.Succeeded)
         {
-            throw new InvalidOperationException(notebookResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
         }
 
         var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
         if (!pageResult.Succeeded)
         {
-            throw new InvalidOperationException(pageResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(pageResult.Error!);
         }
 
         return NotesMcpSupport.CreatePromptMessages(
@@ -118,13 +118,13 @@ public sealed class NotesMcpPrompts
         var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
         if (!scopeResult.Succeeded)
         {
-            throw new InvalidOperationException(scopeResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
         }
 
         var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
         if (!notebookResult.Succeeded)
         {
-            throw new InvalidOperationException(notebookResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
         }
 
         return NotesMcpSupport.CreatePromptMessages(

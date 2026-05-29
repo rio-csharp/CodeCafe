@@ -4,6 +4,7 @@ using ModelContextProtocol.Protocol;
 using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace CodeCafe.WebApi.Tests.Mcp;
 
@@ -140,7 +141,7 @@ public sealed class McpApiTests
                 ["title"] = "API Contracts",
                 ["parentPath"] = "source",
                 ["sortOrder"] = 3,
-                ["contentJson"] = CreateDocJsonString("Contract draft")
+                ["contentJson"] = CreateDocObject("Contract draft")
             });
         var createdPath = created.StructuredContent!.Value.GetProperty("path").GetString();
         Assert.Equal("source/api-contracts", createdPath);
@@ -151,7 +152,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = createdPath,
-                ["contentJson"] = CreateDocJsonString("Updated draft")
+                ["contentJson"] = CreateDocObject("Updated draft")
             });
         Assert.False(
             updated.IsError ?? false,
@@ -172,7 +173,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = createdPath,
-                ["blocks"] = CreateBlocksJsonString("Appended block")
+                ["blocks"] = CreateBlocksArray("Appended block")
             });
         Assert.NotEqual(true, appended.IsError);
 
@@ -292,6 +293,62 @@ public sealed class McpApiTests
     }
 
     [Fact]
+    public async Task McpSearch_DoesNotLeakUnlistedNotebookItemsToGlobalSearch()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var owner = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+        using var stranger = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(owner, $"unlisted-owner+{Guid.NewGuid():N}@example.com", "203.0.113.132");
+        await RegisterAsync(stranger, $"unlisted-stranger+{Guid.NewGuid():N}@example.com", "203.0.113.133");
+
+        var csrf = await GetCsrfTokenAsync(owner);
+        using var createNotebookRequest = new HttpRequestMessage(HttpMethod.Post, "/api/notes")
+        {
+            Content = JsonContent.Create(new
+            {
+                title = "Unlisted MCP Notebook",
+                visibility = "unlisted"
+            })
+        };
+        createNotebookRequest.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var createNotebookResponse = await owner.SendAsync(createNotebookRequest);
+        createNotebookResponse.EnsureSuccessStatusCode();
+        using var notebookJson = JsonDocument.Parse(await createNotebookResponse.Content.ReadAsStringAsync());
+        var notebookId = notebookJson.RootElement.GetProperty("id").GetGuid();
+        var notebookSlug = notebookJson.RootElement.GetProperty("slug").GetString()!;
+
+        var page = await CreatePageAsync(owner, notebookId, "Private Discovery", "Sensitive token phrase");
+        await using var strangerMcpClient = await McpTestAuth.CreateMcpClientAsync(factory, stranger, "notes.read");
+
+        var result = await strangerMcpClient.CallToolAsync(
+            NotesMcpToolNames.Search,
+            new Dictionary<string, object?>
+            {
+                ["query"] = "Sensitive token phrase",
+                ["scope"] = "items"
+            });
+
+        Assert.False(result.IsError ?? false, ReadText(result));
+        Assert.DoesNotContain(
+            result.StructuredContent!.Value.GetProperty("results").EnumerateArray(),
+            item => item.GetProperty("notebookSlug").GetString() == notebookSlug
+                && item.GetProperty("path").GetString() == page.Path);
+    }
+
+    [Fact]
     public async Task McpNotebookTools_ListCreateUpdateRenameAndDeleteNotebook()
     {
         using var factory = new AuthApiFactory
@@ -347,7 +404,7 @@ public sealed class McpApiTests
                 ["notebookSlug"] = notebookSlug,
                 ["title"] = "Release Checklist",
                 ["parentPath"] = "drafts",
-                ["contentJson"] = CreateDocJsonString("Checklist draft")
+                ["contentJson"] = CreateDocObject("Checklist draft")
             });
         var createdPagePath = createdPage.StructuredContent!.Value.GetProperty("path").GetString();
         Assert.Equal("drafts/release-checklist", createdPagePath);
@@ -523,14 +580,22 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = page.Path,
-                ["blocks"] = CreateDocJsonString("not-an-array")
+                ["blocks"] = CreateDocObject("not-an-array")
             });
 
-        AssertToolError(result, "invalid_blocks");
+        Assert.True(result.IsError);
+        if (result.StructuredContent.HasValue)
+        {
+            Assert.Equal("invalid_blocks", result.StructuredContent.Value.GetProperty("code").GetString());
+        }
+        else
+        {
+            Assert.Contains("blocks", ReadText(result), StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
-    public async Task McpUpdatePageContent_AcceptsMarkdownFencedJsonPayload()
+    public async Task McpUpdatePageContent_AcceptsStructuredJsonObjectPayload()
     {
         using var factory = new AuthApiFactory
         {
@@ -543,8 +608,8 @@ public sealed class McpApiTests
         });
 
         await RegisterAsync(client, $"fenced-update+{Guid.NewGuid():N}@example.com", "203.0.113.130");
-        var notebook = await CreateNotebookAsync(client, "Fenced Update Notebook");
-        var page = await CreatePageAsync(client, notebook.Id, "Fenced Target", "Original");
+        var notebook = await CreateNotebookAsync(client, "Structured Update Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Structured Target", "Original");
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
 
         var updateResult = await mcpClient.CallToolAsync(
@@ -553,7 +618,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = page.Path,
-                ["contentJson"] = WrapJsonFence(CreateDocJsonString("Updated through fence"))
+                ["contentJson"] = CreateDocObject("Updated through object payload")
             });
 
         Assert.False(updateResult.IsError ?? false, ReadText(updateResult));
@@ -566,11 +631,11 @@ public sealed class McpApiTests
                 ["path"] = page.Path
             });
 
-        Assert.Equal("Updated through fence", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
+        Assert.Equal("Updated through object payload", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
     }
 
     [Fact]
-    public async Task McpAppendBlocks_AcceptsMarkdownFencedJsonPayload()
+    public async Task McpAppendBlocks_AcceptsStructuredJsonArrayPayload()
     {
         using var factory = new AuthApiFactory
         {
@@ -583,7 +648,7 @@ public sealed class McpApiTests
         });
 
         await RegisterAsync(client, $"fenced-append+{Guid.NewGuid():N}@example.com", "203.0.113.131");
-        var notebook = await CreateNotebookAsync(client, "Fenced Append Notebook");
+        var notebook = await CreateNotebookAsync(client, "Structured Append Notebook");
         var page = await CreatePageAsync(client, notebook.Id, "Append Target", "Original");
         await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
 
@@ -593,7 +658,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = page.Path,
-                ["blocks"] = WrapJsonFence(CreateBlocksJsonString("Appended through fence"))
+                ["blocks"] = CreateBlocksArray("Appended through array payload")
             });
 
         Assert.False(appendResult.IsError ?? false, ReadText(appendResult));
@@ -606,7 +671,7 @@ public sealed class McpApiTests
                 ["path"] = page.Path
             });
 
-        Assert.Contains("Appended through fence", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
+        Assert.Contains("Appended through array payload", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
     }
 
     [Fact]
@@ -755,7 +820,7 @@ public sealed class McpApiTests
                 type = "page",
                 title,
                 sortOrder = 1,
-                contentJson = CreateDocElement(text)
+                contentJson = CreateDocObject(text)
             })
         };
         request.Headers.Add("X-CSRF-TOKEN", csrf);
@@ -769,48 +834,46 @@ public sealed class McpApiTests
             json.RootElement.GetProperty("path").GetString() ?? throw new InvalidOperationException("Missing path."));
     }
 
-    private static JsonElement CreateDocElement(string text)
+    private static JsonObject CreateDocObject(string text)
     {
-        return JsonSerializer.SerializeToElement(new
+        return new JsonObject
         {
-            type = "doc",
-            content = new object[]
+            ["type"] = "doc",
+            ["content"] = new JsonArray
             {
-                new
+                new JsonObject
                 {
-                    type = "paragraph",
-                    content = new object[]
+                    ["type"] = "paragraph",
+                    ["content"] = new JsonArray
                     {
-                        new { type = "text", text }
+                        new JsonObject
+                        {
+                            ["type"] = "text",
+                            ["text"] = text
+                        }
                     }
                 }
             }
-        });
+        };
     }
 
-    private static string CreateDocJsonString(string text)
+    private static JsonArray CreateBlocksArray(string text)
     {
-        return CreateDocElement(text).GetRawText();
-    }
-
-    private static string CreateBlocksJsonString(string text)
-    {
-        return JsonSerializer.Serialize(new object[]
+        return new JsonArray
         {
-            new
+            new JsonObject
             {
-                type = "paragraph",
-                content = new object[]
+                ["type"] = "paragraph",
+                ["content"] = new JsonArray
                 {
-                    new { type = "text", text }
+                    new JsonObject
+                    {
+                        ["type"] = "text",
+                        ["text"] = text
+                    }
                 }
             }
-        });
-    }
-
-    private static string WrapJsonFence(string json)
-    {
-        return $"```json\n{json}\n```";
+        };
     }
 
     private static string ReadText(CallToolResult result)

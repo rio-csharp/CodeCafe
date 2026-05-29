@@ -6,6 +6,7 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Security.Claims;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace CodeCafe.WebApi.Mcp;
 
@@ -179,7 +180,7 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken,
         [Description("Optional parent folder path. Null creates the page at the notebook root.")] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
-        [Description("Optional TipTap JSON document string for the page content.")] string? contentJson = null)
+        [Description("Optional TipTap JSON document object for the page content.")] JsonObject? contentJson = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
@@ -241,7 +242,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The full TipTap JSON document string to store.")] string contentJson,
+        [Description("The full TipTap JSON document object to store.")] JsonObject contentJson,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
@@ -306,7 +307,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The TipTap block nodes JSON string to append.")] string blocks,
+        [Description("The TipTap block nodes JSON array to append.")] JsonArray blocks,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,

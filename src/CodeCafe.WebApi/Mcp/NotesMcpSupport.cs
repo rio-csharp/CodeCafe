@@ -1,6 +1,7 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Interfaces;
 using Microsoft.Extensions.AI;
+using ModelContextProtocol;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -430,11 +431,11 @@ internal static class NotesMcpSupport
     }
 
     public static NotesResult<JsonElement?> ParseOptionalJsonArgument(
-        string? json,
+        JsonObject? json,
         string code,
         string invalidMessage)
     {
-        if (string.IsNullOrWhiteSpace(json))
+        if (json is null)
         {
             return NotesResult<JsonElement?>.Success(null);
         }
@@ -449,83 +450,29 @@ internal static class NotesMcpSupport
     }
 
     public static NotesResult<JsonElement> ParseRequiredJsonArgument(
-        string json,
+        JsonObject? json,
         string code,
         string invalidMessage)
     {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return NotesResult<JsonElement>.Failure(
+        return json is null
+            ? NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 code,
-                invalidMessage);
-        }
-
-        if (TryParseJsonArgument(json, out var parsed))
-        {
-            return NotesResult<JsonElement>.Success(parsed);
-        }
-
-        return NotesResult<JsonElement>.Failure(
-            NotesFailureKind.Validation,
-            code,
-            invalidMessage);
+                invalidMessage)
+            : NotesResult<JsonElement>.Success(JsonSerializer.SerializeToElement(json, SerializerOptions));
     }
 
-    private static bool TryParseJsonArgument(string json, out JsonElement parsed)
+    public static NotesResult<JsonElement> ParseRequiredJsonArgument(
+        JsonArray? json,
+        string code,
+        string invalidMessage)
     {
-        var candidate = UnwrapMarkdownCodeFence(json);
-        for (var depth = 0; depth < 3; depth++)
-        {
-            try
-            {
-                using var document = JsonDocument.Parse(candidate);
-                var root = document.RootElement;
-                if (root.ValueKind != JsonValueKind.String)
-                {
-                    parsed = root.Clone();
-                    return true;
-                }
-
-                var nested = root.GetString();
-                if (string.IsNullOrWhiteSpace(nested))
-                {
-                    break;
-                }
-
-                candidate = UnwrapMarkdownCodeFence(nested);
-            }
-            catch (JsonException)
-            {
-                break;
-            }
-        }
-
-        parsed = default;
-        return false;
-    }
-
-    private static string UnwrapMarkdownCodeFence(string value)
-    {
-        var trimmed = value.Trim();
-        if (!trimmed.StartsWith("```", StringComparison.Ordinal))
-        {
-            return trimmed;
-        }
-
-        var firstNewLine = trimmed.IndexOf('\n');
-        if (firstNewLine < 0)
-        {
-            return trimmed;
-        }
-
-        var closingFence = trimmed.LastIndexOf("```", StringComparison.Ordinal);
-        if (closingFence <= firstNewLine)
-        {
-            return trimmed;
-        }
-
-        return trimmed[(firstNewLine + 1)..closingFence].Trim();
+        return json is null
+            ? NotesResult<JsonElement>.Failure(
+                NotesFailureKind.Validation,
+                code,
+                invalidMessage)
+            : NotesResult<JsonElement>.Success(JsonSerializer.SerializeToElement(json, SerializerOptions));
     }
 
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
@@ -624,6 +571,11 @@ internal static class NotesMcpSupport
     public static IEnumerable<ChatMessage> CreatePromptMessages(params string[] messages)
     {
         return messages.Select(message => new ChatMessage(ChatRole.User, message));
+    }
+
+    public static void ThrowMcpError(NotesError error)
+    {
+        throw new McpException($"{error.Code}: {error.Message}");
     }
 
     public static async Task AuditWriteAsync(
