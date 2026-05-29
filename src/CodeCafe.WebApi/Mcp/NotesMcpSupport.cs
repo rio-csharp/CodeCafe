@@ -278,16 +278,18 @@ internal static class NotesMcpSupport
         return JsonSerializer.Serialize(value, SerializerOptions);
     }
 
-    public static NotebookItemToolResponse ToNotebookItemToolResponse(NotebookItemModel item)
+    public static NotebookItemToolResponse ToNotebookItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
     {
         return new NotebookItemToolResponse(
             item.Id,
             item.NotebookId,
+            notebook.Slug,
             item.ParentId,
             item.Type,
             item.Title,
             item.Slug,
             item.Path,
+            BuildItemResourceUri(notebook.Slug, item),
             item.SortOrder,
             item.ContentFormat,
             SerializeJsonElement(item.ContentJson),
@@ -316,7 +318,9 @@ internal static class NotesMcpSupport
             notebook.LastActivityAtUtc,
             notebook.CreatedAtUtc,
             notebook.UpdatedAtUtc,
-            notebook.PublishedAtUtc);
+            notebook.PublishedAtUtc,
+            BuildNotebookUri(notebook.Slug),
+            BuildNotebookItemsUri(notebook.Slug));
     }
 
     public static GetNotebookToolResponse ToGetNotebookToolResponse(NotebookSummaryModel notebook)
@@ -339,7 +343,9 @@ internal static class NotesMcpSupport
             notebook.LastActivityAtUtc,
             notebook.CreatedAtUtc,
             notebook.UpdatedAtUtc,
-            notebook.PublishedAtUtc);
+            notebook.PublishedAtUtc,
+            BuildNotebookUri(notebook.Slug),
+            BuildNotebookItemsUri(notebook.Slug));
     }
 
     public static GetPageToolResponse ToGetPageToolResponse(NotebookDetailModel notebook, NotebookItemModel page)
@@ -350,6 +356,8 @@ internal static class NotesMcpSupport
             notebook.Slug,
             page.Title,
             page.Path,
+            BuildNotebookUri(notebook.Slug),
+            BuildPageUri(notebook.Slug, page.Path),
             page.ContentFormat ?? "tiptap_json",
             SerializeJsonElement(page.ContentJson),
             page.PlainTextContent,
@@ -366,6 +374,8 @@ internal static class NotesMcpSupport
             notebook.Slug,
             page.Title,
             page.Path,
+            BuildNotebookUri(notebook.Slug),
+            BuildPageUri(notebook.Slug, page.Path),
             page.ParentId,
             page.SortOrder,
             page.ContentFormat,
@@ -384,6 +394,9 @@ internal static class NotesMcpSupport
             item.Title,
             item.Type,
             item.Path,
+            BuildNotebookUri(notebook.Slug),
+            BuildNotebookItemsUri(notebook.Slug),
+            BuildItemResourceUri(notebook.Slug, item),
             item.ParentId,
             item.SortOrder,
             item.CreatedAtUtc,
@@ -398,6 +411,8 @@ internal static class NotesMcpSupport
             notebook.Slug,
             page.Title,
             page.Path,
+            BuildNotebookUri(notebook.Slug),
+            BuildPageUri(notebook.Slug, page.Path),
             page.ContentFormat,
             SerializeJsonElement(page.ContentJson),
             page.PlainTextContent,
@@ -469,6 +484,9 @@ internal static class NotesMcpSupport
             item.Title,
             item.Type,
             item.Path,
+            BuildNotebookUri(notebook.Slug),
+            BuildNotebookItemsUri(notebook.Slug),
+            BuildItemResourceUri(notebook.Slug, item),
             item.ParentId,
             item.SortOrder,
             item.UpdatedAtUtc);
@@ -528,6 +546,19 @@ internal static class NotesMcpSupport
         }
 
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
+    }
+
+    public static string BuildNotebookUri(string notebookSlug) => $"notebook://{notebookSlug}";
+
+    public static string BuildNotebookItemsUri(string notebookSlug) => $"notebook://{notebookSlug}/items";
+
+    public static string BuildPageUri(string notebookSlug, string path) => $"page://{notebookSlug}/{NormalizePath(path)}";
+
+    public static string? BuildItemResourceUri(string notebookSlug, NotebookItemModel item)
+    {
+        return string.Equals(item.Type, "page", StringComparison.OrdinalIgnoreCase)
+            ? BuildPageUri(notebookSlug, item.Path)
+            : null;
     }
 
     public static JsonElement ToGuidJsonElement(Guid? value)
