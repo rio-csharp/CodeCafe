@@ -29,6 +29,7 @@ public static class WebApplicationExtensions
             app.UseHttpsRedirection();
         }
 
+        app.UseCodeCafeSecurityHeaders();
         app.UseCodeCafeCors();
         app.UseCodeCafeMcpOriginValidation();
         app.UseAuthentication();
@@ -88,6 +89,20 @@ public static class WebApplicationExtensions
         .AllowAnonymous();
 
         return app;
+    }
+
+    private static IApplicationBuilder UseCodeCafeSecurityHeaders(this IApplicationBuilder app)
+    {
+        return app.Use(async (httpContext, next) =>
+        {
+            httpContext.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+            httpContext.Response.Headers.Append("X-Frame-Options", "DENY");
+            if (httpContext.Request.IsHttps)
+            {
+                httpContext.Response.Headers.Append("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+            }
+            await next(httpContext);
+        });
     }
 
     private static IApplicationBuilder UseCodeCafeMcpOriginValidation(this IApplicationBuilder app)

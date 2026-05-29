@@ -140,7 +140,7 @@ public sealed class McpApiTests
                 ["title"] = "API Contracts",
                 ["parentPath"] = "source",
                 ["sortOrder"] = 3,
-                ["contentJson"] = CreateDocJsonString("Contract draft")
+                ["contentJson"] = CreateDocJson("Contract draft")
             });
         var createdPath = created.StructuredContent!.Value.GetProperty("path").GetString();
         Assert.Equal("source/api-contracts", createdPath);
@@ -151,7 +151,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = createdPath,
-                ["contentJson"] = CreateDocJsonString("Updated draft")
+                ["contentJson"] = CreateDocJson("Updated draft")
             });
         Assert.False(
             updated.IsError ?? false,
@@ -172,7 +172,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = createdPath,
-                ["blocks"] = CreateBlocksJsonString("Appended block")
+                ["blocks"] = CreateBlocksJson("Appended block")
             });
         Assert.NotEqual(true, appended.IsError);
 
@@ -347,7 +347,7 @@ public sealed class McpApiTests
                 ["notebookSlug"] = notebookSlug,
                 ["title"] = "Release Checklist",
                 ["parentPath"] = "drafts",
-                ["contentJson"] = CreateDocJsonString("Checklist draft")
+                ["contentJson"] = CreateDocJson("Checklist draft")
             });
         var createdPagePath = createdPage.StructuredContent!.Value.GetProperty("path").GetString();
         Assert.Equal("drafts/release-checklist", createdPagePath);
@@ -523,7 +523,7 @@ public sealed class McpApiTests
             {
                 ["notebookSlug"] = notebook.Slug,
                 ["path"] = page.Path,
-                ["blocks"] = CreateDocJsonString("not-an-array")
+                ["blocks"] = CreateDocJson("not-an-array")
             });
 
         AssertToolError(result, "invalid_blocks");
@@ -555,6 +555,116 @@ public sealed class McpApiTests
             });
 
         Assert.NotEmpty(promptResult.Messages);
+    }
+
+    [Fact]
+    public async Task McpCreateNotebook_RejectsInvalidVisibility()
+    {
+        using var factory = new AuthApiFactory { McpEnabled = true };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"visibility+{Guid.NewGuid():N}@example.com", "203.0.113.130");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.write");
+
+        var result = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.CreateNotebook,
+            new Dictionary<string, object?>
+            {
+                ["title"] = "Invalid Visibility",
+                ["visibility"] = "secret"
+            });
+
+        AssertToolError(result, "invalid_visibility");
+    }
+
+    [Fact]
+    public async Task McpArchiveItem_RejectsAlreadyArchivedItem()
+    {
+        using var factory = new AuthApiFactory { McpEnabled = true };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"archive-dup+{Guid.NewGuid():N}@example.com", "203.0.113.131");
+        var notebook = await CreateNotebookAsync(client, "Archive Dup Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Archive Dup Page", "Text");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var first = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.ArchiveItem,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path
+            });
+        Assert.False(first.IsError ?? false);
+
+        var second = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.ArchiveItem,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path
+            });
+        AssertToolError(second, "notebook_item_archived");
+    }
+
+    [Fact]
+    public async Task McpDeleteItem_RejectsNonArchivedItem()
+    {
+        using var factory = new AuthApiFactory { McpEnabled = true };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"delete-live+{Guid.NewGuid():N}@example.com", "203.0.113.132");
+        var notebook = await CreateNotebookAsync(client, "Delete Live Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Delete Live Page", "Text");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var result = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.DeleteItem,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path
+            });
+        AssertToolError(result, "notebook_item_not_archived");
+    }
+
+    [Fact]
+    public async Task McpUpdatePageContentJson_RejectsOptimisticConcurrencyMismatch()
+    {
+        using var factory = new AuthApiFactory { McpEnabled = true };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"concurrency+{Guid.NewGuid():N}@example.com", "203.0.113.133");
+        var notebook = await CreateNotebookAsync(client, "Concurrency Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Concurrency Page", "Original");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var result = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.UpdatePageContentJson,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path,
+                ["contentJson"] = CreateDocJson("Updated"),
+                ["expectedUpdatedAtUtc"] = DateTimeOffset.UtcNow.AddHours(-1).ToString("O")
+            });
+        AssertToolError(result, "content_conflict");
     }
 
     [Fact]
@@ -708,14 +818,14 @@ public sealed class McpApiTests
         });
     }
 
-    private static string CreateDocJsonString(string text)
+    private static JsonElement CreateDocJson(string text)
     {
-        return CreateDocElement(text).GetRawText();
+        return CreateDocElement(text);
     }
 
-    private static string CreateBlocksJsonString(string text)
+    private static JsonElement CreateBlocksJson(string text)
     {
-        return JsonSerializer.Serialize(new object[]
+        return JsonSerializer.SerializeToElement(new object[]
         {
             new
             {

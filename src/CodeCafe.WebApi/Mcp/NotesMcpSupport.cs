@@ -65,7 +65,7 @@ internal static class NotesMcpSupport
             : NotesResult<Guid>.Success(currentUserId);
     }
 
-    public static string NormalizePath(string path) => path.Trim().Trim('/');
+    public static string NormalizePath(string path) => path?.Trim().Trim('/') ?? string.Empty;
 
     public static async Task<NotesResult<NotebookDetailModel>> RequireNotebookAsync(
         string notebookSlug,
@@ -430,16 +430,16 @@ internal static class NotesMcpSupport
     }
 
     public static NotesResult<JsonElement?> ParseOptionalJsonArgument(
-        string? json,
+        JsonElement? json,
         string code,
         string invalidMessage)
     {
-        if (string.IsNullOrWhiteSpace(json))
+        if (json is null || json.Value.ValueKind == JsonValueKind.Undefined || json.Value.ValueKind == JsonValueKind.Null)
         {
             return NotesResult<JsonElement?>.Success(null);
         }
 
-        var result = ParseRequiredJsonArgument(json, code, invalidMessage);
+        var result = ParseRequiredJsonArgument(json.Value, code, invalidMessage);
         if (!result.Succeeded)
         {
             return NotesResult<JsonElement?>.Failure(result.Error!.Kind, result.Error.Code, result.Error.Message);
@@ -449,11 +449,11 @@ internal static class NotesMcpSupport
     }
 
     public static NotesResult<JsonElement> ParseRequiredJsonArgument(
-        string json,
+        JsonElement json,
         string code,
         string invalidMessage)
     {
-        if (string.IsNullOrWhiteSpace(json))
+        if (json.ValueKind == JsonValueKind.Undefined || json.ValueKind == JsonValueKind.Null)
         {
             return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
@@ -461,18 +461,32 @@ internal static class NotesMcpSupport
                 invalidMessage);
         }
 
-        try
+        if (json.ValueKind == JsonValueKind.String)
         {
-            using var document = JsonDocument.Parse(json);
-            return NotesResult<JsonElement>.Success(document.RootElement.Clone());
+            var raw = json.GetString();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return NotesResult<JsonElement>.Failure(
+                    NotesFailureKind.Validation,
+                    code,
+                    invalidMessage);
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(raw);
+                return NotesResult<JsonElement>.Success(document.RootElement.Clone());
+            }
+            catch (JsonException)
+            {
+                return NotesResult<JsonElement>.Failure(
+                    NotesFailureKind.Validation,
+                    code,
+                    invalidMessage);
+            }
         }
-        catch (JsonException)
-        {
-            return NotesResult<JsonElement>.Failure(
-                NotesFailureKind.Validation,
-                code,
-                invalidMessage);
-        }
+
+        return NotesResult<JsonElement>.Success(json);
     }
 
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
@@ -582,16 +596,23 @@ internal static class NotesMcpSupport
         NotesResult result,
         CancellationToken cancellationToken)
     {
-        await auditService.WriteAsync(
-            GetCurrentUserId(user),
-            "user",
-            toolName,
-            notebookId,
-            itemId,
-            result.Succeeded,
-            result.Succeeded ? "success" : result.Error!.Code,
-            result.Error?.Code,
-            cancellationToken);
+        try
+        {
+            await auditService.WriteAsync(
+                GetCurrentUserId(user),
+                "user",
+                toolName,
+                notebookId,
+                itemId,
+                result.Succeeded,
+                result.Succeeded ? "success" : result.Error!.Code,
+                result.Error?.Code,
+                cancellationToken);
+        }
+        catch
+        {
+            // Audit failures must not mask successful mutations to the client.
+        }
     }
 
     public static async Task AuditWriteAsync<T>(
@@ -603,15 +624,22 @@ internal static class NotesMcpSupport
         NotesResult<T> result,
         CancellationToken cancellationToken)
     {
-        await auditService.WriteAsync(
-            GetCurrentUserId(user),
-            "user",
-            toolName,
-            notebookId,
-            itemId,
-            result.Succeeded,
-            result.Succeeded ? "success" : result.Error!.Code,
-            result.Error?.Code,
-            cancellationToken);
+        try
+        {
+            await auditService.WriteAsync(
+                GetCurrentUserId(user),
+                "user",
+                toolName,
+                notebookId,
+                itemId,
+                result.Succeeded,
+                result.Succeeded ? "success" : result.Error!.Code,
+                result.Error?.Code,
+                cancellationToken);
+        }
+        catch
+        {
+            // Audit failures must not mask successful mutations to the client.
+        }
     }
 }

@@ -299,6 +299,22 @@ public sealed class NotesMcpNotebookTools
             return NotesMcpResultMapper.Failure(actorResult.Error!);
         }
 
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_title",
+                "Notebook title is required and cannot be empty or whitespace."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(visibility) && visibility is not ("public" or "unlisted" or "private"))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_visibility",
+                "Visibility must be public, unlisted, or private."));
+        }
+
         var createResult = await notebookCommandService.CreateNotebookAsync(
             actorResult.Value,
             title,
@@ -355,6 +371,22 @@ public sealed class NotesMcpNotebookTools
                 NotesFailureKind.Validation,
                 "missing_changes",
                 "Specify at least one notebook field to update."));
+        }
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_title",
+                "Notebook title cannot be empty or whitespace."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(visibility) && visibility is not ("public" or "unlisted" or "private"))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_visibility",
+                "Visibility must be public, unlisted, or private."));
         }
 
         var notebookContext = notebookContextResult.Value;
