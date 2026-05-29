@@ -74,8 +74,6 @@ public static class ServiceCollectionExtensions
                 "AuthorizationServer:Issuer must be an absolute URI.")
             .Validate(options => Uri.TryCreate(options.FrontendBaseUrl, UriKind.Absolute, out _),
                 "AuthorizationServer:FrontendBaseUrl must be an absolute URI.")
-            .Validate(options => options.PublicClients.Length > 0,
-                "AuthorizationServer:PublicClients must define at least one OAuth client.")
             .Validate(options => options.PublicClients.All(client =>
                     !string.IsNullOrWhiteSpace(client.ClientId)
                     && client.RedirectUris.Length > 0
@@ -181,6 +179,7 @@ public static class ServiceCollectionExtensions
                 options.RegisterScopes("notes.read", "notes.write");
                 options.RegisterAudiences(GetMcpAudienceValues(configuration, environment));
                 options.RegisterResources(GetMcpResourceValues(configuration, environment));
+                options.AddEventHandler(OpenIddictDiscoveryMetadataHandler.Descriptor);
                 var aspNetCoreBuilder = options.UseAspNetCore()
                     .EnableAuthorizationEndpointPassthrough()
                     .EnableTokenEndpointPassthrough();
