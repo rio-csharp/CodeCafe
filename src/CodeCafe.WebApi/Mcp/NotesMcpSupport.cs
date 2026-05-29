@@ -461,18 +461,71 @@ internal static class NotesMcpSupport
                 invalidMessage);
         }
 
-        try
+        if (TryParseJsonArgument(json, out var parsed))
         {
-            using var document = JsonDocument.Parse(json);
-            return NotesResult<JsonElement>.Success(document.RootElement.Clone());
+            return NotesResult<JsonElement>.Success(parsed);
         }
-        catch (JsonException)
+
+        return NotesResult<JsonElement>.Failure(
+            NotesFailureKind.Validation,
+            code,
+            invalidMessage);
+    }
+
+    private static bool TryParseJsonArgument(string json, out JsonElement parsed)
+    {
+        var candidate = UnwrapMarkdownCodeFence(json);
+        for (var depth = 0; depth < 3; depth++)
         {
-            return NotesResult<JsonElement>.Failure(
-                NotesFailureKind.Validation,
-                code,
-                invalidMessage);
+            try
+            {
+                using var document = JsonDocument.Parse(candidate);
+                var root = document.RootElement;
+                if (root.ValueKind != JsonValueKind.String)
+                {
+                    parsed = root.Clone();
+                    return true;
+                }
+
+                var nested = root.GetString();
+                if (string.IsNullOrWhiteSpace(nested))
+                {
+                    break;
+                }
+
+                candidate = UnwrapMarkdownCodeFence(nested);
+            }
+            catch (JsonException)
+            {
+                break;
+            }
         }
+
+        parsed = default;
+        return false;
+    }
+
+    private static string UnwrapMarkdownCodeFence(string value)
+    {
+        var trimmed = value.Trim();
+        if (!trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            return trimmed;
+        }
+
+        var firstNewLine = trimmed.IndexOf('\n');
+        if (firstNewLine < 0)
+        {
+            return trimmed;
+        }
+
+        var closingFence = trimmed.LastIndexOf("```", StringComparison.Ordinal);
+        if (closingFence <= firstNewLine)
+        {
+            return trimmed;
+        }
+
+        return trimmed[(firstNewLine + 1)..closingFence].Trim();
     }
 
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)

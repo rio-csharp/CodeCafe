@@ -530,6 +530,86 @@ public sealed class McpApiTests
     }
 
     [Fact]
+    public async Task McpUpdatePageContent_AcceptsMarkdownFencedJsonPayload()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"fenced-update+{Guid.NewGuid():N}@example.com", "203.0.113.130");
+        var notebook = await CreateNotebookAsync(client, "Fenced Update Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Fenced Target", "Original");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var updateResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.UpdatePageContentJson,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path,
+                ["contentJson"] = WrapJsonFence(CreateDocJsonString("Updated through fence"))
+            });
+
+        Assert.False(updateResult.IsError ?? false, ReadText(updateResult));
+
+        var pageResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.GetPage,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path
+            });
+
+        Assert.Equal("Updated through fence", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
+    }
+
+    [Fact]
+    public async Task McpAppendBlocks_AcceptsMarkdownFencedJsonPayload()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"fenced-append+{Guid.NewGuid():N}@example.com", "203.0.113.131");
+        var notebook = await CreateNotebookAsync(client, "Fenced Append Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Append Target", "Original");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var appendResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.AppendBlocksToPage,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path,
+                ["blocks"] = WrapJsonFence(CreateBlocksJsonString("Appended through fence"))
+            });
+
+        Assert.False(appendResult.IsError ?? false, ReadText(appendResult));
+
+        var pageResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.GetPage,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path
+            });
+
+        Assert.Contains("Appended through fence", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
+    }
+
+    [Fact]
     public async Task McpPrompt_GetPromptReturnsMessages()
     {
         using var factory = new AuthApiFactory
@@ -726,6 +806,11 @@ public sealed class McpApiTests
                 }
             }
         });
+    }
+
+    private static string WrapJsonFence(string json)
+    {
+        return $"```json\n{json}\n```";
     }
 
     private static string ReadText(CallToolResult result)
