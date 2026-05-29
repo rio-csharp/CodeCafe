@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
 
 namespace CodeCafe.WebApi.Errors;
@@ -15,6 +16,12 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             AntiforgeryValidationException => (
                 StatusCodes.Status400BadRequest,
                 new ApiError("invalid_csrf_token", "The CSRF token is missing or invalid.")),
+            DbUpdateException => (
+                StatusCodes.Status500InternalServerError,
+                new ApiError("database_error", "A database error occurred.")),
+            TimeoutException => (
+                StatusCodes.Status504GatewayTimeout,
+                new ApiError("timeout", "The request timed out.")),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 new ApiError("internal_error", "An unexpected error occurred."))

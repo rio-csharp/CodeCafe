@@ -6,7 +6,6 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace CodeCafe.WebApi.Mcp;
 
@@ -140,6 +139,14 @@ public sealed class NotesMcpItemTools
             return NotesMcpResultMapper.Failure(parentResult.Error!);
         }
 
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_title",
+                "Folder title is required and cannot be empty or whitespace."));
+        }
+
         var createResult = await notebookCommandService.CreateNotebookItemAsync(
             notebookContext.Notebook.Id,
             notebookContext.ActorId,
@@ -180,7 +187,7 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken,
         [Description("Optional parent folder path. Null creates the page at the notebook root.")] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
-        [Description("Optional TipTap JSON document object for the page content.")] JsonObject? contentJson = null)
+        [Description("Optional TipTap JSON document for the page content. Can be a JSON object or a JSON string.")] JsonElement? contentJson = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
@@ -199,6 +206,14 @@ public sealed class NotesMcpItemTools
         if (!parentResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(parentResult.Error!);
+        }
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_title",
+                "Page title is required and cannot be empty or whitespace."));
         }
 
         var contentJsonResult = NotesMcpSupport.ParseOptionalJsonArgument(
@@ -242,7 +257,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The full TipTap JSON document object to store.")] JsonObject contentJson,
+        [Description("The full TipTap JSON document to store. Can be a JSON object or a JSON string.")] JsonElement contentJson,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
@@ -307,7 +322,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The TipTap block nodes JSON array to append.")] JsonArray blocks,
+        [Description("The TipTap block nodes JSON array to append. Can be a JSON array or a JSON string.")] JsonElement blocks,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
@@ -397,10 +412,19 @@ public sealed class NotesMcpItemTools
             user,
             notebookQueryService,
             cancellationToken,
-            mcpOptions.RequiredWriteScopes);
+            mcpOptions.RequiredWriteScopes,
+            includeArchived: true);
         if (!itemContextResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(itemContextResult.Error!);
+        }
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_title",
+                "Title cannot be empty or whitespace."));
         }
 
         var itemContext = itemContextResult.Value;
@@ -459,7 +483,8 @@ public sealed class NotesMcpItemTools
             user,
             notebookQueryService,
             cancellationToken,
-            mcpOptions.RequiredWriteScopes);
+            mcpOptions.RequiredWriteScopes,
+            includeArchived: true);
         if (!itemContextResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(itemContextResult.Error!);
@@ -532,13 +557,20 @@ public sealed class NotesMcpItemTools
         }
 
         var notebookContext = notebookContextResult.Value;
+        var itemsByPath = notebookContext.Notebook.Items.ToDictionary(
+            i => i.Path,
+            i => i,
+            StringComparer.Ordinal);
         var reorderModels = new List<ReorderNotebookItemModel>();
         foreach (var item in items)
         {
-            var resolvedItem = NotesMcpSupport.RequireItem(notebookContext.Notebook, item.Path);
-            if (!resolvedItem.Succeeded)
+            var normalizedPath = NotesMcpSupport.NormalizePath(item.Path);
+            if (!itemsByPath.TryGetValue(normalizedPath, out var resolvedItem))
             {
-                return NotesMcpResultMapper.Failure(resolvedItem.Error!);
+                return NotesMcpResultMapper.Failure(new NotesError(
+                    NotesFailureKind.NotFound,
+                    "notebook_item_not_found",
+                    "Notebook item was not found."));
             }
 
             var resolvedParent = NotesMcpSupport.ResolveParent(notebookContext.Notebook, item.ParentPath);
@@ -548,7 +580,7 @@ public sealed class NotesMcpItemTools
             }
 
             reorderModels.Add(new ReorderNotebookItemModel(
-                resolvedItem.Value!.Id,
+                resolvedItem.Id,
                 resolvedParent.Value?.Id,
                 item.SortOrder));
         }
@@ -655,7 +687,8 @@ public sealed class NotesMcpItemTools
             user,
             notebookQueryService,
             cancellationToken,
-            mcpOptions.RequiredWriteScopes);
+            mcpOptions.RequiredWriteScopes,
+            includeArchived: true);
         if (!itemContextResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(itemContextResult.Error!);
