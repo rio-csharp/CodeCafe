@@ -24,10 +24,8 @@ public sealed class AuthorizationServerOptions
             DisplayName = "Claude Code",
             RedirectUris =
             [
-                "http://localhost/",
-                "http://127.0.0.1/",
-                "http://localhost:3334/callback",
-                "http://127.0.0.1:3334/callback"
+                "http://localhost/callback",
+                "http://127.0.0.1/callback"
             ]
         }
     ];

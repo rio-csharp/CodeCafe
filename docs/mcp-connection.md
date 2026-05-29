@@ -28,13 +28,15 @@ The backend now includes:
 - OpenIddict server endpoints:
   - `/connect/authorize`
   - `/connect/token`
+  - `/connect/register`
 - OpenIddict EF Core storage in the main application database
 - MCP bearer validation via OpenIddict validation instead of a static signing
   key
 - MCP protected resource metadata at:
   - `/.well-known/oauth-protected-resource/mcp`
-- pre-registered public OAuth clients through:
+- optional pre-registered public OAuth clients through:
   - `AuthorizationServer:PublicClients`
+- dynamic client registration discovery through OIDC metadata
 
 The frontend now includes:
 
@@ -58,10 +60,8 @@ Set these values in
         "ClientId": "codecafe-claude",
         "DisplayName": "Claude Code",
         "RedirectUris": [
-          "http://localhost/",
-          "http://127.0.0.1/",
-          "http://localhost:3334/callback",
-          "http://127.0.0.1:3334/callback"
+          "http://localhost/callback",
+          "http://127.0.0.1/callback"
         ]
       }
     ]
@@ -83,6 +83,8 @@ Important notes:
 - there is no `SigningKey` requirement anymore for the normal MCP flow
 - development still uses real authentication
 - the OpenIddict server uses development certificates in development/testing
+- loopback redirect URIs are normalized without a fixed port so clients can use
+  any free local callback port
 
 ### 2. Trust the local HTTPS certificate
 
@@ -116,10 +118,11 @@ Expected local URLs:
 
 ### 4. Connect Claude Code
 
-Use the registered client id for Claude Code:
+Modern MCP clients should be able to self-register through OAuth discovery, so
+the recommended command is just:
 
 ```powershell
-claude mcp add --transport http codecafe https://localhost:7239/mcp --client-id codecafe-claude --callback-port 3334
+claude mcp add --transport http codecafe https://localhost:7239/mcp
 ```
 
 What happens next:
@@ -128,7 +131,8 @@ What happens next:
 2. CodeCafe challenges the request
 3. Claude opens a browser
 4. you log in through the React app
-5. Claude completes the code flow and stores the token
+5. Claude self-registers as a public native OAuth client if needed
+6. Claude completes the code flow and stores the token
 
 ### 5. Smoke test
 
@@ -178,10 +182,8 @@ Set these values in production configuration:
         "ClientId": "codecafe-claude",
         "DisplayName": "Claude Code",
         "RedirectUris": [
-          "http://localhost/",
-          "http://127.0.0.1/",
-          "http://localhost:3334/callback",
-          "http://127.0.0.1:3334/callback"
+          "http://localhost/callback",
+          "http://127.0.0.1/callback"
         ]
       }
     ],
@@ -205,7 +207,9 @@ Important constraints:
 - `AllowedHosts` must not be `*`
 - the issuer must be the public HTTPS authority used by clients
 - the frontend base URL must point at the deployed React app
-- each MCP client application needs its own registered `client_id` and redirect URIs
+- modern MCP clients should be able to self-register through `/connect/register`
+- `AuthorizationServer:PublicClients` is now a compatibility/fallback list, not
+  the primary connection mechanism
 
 ## Why React instead of MVC
 
@@ -227,13 +231,20 @@ The cleaner split is:
 
 - verify the MCP URL is HTTPS and reachable
 - verify `Mcp:Enabled` is `true`
-- verify Claude was added with `--client-id codecafe-claude --callback-port 3334`
+- verify the client supports standard MCP OAuth discovery and authorization
 
 ### `401 Unauthorized` from `/mcp`
 
 - the OAuth flow did not complete
 - the token is expired or missing
 - the MCP audience does not match `codecafe-mcp`
+
+### Client cannot register automatically
+
+- verify `/.well-known/openid-configuration` exposes `registration_endpoint`
+- verify `token_endpoint_auth_methods_supported` includes `none`
+- verify the client uses loopback redirect URIs on `localhost`, `127.0.0.1`,
+  or `::1`
 
 ### Authorization request redirects to login repeatedly
 
