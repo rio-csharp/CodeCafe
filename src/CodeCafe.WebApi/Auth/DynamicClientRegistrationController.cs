@@ -131,18 +131,18 @@ public sealed class DynamicClientRegistrationController(
 
         foreach (var application in applications)
         {
+            if (!string.IsNullOrWhiteSpace(clientName)
+                && !string.Equals(application.DisplayName, clientName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             if (!TryParseRedirectUris(application.RedirectUris, out var existingRedirectUris))
             {
                 continue;
             }
 
             if (!existingRedirectUris.SetEquals(normalizedRedirectUris))
-            {
-                continue;
-            }
-
-            if (!string.IsNullOrWhiteSpace(clientName)
-                && !string.Equals(application.DisplayName, clientName, StringComparison.Ordinal))
             {
                 continue;
             }
