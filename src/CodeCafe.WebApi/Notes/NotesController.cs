@@ -270,7 +270,8 @@ public sealed class NotesController(
                 request.ParentId,
                 request.SortOrder,
                 request.ContentJson,
-                cancellationToken),
+                cancellationToken,
+                request.ExpectedUpdatedAtUtc),
             ToItemResponse);
     }
 
@@ -342,7 +343,8 @@ public sealed class NotesController(
 
     private Guid GetCurrentUserId()
     {
-        var claimValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var claimValue = User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub");
         return Guid.TryParse(claimValue, out var userId)
             ? userId
             : Guid.Empty;

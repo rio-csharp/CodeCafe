@@ -1,3 +1,4 @@
+using CodeCafe.Application.Common.Interfaces;
 using CodeCafe.Infrastructure.Persistence;
 using CodeCafe.WebApi.Mcp;
 using ModelContextProtocol.Client;
@@ -766,6 +767,8 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
 
     public string McpClientRedirectUri { get; set; } = "http://localhost/";
 
+    public bool FailMcpAuditWrites { get; set; }
+
     public string CanonicalMcpResource => new Uri(new Uri(AuthorizationServerIssuer, UriKind.Absolute), "/mcp").AbsoluteUri;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -801,6 +804,12 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
                 options.UseOpenIddict<Guid>();
             });
 
+            if (FailMcpAuditWrites)
+            {
+                services.RemoveAll<IMcpAuditService>();
+                services.AddScoped<IMcpAuditService, FailingMcpAuditService>();
+            }
+
             if (_connection.State != System.Data.ConnectionState.Open)
             {
                 _connection.Open();
@@ -817,5 +826,14 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
     {
         _connection.Dispose();
         base.Dispose();
+    }
+
+    private sealed class FailingMcpAuditService : IMcpAuditService
+    {
+        public Task WriteAsync(McpAuditRecord auditRecord, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Simulated MCP audit failure.");
+
+        public Task WriteIndependentAsync(McpAuditRecord auditRecord, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("Simulated MCP audit failure.");
     }
 }

@@ -66,19 +66,9 @@ public sealed class NotesMcpResources
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
-        }
-
-        var notebook = notebookResult.Value!;
+        NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
+        var notebook = NotesMcpSupport.EnsureMcpSuccess(
+            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken));
         var payload = NotesMcpSupport.ToGetNotebookToolResponse(notebook);
 
         return new TextResourceContents
@@ -103,39 +93,27 @@ public sealed class NotesMcpResources
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
-        }
+        NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
+        var notebook = NotesMcpSupport.EnsureMcpSuccess(
+            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken));
 
         var itemsResult = await notebookQueryService.GetNotebookItemsAsync(
-            notebookResult.Value!.Id,
+            notebook.Id,
             NotesMcpSupport.GetCurrentUserId(user),
             null,
             cancellationToken);
-
-        if (!itemsResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(itemsResult.Error!);
-        }
+        var items = NotesMcpSupport.EnsureMcpSuccess(itemsResult);
 
         var payload = new ListNotebookItemsToolResponse(
-            notebookResult.Value!.Id,
-            notebookResult.Value!.Slug,
-            notebookResult.Value!.Title,
-            notebookResult.Value!.CanEdit,
-            itemsResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebookResult.Value!, item)).ToList());
+            notebook.Id,
+            notebook.Slug,
+            notebook.Title,
+            notebook.CanEdit,
+            items.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebook, item)).ToList());
 
         return new TextResourceContents
         {
-            Uri = $"notebook://{notebookResult.Value!.Slug}/items",
+            Uri = $"notebook://{notebook.Slug}/items",
             MimeType = "application/json",
             Text = NotesMcpSupport.SerializeToJson(payload)
         };
@@ -156,28 +134,14 @@ public sealed class NotesMcpResources
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
-        }
-
-        var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
-        if (!pageResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(pageResult.Error!);
-        }
-
-        var payload = NotesMcpSupport.ToGetPageToolResponse(notebookResult.Value!, pageResult.Value!);
+        NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
+        var notebook = NotesMcpSupport.EnsureMcpSuccess(
+            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken));
+        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
+        var payload = NotesMcpSupport.ToGetPageToolResponse(notebook, page);
         return new TextResourceContents
         {
-            Uri = $"page://{notebookResult.Value!.Slug}/{pageResult.Value!.Path}",
+            Uri = $"page://{notebook.Slug}/{page.Path}",
             MimeType = "application/json",
             Text = NotesMcpSupport.SerializeToJson(payload)
         };
@@ -191,13 +155,8 @@ public sealed class NotesMcpResources
         McpOptions mcpOptions,
         CancellationToken cancellationToken)
     {
-        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredReadScopes);
-        if (!actorResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(actorResult.Error!);
-        }
-
-        var actorId = actorResult.Value;
+        var actorId = NotesMcpSupport.EnsureMcpSuccess(
+            NotesMcpSupport.RequireActor(user, mcpOptions.RequiredReadScopes));
         IReadOnlyList<NotebookSummaryModel> notebooks = scope switch
         {
             "mine" => await notebookQueryService.GetMyNotebooksAsync(actorId, search: null, cancellationToken, limit: 100),

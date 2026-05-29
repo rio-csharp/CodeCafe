@@ -6,7 +6,6 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Security.Claims;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace CodeCafe.WebApi.Mcp;
 
@@ -115,49 +114,70 @@ public sealed class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional parent folder path. Null creates the folder at the notebook root.")] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
-            notebookSlug,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!notebookContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
-        }
+            NotesMcpToolNames.CreateFolder,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+                    notebookSlug,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!notebookContextResult.Succeeded)
+                {
+                    return McpMutationResult<CreateItemToolResponse>.Failure(notebookContextResult.Error!);
+                }
 
-        var notebookContext = notebookContextResult.Value;
-        var parentResult = NotesMcpSupport.ResolveParent(notebookContext.Notebook, parentPath);
-        if (!parentResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(parentResult.Error!);
-        }
+                var notebookContext = notebookContextResult.Value;
+                var parentResult = NotesMcpSupport.ResolveParent(notebookContext.Notebook, parentPath);
+                if (!parentResult.Succeeded)
+                {
+                    return McpMutationResult<CreateItemToolResponse>.Failure(parentResult.Error!, notebookContext.Notebook.Id);
+                }
 
-        var createResult = await notebookCommandService.CreateNotebookItemAsync(
-            notebookContext.Notebook.Id,
-            notebookContext.ActorId,
-            parentResult.Value?.Id,
-            "folder",
-            title,
-            sortOrder ?? 0,
-            null,
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    return McpMutationResult<CreateItemToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_title",
+                        "Folder title is required and cannot be empty or whitespace."),
+                        notebookContext.Notebook.Id);
+                }
+
+                var createResult = await notebookCommandService.CreateNotebookItemAsync(
+                    notebookContext.Notebook.Id,
+                    notebookContext.ActorId,
+                    parentResult.Value?.Id,
+                    "folder",
+                    title,
+                    sortOrder ?? 0,
+                    null,
+                    ct);
+                if (!createResult.Succeeded)
+                {
+                    return McpMutationResult<CreateItemToolResponse>.Failure(
+                        createResult.Error!,
+                        notebookContext.Notebook.Id,
+                        createResult.Value?.Id);
+                }
+
+                var response = NotesMcpSupport.ToCreateItemToolResponse(notebookContext.Notebook, createResult.Value!);
+                return McpMutationResult<CreateItemToolResponse>.Success(
+                    response,
+                    $"Folder '{response.Title}' created.",
+                    notebookContext.Notebook.Id,
+                    response.ItemId);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.CreateFolder, notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
-
-        if (!createResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(createResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToCreateItemToolResponse(notebookContext.Notebook, createResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Folder '{response.Title}' created.");
     }
 
     [McpServerTool(
@@ -175,59 +195,80 @@ public sealed class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional parent folder path. Null creates the page at the notebook root.")] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
-        [Description("Optional TipTap JSON document object for the page content.")] JsonObject? contentJson = null)
+        [Description("Optional TipTap JSON document for the page content. Can be a JSON object or a JSON string.")] JsonElement? contentJson = null)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
-            notebookSlug,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!notebookContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
-        }
+            NotesMcpToolNames.CreatePage,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+                    notebookSlug,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!notebookContextResult.Succeeded)
+                {
+                    return McpMutationResult<CreatePageToolResponse>.Failure(notebookContextResult.Error!);
+                }
 
-        var notebookContext = notebookContextResult.Value;
-        var parentResult = NotesMcpSupport.ResolveParent(notebookContext.Notebook, parentPath);
-        if (!parentResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(parentResult.Error!);
-        }
+                var notebookContext = notebookContextResult.Value;
+                var parentResult = NotesMcpSupport.ResolveParent(notebookContext.Notebook, parentPath);
+                if (!parentResult.Succeeded)
+                {
+                    return McpMutationResult<CreatePageToolResponse>.Failure(parentResult.Error!, notebookContext.Notebook.Id);
+                }
 
-        var contentJsonResult = NotesMcpSupport.ParseOptionalJsonArgument(
-            contentJson,
-            "invalid_content_json",
-            "ContentJson must be valid JSON.");
-        if (!contentJsonResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(contentJsonResult.Error!);
-        }
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    return McpMutationResult<CreatePageToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_title",
+                        "Page title is required and cannot be empty or whitespace."),
+                        notebookContext.Notebook.Id);
+                }
 
-        var createResult = await notebookCommandService.CreateNotebookItemAsync(
-            notebookContext.Notebook.Id,
-            notebookContext.ActorId,
-            parentResult.Value?.Id,
-            "page",
-            title,
-            sortOrder ?? 0,
-            contentJsonResult.Value,
+                var contentJsonResult = NotesMcpSupport.ParseOptionalJsonArgument(
+                    contentJson,
+                    "invalid_content_json",
+                    "ContentJson must be valid JSON.");
+                if (!contentJsonResult.Succeeded)
+                {
+                    return McpMutationResult<CreatePageToolResponse>.Failure(contentJsonResult.Error!, notebookContext.Notebook.Id);
+                }
+
+                var createResult = await notebookCommandService.CreateNotebookItemAsync(
+                    notebookContext.Notebook.Id,
+                    notebookContext.ActorId,
+                    parentResult.Value?.Id,
+                    "page",
+                    title,
+                    sortOrder ?? 0,
+                    contentJsonResult.Value,
+                    ct);
+                if (!createResult.Succeeded)
+                {
+                    return McpMutationResult<CreatePageToolResponse>.Failure(
+                        createResult.Error!,
+                        notebookContext.Notebook.Id,
+                        createResult.Value?.Id);
+                }
+
+                var response = NotesMcpSupport.ToCreatePageToolResponse(notebookContext.Notebook, createResult.Value!);
+                return McpMutationResult<CreatePageToolResponse>.Success(
+                    response,
+                    $"Page '{response.Title}' created.",
+                    notebookContext.Notebook.Id,
+                    response.PageId);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.CreatePage, notebookContext.Notebook.Id, createResult.Value?.Id, createResult, cancellationToken);
-
-        if (!createResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(createResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToCreatePageToolResponse(notebookContext.Notebook, createResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Page '{response.Title}' created.");
     }
 
     [McpServerTool(
@@ -242,57 +283,72 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The full TipTap JSON document object to store.")] JsonObject contentJson,
+        [Description("The full TipTap JSON document to store. Can be a JSON object or a JSON string.")] JsonElement contentJson,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var pageContextResult = await NotesMcpSupport.RequirePageContextAsync(
-            notebookSlug,
-            path,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!pageContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(pageContextResult.Error!);
-        }
+            NotesMcpToolNames.UpdatePageContentJson,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var pageContextResult = await NotesMcpSupport.RequirePageContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!pageContextResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(pageContextResult.Error!);
+                }
 
-        var contentJsonResult = NotesMcpSupport.ParseRequiredJsonArgument(
-            contentJson,
-            "invalid_content_json",
-            "ContentJson must be valid JSON.");
-        if (!contentJsonResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(contentJsonResult.Error!);
-        }
+                var contentJsonResult = NotesMcpSupport.ParseRequiredJsonArgument(
+                    contentJson,
+                    "invalid_content_json",
+                    "ContentJson must be valid JSON.");
+                if (!contentJsonResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        contentJsonResult.Error!,
+                        pageContextResult.Value.Notebook.Id,
+                        pageContextResult.Value.Item.Id);
+                }
 
-        var pageContext = pageContextResult.Value;
-        var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
-            pageContext.Notebook.Id,
-            pageContext.Item.Id,
-            pageContext.ActorId,
-            pageContext.Item.Title,
-            default,
-            null,
-            contentJsonResult.Value,
-            cancellationToken,
-            expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.UpdatePageContentJson, pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
+                var pageContext = pageContextResult.Value;
+                var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id,
+                    pageContext.ActorId,
+                    pageContext.Item.Title,
+                    default,
+                    null,
+                    contentJsonResult.Value,
+                    ct,
+                    expectedUpdatedAtUtc);
+                if (!updateResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        updateResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
 
-        if (!updateResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(updateResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Page '{response.Title}' content updated.");
+                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
+                return McpMutationResult<UpdatePageContentToolResponse>.Success(
+                    response,
+                    $"Page '{response.Title}' content updated.",
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id);
+            },
+            cancellationToken);
     }
 
     [McpServerTool(
@@ -307,66 +363,83 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The TipTap block nodes JSON array to append.")] JsonArray blocks,
+        [Description("The TipTap block nodes JSON array to append. Can be a JSON array or a JSON string.")] JsonElement blocks,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var pageContextResult = await NotesMcpSupport.RequirePageContextAsync(
-            notebookSlug,
-            path,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!pageContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(pageContextResult.Error!);
-        }
+            NotesMcpToolNames.AppendBlocksToPage,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var pageContextResult = await NotesMcpSupport.RequirePageContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!pageContextResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(pageContextResult.Error!);
+                }
 
-        var blocksResult = NotesMcpSupport.ParseRequiredJsonArgument(
-            blocks,
-            "invalid_blocks",
-            "Blocks must be valid JSON.");
-        if (!blocksResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(blocksResult.Error!);
-        }
+                var blocksResult = NotesMcpSupport.ParseRequiredJsonArgument(
+                    blocks,
+                    "invalid_blocks",
+                    "Blocks must be valid JSON.");
+                if (!blocksResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        blocksResult.Error!,
+                        pageContextResult.Value.Notebook.Id,
+                        pageContextResult.Value.Item.Id);
+                }
 
-        if (blocksResult.Value.ValueKind != JsonValueKind.Array)
-        {
-            return NotesMcpResultMapper.Failure(new NotesError(
-                NotesFailureKind.Validation,
-                "invalid_blocks",
-                "Blocks must be a JSON array."));
-        }
+                if (blocksResult.Value.ValueKind != JsonValueKind.Array)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_blocks",
+                        "Blocks must be a JSON array."),
+                        pageContextResult.Value.Notebook.Id,
+                        pageContextResult.Value.Item.Id);
+                }
 
-        var pageContext = pageContextResult.Value;
-        var nextContentJson = NotesMcpSupport.AppendBlocks(pageContext.Item.ContentJson, blocksResult.Value);
-        var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
-            pageContext.Notebook.Id,
-            pageContext.Item.Id,
-            pageContext.ActorId,
-            pageContext.Item.Title,
-            default,
-            null,
-            nextContentJson,
-            cancellationToken,
-            expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.AppendBlocksToPage, pageContext.Notebook.Id, pageContext.Item.Id, updateResult, cancellationToken);
+                var pageContext = pageContextResult.Value;
+                var nextContentJson = NotesMcpSupport.AppendBlocks(pageContext.Item.ContentJson, blocksResult.Value);
+                var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id,
+                    pageContext.ActorId,
+                    pageContext.Item.Title,
+                    default,
+                    null,
+                    nextContentJson,
+                    ct,
+                    expectedUpdatedAtUtc);
+                if (!updateResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        updateResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
 
-        if (!updateResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(updateResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Appended blocks to page '{response.Title}'.");
+                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
+                return McpMutationResult<UpdatePageContentToolResponse>.Success(
+                    response,
+                    $"Appended blocks to page '{response.Title}'.",
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id);
+            },
+            cancellationToken);
     }
 
     [McpServerTool(
@@ -385,50 +458,76 @@ public sealed class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
-            notebookSlug,
-            path,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!itemContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
-        }
+            NotesMcpToolNames.RenameItem,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes,
+                    includeArchived: true);
+                if (!itemContextResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(itemContextResult.Error!);
+                }
 
-        var itemContext = itemContextResult.Value;
-        var renameResult = await notebookCommandService.UpdateNotebookItemAsync(
-            itemContext.Notebook.Id,
-            itemContext.Item.Id,
-            itemContext.ActorId,
-            title,
-            default,
-            null,
-            default,
-            cancellationToken,
-            expectedUpdatedAtUtc);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.RenameItem, itemContext.Notebook.Id, itemContext.Item.Id, renameResult, cancellationToken);
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_title",
+                        "Title cannot be empty or whitespace."),
+                        itemContextResult.Value.Notebook.Id,
+                        itemContextResult.Value.Item.Id);
+                }
 
-        if (!renameResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(renameResult.Error!);
-        }
+                var itemContext = itemContextResult.Value;
+                var renameResult = await notebookCommandService.UpdateNotebookItemAsync(
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id,
+                    itemContext.ActorId,
+                    title,
+                    default,
+                    null,
+                    default,
+                    ct,
+                    expectedUpdatedAtUtc);
+                if (!renameResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(
+                        renameResult.Error!,
+                        itemContext.Notebook.Id,
+                        itemContext.Item.Id);
+                }
 
-        var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, cancellationToken);
-        if (!refreshedNotebook.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(refreshedNotebook.Error!);
-        }
+                var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, ct);
+                if (!refreshedNotebook.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(
+                        refreshedNotebook.Error!,
+                        itemContext.Notebook.Id,
+                        itemContext.Item.Id);
+                }
 
-        var response = NotesMcpSupport.ToMoveItemToolResponse(refreshedNotebook.Value!, renameResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Item renamed to '{response.Title}'.");
+                var response = NotesMcpSupport.ToMoveItemToolResponse(refreshedNotebook.Value!, renameResult.Value!);
+                return McpMutationResult<MoveItemToolResponse>.Success(
+                    response,
+                    $"Item renamed to '{response.Title}'.",
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id);
+            },
+            cancellationToken);
     }
 
     [McpServerTool(
@@ -446,50 +545,66 @@ public sealed class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("The target parent folder path. Null moves the item to the notebook root.")] string? targetParentPath = null,
         [Description("Optional new sort order.")] int? sortOrder = null)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
-            notebookSlug,
-            path,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!itemContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
-        }
+            NotesMcpToolNames.MoveItem,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes,
+                    includeArchived: true);
+                if (!itemContextResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(itemContextResult.Error!);
+                }
 
-        var itemContext = itemContextResult.Value;
-        var parentResult = NotesMcpSupport.ResolveParent(itemContext.Notebook, targetParentPath);
-        if (!parentResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(parentResult.Error!);
-        }
+                var itemContext = itemContextResult.Value;
+                var parentResult = NotesMcpSupport.ResolveParent(itemContext.Notebook, targetParentPath);
+                if (!parentResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(
+                        parentResult.Error!,
+                        itemContext.Notebook.Id,
+                        itemContext.Item.Id);
+                }
 
-        var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
-            itemContext.Notebook.Id,
-            itemContext.Item.Id,
-            itemContext.ActorId,
-            itemContext.Item.Title,
-            NotesMcpSupport.ToGuidJsonElement(parentResult.Value?.Id),
-            sortOrder,
-            default,
+                var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id,
+                    itemContext.ActorId,
+                    itemContext.Item.Title,
+                    NotesMcpSupport.ToGuidJsonElement(parentResult.Value?.Id),
+                    sortOrder,
+                    default,
+                    ct);
+                if (!updateResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(
+                        updateResult.Error!,
+                        itemContext.Notebook.Id,
+                        itemContext.Item.Id);
+                }
+
+                var response = NotesMcpSupport.ToMoveItemToolResponse(itemContext.Notebook, updateResult.Value!);
+                return McpMutationResult<MoveItemToolResponse>.Success(
+                    response,
+                    $"Item '{response.Title}' moved to '{response.Path}'.",
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.MoveItem, itemContext.Notebook.Id, itemContext.Item.Id, updateResult, cancellationToken);
-
-        if (!updateResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(updateResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToMoveItemToolResponse(itemContext.Notebook, updateResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Item '{response.Title}' moved to '{response.Path}'.");
     }
 
     [McpServerTool(
@@ -507,70 +622,91 @@ public sealed class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        if (items.Count == 0)
-        {
-            return NotesMcpResultMapper.Failure(new NotesError(
-                NotesFailureKind.Validation,
-                "invalid_items",
-                "At least one reorder item is required."));
-        }
-
-        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
-            notebookSlug,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!notebookContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
-        }
-
-        var notebookContext = notebookContextResult.Value;
-        var reorderModels = new List<ReorderNotebookItemModel>();
-        foreach (var item in items)
-        {
-            var resolvedItem = NotesMcpSupport.RequireItem(notebookContext.Notebook, item.Path);
-            if (!resolvedItem.Succeeded)
+            NotesMcpToolNames.ReorderItems,
+            async ct =>
             {
-                return NotesMcpResultMapper.Failure(resolvedItem.Error!);
-            }
+                var mcpOptions = mcpOptionsAccessor.Value;
+                if (items.Count == 0)
+                {
+                    return McpMutationResult<ReorderItemsToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_items",
+                        "At least one reorder item is required."));
+                }
 
-            var resolvedParent = NotesMcpSupport.ResolveParent(notebookContext.Notebook, item.ParentPath);
-            if (!resolvedParent.Succeeded)
-            {
-                return NotesMcpResultMapper.Failure(resolvedParent.Error!);
-            }
+                var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+                    notebookSlug,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!notebookContextResult.Succeeded)
+                {
+                    return McpMutationResult<ReorderItemsToolResponse>.Failure(notebookContextResult.Error!);
+                }
 
-            reorderModels.Add(new ReorderNotebookItemModel(
-                resolvedItem.Value!.Id,
-                resolvedParent.Value?.Id,
-                item.SortOrder));
-        }
+                var notebookContext = notebookContextResult.Value;
+                var itemsByPath = notebookContext.Notebook.Items.ToDictionary(
+                    i => i.Path,
+                    i => i,
+                    StringComparer.Ordinal);
+                var reorderModels = new List<ReorderNotebookItemModel>();
+                foreach (var item in items)
+                {
+                    var normalizedPath = NotesMcpSupport.NormalizePath(item.Path);
+                    if (!itemsByPath.TryGetValue(normalizedPath, out var resolvedItem))
+                    {
+                        return McpMutationResult<ReorderItemsToolResponse>.Failure(new NotesError(
+                            NotesFailureKind.NotFound,
+                            "notebook_item_not_found",
+                            "Notebook item was not found."),
+                            notebookContext.Notebook.Id);
+                    }
 
-        var reorderResult = await notebookCommandService.ReorderNotebookItemsAsync(
-            notebookContext.Notebook.Id,
-            notebookContext.ActorId,
-            reorderModels,
+                    var resolvedParent = NotesMcpSupport.ResolveParent(notebookContext.Notebook, item.ParentPath);
+                    if (!resolvedParent.Succeeded)
+                    {
+                        return McpMutationResult<ReorderItemsToolResponse>.Failure(
+                            resolvedParent.Error!,
+                            notebookContext.Notebook.Id);
+                    }
+
+                    reorderModels.Add(new ReorderNotebookItemModel(
+                        resolvedItem.Id,
+                        resolvedParent.Value?.Id,
+                        item.SortOrder));
+                }
+
+                var reorderResult = await notebookCommandService.ReorderNotebookItemsAsync(
+                    notebookContext.Notebook.Id,
+                    notebookContext.ActorId,
+                    reorderModels,
+                    ct);
+                if (!reorderResult.Succeeded)
+                {
+                    return McpMutationResult<ReorderItemsToolResponse>.Failure(
+                        reorderResult.Error!,
+                        notebookContext.Notebook.Id);
+                }
+
+                var response = new ReorderItemsToolResponse(
+                    notebookContext.Notebook.Id,
+                    notebookContext.Notebook.Slug,
+                    reorderResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebookContext.Notebook, item)).ToList());
+
+                return McpMutationResult<ReorderItemsToolResponse>.Success(
+                    response,
+                    $"Reordered {items.Count} item(s) in notebook '{response.NotebookSlug}'.",
+                    notebookContext.Notebook.Id,
+                    itemId: null);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.ReorderItems, notebookContext.Notebook.Id, null, reorderResult, cancellationToken);
-
-        if (!reorderResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(reorderResult.Error!);
-        }
-
-        var response = new ReorderItemsToolResponse(
-            notebookContext.Notebook.Id,
-            notebookContext.Notebook.Slug,
-            reorderResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebookContext.Notebook, item)).ToList());
-
-        return NotesMcpResultMapper.Success(response, $"Reordered {items.Count} item(s) in notebook '{response.NotebookSlug}'.");
     }
 
     [McpServerTool(
@@ -588,45 +724,57 @@ public sealed class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
-            notebookSlug,
-            path,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes,
-            includeArchived: true);
-        if (!itemContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
-        }
+            NotesMcpToolNames.DeleteItem,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes,
+                    includeArchived: true);
+                if (!itemContextResult.Succeeded)
+                {
+                    return McpMutationResult<DeleteItemToolResponse>.Failure(itemContextResult.Error!);
+                }
 
-        var itemContext = itemContextResult.Value;
-        var deleteResult = await notebookCommandService.DeleteNotebookItemAsync(
-            itemContext.Notebook.Id,
-            itemContext.Item.Id,
-            itemContext.ActorId,
+                var itemContext = itemContextResult.Value;
+                var deleteResult = await notebookCommandService.DeleteNotebookItemAsync(
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id,
+                    itemContext.ActorId,
+                    ct);
+                if (!deleteResult.Succeeded)
+                {
+                    return McpMutationResult<DeleteItemToolResponse>.Failure(
+                        deleteResult.Error!,
+                        itemContext.Notebook.Id,
+                        itemContext.Item.Id);
+                }
+
+                var response = new DeleteItemToolResponse(
+                    itemContext.Notebook.Id,
+                    itemContext.Notebook.Slug,
+                    itemContext.Item.Id,
+                    itemContext.Item.Path,
+                    "deleted");
+
+                return McpMutationResult<DeleteItemToolResponse>.Success(
+                    response,
+                    $"Deleted item '{response.Path}'.",
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.DeleteItem, itemContext.Notebook.Id, itemContext.Item.Id, deleteResult, cancellationToken);
-
-        if (!deleteResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(deleteResult.Error!);
-        }
-
-        var response = new DeleteItemToolResponse(
-            itemContext.Notebook.Id,
-            itemContext.Notebook.Slug,
-            itemContext.Item.Id,
-            itemContext.Item.Path,
-            "deleted");
-
-        return NotesMcpResultMapper.Success(response, $"Deleted item '{response.Path}'.");
     }
 
     [McpServerTool(
@@ -644,38 +792,51 @@ public sealed class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
-            notebookSlug,
-            path,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!itemContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
-        }
+            NotesMcpToolNames.ArchiveItem,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes,
+                    includeArchived: true);
+                if (!itemContextResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(itemContextResult.Error!);
+                }
 
-        var itemContext = itemContextResult.Value;
-        var archiveResult = await notebookCommandService.ArchiveNotebookItemAsync(
-            itemContext.Notebook.Id,
-            itemContext.Item.Id,
-            itemContext.ActorId,
+                var itemContext = itemContextResult.Value;
+                var archiveResult = await notebookCommandService.ArchiveNotebookItemAsync(
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id,
+                    itemContext.ActorId,
+                    ct);
+                if (!archiveResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(
+                        archiveResult.Error!,
+                        itemContext.Notebook.Id,
+                        itemContext.Item.Id);
+                }
+
+                var response = NotesMcpSupport.ToMoveItemToolResponse(itemContext.Notebook, archiveResult.Value!);
+                return McpMutationResult<MoveItemToolResponse>.Success(
+                    response,
+                    $"Archived item '{response.Path}'.",
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.ArchiveItem, itemContext.Notebook.Id, itemContext.Item.Id, archiveResult, cancellationToken);
-
-        if (!archiveResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(archiveResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToMoveItemToolResponse(itemContext.Notebook, archiveResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Archived item '{response.Path}'.");
     }
 
     [McpServerTool(
@@ -693,44 +854,59 @@ public sealed class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
-            notebookSlug,
-            path,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes,
-            includeArchived: true);
-        if (!itemContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(itemContextResult.Error!);
-        }
+            NotesMcpToolNames.RestoreItem,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var itemContextResult = await NotesMcpSupport.RequireItemContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes,
+                    includeArchived: true);
+                if (!itemContextResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(itemContextResult.Error!);
+                }
 
-        var itemContext = itemContextResult.Value;
-        var restoreResult = await notebookCommandService.RestoreNotebookItemAsync(
-            itemContext.Notebook.Id,
-            itemContext.Item.Id,
-            itemContext.ActorId,
+                var itemContext = itemContextResult.Value;
+                var restoreResult = await notebookCommandService.RestoreNotebookItemAsync(
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id,
+                    itemContext.ActorId,
+                    ct);
+                if (!restoreResult.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(
+                        restoreResult.Error!,
+                        itemContext.Notebook.Id,
+                        itemContext.Item.Id);
+                }
+
+                var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, ct);
+                if (!refreshedNotebook.Succeeded)
+                {
+                    return McpMutationResult<MoveItemToolResponse>.Failure(
+                        refreshedNotebook.Error!,
+                        itemContext.Notebook.Id,
+                        itemContext.Item.Id);
+                }
+
+                var response = NotesMcpSupport.ToMoveItemToolResponse(refreshedNotebook.Value!, restoreResult.Value!);
+                return McpMutationResult<MoveItemToolResponse>.Success(
+                    response,
+                    $"Restored item '{response.Path}'.",
+                    itemContext.Notebook.Id,
+                    itemContext.Item.Id);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.RestoreItem, itemContext.Notebook.Id, itemContext.Item.Id, restoreResult, cancellationToken);
-
-        if (!restoreResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(restoreResult.Error!);
-        }
-
-        var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, cancellationToken);
-        if (!refreshedNotebook.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(refreshedNotebook.Error!);
-        }
-
-        var response = NotesMcpSupport.ToMoveItemToolResponse(refreshedNotebook.Value!, restoreResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Restored item '{response.Path}'.");
     }
 }

@@ -29,6 +29,7 @@ public static class WebApplicationExtensions
             app.UseHttpsRedirection();
         }
 
+        app.UseCodeCafeSecurityHeaders();
         app.UseCodeCafeCors();
         app.UseCodeCafeMcpOriginValidation();
         app.UseAuthentication();
@@ -90,6 +91,26 @@ public static class WebApplicationExtensions
         return app;
     }
 
+    private static IApplicationBuilder UseCodeCafeSecurityHeaders(this IApplicationBuilder app)
+    {
+        return app.Use(async (httpContext, next) =>
+        {
+            httpContext.Response.OnStarting(() =>
+            {
+                httpContext.Response.Headers["X-Content-Type-Options"] = "nosniff";
+                httpContext.Response.Headers["X-Frame-Options"] = "DENY";
+                if (httpContext.Request.IsHttps)
+                {
+                    httpContext.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+                }
+
+                return Task.CompletedTask;
+            });
+
+            await next(httpContext);
+        });
+    }
+
     private static IApplicationBuilder UseCodeCafeMcpOriginValidation(this IApplicationBuilder app)
     {
         return app.Use(async (httpContext, next) =>
@@ -108,7 +129,7 @@ public static class WebApplicationExtensions
             if (httpContext.Request.Headers.TryGetValue("Origin", out var originValues)
                 && originValues.Count > 0
                 && options.AllowedOrigins.Length > 0
-                && !options.AllowedOrigins.Contains(originValues[0], StringComparer.OrdinalIgnoreCase))
+                && !originValues.Any(value => options.AllowedOrigins.Contains(value, StringComparer.OrdinalIgnoreCase)))
             {
                 httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await httpContext.Response.WriteAsJsonAsync(new { code = "origin_forbidden", message = "Origin is not allowed for MCP." });

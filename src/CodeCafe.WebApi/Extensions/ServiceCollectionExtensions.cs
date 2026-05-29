@@ -54,6 +54,7 @@ public static class ServiceCollectionExtensions
         services.AddCodeCafeCookieAuthentication(environment);
         services.AddCodeCafeOpenIddict(configuration, environment);
         services.AddCodeCafeMcp(configuration, environment);
+        services.AddScoped<IMcpMutationExecutor, McpMutationExecutor>();
 
         return services;
     }
