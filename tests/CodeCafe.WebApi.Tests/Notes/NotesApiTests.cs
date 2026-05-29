@@ -117,6 +117,33 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
     }
 
     [Fact]
+    public async Task CreateNotebookItem_StripsLeadingHeadingThatDuplicatesPageTitle()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(client, $"strip-title-create+{Guid.NewGuid():N}@example.com", "203.0.113.109");
+        var notebookId = await CreateNotebookAsync(client, "Duplicate Title Notes", "private");
+
+        var createPage = await SendWithCsrfAsync(client, HttpMethod.Post, $"/api/notes/{notebookId}/items", new
+        {
+            type = "page",
+            title = "Authentication & Authorization",
+            sortOrder = 1,
+            contentJson = CreateDocWithLeadingHeading("Authentication & Authorization", "Body starts here")
+        });
+        createPage.EnsureSuccessStatusCode();
+
+        var page = await ReadJsonAsync(createPage);
+        Assert.Equal("Body starts here", page.RootElement.GetProperty("plainTextContent").GetString());
+
+        var content = page.RootElement.GetProperty("contentJson").GetProperty("content").EnumerateArray().ToArray();
+        Assert.Single(content);
+        Assert.Equal("paragraph", content[0].GetProperty("type").GetString());
+    }
+
+    [Fact]
     public async Task CreateNotebookItem_InvalidTipTapDocument_ReturnsBadRequest()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -425,6 +452,34 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
         Assert.Equal(HttpStatusCode.BadRequest, update.StatusCode);
         var error = await ReadJsonAsync(update);
         Assert.Equal("invalid_tiptap_document", error.RootElement.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task UpdateNotebookItem_StripsLeadingHeadingThatDuplicatesPageTitle()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(client, $"strip-title-update+{Guid.NewGuid():N}@example.com", "203.0.113.110");
+        var notebookId = await CreateNotebookAsync(client, "Update Duplicate Title Notes", "private");
+
+        var page = await CreatePageAsync(client, notebookId, null, "Authentication & Authorization", 1, "Original content");
+        var pageId = page.RootElement.GetProperty("id").GetGuid();
+
+        var update = await SendWithCsrfAsync(client, HttpMethod.Put, $"/api/notes/{notebookId}/items/{pageId}", new
+        {
+            title = "Authentication & Authorization",
+            contentJson = CreateDocWithLeadingHeading("Authentication & Authorization", "Updated body content")
+        });
+        update.EnsureSuccessStatusCode();
+
+        var updatedPage = await ReadJsonAsync(update);
+        Assert.Equal("Updated body content", updatedPage.RootElement.GetProperty("plainTextContent").GetString());
+
+        var content = updatedPage.RootElement.GetProperty("contentJson").GetProperty("content").EnumerateArray().ToArray();
+        Assert.Single(content);
+        Assert.Equal("paragraph", content[0].GetProperty("type").GetString());
     }
 
     [Fact]
@@ -973,6 +1028,34 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
                     content = new object[]
                     {
                         new { type = "text", text }
+                    }
+                }
+            }
+        };
+    }
+
+    private static object CreateDocWithLeadingHeading(string heading, string body)
+    {
+        return new
+        {
+            type = "doc",
+            content = new object[]
+            {
+                new
+                {
+                    type = "heading",
+                    attrs = new { level = 1 },
+                    content = new object[]
+                    {
+                        new { type = "text", text = heading }
+                    }
+                },
+                new
+                {
+                    type = "paragraph",
+                    content = new object[]
+                    {
+                        new { type = "text", text = body }
                     }
                 }
             }

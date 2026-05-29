@@ -148,7 +148,7 @@ public sealed class NotebookCommandService(
         var normalizedContent = NotesResult<TipTapContentModel>.Success(new TipTapContentModel(null, null));
         if (itemType == NotebookItemType.Page)
         {
-            normalizedContent = tipTapContentService.NormalizePageContent(contentJson);
+            normalizedContent = tipTapContentService.NormalizePageContent(contentJson, trimmedTitle);
             if (!normalizedContent.Succeeded)
             {
                 return NotesResult<NotebookItemModel>.Failure(
@@ -260,7 +260,7 @@ public sealed class NotebookCommandService(
         {
             if (contentJson.ValueKind != JsonValueKind.Undefined)
             {
-                var normalizedContent = tipTapContentService.NormalizePageContent(contentJson);
+                var normalizedContent = tipTapContentService.NormalizePageContent(contentJson, item.Title);
                 if (!normalizedContent.Succeeded)
                 {
                     return NotesResult<NotebookItemModel>.Failure(

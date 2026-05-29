@@ -10,7 +10,7 @@ public sealed class TipTapContentService(ITipTapPlainTextExtractor plainTextExtr
     private const int MaxNodeCount = 5000;
     private const int MaxTextLength = 200_000;
 
-    public NotesResult<TipTapContentModel> NormalizePageContent(JsonElement? contentJson)
+    public NotesResult<TipTapContentModel> NormalizePageContent(JsonElement? contentJson, string? pageTitle = null)
     {
         if (contentJson is null || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
         {
@@ -33,6 +33,7 @@ public sealed class TipTapContentService(ITipTapPlainTextExtractor plainTextExtr
         }
 
         root["content"] ??= new JsonArray();
+        StripLeadingDuplicateTitleHeading(root, pageTitle);
         var normalizedJson = root.ToJsonString();
 
         using var normalizedDocument = JsonDocument.Parse(normalizedJson);
@@ -150,6 +151,71 @@ public sealed class TipTapContentService(ITipTapPlainTextExtractor plainTextExtr
 
     private static NotesResult Invalid(string message) =>
         NotesResult.Failure(NotesFailureKind.Validation, "invalid_tiptap_document", message);
+
+    private static void StripLeadingDuplicateTitleHeading(JsonObject root, string? pageTitle)
+    {
+        var normalizedTitle = NotesSupport.NormalizeOptionalText(pageTitle);
+        if (string.IsNullOrWhiteSpace(normalizedTitle))
+        {
+            return;
+        }
+
+        if (root["content"] is not JsonArray content || content.Count == 0 || content[0] is not JsonObject firstNode)
+        {
+            return;
+        }
+
+        if (!string.Equals(firstNode["type"]?.GetValue<string>(), "heading", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        var level = firstNode["attrs"]?["level"]?.GetValue<int?>() ?? 1;
+        if (level != 1)
+        {
+            return;
+        }
+
+        var headingText = ExtractText(firstNode);
+        if (!string.Equals(NotesSupport.NormalizeOptionalText(headingText), normalizedTitle, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        content.RemoveAt(0);
+    }
+
+    private static string? ExtractText(JsonNode? node)
+    {
+        if (node is null)
+        {
+            return null;
+        }
+
+        if (node is JsonObject obj)
+        {
+            if (string.Equals(obj["type"]?.GetValue<string>(), "text", StringComparison.Ordinal))
+            {
+                return obj["text"]?.GetValue<string>();
+            }
+
+            if (obj["content"] is JsonArray objectContent)
+            {
+                var parts = objectContent.Select(ExtractText).Where(static text => !string.IsNullOrWhiteSpace(text));
+                return string.Join(string.Empty, parts);
+            }
+
+            return null;
+        }
+
+        if (node is JsonArray array)
+        {
+            var parts = array.Select(ExtractText).Where(static text => !string.IsNullOrWhiteSpace(text));
+            return string.Join(string.Empty, parts);
+        }
+
+        return null;
+    }
 
     private sealed class ValidationState
     {
