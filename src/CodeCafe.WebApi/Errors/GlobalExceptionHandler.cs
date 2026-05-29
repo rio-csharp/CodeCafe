@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
+using ModelContextProtocol;
 
 namespace CodeCafe.WebApi.Errors;
 
@@ -22,6 +23,12 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             TimeoutException => (
                 StatusCodes.Status504GatewayTimeout,
                 new ApiError("timeout", "The request timed out.")),
+            McpException => (
+                StatusCodes.Status500InternalServerError,
+                new ApiError("mcp_error", "An MCP protocol error occurred.")),
+            OperationCanceledException => (
+                StatusCodes.Status499ClientClosedRequest,
+                new ApiError("request_cancelled", "The request was cancelled.")),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 new ApiError("internal_error", "An unexpected error occurred."))

@@ -13,6 +13,7 @@ public static class WebApplicationExtensions
 {
     public static WebApplication UseCodeCafePipeline(this WebApplication app)
     {
+        NotesMcpSupport.Logger = app.Services.GetService<ILoggerFactory>()?.CreateLogger("NotesMcpSupport");
         app.UseExceptionHandler();
 
         if (app.Environment.IsDevelopment())
@@ -123,7 +124,7 @@ public static class WebApplicationExtensions
             if (httpContext.Request.Headers.TryGetValue("Origin", out var originValues)
                 && originValues.Count > 0
                 && options.AllowedOrigins.Length > 0
-                && !options.AllowedOrigins.Contains(originValues[0], StringComparer.OrdinalIgnoreCase))
+                && !originValues.Any(value => options.AllowedOrigins.Contains(value, StringComparer.OrdinalIgnoreCase)))
             {
                 httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
                 await httpContext.Response.WriteAsJsonAsync(new { code = "origin_forbidden", message = "Origin is not allowed for MCP." });

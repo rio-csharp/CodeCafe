@@ -377,7 +377,7 @@ public sealed class NotesMcpNotebookTools
                 "Specify at least one notebook field to update."));
         }
 
-        if (string.IsNullOrWhiteSpace(title))
+        if (title is not null && string.IsNullOrWhiteSpace(title))
         {
             return NotesMcpResultMapper.Failure(new NotesError(
                 NotesFailureKind.Validation,

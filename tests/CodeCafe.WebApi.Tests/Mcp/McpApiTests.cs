@@ -818,10 +818,7 @@ public sealed class McpApiTests
         });
     }
 
-    private static JsonElement CreateDocJson(string text)
-    {
-        return CreateDocElement(text);
-    }
+    private static JsonElement CreateDocJson(string text) => CreateDocElement(text);
 
     private static JsonElement CreateBlocksJson(string text)
     {

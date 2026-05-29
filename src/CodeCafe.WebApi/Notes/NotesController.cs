@@ -270,7 +270,8 @@ public sealed class NotesController(
                 request.ParentId,
                 request.SortOrder,
                 request.ContentJson,
-                cancellationToken),
+                cancellationToken,
+                request.ExpectedUpdatedAtUtc),
             ToItemResponse);
     }
 

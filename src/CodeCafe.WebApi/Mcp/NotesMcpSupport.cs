@@ -246,24 +246,27 @@ internal static class NotesMcpSupport
         return NotesResult<ItemContext>.Success(new ItemContext(notebookContext.ActorId, notebookContext.Notebook, pageResult.Value!));
     }
 
-    public static NotesResult<NotebookItemModel> ResolveParent(
+    public static NotesResult<NotebookItemModel?> ResolveParent(
         NotebookDetailModel notebook,
         string? parentPath)
     {
         if (string.IsNullOrWhiteSpace(parentPath))
         {
-            return NotesResult<NotebookItemModel>.Success(null!);
+            return NotesResult<NotebookItemModel?>.Success(null);
         }
 
         var parentResult = RequireItem(notebook, parentPath);
         if (!parentResult.Succeeded)
         {
-            return parentResult;
+            return NotesResult<NotebookItemModel?>.Failure(
+                parentResult.Error!.Kind,
+                parentResult.Error.Code,
+                parentResult.Error.Message);
         }
 
         return string.Equals(parentResult.Value!.Type, "folder", StringComparison.OrdinalIgnoreCase)
-            ? parentResult
-            : NotesResult<NotebookItemModel>.Failure(
+            ? NotesResult<NotebookItemModel?>.Success(parentResult.Value)
+            : NotesResult<NotebookItemModel?>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_parent",
                 "Parent item must be a folder.");
@@ -557,7 +560,14 @@ internal static class NotesMcpSupport
 
         foreach (var block in blocks.EnumerateArray())
         {
-            content.Add(JsonNode.Parse(block.GetRawText()));
+            try
+            {
+                content.Add(JsonNode.Parse(block.GetRawText()));
+            }
+            catch (JsonException)
+            {
+                throw new ArgumentException("Blocks contain an invalid JSON node.", nameof(blocks));
+            }
         }
 
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
@@ -593,6 +603,8 @@ internal static class NotesMcpSupport
         throw new McpException($"{error.Code}: {error.Message}");
     }
 
+    public static ILogger? Logger { get; set; }
+
     public static async Task AuditWriteAsync(
         IMcpAuditService auditService,
         ClaimsPrincipal user,
@@ -615,9 +627,9 @@ internal static class NotesMcpSupport
                 result.Error?.Code,
                 cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // Audit failures must not mask successful mutations to the client.
+            Logger?.LogError(ex, "MCP audit write failed for tool {ToolName}.", toolName);
         }
     }
 
@@ -643,9 +655,9 @@ internal static class NotesMcpSupport
                 result.Error?.Code,
                 cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            // Audit failures must not mask successful mutations to the client.
+            Logger?.LogError(ex, "MCP audit write failed for tool {ToolName}.", toolName);
         }
     }
 }
