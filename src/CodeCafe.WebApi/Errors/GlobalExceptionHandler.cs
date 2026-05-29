@@ -1,17 +1,25 @@
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
-using ModelContextProtocol;
+using Microsoft.Extensions.Options;
+using CodeCafe.WebApi.Mcp;
 
 namespace CodeCafe.WebApi.Errors;
 
-public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
+public sealed class GlobalExceptionHandler(
+    ILogger<GlobalExceptionHandler> logger,
+    IOptions<McpOptions> mcpOptionsAccessor) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (McpHttpRequestClassifier.IsProtocolRequest(httpContext, mcpOptionsAccessor))
+        {
+            return false;
+        }
+
         var (statusCode, error) = exception switch
         {
             AntiforgeryValidationException => (
@@ -23,10 +31,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             TimeoutException => (
                 StatusCodes.Status504GatewayTimeout,
                 new ApiError("timeout", "The request timed out.")),
-            McpException => (
-                StatusCodes.Status500InternalServerError,
-                new ApiError("mcp_error", "An MCP protocol error occurred.")),
-            OperationCanceledException => (
+            OperationCanceledException when httpContext.RequestAborted.IsCancellationRequested => (
                 StatusCodes.Status499ClientClosedRequest,
                 new ApiError("request_cancelled", "The request was cancelled.")),
             _ => (

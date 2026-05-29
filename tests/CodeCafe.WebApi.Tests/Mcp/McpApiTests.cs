@@ -1,7 +1,11 @@
+using CodeCafe.Application.Notes;
 using CodeCafe.WebApi.Mcp;
 using CodeCafe.WebApi.Tests.Auth;
+using ModelContextProtocol;
 using ModelContextProtocol.Protocol;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using System.Security.Claims;
 using System.Net.Http.Json;
 using System.Text.Json;
 
@@ -558,6 +562,53 @@ public sealed class McpApiTests
     }
 
     [Fact]
+    public async Task McpPrompt_WhenMissingReadScope_ThrowsProtocolError()
+    {
+        using var factory = new AuthApiFactory { McpEnabled = true };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"prompt-scope+{Guid.NewGuid():N}@example.com", "203.0.113.134");
+        var notebook = await CreateNotebookAsync(client, "Prompt Scope Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Prompt Scope Page", "Prompt text");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.write");
+
+        var exception = await Assert.ThrowsAsync<McpProtocolException>(async () =>
+            await mcpClient.GetPromptAsync(
+                "notes.summarize_page",
+                new Dictionary<string, object?>
+                {
+                    ["notebookSlug"] = notebook.Slug,
+                    ["path"] = page.Path
+                }));
+
+        Assert.Contains("insufficient_scope", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task McpResource_WhenItemMissing_ThrowsProtocolError()
+    {
+        using var factory = new AuthApiFactory { McpEnabled = true };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"resource-missing+{Guid.NewGuid():N}@example.com", "203.0.113.135");
+        var notebook = await CreateNotebookAsync(client, "Resource Missing Notebook");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read");
+
+        var exception = await Assert.ThrowsAsync<McpProtocolException>(async () =>
+            await mcpClient.ReadResourceAsync($"page://{notebook.Slug}/missing-page"));
+
+        Assert.Contains("notebook_item_not_found", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task McpCreateNotebook_RejectsInvalidVisibility()
     {
         using var factory = new AuthApiFactory { McpEnabled = true };
@@ -665,6 +716,146 @@ public sealed class McpApiTests
                 ["expectedUpdatedAtUtc"] = DateTimeOffset.UtcNow.AddHours(-1).ToString("O")
             });
         AssertToolError(result, "content_conflict");
+    }
+
+    [Fact]
+    public async Task McpWriteMutation_WhenAuditFails_RollsBackBusinessChange()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true,
+            FailMcpAuditWrites = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"audit-rollback+{Guid.NewGuid():N}@example.com", "203.0.113.136");
+        var notebook = await CreateNotebookAsync(client, "Audit Rollback Notebook");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var result = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.CreatePage,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["title"] = "Should Roll Back",
+                ["contentJson"] = CreateDocJson("Never persisted")
+            });
+
+        Assert.True(result.IsError ?? false);
+
+        var listResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.ListItems,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug
+            });
+
+        Assert.DoesNotContain(
+            listResult.StructuredContent!.Value.GetProperty("items").EnumerateArray(),
+            item => item.GetProperty("title").GetString() == "Should Roll Back");
+    }
+
+    [Fact]
+    public async Task McpWriteMutation_WhenFailureAuditFails_StillReturnsValidationError()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true,
+            FailMcpAuditWrites = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"audit-validation+{Guid.NewGuid():N}@example.com", "203.0.113.137");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.write");
+
+        var result = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.CreateNotebook,
+            new Dictionary<string, object?>
+            {
+                ["title"] = "Invalid Visibility",
+                ["visibility"] = "secret"
+            });
+
+        AssertToolError(result, "invalid_visibility");
+    }
+
+    [Fact]
+    public async Task McpMutationExecutor_WhenMutationFails_DoesNotPersistTrackedChanges()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"mutation-consistency+{Guid.NewGuid():N}@example.com", "203.0.113.138");
+        var currentUser = await GetCurrentUserAsync(client);
+        var notebook = await CreateNotebookAsync(client, "Mutation Consistency Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Original Title", "Original text");
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var executor = scope.ServiceProvider.GetRequiredService<IMcpMutationExecutor>();
+            var notebookCommandService = scope.ServiceProvider.GetRequiredService<INotebookCommandService>();
+            var principal = CreatePrincipal(currentUser.Id);
+
+            var result = await executor.ExecuteAsync(
+                principal,
+                NotesMcpToolNames.UpdatePageContentJson,
+                async ct =>
+                {
+                    var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
+                        notebook.Id,
+                        page.Id,
+                        currentUser.Id,
+                        "Renamed Title",
+                        default,
+                        null,
+                        JsonSerializer.SerializeToElement("invalid"),
+                        ct);
+
+                    return updateResult.Succeeded
+                        ? McpMutationResult<TestToolResponse>.Success(
+                            new TestToolResponse("unexpected"),
+                            "unexpected",
+                            notebook.Id,
+                            page.Id)
+                        : McpMutationResult<TestToolResponse>.Failure(
+                            updateResult.Error!,
+                            notebook.Id,
+                            page.Id);
+                },
+                CancellationToken.None);
+
+            AssertToolError(result, "invalid_tiptap_document");
+        }
+
+        using (var verificationScope = factory.Services.CreateScope())
+        {
+            var notebookQueryService = verificationScope.ServiceProvider.GetRequiredService<INotebookQueryService>();
+            var itemsResult = await notebookQueryService.GetNotebookItemsAsync(
+                notebook.Id,
+                currentUser.Id,
+                search: null,
+                CancellationToken.None);
+
+            Assert.True(itemsResult.Succeeded);
+            var item = Assert.Single(itemsResult.Value!);
+            Assert.Equal("Original Title", item.Title);
+            Assert.Equal(page.Path, item.Path);
+        }
     }
 
     [Fact]
@@ -838,9 +1029,31 @@ public sealed class McpApiTests
     private static string ReadText(CallToolResult result)
         => string.Join("\n", result.Content.OfType<TextContentBlock>().Select(block => block.Text));
 
+    private static async Task<TestCurrentUser> GetCurrentUserAsync(HttpClient client)
+    {
+        using var response = await client.GetAsync("/api/auth/me");
+        response.EnsureSuccessStatusCode();
+
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var user = json.RootElement.GetProperty("user");
+        return new TestCurrentUser(user.GetProperty("id").GetGuid());
+    }
+
+    private static ClaimsPrincipal CreatePrincipal(Guid userId)
+        => new(new ClaimsIdentity(
+            new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString())
+            },
+            authenticationType: "Test"));
+
     private static void AssertToolError(CallToolResult result, string code)
     {
         Assert.True(result.IsError);
         Assert.Equal(code, result.StructuredContent!.Value.GetProperty("code").GetString());
     }
+
+    private sealed record TestCurrentUser(Guid Id);
+
+    private sealed record TestToolResponse(string Value);
 }

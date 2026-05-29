@@ -13,7 +13,6 @@ public static class WebApplicationExtensions
 {
     public static WebApplication UseCodeCafePipeline(this WebApplication app)
     {
-        NotesMcpSupport.Logger = app.Services.GetService<ILoggerFactory>()?.CreateLogger("NotesMcpSupport");
         app.UseExceptionHandler();
 
         if (app.Environment.IsDevelopment())
@@ -96,12 +95,18 @@ public static class WebApplicationExtensions
     {
         return app.Use(async (httpContext, next) =>
         {
-            httpContext.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-            httpContext.Response.Headers.Append("X-Frame-Options", "DENY");
-            if (httpContext.Request.IsHttps)
+            httpContext.Response.OnStarting(() =>
             {
-                httpContext.Response.Headers.Append("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-            }
+                httpContext.Response.Headers["X-Content-Type-Options"] = "nosniff";
+                httpContext.Response.Headers["X-Frame-Options"] = "DENY";
+                if (httpContext.Request.IsHttps)
+                {
+                    httpContext.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+                }
+
+                return Task.CompletedTask;
+            });
+
             await next(httpContext);
         });
     }

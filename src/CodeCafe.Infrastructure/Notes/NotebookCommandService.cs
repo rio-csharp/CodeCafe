@@ -342,7 +342,10 @@ public sealed class NotebookCommandService(
 
         try
         {
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            var startedTransaction = dbContext.Database.CurrentTransaction is null;
+            await using var transaction = startedTransaction
+                ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+                : null;
 
             foreach (var reorderItem in items)
             {
@@ -364,7 +367,10 @@ public sealed class NotebookCommandService(
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
         }
         catch (DbUpdateConcurrencyException)
         {

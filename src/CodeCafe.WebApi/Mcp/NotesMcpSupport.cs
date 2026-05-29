@@ -598,66 +598,26 @@ internal static class NotesMcpSupport
         return messages.Select(message => new ChatMessage(ChatRole.User, message));
     }
 
+    public static void EnsureMcpSuccess(NotesResult result)
+    {
+        if (!result.Succeeded)
+        {
+            ThrowMcpError(result.Error!);
+        }
+    }
+
+    public static T EnsureMcpSuccess<T>(NotesResult<T> result)
+    {
+        if (!result.Succeeded)
+        {
+            ThrowMcpError(result.Error!);
+        }
+
+        return result.Value!;
+    }
+
     public static void ThrowMcpError(NotesError error)
     {
         throw new McpException($"{error.Code}: {error.Message}");
-    }
-
-    public static ILogger? Logger { get; set; }
-
-    public static async Task AuditWriteAsync(
-        IMcpAuditService auditService,
-        ClaimsPrincipal user,
-        string toolName,
-        Guid? notebookId,
-        Guid? itemId,
-        NotesResult result,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await auditService.WriteAsync(
-                GetCurrentUserId(user),
-                "user",
-                toolName,
-                notebookId,
-                itemId,
-                result.Succeeded,
-                result.Succeeded ? "success" : result.Error!.Code,
-                result.Error?.Code,
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "MCP audit write failed for tool {ToolName}.", toolName);
-        }
-    }
-
-    public static async Task AuditWriteAsync<T>(
-        IMcpAuditService auditService,
-        ClaimsPrincipal user,
-        string toolName,
-        Guid? notebookId,
-        Guid? itemId,
-        NotesResult<T> result,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await auditService.WriteAsync(
-                GetCurrentUserId(user),
-                "user",
-                toolName,
-                notebookId,
-                itemId,
-                result.Succeeded,
-                result.Succeeded ? "success" : result.Error!.Code,
-                result.Error?.Code,
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger?.LogError(ex, "MCP audit write failed for tool {ToolName}.", toolName);
-        }
     }
 }
