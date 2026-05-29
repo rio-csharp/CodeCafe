@@ -533,6 +533,98 @@ public sealed class AuthApiTests : IClassFixture<AuthApiFactory>
         Assert.StartsWith($"{factory.FrontendBaseUrl}/login", response.Headers.Location!.AbsoluteUri, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task OpenIdConfiguration_AdvertisesRegistrationEndpointAndPublicClientSupport()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/.well-known/openid-configuration");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(
+            new Uri(new Uri(factory.AuthorizationServerIssuer, UriKind.Absolute), "/connect/register").AbsoluteUri,
+            document.RootElement.GetProperty("registration_endpoint").GetString());
+        Assert.Contains(
+            document.RootElement.GetProperty("token_endpoint_auth_methods_supported").EnumerateArray().Select(value => value.GetString()),
+            value => value == "none");
+    }
+
+    [Fact]
+    public async Task DynamicClientRegistration_AllowsLoopbackClientsWithRandomCallbackPorts()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        using var registrationResponse = await client.PostAsJsonAsync("/connect/register", new
+        {
+            client_name = "Generic MCP Client",
+            application_type = "native",
+            token_endpoint_auth_method = "none",
+            grant_types = new[] { "authorization_code", "refresh_token" },
+            response_types = new[] { "code" },
+            redirect_uris = new[] { "http://127.0.0.1:49152/callback" }
+        });
+
+        Assert.Equal(HttpStatusCode.Created, registrationResponse.StatusCode);
+
+        using var registrationDocument = JsonDocument.Parse(await registrationResponse.Content.ReadAsStringAsync());
+        var clientId = registrationDocument.RootElement.GetProperty("client_id").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(clientId));
+        Assert.Contains(
+            registrationDocument.RootElement.GetProperty("redirect_uris").EnumerateArray().Select(value => value.GetString()),
+            value => value == "http://127.0.0.1/callback");
+
+        var authorizeUrl =
+            $"/connect/authorize?response_type=code" +
+            $"&client_id={Uri.EscapeDataString(clientId!)}" +
+            $"&code_challenge=test-challenge" +
+            $"&code_challenge_method=S256" +
+            $"&redirect_uri={Uri.EscapeDataString("http://127.0.0.1:51004/callback")}" +
+            $"&state=test-state" +
+            $"&scope={Uri.EscapeDataString("notes.read notes.write offline_access")}" +
+            $"&resource={Uri.EscapeDataString(factory.CanonicalMcpResource)}";
+
+        using var authorizeResponse = await client.GetAsync(authorizeUrl);
+
+        Assert.Equal(HttpStatusCode.Redirect, authorizeResponse.StatusCode);
+        Assert.NotNull(authorizeResponse.Headers.Location);
+        Assert.StartsWith($"{factory.FrontendBaseUrl}/login", authorizeResponse.Headers.Location!.AbsoluteUri, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DynamicClientRegistration_RejectsNonLoopbackRedirectUris()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true
+        };
+        using var client = factory.CreateClient();
+
+        using var response = await client.PostAsJsonAsync("/connect/register", new
+        {
+            client_name = "Bad Client",
+            application_type = "native",
+            token_endpoint_auth_method = "none",
+            redirect_uris = new[] { "https://example.com/callback" }
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("invalid_redirect_uri", document.RootElement.GetProperty("error").GetString());
+    }
+
     private static async Task<HttpResponseMessage> RegisterAsync(HttpClient client, string email, string clientIp)
     {
         var csrf = await GetCsrfTokenAsync(client);

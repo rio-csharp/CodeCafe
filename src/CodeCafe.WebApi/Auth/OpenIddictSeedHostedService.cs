@@ -177,40 +177,11 @@ public sealed class OpenIddictSeedHostedService(
         McpOptions mcpOptions,
         AuthorizationServerOptions authorizationServerOptions)
     {
-        var descriptor = new OpenIddictApplicationDescriptor
-        {
-            ApplicationType = ApplicationTypes.Native,
-            ClientType = ClientTypes.Public,
-            ClientId = client.ClientId,
-            ConsentType = ConsentTypes.Implicit,
-            DisplayName = string.IsNullOrWhiteSpace(client.DisplayName) ? client.ClientId : client.DisplayName
-        };
-
-        foreach (var redirectUri in client.RedirectUris)
-        {
-            if (Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri))
-            {
-                descriptor.RedirectUris.Add(uri);
-            }
-        }
-
-        descriptor.Permissions.UnionWith(
-        [
-            Permissions.Endpoints.Authorization,
-            Permissions.Endpoints.Token,
-            Permissions.GrantTypes.AuthorizationCode,
-            Permissions.GrantTypes.RefreshToken,
-            Permissions.ResponseTypes.Code
-        ]);
-
-        foreach (var scopeName in mcpOptions.RequiredReadScopes.Concat(mcpOptions.RequiredWriteScopes).Distinct(StringComparer.Ordinal))
-        {
-            descriptor.Permissions.Add(Permissions.Prefixes.Scope + scopeName);
-        }
-
-        descriptor.AddAudiencePermissions(McpResourceIdentifiers.GetAudienceValues(mcpOptions, authorizationServerOptions));
-        descriptor.AddResourcePermissions(McpResourceIdentifiers.GetResourceValues(mcpOptions, authorizationServerOptions));
-
-        return descriptor;
+        return OpenIddictClientRegistration.CreatePublicNativeDescriptor(
+            client.ClientId,
+            client.DisplayName,
+            client.RedirectUris,
+            mcpOptions,
+            authorizationServerOptions);
     }
 }
