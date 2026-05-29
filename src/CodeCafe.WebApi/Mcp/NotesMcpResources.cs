@@ -79,25 +79,7 @@ public sealed class NotesMcpResources
         }
 
         var notebook = notebookResult.Value!;
-        var payload = new GetNotebookToolResponse(
-            notebook.Id,
-            notebook.OwnerId,
-            notebook.Slug,
-            notebook.Title,
-            notebook.Description,
-            notebook.Visibility,
-            notebook.IsPublished,
-            notebook.AuthorDisplayName,
-            notebook.CanEdit,
-            notebook.ItemCount,
-            notebook.FolderCount,
-            notebook.PageCount,
-            notebook.FavoriteCount,
-            notebook.IsFavoritedByMe,
-            notebook.LastActivityAtUtc,
-            notebook.CreatedAtUtc,
-            notebook.UpdatedAtUtc,
-            notebook.PublishedAtUtc);
+        var payload = NotesMcpSupport.ToGetNotebookToolResponse(notebook);
 
         return new TextResourceContents
         {
@@ -149,7 +131,7 @@ public sealed class NotesMcpResources
             notebookResult.Value!.Slug,
             notebookResult.Value!.Title,
             notebookResult.Value!.CanEdit,
-            itemsResult.Value!.Select(NotesMcpSupport.ToNotebookItemToolResponse).ToList());
+            itemsResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebookResult.Value!, item)).ToList());
 
         return new TextResourceContents
         {

@@ -10,7 +10,7 @@ public static class NotesMcpResultMapper
     {
         return new CallToolResult
         {
-            Content = [new TextContentBlock { Text = text }],
+            Content = [new TextContentBlock { Text = NotesMcpContentFormatter.Format(value, text) }],
             StructuredContent = JsonSerializer.SerializeToElement(value, NotesMcpSupport.SerializerOptions)
         };
     }

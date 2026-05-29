@@ -74,6 +74,14 @@ public sealed class McpApiTests
             NotesMcpToolNames.GetNotebook,
             new Dictionary<string, object?> { ["slug"] = notebook.Slug });
         Assert.Equal("MCP Read Notebook", notebookResult.StructuredContent!.Value.GetProperty("title").GetString());
+        Assert.Contains($"slug: {notebook.Slug}", ReadText(notebookResult));
+        Assert.Contains($"notebookUri: notebook://{notebook.Slug}", ReadText(notebookResult));
+
+        var listItemsResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.ListItems,
+            new Dictionary<string, object?> { ["notebookSlug"] = notebook.Slug });
+        Assert.Contains($"path: {page.Path}", ReadText(listItemsResult));
+        Assert.Contains($"resourceUri: page://{notebook.Slug}/{page.Path}", ReadText(listItemsResult));
 
         var pageResult = await mcpClient.CallToolAsync(
             NotesMcpToolNames.GetPage,
@@ -85,6 +93,10 @@ public sealed class McpApiTests
         Assert.Equal("Overview", pageResult.StructuredContent!.Value.GetProperty("title").GetString());
         Assert.Equal(JsonValueKind.String, pageResult.StructuredContent.Value.GetProperty("contentJson").ValueKind);
         Assert.Equal("Initial text", pageResult.StructuredContent!.Value.GetProperty("plainTextContent").GetString());
+        Assert.Contains($"path: {page.Path}", ReadText(pageResult));
+        Assert.Contains($"pageUri: page://{notebook.Slug}/{page.Path}", ReadText(pageResult));
+        Assert.Contains("Plain text content:", ReadText(pageResult));
+        Assert.Contains("TipTap JSON:", ReadText(pageResult));
 
         var discoveryResult = await mcpClient.ReadResourceAsync("notebooks://mine");
         var discoveryTextResource = Assert.IsType<TextResourceContents>(Assert.Single(discoveryResult.Contents));
@@ -275,6 +287,8 @@ public sealed class McpApiTests
             result.StructuredContent!.Value.GetProperty("results").EnumerateArray(),
             item => item.GetProperty("path").GetString() == page.Path
                 && item.GetProperty("notebookSlug").GetString() == notebook.Slug);
+        Assert.Contains($"path: {page.Path}", ReadText(result));
+        Assert.Contains($"resourceUri: page://{notebook.Slug}/{page.Path}", ReadText(result));
     }
 
     [Fact]
@@ -713,6 +727,9 @@ public sealed class McpApiTests
             }
         });
     }
+
+    private static string ReadText(CallToolResult result)
+        => string.Join("\n", result.Content.OfType<TextContentBlock>().Select(block => block.Text));
 
     private static void AssertToolError(CallToolResult result, string code)
     {

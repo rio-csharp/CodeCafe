@@ -59,7 +59,7 @@ public sealed class NotesMcpItemTools
             notebook.Slug,
             notebook.Title,
             notebook.CanEdit,
-            itemsResult.Value!.Select(NotesMcpSupport.ToNotebookItemToolResponse).ToList());
+            itemsResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebook, item)).ToList());
 
         return NotesMcpResultMapper.Success(response, $"Listed {response.Items.Count} item(s) for notebook '{response.NotebookTitle}'.");
     }
@@ -567,7 +567,7 @@ public sealed class NotesMcpItemTools
         var response = new ReorderItemsToolResponse(
             notebookContext.Notebook.Id,
             notebookContext.Notebook.Slug,
-            reorderResult.Value!.Select(NotesMcpSupport.ToNotebookItemToolResponse).ToList());
+            reorderResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebookContext.Notebook, item)).ToList());
 
         return NotesMcpResultMapper.Success(response, $"Reordered {items.Count} item(s) in notebook '{response.NotebookSlug}'.");
     }
