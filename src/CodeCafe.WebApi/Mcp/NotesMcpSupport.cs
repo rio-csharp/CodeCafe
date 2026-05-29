@@ -1,6 +1,7 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Interfaces;
 using Microsoft.Extensions.AI;
+using ModelContextProtocol;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -585,6 +586,11 @@ internal static class NotesMcpSupport
     public static IEnumerable<ChatMessage> CreatePromptMessages(params string[] messages)
     {
         return messages.Select(message => new ChatMessage(ChatRole.User, message));
+    }
+
+    public static void ThrowMcpError(NotesError error)
+    {
+        throw new McpException($"{error.Code}: {error.Message}");
     }
 
     public static async Task AuditWriteAsync(
