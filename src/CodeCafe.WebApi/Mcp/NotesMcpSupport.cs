@@ -1,6 +1,7 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Interfaces;
 using Microsoft.Extensions.AI;
+using ModelContextProtocol;
 using System.Security.Claims;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -430,11 +431,11 @@ internal static class NotesMcpSupport
     }
 
     public static NotesResult<JsonElement?> ParseOptionalJsonArgument(
-        string? json,
+        JsonObject? json,
         string code,
         string invalidMessage)
     {
-        if (string.IsNullOrWhiteSpace(json))
+        if (json is null)
         {
             return NotesResult<JsonElement?>.Success(null);
         }
@@ -449,30 +450,29 @@ internal static class NotesMcpSupport
     }
 
     public static NotesResult<JsonElement> ParseRequiredJsonArgument(
-        string json,
+        JsonObject? json,
         string code,
         string invalidMessage)
     {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return NotesResult<JsonElement>.Failure(
+        return json is null
+            ? NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 code,
-                invalidMessage);
-        }
+                invalidMessage)
+            : NotesResult<JsonElement>.Success(JsonSerializer.SerializeToElement(json, SerializerOptions));
+    }
 
-        try
-        {
-            using var document = JsonDocument.Parse(json);
-            return NotesResult<JsonElement>.Success(document.RootElement.Clone());
-        }
-        catch (JsonException)
-        {
-            return NotesResult<JsonElement>.Failure(
+    public static NotesResult<JsonElement> ParseRequiredJsonArgument(
+        JsonArray? json,
+        string code,
+        string invalidMessage)
+    {
+        return json is null
+            ? NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 code,
-                invalidMessage);
-        }
+                invalidMessage)
+            : NotesResult<JsonElement>.Success(JsonSerializer.SerializeToElement(json, SerializerOptions));
     }
 
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
@@ -571,6 +571,11 @@ internal static class NotesMcpSupport
     public static IEnumerable<ChatMessage> CreatePromptMessages(params string[] messages)
     {
         return messages.Select(message => new ChatMessage(ChatRole.User, message));
+    }
+
+    public static void ThrowMcpError(NotesError error)
+    {
+        throw new McpException($"{error.Code}: {error.Message}");
     }
 
     public static async Task AuditWriteAsync(

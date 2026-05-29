@@ -69,13 +69,13 @@ public sealed class NotesMcpResources
         var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
         if (!scopeResult.Succeeded)
         {
-            throw new InvalidOperationException(scopeResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
         }
 
         var notebookResult = await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken);
         if (!notebookResult.Succeeded)
         {
-            throw new InvalidOperationException(notebookResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
         }
 
         var notebook = notebookResult.Value!;
@@ -106,13 +106,13 @@ public sealed class NotesMcpResources
         var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
         if (!scopeResult.Succeeded)
         {
-            throw new InvalidOperationException(scopeResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
         }
 
         var notebookResult = await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken);
         if (!notebookResult.Succeeded)
         {
-            throw new InvalidOperationException(notebookResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
         }
 
         var itemsResult = await notebookQueryService.GetNotebookItemsAsync(
@@ -123,7 +123,7 @@ public sealed class NotesMcpResources
 
         if (!itemsResult.Succeeded)
         {
-            throw new InvalidOperationException(itemsResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(itemsResult.Error!);
         }
 
         var payload = new ListNotebookItemsToolResponse(
@@ -159,19 +159,19 @@ public sealed class NotesMcpResources
         var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
         if (!scopeResult.Succeeded)
         {
-            throw new InvalidOperationException(scopeResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
         }
 
         var notebookResult = await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken);
         if (!notebookResult.Succeeded)
         {
-            throw new InvalidOperationException(notebookResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
         }
 
         var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
         if (!pageResult.Succeeded)
         {
-            throw new InvalidOperationException(pageResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(pageResult.Error!);
         }
 
         var payload = NotesMcpSupport.ToGetPageToolResponse(notebookResult.Value!, pageResult.Value!);
@@ -194,14 +194,14 @@ public sealed class NotesMcpResources
         var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredReadScopes);
         if (!actorResult.Succeeded)
         {
-            throw new InvalidOperationException(actorResult.Error!.Message);
+            NotesMcpSupport.ThrowMcpError(actorResult.Error!);
         }
 
         var actorId = actorResult.Value;
         IReadOnlyList<NotebookSummaryModel> notebooks = scope switch
         {
-            "mine" => await notebookQueryService.GetMyNotebooksAsync(actorId, search: null, cancellationToken, limit: 25),
-            "public" => await notebookQueryService.GetPublicNotebooksAsync(search: null, actorId, cancellationToken, limit: 25),
+            "mine" => await notebookQueryService.GetMyNotebooksAsync(actorId, search: null, cancellationToken, limit: 100),
+            "public" => await notebookQueryService.GetPublicNotebooksAsync(search: null, actorId, cancellationToken, limit: 100),
             _ => []
         };
 
