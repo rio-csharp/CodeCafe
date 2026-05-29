@@ -1,21 +1,28 @@
+using CodeCafe.Infrastructure.Persistence;
 using CodeCafe.WebApi.Mcp;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace CodeCafe.WebApi.Auth;
 
 [ApiController]
 public sealed class DynamicClientRegistrationController(
+    ApplicationDbContext dbContext,
     IOpenIddictApplicationManager applicationManager,
     IOptions<McpOptions> mcpOptionsAccessor,
     IOptions<AuthorizationServerOptions> authorizationServerOptionsAccessor)
     : ControllerBase
 {
     [AllowAnonymous]
+    [EnableRateLimiting("oauth-registration")]
     [HttpPost("~/connect/register")]
     [Produces("application/json")]
     public async Task<IActionResult> Register(
@@ -52,7 +59,7 @@ public sealed class DynamicClientRegistrationController(
             return BadRequest(CreateRegistrationError("invalid_client_metadata", "Only authorization_code and refresh_token grant types are supported."));
         }
 
-        var normalizedRedirectUris = new List<string>();
+        var normalizedRedirectUris = new HashSet<string>(StringComparer.Ordinal);
         foreach (var redirectUri in request.RedirectUris.Distinct(StringComparer.Ordinal))
         {
             if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var redirectUriValue)
@@ -64,6 +71,22 @@ public sealed class DynamicClientRegistrationController(
             }
 
             normalizedRedirectUris.Add(OpenIddictClientRegistration.NormalizeRedirectUri(redirectUriValue).AbsoluteUri);
+        }
+
+        var existingClient = await FindExistingClientAsync(normalizedRedirectUris, request.ClientName, cancellationToken);
+        if (existingClient is not null)
+        {
+            return Ok(new DynamicClientRegistrationResponse
+            {
+                ApplicationType = "native",
+                ClientId = existingClient.ClientId,
+                ClientIdIssuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                ClientName = string.IsNullOrWhiteSpace(existingClient.DisplayName) ? existingClient.ClientId : existingClient.DisplayName,
+                GrantTypes = ["authorization_code", "refresh_token"],
+                RedirectUris = normalizedRedirectUris.ToArray(),
+                ResponseTypes = ["code"],
+                TokenEndpointAuthMethod = "none"
+            });
         }
 
         var clientId = $"codecafe-{Guid.NewGuid():N}";
@@ -91,6 +114,73 @@ public sealed class DynamicClientRegistrationController(
 
     private static OAuthErrorResponse CreateRegistrationError(string error, string description)
         => new(error, description);
+
+    private async Task<ExistingDynamicClient?> FindExistingClientAsync(
+        IReadOnlyCollection<string> normalizedRedirectUris,
+        string? clientName,
+        CancellationToken cancellationToken)
+    {
+        var applications = await dbContext.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
+            .AsNoTracking()
+            .Where(application =>
+                application.ClientType == OpenIddictConstants.ClientTypes.Public
+                && application.ApplicationType == OpenIddictConstants.ApplicationTypes.Native
+                && application.ClientId != null
+                && EF.Functions.Like(application.ClientId, "codecafe-%"))
+            .ToListAsync(cancellationToken);
+
+        foreach (var application in applications)
+        {
+            if (!TryParseRedirectUris(application.RedirectUris, out var existingRedirectUris))
+            {
+                continue;
+            }
+
+            if (!existingRedirectUris.SetEquals(normalizedRedirectUris))
+            {
+                continue;
+            }
+
+            if (!string.IsNullOrWhiteSpace(clientName)
+                && !string.Equals(application.DisplayName, clientName, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            return new ExistingDynamicClient(
+                application.ClientId!,
+                application.DisplayName);
+        }
+
+        return null;
+    }
+
+    private static bool TryParseRedirectUris(string? redirectUrisJson, out HashSet<string> redirectUris)
+    {
+        redirectUris = new HashSet<string>(StringComparer.Ordinal);
+        if (string.IsNullOrWhiteSpace(redirectUrisJson))
+        {
+            return false;
+        }
+
+        try
+        {
+            var values = JsonSerializer.Deserialize<string[]>(redirectUrisJson);
+            if (values is null)
+            {
+                return false;
+            }
+
+            redirectUris.UnionWith(values.Where(value => !string.IsNullOrWhiteSpace(value)));
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private sealed record ExistingDynamicClient(string ClientId, string? DisplayName);
 }
 
 public sealed class DynamicClientRegistrationRequest

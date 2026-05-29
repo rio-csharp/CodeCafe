@@ -62,8 +62,10 @@ public sealed class NotesMcpNotebookTools
         var notebookDetails = notebooks
             .GroupBy(notebook => notebook.Id)
             .Select(group => group.First())
-            .Take(maxResults)
+            .OrderByDescending(notebook => notebook.LastActivityAtUtc)
+            .ThenBy(notebook => notebook.Title, StringComparer.OrdinalIgnoreCase)
             .Select(NotesMcpSupport.ToGetNotebookToolResponse)
+            .Take(maxResults)
             .ToList();
 
         var response = new ListNotebooksToolResponse(normalizedScope, notebookDetails.Count, notebookDetails);
@@ -220,6 +222,8 @@ public sealed class NotesMcpNotebookTools
                     .Concat(myNotebooks)
                     .GroupBy(notebook => notebook.Id)
                     .Select(group => group.First())
+                    .OrderByDescending(notebook => notebook.LastActivityAtUtc)
+                    .ThenBy(notebook => notebook.Title, StringComparer.OrdinalIgnoreCase)
                     .Take(maxResults);
 
                 results.AddRange(summaries.Select(notebook => new NotebookSearchResultResponse(

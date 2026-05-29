@@ -419,6 +419,20 @@ public static class ServiceCollectionExtensions
                     AutoReplenishment = true
                 });
             });
+
+            options.AddPolicy("oauth-registration", httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                var partitionKey = GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: false);
+
+                return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 20,
+                    Window = TimeSpan.FromHours(1),
+                    QueueLimit = 0,
+                    AutoReplenishment = true
+                });
+            });
         });
 
         return services;
