@@ -290,34 +290,59 @@ public sealed class NotesMcpNotebookTools
         [Description("Notebook title.")] string title,
         ClaimsPrincipal user,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional notebook description.")] string? description = null,
         [Description("Notebook visibility: private, unlisted, or public. Defaults to private.")] string? visibility = null)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredWriteScopes);
-        if (!actorResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(actorResult.Error!);
-        }
+        return await mutationExecutor.ExecuteAsync(
+            user,
+            NotesMcpToolNames.CreateNotebook,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredWriteScopes);
+                if (!actorResult.Succeeded)
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(actorResult.Error!);
+                }
 
-        var createResult = await notebookCommandService.CreateNotebookAsync(
-            actorResult.Value,
-            title,
-            description,
-            visibility,
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_title",
+                        "Notebook title is required and cannot be empty or whitespace."));
+                }
+
+                if (!string.IsNullOrWhiteSpace(visibility) && visibility is not ("public" or "unlisted" or "private"))
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_visibility",
+                        "Visibility must be public, unlisted, or private."));
+                }
+
+                var createResult = await notebookCommandService.CreateNotebookAsync(
+                    actorResult.Value,
+                    title,
+                    description,
+                    visibility,
+                    ct);
+                if (!createResult.Succeeded)
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(createResult.Error!, createResult.Value?.Id);
+                }
+
+                var response = NotesMcpSupport.ToGetNotebookToolResponse(createResult.Value!);
+                return McpMutationResult<GetNotebookToolResponse>.Success(
+                    response,
+                    $"Notebook '{response.Title}' created.",
+                    response.Id,
+                    itemId: null);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.CreateNotebook, createResult.Value?.Id, null, createResult, cancellationToken);
-
-        if (!createResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(createResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToGetNotebookToolResponse(createResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Notebook '{response.Title}' created.");
     }
 
     [McpServerTool(
@@ -334,51 +359,76 @@ public sealed class NotesMcpNotebookTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional new notebook title.")] string? title = null,
         [Description("Optional new notebook description. Use an empty string to clear it.")] string? description = null,
         [Description("Optional new notebook visibility: private, unlisted, or public.")] string? visibility = null)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
-            notebookSlug,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!notebookContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
-        }
+            NotesMcpToolNames.UpdateNotebook,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+                    notebookSlug,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!notebookContextResult.Succeeded)
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(notebookContextResult.Error!);
+                }
 
-        if (string.IsNullOrWhiteSpace(title) && description is null && string.IsNullOrWhiteSpace(visibility))
-        {
-            return NotesMcpResultMapper.Failure(new NotesError(
-                NotesFailureKind.Validation,
-                "missing_changes",
-                "Specify at least one notebook field to update."));
-        }
+                if (string.IsNullOrWhiteSpace(title) && description is null && string.IsNullOrWhiteSpace(visibility))
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "missing_changes",
+                        "Specify at least one notebook field to update."));
+                }
 
-        var notebookContext = notebookContextResult.Value;
-        var notebook = notebookContext.Notebook;
-        var updateResult = await notebookCommandService.UpdateNotebookAsync(
-            notebook.Id,
-            notebookContext.ActorId,
-            string.IsNullOrWhiteSpace(title) ? notebook.Title : title,
-            description is null ? notebook.Description : description,
-            string.IsNullOrWhiteSpace(visibility) ? notebook.Visibility : visibility,
+                if (title is not null && string.IsNullOrWhiteSpace(title))
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_title",
+                        "Notebook title cannot be empty or whitespace."));
+                }
+
+                if (!string.IsNullOrWhiteSpace(visibility) && visibility is not ("public" or "unlisted" or "private"))
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_visibility",
+                        "Visibility must be public, unlisted, or private."));
+                }
+
+                var notebookContext = notebookContextResult.Value;
+                var notebook = notebookContext.Notebook;
+                var updateResult = await notebookCommandService.UpdateNotebookAsync(
+                    notebook.Id,
+                    notebookContext.ActorId,
+                    string.IsNullOrWhiteSpace(title) ? notebook.Title : title,
+                    description is null ? notebook.Description : description,
+                    string.IsNullOrWhiteSpace(visibility) ? notebook.Visibility : visibility,
+                    ct);
+                if (!updateResult.Succeeded)
+                {
+                    return McpMutationResult<GetNotebookToolResponse>.Failure(updateResult.Error!, notebook.Id);
+                }
+
+                var response = NotesMcpSupport.ToGetNotebookToolResponse(updateResult.Value!);
+                return McpMutationResult<GetNotebookToolResponse>.Success(
+                    response,
+                    $"Notebook '{response.Title}' updated.",
+                    response.Id,
+                    itemId: null);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.UpdateNotebook, notebook.Id, null, updateResult, cancellationToken);
-
-        if (!updateResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(updateResult.Error!);
-        }
-
-        var response = NotesMcpSupport.ToGetNotebookToolResponse(updateResult.Value!);
-        return NotesMcpResultMapper.Success(response, $"Notebook '{response.Title}' updated.");
     }
 
     [McpServerTool(
@@ -395,36 +445,45 @@ public sealed class NotesMcpNotebookTools
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
-        IMcpAuditService auditService,
+        IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
-        var mcpOptions = mcpOptionsAccessor.Value;
-        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
-            notebookSlug,
+        return await mutationExecutor.ExecuteAsync(
             user,
-            notebookQueryService,
-            cancellationToken,
-            mcpOptions.RequiredWriteScopes);
-        if (!notebookContextResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
-        }
+            NotesMcpToolNames.DeleteNotebook,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+                    notebookSlug,
+                    user,
+                    notebookQueryService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!notebookContextResult.Succeeded)
+                {
+                    return McpMutationResult<DeleteNotebookToolResponse>.Failure(notebookContextResult.Error!);
+                }
 
-        var notebookContext = notebookContextResult.Value;
-        var notebook = notebookContext.Notebook;
-        var deleteResult = await notebookCommandService.DeleteNotebookAsync(
-            notebook.Id,
-            notebookContext.ActorId,
+                var notebookContext = notebookContextResult.Value;
+                var notebook = notebookContext.Notebook;
+                var deleteResult = await notebookCommandService.DeleteNotebookAsync(
+                    notebook.Id,
+                    notebookContext.ActorId,
+                    ct);
+                if (!deleteResult.Succeeded)
+                {
+                    return McpMutationResult<DeleteNotebookToolResponse>.Failure(deleteResult.Error!, notebook.Id);
+                }
+
+                var response = new DeleteNotebookToolResponse(notebook.Id, notebook.Slug, "deleted");
+                return McpMutationResult<DeleteNotebookToolResponse>.Success(
+                    response,
+                    $"Notebook '{notebook.Title}' deleted.",
+                    notebook.Id,
+                    itemId: null);
+            },
             cancellationToken);
-        await NotesMcpSupport.AuditWriteAsync(auditService, user, NotesMcpToolNames.DeleteNotebook, notebook.Id, null, deleteResult, cancellationToken);
-
-        if (!deleteResult.Succeeded)
-        {
-            return NotesMcpResultMapper.Failure(deleteResult.Error!);
-        }
-
-        var response = new DeleteNotebookToolResponse(notebook.Id, notebook.Slug, "deleted");
-        return NotesMcpResultMapper.Success(response, $"Notebook '{notebook.Title}' deleted.");
     }
 }

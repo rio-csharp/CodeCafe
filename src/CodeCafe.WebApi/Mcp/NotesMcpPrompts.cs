@@ -21,26 +21,13 @@ public sealed class NotesMcpPrompts
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
-        }
-
-        var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
-        if (!pageResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(pageResult.Error!);
-        }
+        NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
+        var notebook = NotesMcpSupport.EnsureMcpSuccess(
+            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken));
+        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
 
         return NotesMcpSupport.CreatePromptMessages(
-            $"Use `{NotesMcpToolNames.GetPage}` for notebook `{notebookResult.Value!.Slug}` and path `{pageResult.Value!.Path}`.",
+            $"Use `{NotesMcpToolNames.GetPage}` for notebook `{notebook.Slug}` and path `{page.Path}`.",
             "Summarize the page, preserve technical accuracy, and propose a tighter heading structure if the content suggests one.");
     }
 
@@ -54,20 +41,12 @@ public sealed class NotesMcpPrompts
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
-        }
+        NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
+        var notebook = NotesMcpSupport.EnsureMcpSuccess(
+            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken));
 
         return NotesMcpSupport.CreatePromptMessages(
-            $"Inspect notebook `{notebookResult.Value!.Slug}` with `{NotesMcpToolNames.GetNotebook}` and `{NotesMcpToolNames.ListItems}`.",
+            $"Inspect notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetNotebook}` and `{NotesMcpToolNames.ListItems}`.",
             $"Propose a reorganization plan first. Only after review should `{NotesMcpToolNames.MoveItem}` or `{NotesMcpToolNames.ReorderItems}` be used.");
     }
 
@@ -82,26 +61,13 @@ public sealed class NotesMcpPrompts
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
-        }
-
-        var pageResult = NotesMcpSupport.RequirePage(notebookResult.Value!, path);
-        if (!pageResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(pageResult.Error!);
-        }
+        NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
+        var notebook = NotesMcpSupport.EnsureMcpSuccess(
+            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken));
+        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
 
         return NotesMcpSupport.CreatePromptMessages(
-            $"Read page `{pageResult.Value!.Path}` in notebook `{notebookResult.Value!.Slug}` with `{NotesMcpToolNames.GetPage}`.",
+            $"Read page `{page.Path}` in notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetPage}`.",
             $"Expand the outline into a fuller draft while preserving the existing structure. When applying edits, use `{NotesMcpToolNames.UpdatePageContentJson}` or `{NotesMcpToolNames.AppendBlocksToPage}`.");
     }
 
@@ -115,20 +81,12 @@ public sealed class NotesMcpPrompts
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var scopeResult = NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes);
-        if (!scopeResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(scopeResult.Error!);
-        }
-
-        var notebookResult = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
-        if (!notebookResult.Succeeded)
-        {
-            NotesMcpSupport.ThrowMcpError(notebookResult.Error!);
-        }
+        NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
+        var notebook = NotesMcpSupport.EnsureMcpSuccess(
+            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken));
 
         return NotesMcpSupport.CreatePromptMessages(
-            $"Inspect notebook `{notebookResult.Value!.Slug}` with `{NotesMcpToolNames.GetNotebook}`, `{NotesMcpToolNames.ListItems}`, and `{NotesMcpToolNames.GetPage}` as needed.",
+            $"Inspect notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetNotebook}`, `{NotesMcpToolNames.ListItems}`, and `{NotesMcpToolNames.GetPage}` as needed.",
             "Identify pages that appear stale based on timestamps, structure, and content drift. Produce findings before proposing edits.");
     }
 }

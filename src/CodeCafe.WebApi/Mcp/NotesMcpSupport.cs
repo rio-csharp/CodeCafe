@@ -66,7 +66,7 @@ internal static class NotesMcpSupport
             : NotesResult<Guid>.Success(currentUserId);
     }
 
-    public static string NormalizePath(string path) => path.Trim().Trim('/');
+    public static string NormalizePath(string path) => path?.Trim().Trim('/') ?? string.Empty;
 
     public static async Task<NotesResult<NotebookDetailModel>> RequireNotebookAsync(
         string notebookSlug,
@@ -246,24 +246,27 @@ internal static class NotesMcpSupport
         return NotesResult<ItemContext>.Success(new ItemContext(notebookContext.ActorId, notebookContext.Notebook, pageResult.Value!));
     }
 
-    public static NotesResult<NotebookItemModel> ResolveParent(
+    public static NotesResult<NotebookItemModel?> ResolveParent(
         NotebookDetailModel notebook,
         string? parentPath)
     {
         if (string.IsNullOrWhiteSpace(parentPath))
         {
-            return NotesResult<NotebookItemModel>.Success(null!);
+            return NotesResult<NotebookItemModel?>.Success(null);
         }
 
         var parentResult = RequireItem(notebook, parentPath);
         if (!parentResult.Succeeded)
         {
-            return parentResult;
+            return NotesResult<NotebookItemModel?>.Failure(
+                parentResult.Error!.Kind,
+                parentResult.Error.Code,
+                parentResult.Error.Message);
         }
 
         return string.Equals(parentResult.Value!.Type, "folder", StringComparison.OrdinalIgnoreCase)
-            ? parentResult
-            : NotesResult<NotebookItemModel>.Failure(
+            ? NotesResult<NotebookItemModel?>.Success(parentResult.Value)
+            : NotesResult<NotebookItemModel?>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_parent",
                 "Parent item must be a folder.");
@@ -431,16 +434,16 @@ internal static class NotesMcpSupport
     }
 
     public static NotesResult<JsonElement?> ParseOptionalJsonArgument(
-        JsonObject? json,
+        JsonElement? json,
         string code,
         string invalidMessage)
     {
-        if (json is null)
+        if (json is null || json.Value.ValueKind == JsonValueKind.Undefined || json.Value.ValueKind == JsonValueKind.Null)
         {
             return NotesResult<JsonElement?>.Success(null);
         }
 
-        var result = ParseRequiredJsonArgument(json, code, invalidMessage);
+        var result = ParseRequiredJsonArgument(json.Value, code, invalidMessage);
         if (!result.Succeeded)
         {
             return NotesResult<JsonElement?>.Failure(result.Error!.Kind, result.Error.Code, result.Error.Message);
@@ -450,29 +453,44 @@ internal static class NotesMcpSupport
     }
 
     public static NotesResult<JsonElement> ParseRequiredJsonArgument(
-        JsonObject? json,
+        JsonElement json,
         string code,
         string invalidMessage)
     {
-        return json is null
-            ? NotesResult<JsonElement>.Failure(
+        if (json.ValueKind == JsonValueKind.Undefined || json.ValueKind == JsonValueKind.Null)
+        {
+            return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 code,
-                invalidMessage)
-            : NotesResult<JsonElement>.Success(JsonSerializer.SerializeToElement(json, SerializerOptions));
-    }
+                invalidMessage);
+        }
 
-    public static NotesResult<JsonElement> ParseRequiredJsonArgument(
-        JsonArray? json,
-        string code,
-        string invalidMessage)
-    {
-        return json is null
-            ? NotesResult<JsonElement>.Failure(
-                NotesFailureKind.Validation,
-                code,
-                invalidMessage)
-            : NotesResult<JsonElement>.Success(JsonSerializer.SerializeToElement(json, SerializerOptions));
+        if (json.ValueKind == JsonValueKind.String)
+        {
+            var raw = json.GetString();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return NotesResult<JsonElement>.Failure(
+                    NotesFailureKind.Validation,
+                    code,
+                    invalidMessage);
+            }
+
+            try
+            {
+                using var document = JsonDocument.Parse(raw);
+                return NotesResult<JsonElement>.Success(document.RootElement.Clone());
+            }
+            catch (JsonException)
+            {
+                return NotesResult<JsonElement>.Failure(
+                    NotesFailureKind.Validation,
+                    code,
+                    invalidMessage);
+            }
+        }
+
+        return NotesResult<JsonElement>.Success(json);
     }
 
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
@@ -542,7 +560,14 @@ internal static class NotesMcpSupport
 
         foreach (var block in blocks.EnumerateArray())
         {
-            content.Add(JsonNode.Parse(block.GetRawText()));
+            try
+            {
+                content.Add(JsonNode.Parse(block.GetRawText()));
+            }
+            catch (JsonException)
+            {
+                throw new ArgumentException("Blocks contain an invalid JSON node.", nameof(blocks));
+            }
         }
 
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
@@ -573,50 +598,26 @@ internal static class NotesMcpSupport
         return messages.Select(message => new ChatMessage(ChatRole.User, message));
     }
 
+    public static void EnsureMcpSuccess(NotesResult result)
+    {
+        if (!result.Succeeded)
+        {
+            ThrowMcpError(result.Error!);
+        }
+    }
+
+    public static T EnsureMcpSuccess<T>(NotesResult<T> result)
+    {
+        if (!result.Succeeded)
+        {
+            ThrowMcpError(result.Error!);
+        }
+
+        return result.Value!;
+    }
+
     public static void ThrowMcpError(NotesError error)
     {
         throw new McpException($"{error.Code}: {error.Message}");
-    }
-
-    public static async Task AuditWriteAsync(
-        IMcpAuditService auditService,
-        ClaimsPrincipal user,
-        string toolName,
-        Guid? notebookId,
-        Guid? itemId,
-        NotesResult result,
-        CancellationToken cancellationToken)
-    {
-        await auditService.WriteAsync(
-            GetCurrentUserId(user),
-            "user",
-            toolName,
-            notebookId,
-            itemId,
-            result.Succeeded,
-            result.Succeeded ? "success" : result.Error!.Code,
-            result.Error?.Code,
-            cancellationToken);
-    }
-
-    public static async Task AuditWriteAsync<T>(
-        IMcpAuditService auditService,
-        ClaimsPrincipal user,
-        string toolName,
-        Guid? notebookId,
-        Guid? itemId,
-        NotesResult<T> result,
-        CancellationToken cancellationToken)
-    {
-        await auditService.WriteAsync(
-            GetCurrentUserId(user),
-            "user",
-            toolName,
-            notebookId,
-            itemId,
-            result.Succeeded,
-            result.Succeeded ? "success" : result.Error!.Code,
-            result.Error?.Code,
-            cancellationToken);
     }
 }

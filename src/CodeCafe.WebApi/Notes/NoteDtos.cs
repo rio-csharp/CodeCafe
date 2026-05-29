@@ -85,7 +85,8 @@ public sealed record UpdateNotebookItemRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     JsonElement ParentId,
     int? SortOrder,
-    JsonElement ContentJson);
+    JsonElement ContentJson,
+    DateTimeOffset? ExpectedUpdatedAtUtc = null);
 
 public sealed record ReorderNotebookItemsRequest(
     [Required] IReadOnlyList<ReorderNotebookItemRequest> Items);
