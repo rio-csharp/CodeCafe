@@ -70,7 +70,7 @@ export default function TreePageNode({
 
   return (
     <div
-      draggable={canEdit}
+      draggable={canEdit && !node.item.isArchived}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       className={`group flex items-center gap-2 px-3 py-1.5 text-[13px] rounded-md transition-colors ${isActive ? 'bg-amber-50/60' : ''} ${isDragging ? 'opacity-40' : ''} ${node.item.isArchived ? 'opacity-60 italic' : ''}`}
