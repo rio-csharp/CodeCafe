@@ -21,6 +21,8 @@ interface TreePageNodeProps {
     onDragEnd: () => void
   }
   onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>
+  onArchiveItem: (itemId: string) => Promise<void>
+  onRestoreItem: (itemId: string) => Promise<void>
   onDeleteItem: (itemId: string) => Promise<void>
 }
 
@@ -36,6 +38,8 @@ export default function TreePageNode({
   index,
   dragState,
   onRenameItem,
+  onArchiveItem,
+  onRestoreItem,
   onDeleteItem,
 }: TreePageNodeProps) {
   const {
@@ -43,11 +47,13 @@ export default function TreePageNode({
     editTitle,
     setEditTitle,
     handleRename,
+    handleArchive,
+    handleRestore,
     handleDelete,
     handleKeyDown,
     startEditing,
     cancelEditing,
-  } = useTreeNodeActions({ node, onRenameItem, onDeleteItem })
+  } = useTreeNodeActions({ node, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem })
 
   const isActive = node.item.path === activePath
   const isDragging = dragState?.draggingId === node.item.id
@@ -67,7 +73,7 @@ export default function TreePageNode({
       draggable={canEdit}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className={`group flex items-center gap-2 px-3 py-1.5 text-[13px] rounded-md transition-colors ${isActive ? 'bg-amber-50/60' : ''} ${isDragging ? 'opacity-40' : ''}`}
+      className={`group flex items-center gap-2 px-3 py-1.5 text-[13px] rounded-md transition-colors ${isActive ? 'bg-amber-50/60' : ''} ${isDragging ? 'opacity-40' : ''} ${node.item.isArchived ? 'opacity-60 italic' : ''}`}
       style={{ paddingLeft }}
     >
       <Link
@@ -94,9 +100,12 @@ export default function TreePageNode({
         isEditing={isEditing}
         siblingCount={siblingCount}
         index={index}
+        isArchived={node.item.isArchived}
         onMoveUp={(e) => { e.preventDefault(); onMoveUp?.(node.item.id) }}
         onMoveDown={(e) => { e.preventDefault(); onMoveDown?.(node.item.id) }}
         onRename={(e) => { e.preventDefault(); startEditing() }}
+        onArchive={(e) => { e.preventDefault(); handleArchive() }}
+        onRestore={(e) => { e.preventDefault(); handleRestore() }}
         onDelete={(e) => { e.preventDefault(); handleDelete() }}
       />
     </div>

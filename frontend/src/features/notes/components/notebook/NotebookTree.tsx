@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Search, FolderOpen, Coffee } from 'lucide-react'
+import { Search, FolderOpen, Coffee, Archive } from 'lucide-react'
 import type { TreeNode } from '../../utils/buildTree'
 import type { Notebook } from '../../types'
 import { useDebounce } from '../../../../hooks/useDebounce'
@@ -20,11 +20,13 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage 
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
 
+  const [showArchived, setShowArchived] = useState(false)
+
   const {
     data: searchResults,
     isPending: searchPending,
     isError: searchError,
-  } = useNotebookItems(notebook.id, debouncedSearch || undefined)
+  } = useNotebookItems(notebook.id, debouncedSearch || undefined, showArchived)
 
   const isSearching = debouncedSearch.length > 0
 
@@ -32,6 +34,8 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage 
     handleCreateRoot,
     handleCreateItem,
     handleRenameItem,
+    handleArchiveItem,
+    handleRestoreItem,
     handleDeleteItem,
     handleMoveUp,
     handleMoveDown,
@@ -69,7 +73,21 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage 
       </div>
 
       {/* Root actions */}
-      {canEdit && !isSearching && <TreeRootActions onCreateRoot={handleCreateRoot} />}
+      {canEdit && !isSearching && (
+        <div className="px-4 pb-2 flex items-center justify-between">
+          <TreeRootActions onCreateRoot={handleCreateRoot} />
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showArchived}
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="h-3 w-3 rounded border-gray-300 text-brand-brown focus:ring-brand-brown"
+            />
+            <Archive className="h-3 w-3" />
+            <span>Show archived</span>
+          </label>
+        </div>
+      )}
 
       {/* Tree or Search Results */}
       <div className="flex-1 overflow-y-auto px-2 pb-4">
@@ -87,6 +105,8 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage 
           onMoveDown={handleMoveDown}
           onCreateItem={handleCreateItem}
           onRenameItem={handleRenameItem}
+          onArchiveItem={handleArchiveItem}
+          onRestoreItem={handleRestoreItem}
           onDeleteItem={handleDeleteItem}
         />
       </div>

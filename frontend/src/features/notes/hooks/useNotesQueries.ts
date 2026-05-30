@@ -11,6 +11,8 @@ import {
   deleteNotebook,
   createNotebookItem,
   updateNotebookItem,
+  archiveNotebookItem,
+  restoreNotebookItem,
   deleteNotebookItem,
   reorderNotebookItems,
   getFavoriteStatus,
@@ -49,10 +51,10 @@ export function useNotebook(slug: string) {
   })
 }
 
-export function useNotebookItems(notebookId: string, search?: string) {
+export function useNotebookItems(notebookId: string, search?: string, includeArchived?: boolean) {
   return useQuery({
-    queryKey: notesKeys.items(notebookId, search),
-    queryFn: () => getNotebookItems(notebookId, search),
+    queryKey: notesKeys.items(notebookId, search, includeArchived),
+    queryFn: () => getNotebookItems(notebookId, search, includeArchived),
     enabled: !!notebookId,
   })
 }
@@ -113,6 +115,28 @@ export function useUpdateNotebookItem(notebookId: string) {
         if (!old) return old
         return old.map((item) => (item.id === data.id ? data : item))
       })
+      queryClient.invalidateQueries({ queryKey: notesKeys.items(notebookId) })
+      queryClient.invalidateQueries({ queryKey: notesKeys.all })
+    },
+  })
+}
+
+export function useArchiveNotebookItem(notebookId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (itemId: string) => archiveNotebookItem(notebookId, itemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notesKeys.items(notebookId) })
+      queryClient.invalidateQueries({ queryKey: notesKeys.all })
+    },
+  })
+}
+
+export function useRestoreNotebookItem(notebookId: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (itemId: string) => restoreNotebookItem(notebookId, itemId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: notesKeys.items(notebookId) })
       queryClient.invalidateQueries({ queryKey: notesKeys.all })
     },

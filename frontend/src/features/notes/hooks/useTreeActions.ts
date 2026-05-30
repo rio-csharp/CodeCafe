@@ -4,6 +4,8 @@ import type { Notebook } from '../types'
 import {
   useCreateNotebookItem,
   useUpdateNotebookItem,
+  useArchiveNotebookItem,
+  useRestoreNotebookItem,
   useDeleteNotebookItem,
   useReorderNotebookItems,
 } from './useNotesQueries'
@@ -15,6 +17,8 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
 
   const createItem = useCreateNotebookItem(notebook.id)
   const updateItem = useUpdateNotebookItem(notebook.id)
+  const archiveItem = useArchiveNotebookItem(notebook.id)
+  const restoreItem = useRestoreNotebookItem(notebook.id)
   const deleteItem = useDeleteNotebookItem(notebook.id)
   const reorderItems = useReorderNotebookItems(notebook.id)
   const { showToast: showTreeToast } = useToast()
@@ -60,6 +64,22 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
       showTreeToast('Renamed')
     },
     [updateItem, showTreeToast],
+  )
+
+  const handleArchiveItem = useCallback(
+    async (itemId: string) => {
+      await archiveItem.mutateAsync(itemId)
+      showTreeToast('Archived')
+    },
+    [archiveItem, showTreeToast],
+  )
+
+  const handleRestoreItem = useCallback(
+    async (itemId: string) => {
+      await restoreItem.mutateAsync(itemId)
+      showTreeToast('Restored')
+    },
+    [restoreItem, showTreeToast],
   )
 
   const handleDeleteItem = useCallback(
@@ -134,6 +154,8 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     handleCreateRoot,
     handleCreateItem,
     handleRenameItem,
+    handleArchiveItem,
+    handleRestoreItem,
     handleDeleteItem,
     handleMoveUp,
     handleMoveDown,

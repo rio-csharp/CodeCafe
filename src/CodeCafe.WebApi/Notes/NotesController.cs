@@ -212,10 +212,11 @@ public sealed class NotesController(
     public async Task<ActionResult<IReadOnlyList<NotebookItemResponse>>> GetNotebookItems(
         Guid notebookId,
         [FromQuery] string? search,
-        CancellationToken cancellationToken)
+        [FromQuery] bool includeArchived = false,
+        CancellationToken cancellationToken = default)
     {
         return ToActionResult<IReadOnlyList<NotebookItemModel>, IReadOnlyList<NotebookItemResponse>>(
-            await notebookQueryService.GetNotebookItemsAsync(notebookId, GetCurrentUserId(), search, cancellationToken),
+            await notebookQueryService.GetNotebookItemsAsync(notebookId, GetCurrentUserId(), search, cancellationToken, includeArchived),
             items => items.Select(ToItemResponse).ToList());
     }
 

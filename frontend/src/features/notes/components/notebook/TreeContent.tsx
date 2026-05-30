@@ -23,6 +23,8 @@ interface TreeContentProps {
   onMoveDown: (itemId: string) => void
   onCreateItem: (parentId: string | null, type: 'folder' | 'page') => Promise<void>
   onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>
+  onArchiveItem: (itemId: string) => Promise<void>
+  onRestoreItem: (itemId: string) => Promise<void>
   onDeleteItem: (itemId: string) => Promise<void>
 }
 
@@ -40,6 +42,8 @@ export default function TreeContent({
   onMoveDown,
   onCreateItem,
   onRenameItem,
+  onArchiveItem,
+  onRestoreItem,
   onDeleteItem,
 }: TreeContentProps) {
   if (isSearching) {
@@ -87,6 +91,8 @@ export default function TreeContent({
           dragState={dragState}
           onCreateItem={onCreateItem}
           onRenameItem={onRenameItem}
+          onArchiveItem={onArchiveItem}
+          onRestoreItem={onRestoreItem}
           onDeleteItem={onDeleteItem}
         />
       ))}

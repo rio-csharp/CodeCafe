@@ -20,6 +20,8 @@ interface TreeItemProps {
   }
   onCreateItem: (parentId: string | null, type: 'folder' | 'page') => Promise<void>
   onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>
+  onArchiveItem: (itemId: string) => Promise<void>
+  onRestoreItem: (itemId: string) => Promise<void>
   onDeleteItem: (itemId: string) => Promise<void>
 }
 
@@ -36,6 +38,8 @@ export default function TreeItem({
   dragState,
   onCreateItem,
   onRenameItem,
+  onArchiveItem,
+  onRestoreItem,
   onDeleteItem,
 }: TreeItemProps) {
   const isFolder = node.item.type === 'folder'
@@ -53,6 +57,8 @@ export default function TreeItem({
         dragState={dragState}
         onCreateItem={onCreateItem}
         onRenameItem={onRenameItem}
+        onArchiveItem={onArchiveItem}
+        onRestoreItem={onRestoreItem}
         onDeleteItem={onDeleteItem}
       >
         {node.children.map((child, childIndex) => (
@@ -70,6 +76,8 @@ export default function TreeItem({
             dragState={dragState}
             onCreateItem={onCreateItem}
             onRenameItem={onRenameItem}
+            onArchiveItem={onArchiveItem}
+            onRestoreItem={onRestoreItem}
             onDeleteItem={onDeleteItem}
           />
         ))}
@@ -90,6 +98,8 @@ export default function TreeItem({
       index={index}
       dragState={dragState}
       onRenameItem={onRenameItem}
+      onArchiveItem={onArchiveItem}
+      onRestoreItem={onRestoreItem}
       onDeleteItem={onDeleteItem}
     />
   )
