@@ -22,6 +22,8 @@ interface TreeFolderNodeProps {
   }
   onCreateItem: (parentId: string | null, type: 'folder' | 'page') => Promise<void>
   onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>
+  onArchiveItem: (itemId: string) => Promise<void>
+  onRestoreItem: (itemId: string) => Promise<void>
   onDeleteItem: (itemId: string) => Promise<void>
   children: React.ReactNode
 }
@@ -37,6 +39,8 @@ export default function TreeFolderNode({
   dragState,
   onCreateItem,
   onRenameItem,
+  onArchiveItem,
+  onRestoreItem,
   onDeleteItem,
   children,
 }: TreeFolderNodeProps) {
@@ -47,11 +51,13 @@ export default function TreeFolderNode({
     editTitle,
     setEditTitle,
     handleRename,
+    handleArchive,
+    handleRestore,
     handleDelete,
     handleKeyDown,
     startEditing,
     cancelEditing,
-  } = useTreeNodeActions({ node, onRenameItem, onDeleteItem })
+  } = useTreeNodeActions({ node, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem })
 
   const isDragging = dragState?.draggingId === node.item.id
   const paddingLeft = level * 14 + 10
@@ -75,7 +81,7 @@ export default function TreeFolderNode({
   const handleDragEnd = () => { dragState?.onDragEnd() }
 
   const handleDragOver = (e: React.DragEvent) => {
-    if (!dragState || !canEdit) return
+    if (!dragState || !canEdit || node.item.isArchived) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setIsDragOver(true)
@@ -84,7 +90,7 @@ export default function TreeFolderNode({
   const handleDragLeave = () => { setIsDragOver(false) }
 
   const handleDrop = (e: React.DragEvent) => {
-    if (!dragState || !canEdit) return
+    if (!dragState || !canEdit || node.item.isArchived) return
     e.preventDefault()
     setIsDragOver(false)
     dragState.onDropOnFolder(node.item.id)
@@ -92,7 +98,7 @@ export default function TreeFolderNode({
 
   return (
     <div
-      draggable={canEdit}
+      draggable={canEdit && !node.item.isArchived}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
@@ -101,7 +107,7 @@ export default function TreeFolderNode({
       className={`${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'bg-amber-50/60 rounded-md' : ''}`}
     >
       <div
-        className="group flex items-center gap-1 w-full text-left px-3 py-1.5 text-[13px] text-gray-700 hover:bg-gray-50 rounded-md transition-colors"
+        className={`group flex items-center gap-1 w-full text-left px-3 py-1.5 text-[13px] rounded-md transition-colors ${node.item.isArchived ? 'text-gray-400 opacity-60 italic hover:bg-gray-50' : 'text-gray-700 hover:bg-gray-50'}`}
         style={{ paddingLeft }}
       >
         <button type="button" onClick={() => setExpanded(!expanded)} className="shrink-0 p-0.5">
@@ -124,15 +130,20 @@ export default function TreeFolderNode({
 
         {canEdit && !isEditing && (
           <div className="hidden group-hover:flex items-center gap-0.5 shrink-0 ml-1">
-            <TreeCreateMenu onCreateFolder={() => handleCreate('folder')} onCreatePage={() => handleCreate('page')} />
+            {!node.item.isArchived && (
+              <TreeCreateMenu onCreateFolder={() => handleCreate('folder')} onCreatePage={() => handleCreate('page')} />
+            )}
             <TreeNodeActions
               canEdit={canEdit}
               isEditing={isEditing}
               siblingCount={siblingCount}
               index={index}
+              isArchived={node.item.isArchived}
               onMoveUp={(e) => { e.stopPropagation(); onMoveUp?.(node.item.id) }}
               onMoveDown={(e) => { e.stopPropagation(); onMoveDown?.(node.item.id) }}
               onRename={(e) => { e.stopPropagation(); startEditing() }}
+              onArchive={(e) => { e.stopPropagation(); handleArchive() }}
+              onRestore={(e) => { e.stopPropagation(); handleRestore() }}
               onDelete={(e) => { e.stopPropagation(); handleDelete() }}
             />
           </div>

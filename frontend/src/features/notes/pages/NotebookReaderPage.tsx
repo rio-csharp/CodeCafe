@@ -18,19 +18,22 @@ export default function NotebookReaderPage() {
   const { notebookSlug, '*': splat } = useParams<{ notebookSlug: string; '*': string }>()
   const pagePath = splat ?? ''
   const [editClickedForPath, setEditClickedForPath] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const isEditingPage = editClickedForPath === pagePath
 
   const {
     data: notebook,
     isPending: notebookPending,
-    isError: notebookError,
+    isError: notebookIsError,
+    error: notebookError,
   } = useNotebook(notebookSlug!)
 
   const {
     data: items,
     isPending: itemsPending,
-    isError: itemsError,
-  } = useNotebookItems(notebook?.id ?? '')
+    isError: itemsIsError,
+    error: itemsError,
+  } = useNotebookItems(notebook?.id ?? '', undefined, showArchived)
 
   const updateItem = useUpdateNotebookItem(notebook?.id ?? '')
   const { showToast } = useToast()
@@ -76,7 +79,7 @@ export default function NotebookReaderPage() {
     [activePage, updateItem, showToast],
   )
 
-  if (notebookPending || itemsPending) {
+  if (notebookPending) {
     return (
       <div className="h-screen flex items-center justify-center bg-white">
         <RouteGuardSpinner />
@@ -84,10 +87,28 @@ export default function NotebookReaderPage() {
     )
   }
 
-  if (notebookError || itemsError || !notebook) {
+  if (notebookIsError || !notebook) {
+    const errMsg = notebookError instanceof Error ? notebookError.message : 'Failed to load notebook.'
     return (
       <div className="h-screen flex items-center justify-center bg-white">
-        <p className="text-sm text-red-600">Failed to load notebook.</p>
+        <p className="text-sm text-red-600">{errMsg}</p>
+      </div>
+    )
+  }
+
+  if (itemsPending) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <RouteGuardSpinner />
+      </div>
+    )
+  }
+
+  if (itemsIsError) {
+    const errMsg = itemsError instanceof Error ? itemsError.message : 'Failed to load notebook items.'
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <p className="text-sm text-red-600">{errMsg}</p>
       </div>
     )
   }
@@ -108,6 +129,8 @@ export default function NotebookReaderPage() {
           notebookSlug={notebook.slug}
           tree={tree}
           activePage={activePage}
+          showArchived={showArchived}
+          onShowArchivedChange={setShowArchived}
         />
       }
       content={
@@ -120,7 +143,7 @@ export default function NotebookReaderPage() {
                 </svg>
                 <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Page</span>
               </div>
-              {notebook.canEdit && !isEditingPage && (
+              {notebook.canEdit && !isEditingPage && !activePage?.isArchived && (
                 <button
                   onClick={() => setEditClickedForPath(pagePath)}
                   className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"

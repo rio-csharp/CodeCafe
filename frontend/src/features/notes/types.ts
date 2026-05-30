@@ -39,6 +39,9 @@ export interface NotebookItem {
   contentFormat: 'tiptap_json' | null
   contentJson: Record<string, unknown> | null
   plainTextContent: string | null
+  isArchived: boolean
+  archivedAtUtc: string | null
+  archivedByUserId: string | null
   createdAtUtc: string
   updatedAtUtc: string | null
 }

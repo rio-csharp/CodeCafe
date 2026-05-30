@@ -99,8 +99,10 @@ We explicitly choose direct TipTap JSON for AI write operations.
    custom conversion layer and lossy edge cases.
 
 3. **Better structural control**
-   AI can create headings, lists, code blocks, blockquotes, tables, and nested
-   structures directly as a document tree.
+   AI can create headings, lists, code blocks, blockquotes, tables, images,
+   YouTube embeds, task lists, and nested structures directly as a document tree.
+   Inline formatting includes bold, italic, underline, strikethrough, links,
+   colors, highlights, subscript, superscript, and font family.
 
 4. **Less hidden behavior**
    The backend does not need a Markdown parser plus a Markdown-to-TipTap

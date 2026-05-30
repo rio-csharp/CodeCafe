@@ -28,12 +28,23 @@ public sealed class TipTapPlainTextExtractor : ITipTapPlainTextExtractor
         }
 
         if (node.TryGetProperty("type", out var typeElement)
-            && typeElement.ValueKind == JsonValueKind.String
-            && string.Equals(typeElement.GetString(), "text", StringComparison.Ordinal)
-            && node.TryGetProperty("text", out var textElement)
-            && textElement.ValueKind == JsonValueKind.String)
+            && typeElement.ValueKind == JsonValueKind.String)
         {
-            builder.Append(textElement.GetString());
+            var type = typeElement.GetString();
+            if (string.Equals(type, "text", StringComparison.Ordinal)
+                && node.TryGetProperty("text", out var textElement)
+                && textElement.ValueKind == JsonValueKind.String)
+            {
+                builder.Append(textElement.GetString());
+            }
+            else if (string.Equals(type, "image", StringComparison.Ordinal))
+            {
+                builder.Append("[Image]");
+            }
+            else if (string.Equals(type, "youtube", StringComparison.Ordinal))
+            {
+                builder.Append("[Video]");
+            }
         }
 
         if (node.TryGetProperty("content", out var contentElement)

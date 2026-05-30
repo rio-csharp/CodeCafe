@@ -5,10 +5,12 @@ import { useToast } from '../../../components/ui/useToast'
 interface UseTreeNodeActionsOptions {
   node: TreeNode
   onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>
+  onArchiveItem: (itemId: string) => Promise<void>
+  onRestoreItem: (itemId: string) => Promise<void>
   onDeleteItem: (itemId: string) => Promise<void>
 }
 
-export default function useTreeNodeActions({ node, onRenameItem, onDeleteItem }: UseTreeNodeActionsOptions) {
+export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem }: UseTreeNodeActionsOptions) {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(node.item.title)
   const { showToast } = useToast()
@@ -28,15 +30,38 @@ export default function useTreeNodeActions({ node, onRenameItem, onDeleteItem }:
     }
   }, [editTitle, node.item.id, node.item.title, node.item.sortOrder, onRenameItem, showToast])
 
-  const handleDelete = useCallback(async () => {
-    if (!confirm(`Delete "${node.item.title}"? This cannot be undone.`)) return
+  const handleArchive = useCallback(async () => {
+    if (!confirm(`Archive "${node.item.title}"? It will be hidden from the notebook.`)) return
     try {
+      await onArchiveItem(node.item.id)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to archive'
+      showToast(message, 'error')
+    }
+  }, [node.item.id, node.item.title, onArchiveItem, showToast])
+
+  const handleRestore = useCallback(async () => {
+    try {
+      await onRestoreItem(node.item.id)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to restore'
+      showToast(message, 'error')
+    }
+  }, [node.item.id, onRestoreItem, showToast])
+
+  const handleDelete = useCallback(async () => {
+    const isArchived = node.item.isArchived
+    if (!confirm(`${isArchived ? 'Delete' : 'Archive and delete'} "${node.item.title}"? This cannot be undone.`)) return
+    try {
+      if (!isArchived) {
+        await onArchiveItem(node.item.id)
+      }
       await onDeleteItem(node.item.id)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete'
       showToast(message, 'error')
     }
-  }, [node.item.id, node.item.title, onDeleteItem, showToast])
+  }, [node.item.id, node.item.title, node.item.isArchived, onArchiveItem, onDeleteItem, showToast])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleRename()
@@ -57,6 +82,8 @@ export default function useTreeNodeActions({ node, onRenameItem, onDeleteItem }:
     editTitle,
     setEditTitle,
     handleRename,
+    handleArchive,
+    handleRestore,
     handleDelete,
     handleKeyDown,
     startEditing,

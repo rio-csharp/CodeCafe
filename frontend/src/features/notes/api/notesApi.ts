@@ -27,8 +27,12 @@ export async function getNotebookBySlug(slug: string): Promise<Notebook> {
 export async function getNotebookItems(
   notebookId: string,
   search?: string,
+  includeArchived?: boolean,
 ): Promise<NotebookItem[]> {
-  const params = search ? `?search=${encodeURIComponent(search)}` : ''
+  const query = new URLSearchParams()
+  if (search) query.set('search', search)
+  if (includeArchived) query.set('includeArchived', 'true')
+  const params = query.toString() ? `?${query.toString()}` : ''
   return apiFetch<NotebookItem[]>(`/api/notes/${notebookId}/items${params}`)
 }
 
@@ -75,6 +79,24 @@ export async function updateNotebookItem(
   return apiFetch<NotebookItem>(`/api/notes/${notebookId}/items/${itemId}`, {
     method: 'PUT',
     body: JSON.stringify(data),
+  })
+}
+
+export async function archiveNotebookItem(
+  notebookId: string,
+  itemId: string,
+): Promise<NotebookItem> {
+  return apiFetch<NotebookItem>(`/api/notes/${notebookId}/items/${itemId}/archive`, {
+    method: 'POST',
+  })
+}
+
+export async function restoreNotebookItem(
+  notebookId: string,
+  itemId: string,
+): Promise<NotebookItem> {
+  return apiFetch<NotebookItem>(`/api/notes/${notebookId}/items/${itemId}/restore`, {
+    method: 'POST',
   })
 }
 
