@@ -51,7 +51,6 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
 
   const handleDelete = useCallback(async () => {
     const isArchived = node.item.isArchived
-    const action = isArchived ? 'permanently delete' : 'archive and delete'
     if (!confirm(`${isArchived ? 'Delete' : 'Archive and delete'} "${node.item.title}"? This cannot be undone.`)) return
     try {
       if (!isArchived) {

@@ -23,13 +23,15 @@ export default function NotebookReaderPage() {
   const {
     data: notebook,
     isPending: notebookPending,
-    isError: notebookError,
+    isError: notebookIsError,
+    error: notebookError,
   } = useNotebook(notebookSlug!)
 
   const {
     data: items,
     isPending: itemsPending,
-    isError: itemsError,
+    isError: itemsIsError,
+    error: itemsError,
   } = useNotebookItems(notebook?.id ?? '')
 
   const updateItem = useUpdateNotebookItem(notebook?.id ?? '')
@@ -76,7 +78,7 @@ export default function NotebookReaderPage() {
     [activePage, updateItem, showToast],
   )
 
-  if (notebookPending || itemsPending) {
+  if (notebookPending) {
     return (
       <div className="h-screen flex items-center justify-center bg-white">
         <RouteGuardSpinner />
@@ -84,10 +86,28 @@ export default function NotebookReaderPage() {
     )
   }
 
-  if (notebookError || itemsError || !notebook) {
+  if (notebookIsError || !notebook) {
+    const errMsg = notebookError instanceof Error ? notebookError.message : 'Failed to load notebook.'
     return (
       <div className="h-screen flex items-center justify-center bg-white">
-        <p className="text-sm text-red-600">Failed to load notebook.</p>
+        <p className="text-sm text-red-600">{errMsg}</p>
+      </div>
+    )
+  }
+
+  if (itemsPending) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <RouteGuardSpinner />
+      </div>
+    )
+  }
+
+  if (itemsIsError) {
+    const errMsg = itemsError instanceof Error ? itemsError.message : 'Failed to load notebook items.'
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <p className="text-sm text-red-600">{errMsg}</p>
       </div>
     )
   }
