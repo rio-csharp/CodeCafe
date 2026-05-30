@@ -53,14 +53,16 @@ export default function TreeNodeActions({
           </button>
         </>
       )}
-      <button
-        type="button"
-        onClick={onRename}
-        className="p-0.5 text-gray-400 hover:text-brand-brown rounded transition-colors"
-        title="Rename"
-      >
-        <Pencil className="h-3 w-3" />
-      </button>
+      {!isArchived && (
+        <button
+          type="button"
+          onClick={onRename}
+          className="p-0.5 text-gray-400 hover:text-brand-brown rounded transition-colors"
+          title="Rename"
+        >
+          <Pencil className="h-3 w-3" />
+        </button>
+      )}
       {isArchived ? (
         <>
           <button

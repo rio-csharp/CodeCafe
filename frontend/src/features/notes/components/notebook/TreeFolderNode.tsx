@@ -130,7 +130,9 @@ export default function TreeFolderNode({
 
         {canEdit && !isEditing && (
           <div className="hidden group-hover:flex items-center gap-0.5 shrink-0 ml-1">
-            <TreeCreateMenu onCreateFolder={() => handleCreate('folder')} onCreatePage={() => handleCreate('page')} />
+            {!node.item.isArchived && (
+              <TreeCreateMenu onCreateFolder={() => handleCreate('folder')} onCreatePage={() => handleCreate('page')} />
+            )}
             <TreeNodeActions
               canEdit={canEdit}
               isEditing={isEditing}
