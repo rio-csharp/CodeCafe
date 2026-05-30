@@ -652,7 +652,7 @@ public sealed class NotebookCommandService(
         return parentId is null
             ? null
             : await dbContext.NotebookItems.SingleOrDefaultAsync(
-                item => item.NotebookId == notebookId && item.Id == parentId,
+                item => item.NotebookId == notebookId && item.Id == parentId && !item.IsArchived,
                 cancellationToken);
     }
 
