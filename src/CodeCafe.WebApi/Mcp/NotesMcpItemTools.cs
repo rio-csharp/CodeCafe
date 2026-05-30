@@ -283,7 +283,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The full TipTap JSON document to store. Can be a JSON object or a JSON string.")] JsonElement contentJson,
+        [Description("The full TipTap JSON document to store. Can be a JSON object or a JSON string. Supported block nodes: paragraph, heading (level 1-4), bulletList, orderedList, taskList, listItem, taskItem, codeBlock, blockquote, horizontalRule, table (with tableRow/tableHeader/tableCell), image, youtube. Supported inline marks: bold, italic, underline, strike, link, color, highlight, subscript, superscript, fontFamily.")] JsonElement contentJson,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
@@ -363,7 +363,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The TipTap block nodes JSON array to append. Can be a JSON array or a JSON string.")] JsonElement blocks,
+        [Description("The TipTap block nodes JSON array to append. Can be a JSON array or a JSON string. Supported block nodes: paragraph, heading (level 1-4), bulletList, orderedList, taskList, listItem, taskItem, codeBlock, blockquote, horizontalRule, table (with tableRow/tableHeader/tableCell), image, youtube. Supported inline marks: bold, italic, underline, strike, link, color, highlight, subscript, superscript, fontFamily.")] JsonElement blocks,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,

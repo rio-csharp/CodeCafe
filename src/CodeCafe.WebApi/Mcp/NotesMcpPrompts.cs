@@ -68,7 +68,7 @@ public sealed class NotesMcpPrompts
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Read page `{page.Path}` in notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetPage}`.",
-            $"Expand the outline into a fuller draft while preserving the existing structure. When applying edits, use `{NotesMcpToolNames.UpdatePageContentJson}` or `{NotesMcpToolNames.AppendBlocksToPage}`.");
+            $"Expand the outline into a fuller draft while preserving the existing structure. The editor supports headings, paragraphs, lists (bullet/ordered/task), code blocks, blockquotes, tables, images, YouTube embeds, and inline formatting (bold, italic, underline, strikethrough, links, colors, highlights, subscript, superscript, font family). When applying edits, use `{NotesMcpToolNames.UpdatePageContentJson}` or `{NotesMcpToolNames.AppendBlocksToPage}`.");
     }
 
     [McpServerPrompt(Name = "notes.review_for_staleness", Title = "Review For Staleness")]
