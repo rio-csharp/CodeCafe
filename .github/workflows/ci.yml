@@ -36,6 +36,7 @@ jobs:
           REF_NAME: ${{ github.ref_name }}
           REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           upload_artifacts=false
           pr_number=""
@@ -62,7 +63,7 @@ jobs:
             fi
           fi
 
-          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
+          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ] && [ "$IS_FORK" != "true" ]; then
             upload_artifacts=true
             image_tag="pr-$PR_NUMBER-$short_sha"
           fi

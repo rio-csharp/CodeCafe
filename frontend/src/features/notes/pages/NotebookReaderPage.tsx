@@ -143,7 +143,7 @@ export default function NotebookReaderPage() {
                 </svg>
                 <span className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Page</span>
               </div>
-              {notebook.canEdit && !isEditingPage && (
+              {notebook.canEdit && !isEditingPage && !activePage?.isArchived && (
                 <button
                   onClick={() => setEditClickedForPath(pagePath)}
                   className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
