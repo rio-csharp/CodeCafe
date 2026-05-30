@@ -81,7 +81,7 @@ export default function TreeFolderNode({
   const handleDragEnd = () => { dragState?.onDragEnd() }
 
   const handleDragOver = (e: React.DragEvent) => {
-    if (!dragState || !canEdit) return
+    if (!dragState || !canEdit || node.item.isArchived) return
     e.preventDefault()
     e.dataTransfer.dropEffect = 'move'
     setIsDragOver(true)
@@ -90,7 +90,7 @@ export default function TreeFolderNode({
   const handleDragLeave = () => { setIsDragOver(false) }
 
   const handleDrop = (e: React.DragEvent) => {
-    if (!dragState || !canEdit) return
+    if (!dragState || !canEdit || node.item.isArchived) return
     e.preventDefault()
     setIsDragOver(false)
     dragState.onDropOnFolder(node.item.id)
@@ -98,7 +98,7 @@ export default function TreeFolderNode({
 
   return (
     <div
-      draggable={canEdit}
+      draggable={canEdit && !node.item.isArchived}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
