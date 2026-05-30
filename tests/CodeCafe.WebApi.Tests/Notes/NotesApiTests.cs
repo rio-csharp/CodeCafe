@@ -1015,6 +1015,62 @@ public sealed class NotesApiTests : IClassFixture<AuthApiFactory>
         return await ReadJsonAsync(response);
     }
 
+    [Fact]
+    public async Task GetNotebookItems_IncludeArchived_ReturnsArchivedItemsOnlyForOwner()
+    {
+        using var owner = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(owner, $"archive-owner+{Guid.NewGuid():N}@example.com", "203.0.113.200");
+        var notebookId = await CreateNotebookAsync(owner, "Archive Notes", "public");
+
+        var page = await CreatePageAsync(owner, notebookId, null, "Active Page", 1, "active");
+        var pageId = page.RootElement.GetProperty("id").GetGuid();
+
+        // Archive the page
+        var archive = await SendWithCsrfAsync(owner, HttpMethod.Post, $"/api/notes/{notebookId}/items/{pageId}/archive", new { });
+        archive.EnsureSuccessStatusCode();
+        var archivedPage = await ReadJsonAsync(archive);
+        Assert.True(archivedPage.RootElement.GetProperty("isArchived").GetBoolean());
+        Assert.NotEqual(JsonValueKind.Null, archivedPage.RootElement.GetProperty("archivedAtUtc").ValueKind);
+
+        // Owner can see archived items with includeArchived=true
+        var ownerItemsWithArchived = await owner.GetAsync($"/api/notes/{notebookId}/items?includeArchived=true");
+        ownerItemsWithArchived.EnsureSuccessStatusCode();
+        var ownerItemsJson = await ReadJsonAsync(ownerItemsWithArchived);
+        var ownerItems = ownerItemsJson.RootElement.EnumerateArray().ToArray();
+        Assert.Single(ownerItems);
+        Assert.True(ownerItems[0].GetProperty("isArchived").GetBoolean());
+        Assert.NotEqual(JsonValueKind.Null, ownerItems[0].GetProperty("archivedAtUtc").ValueKind);
+
+        // Owner does not see archived items without includeArchived
+        var ownerItemsWithoutArchived = await owner.GetAsync($"/api/notes/{notebookId}/items");
+        ownerItemsWithoutArchived.EnsureSuccessStatusCode();
+        var ownerItemsNoArchiveJson = await ReadJsonAsync(ownerItemsWithoutArchived);
+        Assert.Empty(ownerItemsNoArchiveJson.RootElement.EnumerateArray());
+
+        // Anonymous user cannot use includeArchived=true
+        using var anonymous = _factory.CreateClient();
+        var anonymousArchived = await anonymous.GetAsync($"/api/notes/{notebookId}/items?includeArchived=true");
+        Assert.Equal(HttpStatusCode.Forbidden, anonymousArchived.StatusCode);
+
+        // Non-owner cannot use includeArchived=true
+        using var other = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        await RegisterAsync(other, $"archive-other+{Guid.NewGuid():N}@example.com", "203.0.113.201");
+        var otherArchived = await other.GetAsync($"/api/notes/{notebookId}/items?includeArchived=true");
+        Assert.Equal(HttpStatusCode.Forbidden, otherArchived.StatusCode);
+
+        // Non-owner sees empty list without includeArchived (archived items hidden)
+        var otherItems = await other.GetAsync($"/api/notes/{notebookId}/items");
+        otherItems.EnsureSuccessStatusCode();
+        var otherItemsJson = await ReadJsonAsync(otherItems);
+        Assert.Empty(otherItemsJson.RootElement.EnumerateArray());
+    }
+
     private static object CreateDoc(string text)
     {
         return new

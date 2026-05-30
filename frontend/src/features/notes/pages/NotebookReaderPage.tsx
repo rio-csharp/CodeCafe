@@ -18,6 +18,7 @@ export default function NotebookReaderPage() {
   const { notebookSlug, '*': splat } = useParams<{ notebookSlug: string; '*': string }>()
   const pagePath = splat ?? ''
   const [editClickedForPath, setEditClickedForPath] = useState<string | null>(null)
+  const [showArchived, setShowArchived] = useState(false)
   const isEditingPage = editClickedForPath === pagePath
 
   const {
@@ -32,7 +33,7 @@ export default function NotebookReaderPage() {
     isPending: itemsPending,
     isError: itemsIsError,
     error: itemsError,
-  } = useNotebookItems(notebook?.id ?? '')
+  } = useNotebookItems(notebook?.id ?? '', undefined, showArchived)
 
   const updateItem = useUpdateNotebookItem(notebook?.id ?? '')
   const { showToast } = useToast()
@@ -128,6 +129,8 @@ export default function NotebookReaderPage() {
           notebookSlug={notebook.slug}
           tree={tree}
           activePage={activePage}
+          showArchived={showArchived}
+          onShowArchivedChange={setShowArchived}
         />
       }
       content={

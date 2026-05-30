@@ -13,14 +13,14 @@ interface NotebookTreeProps {
   notebookSlug: string
   tree: TreeNode[]
   activePage: import('../../types').NotebookItem | null
+  showArchived: boolean
+  onShowArchivedChange: (value: boolean) => void
 }
 
-export default function NotebookTree({ notebook, notebookSlug, tree, activePage }: NotebookTreeProps) {
+export default function NotebookTree({ notebook, notebookSlug, tree, activePage, showArchived, onShowArchivedChange }: NotebookTreeProps) {
   const canEdit = !!notebook.canEdit
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
-
-  const [showArchived, setShowArchived] = useState(false)
 
   const {
     data: searchResults,
@@ -80,7 +80,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage 
             <input
               type="checkbox"
               checked={showArchived}
-              onChange={(e) => setShowArchived(e.target.checked)}
+              onChange={(e) => onShowArchivedChange(e.target.checked)}
               className="h-3 w-3 rounded border-gray-300 text-brand-brown focus:ring-brand-brown"
             />
             <Archive className="h-3 w-3" />

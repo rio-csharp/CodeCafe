@@ -215,8 +215,24 @@ public sealed class NotesController(
         [FromQuery] bool includeArchived = false,
         CancellationToken cancellationToken = default)
     {
+        var currentUserId = GetCurrentUserId();
+
+        // Only the notebook owner can read archived items
+        if (includeArchived)
+        {
+            var notebook = await notebookQueryService.GetNotebookByIdAsync(notebookId, currentUserId, cancellationToken);
+            if (!notebook.Succeeded)
+            {
+                return ToFailureResult(notebook.Error!);
+            }
+            if (notebook.Value!.OwnerId != currentUserId)
+            {
+                return ToFailureResult(new NotesError(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can view archived items."));
+            }
+        }
+
         return ToActionResult<IReadOnlyList<NotebookItemModel>, IReadOnlyList<NotebookItemResponse>>(
-            await notebookQueryService.GetNotebookItemsAsync(notebookId, GetCurrentUserId(), search, cancellationToken, includeArchived),
+            await notebookQueryService.GetNotebookItemsAsync(notebookId, currentUserId, search, cancellationToken, includeArchived),
             items => items.Select(ToItemResponse).ToList());
     }
 
@@ -441,6 +457,9 @@ public sealed class NotesController(
             model.ContentFormat,
             model.ContentJson,
             model.PlainTextContent,
+            model.IsArchived,
+            model.ArchivedAtUtc,
+            model.ArchivedByUserId,
             model.CreatedAtUtc,
             model.UpdatedAtUtc);
     }

@@ -61,6 +61,9 @@ public sealed record NotebookItemResponse(
     string? ContentFormat,
     JsonElement? ContentJson,
     string? PlainTextContent,
+    bool IsArchived,
+    DateTimeOffset? ArchivedAtUtc,
+    Guid? ArchivedByUserId,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
 
