@@ -219,6 +219,9 @@ internal static class NotesSupport
             item.ContentFormat,
             ParseContent(item.ContentJson),
             item.PlainTextContent,
+            item.IsArchived,
+            item.ArchivedAtUtc,
+            item.ArchivedByUserId,
             item.CreatedAtUtc,
             item.UpdatedAtUtc);
     }
