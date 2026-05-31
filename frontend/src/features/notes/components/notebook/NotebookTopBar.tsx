@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Star, MoreHorizontal, Edit3 } from 'lucide-react'
-import { useLayout } from '../../../../app/LayoutContext'
-import { useClickOutside } from '../../../../hooks/useClickOutside'
+import { useLayout } from '@/app/LayoutContext'
+import { useClickOutside } from '@/hooks/useClickOutside'
 import TopBarActionMenu from './TopBarActionMenu'
 import { useDeleteNotebook, useToggleFavorite } from '../../hooks/useNotesQueries'
-import { useToast } from '../../../../components/ui/useToast'
+import { useToast } from '@/components/ui/useToast'
+import { getErrorMessage } from '@/lib/errorUtils'
 import type { Notebook } from '../../types'
 
 interface NotebookTopBarProps {
@@ -47,8 +48,7 @@ export default function NotebookTopBar({ notebook }: NotebookTopBarProps) {
         navigate('/notes')
       },
       onError: (err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Failed to delete'
-        showToast(msg, 'error')
+        showToast(getErrorMessage(err, 'Failed to delete'), 'error')
       },
     })
   }
@@ -63,8 +63,7 @@ export default function NotebookTopBar({ notebook }: NotebookTopBarProps) {
       { notebookId: notebook.id, isFavorited: notebook.isFavoritedByMe },
       {
         onError: (err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Failed to update favorite'
-          showToast(msg, 'error')
+          showToast(getErrorMessage(err, 'Failed to update favorite'), 'error')
         },
       },
     )

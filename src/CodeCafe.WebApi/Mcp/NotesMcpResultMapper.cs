@@ -24,7 +24,8 @@ public static class NotesMcpResultMapper
             StructuredContent = JsonSerializer.SerializeToElement(new McpToolErrorResponse(
                 error.Code,
                 error.Message,
-                error.Kind is NotesFailureKind.Conflict), NotesMcpSupport.SerializerOptions)
+                error.Kind is NotesFailureKind.Conflict,
+                NotesMcpErrorAdvisor.GetSuggestion(error.Code)), NotesMcpSupport.SerializerOptions)
         };
     }
 }

@@ -5,6 +5,7 @@ import useTreeNodeActions from '../../hooks/useTreeNodeActions'
 import TreeRenameField from './TreeRenameField'
 import TreeNodeActions from './TreeNodeActions'
 import TreeCreateMenu from './TreeCreateMenu'
+import { TREE_INDENT_PER_LEVEL, TREE_INDENT_BASE } from './treeConstants'
 
 interface TreeFolderNodeProps {
   node: TreeNode
@@ -60,7 +61,7 @@ export default function TreeFolderNode({
   } = useTreeNodeActions({ node, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem })
 
   const isDragging = dragState?.draggingId === node.item.id
-  const paddingLeft = level * 14 + 10
+  const paddingLeft = level * TREE_INDENT_PER_LEVEL + TREE_INDENT_BASE
 
   const handleCreate = async (type: 'folder' | 'page') => {
     try {
@@ -92,6 +93,7 @@ export default function TreeFolderNode({
   const handleDrop = (e: React.DragEvent) => {
     if (!dragState || !canEdit || node.item.isArchived) return
     e.preventDefault()
+    e.stopPropagation()
     setIsDragOver(false)
     dragState.onDropOnFolder(node.item.id)
   }

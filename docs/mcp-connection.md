@@ -150,10 +150,14 @@ Then ask Claude to use read tools first:
 
 Current Notes tools:
 
+- `notes_get_limits`
 - `notes_get_notebook`
 - `notes_search`
 - `notes_list_items`
 - `notes_get_page`
+- `notes_create_upload`
+- `notes_append_upload_chunk`
+- `notes_discard_upload`
 - `notes_create_page`
 - `notes_update_page_content_json`
 - `notes_append_blocks_to_page`
@@ -162,6 +166,28 @@ Current Notes tools:
 - `notes_archive_item`
 - `notes_restore_item`
 - `notes_delete_item`
+
+Recommended large-content write flow:
+
+1. call `notes_get_limits` to inspect current MCP limits
+2. call `notes_create_upload` with `fileName` and `mediaType`
+3. send file content in chunks with `notes_append_upload_chunk`
+4. call one of:
+   - `notes_create_page` with `contentUploadId`
+   - `notes_update_page_content_json` with `contentUploadId`
+   - `notes_append_blocks_to_page` with `blocksUploadId`
+5. use `contentFormat` / `blocksFormat` when needed:
+   - `markdown`
+   - `tiptap_json`
+   - `tiptap_blocks_json`
+
+Important behavior:
+
+- Markdown uploads are supported and converted server-side into TipTap JSON
+  before validation and persistence
+- TipTap JSON remains the canonical stored page format
+- upload sessions are temporary and held in server memory; they should be used
+  promptly and may expire after an idle timeout
 
 ## Production setup
 

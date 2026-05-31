@@ -45,7 +45,8 @@ This document defines:
 ### Accepted decisions
 
 1. CodeCafe will expose Notes through an MCP server.
-2. AI will read and write page content as **TipTap JSON**, not Markdown.
+2. AI will read page content as TipTap JSON, and MCP writes will persist
+   TipTap JSON as the canonical stored format.
 3. PostgreSQL remains the source of truth for notebooks, items, and page
    content.
 4. Existing Notes authorization rules remain the foundation for MCP access.
@@ -58,8 +59,7 @@ This document defines:
 
 ### Rejected for now
 
-1. Converting AI input from Markdown to TipTap JSON as the primary MCP write
-   format.
+1. Treating Markdown as the canonical stored format for notebook pages.
 2. Letting MCP tools bypass existing business rules and write directly through
    EF entities.
 3. Keeping all Notes behavior in one controller while adding MCP support on top.
@@ -87,7 +87,8 @@ Current baseline:
 
 ## 3. Why We Are Choosing TipTap JSON Directly
 
-We explicitly choose direct TipTap JSON for AI write operations.
+We explicitly choose TipTap JSON as the persisted document format for AI write
+operations.
 
 ### Reasons
 
@@ -104,20 +105,29 @@ We explicitly choose direct TipTap JSON for AI write operations.
    Inline formatting includes bold, italic, underline, strikethrough, links,
    colors, highlights, subscript, superscript, and font family.
 
-4. **Less hidden behavior**
-   The backend does not need a Markdown parser plus a Markdown-to-TipTap
-   translator to support writing.
+4. **Canonical persistence stays explicit**
+   Even when an MCP client uploads Markdown, the backend converts it to TipTap
+   JSON before validation and persistence.
 
 ### Tradeoffs
 
-1. AI output becomes more verbose.
+1. Direct TipTap JSON output is verbose.
 2. Invalid JSON shape is a real risk.
-3. Whole-document replacement becomes easier, so conflict protection matters
+3. Markdown import adds a conversion layer that needs predictable, documented
+   behavior.
+4. Whole-document replacement becomes easier, so conflict protection matters
    more.
 
 ### Resulting rule
 
-For MCP writes, **`contentJson` is the primary write payload**.
+For MCP writes, **persisted page content is always TipTap JSON**.
+
+MCP may accept either:
+
+- inline TipTap JSON for smaller payloads
+- uploaded TipTap JSON for larger payloads
+- uploaded Markdown that the server converts into TipTap JSON before
+  validation and persistence
 
 The backend must not trust it blindly. It must validate, normalize, and derive
 secondary fields from it.
@@ -132,8 +142,10 @@ secondary fields from it.
 2. Allow AI to read TipTap JSON page content.
 3. Allow AI to create folders and pages.
 4. Allow AI to update or append TipTap JSON content.
-5. Preserve existing notebook visibility and ownership rules.
-6. Make MCP implementation reuse backend business logic rather than duplicate it.
+5. Allow AI to upload Markdown or TipTap JSON in chunks before importing it
+   into a page.
+6. Preserve existing notebook visibility and ownership rules.
+7. Make MCP implementation reuse backend business logic rather than duplicate it.
 
 ## Non-Goals for Initial Production Release
 
@@ -142,7 +154,7 @@ secondary fields from it.
 3. Multi-user merging
 4. AI-specific rendered HTML
 5. Full-text semantic retrieval pipeline
-6. Markdown-first editing support
+6. Markdown as the canonical storage format
 
 ---
 
@@ -294,9 +306,17 @@ Create a page or folder under a parent path or parent item id.
 We should prefer notebook slug + parent path in MCP-facing schemas because they
 are easier for agents to use than opaque item ids.
 
+For larger payloads, clients should upload content first and then reference the
+returned upload id:
+
+- `contentUploadId`
+- `contentFormat = "markdown" | "tiptap_json"`
+
 ### `update_page_content_json`
 
-Replace the whole page document with a new TipTap JSON document.
+Replace the whole page document with a new TipTap JSON document. The caller may
+either send inline `contentJson` or upload Markdown / TipTap JSON first and
+then pass `contentUploadId`.
 
 Example input:
 
@@ -322,7 +342,9 @@ Example input:
 
 ### `append_blocks_to_page`
 
-Append a list of TipTap block nodes to the end of an existing page.
+Append a list of TipTap block nodes to the end of an existing page. The caller
+may either send inline `blocks` or upload Markdown / TipTap blocks JSON first
+and then pass `blocksUploadId`.
 
 Example input:
 
@@ -349,6 +371,26 @@ Move a folder or page to a different parent.
 
 Batch reorder/move items.
 
+### `create_upload`
+
+Create a temporary MCP upload session for chunked content transfer.
+
+Typical use:
+
+1. call `notes_create_upload`
+2. append one or more chunks with `notes_append_upload_chunk`
+3. pass the returned upload id to `notes_create_page`,
+   `notes_update_page_content_json`, or `notes_append_blocks_to_page`
+
+### `append_upload_chunk`
+
+Append UTF-8 text to a temporary upload session. This is the preferred path
+for larger Markdown and TipTap JSON payloads.
+
+### `discard_upload`
+
+Discard an upload session that is no longer needed.
+
 ---
 
 ## 6.2 Optional MCP resources
@@ -369,7 +411,7 @@ add resource templates once read tools are stable.
 
 ## 7. Content Contract for AI
 
-Since AI writes TipTap JSON directly, we need a strict contract.
+Since persisted page content remains TipTap JSON, we need a strict contract.
 
 ## Required invariants
 
@@ -392,6 +434,7 @@ The backend must:
 3. reject invalid documents with `400 Bad Request`
 4. rebuild `PlainTextContent` from `contentJson`
 5. keep `ContentFormat = "tiptap_json"` for pages
+6. convert uploaded Markdown into TipTap JSON before validation and persistence
 
 ## Explicit rule
 

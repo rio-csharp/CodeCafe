@@ -2,7 +2,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useNotebook } from '../hooks/useNotesQueries'
 import NotebookSettingsForm from '../components/notebook/NotebookSettingsForm'
-import RouteGuardSpinner from '../../../components/RouteGuardSpinner'
+import RouteGuardSpinner from '@/components/RouteGuardSpinner'
 
 export default function EditNotebookPage() {
   const { notebookSlug } = useParams<{ notebookSlug: string }>()

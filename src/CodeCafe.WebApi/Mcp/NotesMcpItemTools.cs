@@ -20,14 +20,19 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(ListNotebookItemsToolResponse))]
-    [Description("List folder and page items in a notebook visible to the authenticated actor.")]
+    [Description("List folder and page items visible to the authenticated actor, with optional parent, type, archive, and pagination filters.")]
     public async Task<CallToolResult> ListItemsAsync(
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         CancellationToken cancellationToken,
         IOptions<McpOptions> mcpOptionsAccessor,
-        [Description("Optional search term to filter notebook items.")] string? search = null)
+        [Description("Optional search term to filter notebook items.")] string? search = null,
+        [Description("Optional parent folder path. When provided, only direct children of that folder are returned.")] string? parentPath = null,
+        [Description("Filter item type: all, page, or folder.")] string? type = null,
+        [Description("Include archived items in the result set. Only the notebook owner can use this.")] bool includeArchived = false,
+        [Description("Zero-based offset for pagination.")] int? offset = null,
+        [Description("Maximum number of items to return.")] int? limit = null)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
@@ -35,7 +40,8 @@ public sealed class NotesMcpItemTools
             user,
             notebookQueryService,
             cancellationToken,
-            mcpOptions.RequiredReadScopes);
+            mcpOptions.RequiredReadScopes,
+            includeArchived);
         if (!notebookContextResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(notebookContextResult.Error!);
@@ -43,23 +49,77 @@ public sealed class NotesMcpItemTools
 
         var notebookContext = notebookContextResult.Value;
         var notebook = notebookContext.Notebook;
+        if (includeArchived && notebook.OwnerId != notebookContext.ActorId)
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Forbidden,
+                "notebook_forbidden",
+                "Only the notebook owner can view archived items."));
+        }
+
         var itemsResult = await notebookQueryService.GetNotebookItemsAsync(
             notebook.Id,
             notebookContext.ActorId,
             search,
-            cancellationToken);
+            cancellationToken,
+            includeArchived);
 
         if (!itemsResult.Succeeded)
         {
             return NotesMcpResultMapper.Failure(itemsResult.Error!);
         }
 
+        var normalizedType = string.IsNullOrWhiteSpace(type) ? "all" : type.Trim().ToLowerInvariant();
+        if (normalizedType is not ("all" or "page" or "folder"))
+        {
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                "invalid_type",
+                "Type must be all, page, or folder."));
+        }
+
+        Guid? parentIdFilter = null;
+        if (!string.IsNullOrWhiteSpace(parentPath))
+        {
+            var parentResult = NotesMcpSupport.RequireItem(notebook, parentPath);
+            if (!parentResult.Succeeded)
+            {
+                return NotesMcpResultMapper.Failure(parentResult.Error!);
+            }
+
+            if (!string.Equals(parentResult.Value!.Type, "folder", StringComparison.OrdinalIgnoreCase))
+            {
+                return NotesMcpResultMapper.Failure(new NotesError(
+                    NotesFailureKind.Validation,
+                    "invalid_parent",
+                    "Parent item must be a folder."));
+            }
+
+            parentIdFilter = parentResult.Value.Id;
+        }
+
+        var filteredItems = itemsResult.Value!
+            .Where(item => normalizedType == "all" || string.Equals(item.Type, normalizedType, StringComparison.OrdinalIgnoreCase))
+            .Where(item => parentIdFilter is null || item.ParentId == parentIdFilter)
+            .ToList();
+
+        var normalizedOffset = Math.Max(0, offset ?? 0);
+        var maxLimit = Math.Clamp(limit ?? 100, 1, mcpOptions.MaxListItemsLimit);
+        var pagedItems = filteredItems
+            .Skip(normalizedOffset)
+            .Take(maxLimit)
+            .Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebook, item))
+            .ToList();
+
         var response = new ListNotebookItemsToolResponse(
             notebook.Id,
             notebook.Slug,
             notebook.Title,
             notebook.CanEdit,
-            itemsResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebook, item)).ToList());
+            filteredItems.Count,
+            normalizedOffset,
+            pagedItems.Count,
+            pagedItems);
 
         return NotesMcpResultMapper.Success(response, $"Listed {response.Items.Count} item(s) for notebook '{response.NotebookTitle}'.");
     }
@@ -72,7 +132,7 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(GetPageToolResponse))]
-    [Description("Read one page by notebook slug and page path.")]
+    [Description("Read one page by notebook slug and page path, including the stored TipTap JSON string and derived plain text.")]
     public async Task<CallToolResult> GetPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path within the notebook.")] string path,
@@ -97,6 +157,191 @@ public sealed class NotesMcpItemTools
         var pageContext = pageContextResult.Value;
         var response = NotesMcpSupport.ToGetPageToolResponse(pageContext.Notebook, pageContext.Item);
         return NotesMcpResultMapper.Success(response, $"Page '{response.Title}' loaded.");
+    }
+
+    [McpServerTool(
+        Name = NotesMcpToolNames.CreateUpload,
+        Title = "Create Upload",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(CreateUploadToolResponse))]
+    [Description("Create an in-memory MCP upload session for chunked local content such as Markdown or TipTap JSON. Preferred for remote clients and larger payloads.")]
+    public async Task<CallToolResult> CreateUpload(
+        ClaimsPrincipal user,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        IMcpUploadStore uploadStore,
+        IMcpAuditService auditService,
+        ILogger<NotesMcpItemTools> logger,
+        CancellationToken cancellationToken,
+        [Description("Optional original file name, such as notes.md or page.json. Used for format inference.")] string? fileName = null,
+        [Description("The media type for the upload, such as text/markdown or application/json. Used for format inference when contentFormat is omitted later.")] string? mediaType = null)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredWriteScopes);
+        if (!actorResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(actorResult.Error!);
+        }
+
+        var session = uploadStore.Create(actorResult.Value, fileName, string.IsNullOrWhiteSpace(mediaType) ? "text/plain" : mediaType.Trim());
+        var response = new CreateUploadToolResponse(
+            session.UploadId,
+            session.FileName,
+            session.MediaType,
+            session.BytesReceived,
+            session.CreatedAtUtc);
+
+        await WriteUploadObservationAsync(
+            auditService,
+            logger,
+            actorResult.Value,
+            NotesMcpToolNames.CreateUpload,
+            session.UploadId,
+            succeeded: true,
+            resultCode: "success",
+            errorCode: null,
+            bytesReceived: session.BytesReceived,
+            cancellationToken);
+
+        return NotesMcpResultMapper.Success(response, $"Upload '{response.UploadId}' created.");
+    }
+
+    [McpServerTool(
+        Name = NotesMcpToolNames.AppendUploadChunk,
+        Title = "Append Upload Chunk",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(AppendUploadChunkToolResponse))]
+    [Description("Append UTF-8 text to an in-memory upload session. Use this for local Markdown or JSON files instead of assuming shared server storage.")]
+    public async Task<CallToolResult> AppendUploadChunk(
+        [Description("The upload session id returned by notes_create_upload.")] string uploadId,
+        [Description("UTF-8 text chunk to append to the upload.")] string chunkText,
+        ClaimsPrincipal user,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        IMcpUploadStore uploadStore,
+        IMcpAuditService auditService,
+        ILogger<NotesMcpItemTools> logger,
+        CancellationToken cancellationToken)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredWriteScopes);
+        if (!actorResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(actorResult.Error!);
+        }
+
+        var appendResult = uploadStore.AppendText(
+            actorResult.Value,
+            uploadId,
+            chunkText,
+            mcpOptions.MaxUploadChunkBytes,
+            mcpOptions.MaxUploadBytes);
+        if (!appendResult.Succeeded)
+        {
+            await WriteUploadObservationAsync(
+                auditService,
+                logger,
+                actorResult.Value,
+                NotesMcpToolNames.AppendUploadChunk,
+                uploadId,
+                succeeded: false,
+                resultCode: appendResult.Error!.Code,
+                errorCode: appendResult.Error.Code,
+                bytesReceived: null,
+                cancellationToken);
+
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.Validation,
+                appendResult.Error!.Code,
+                appendResult.Error.Message));
+        }
+
+        var session = appendResult.Value!;
+        var response = new AppendUploadChunkToolResponse(
+            session.UploadId,
+            session.BytesReceived,
+            System.Text.Encoding.UTF8.GetByteCount(chunkText),
+            session.BytesReceived > 0);
+
+        await WriteUploadObservationAsync(
+            auditService,
+            logger,
+            actorResult.Value,
+            NotesMcpToolNames.AppendUploadChunk,
+            session.UploadId,
+            succeeded: true,
+            resultCode: "success",
+            errorCode: null,
+            bytesReceived: session.BytesReceived,
+            cancellationToken);
+
+        return NotesMcpResultMapper.Success(response, $"Upload '{response.UploadId}' appended.");
+    }
+
+    [McpServerTool(
+        Name = NotesMcpToolNames.DiscardUpload,
+        Title = "Discard Upload",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(DiscardUploadToolResponse))]
+    [Description("Discard an MCP upload session when it is no longer needed.")]
+    public async Task<CallToolResult> DiscardUpload(
+        [Description("The upload session id returned by notes_create_upload.")] string uploadId,
+        ClaimsPrincipal user,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        IMcpUploadStore uploadStore,
+        IMcpAuditService auditService,
+        ILogger<NotesMcpItemTools> logger,
+        CancellationToken cancellationToken)
+    {
+        var mcpOptions = mcpOptionsAccessor.Value;
+        var actorResult = NotesMcpSupport.RequireActor(user, mcpOptions.RequiredWriteScopes);
+        if (!actorResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(actorResult.Error!);
+        }
+
+        var removed = uploadStore.Delete(actorResult.Value, uploadId);
+        if (!removed)
+        {
+            await WriteUploadObservationAsync(
+                auditService,
+                logger,
+                actorResult.Value,
+                NotesMcpToolNames.DiscardUpload,
+                uploadId,
+                succeeded: false,
+                resultCode: "upload_not_found",
+                errorCode: "upload_not_found",
+                bytesReceived: null,
+                cancellationToken);
+
+            return NotesMcpResultMapper.Failure(new NotesError(
+                NotesFailureKind.NotFound,
+                "upload_not_found",
+                "Upload session was not found."));
+        }
+
+        var response = new DiscardUploadToolResponse(uploadId, "discarded");
+        await WriteUploadObservationAsync(
+            auditService,
+            logger,
+            actorResult.Value,
+            NotesMcpToolNames.DiscardUpload,
+            uploadId,
+            succeeded: true,
+            resultCode: "success",
+            errorCode: null,
+            bytesReceived: null,
+            cancellationToken);
+
+        return NotesMcpResultMapper.Success(response, $"Upload '{uploadId}' discarded.");
     }
 
     [McpServerTool(
@@ -188,19 +433,22 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(CreatePageToolResponse))]
-    [Description("Create a page in a notebook under an optional parent folder path.")]
+    [Description("Create a page in a notebook under an optional parent folder path. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger content.")]
     public async Task<CallToolResult> CreatePageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page title.")] string title,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
+        IMcpContentImportService contentImportService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional parent folder path. Null creates the page at the notebook root.")] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
-        [Description("Optional TipTap JSON document for the page content. Can be a JSON object or a JSON string.")] JsonElement? contentJson = null)
+        [Description("Optional TipTap JSON document for the page content. Use for smaller inline payloads.")] JsonElement? contentJson = null,
+        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON content.")] string? contentUploadId = null,
+        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null)
     {
         return await mutationExecutor.ExecuteAsync(
             user,
@@ -235,13 +483,25 @@ public sealed class NotesMcpItemTools
                         notebookContext.Notebook.Id);
                 }
 
-                var contentJsonResult = NotesMcpSupport.ParseOptionalJsonArgument(
+                var contentJsonResult = contentImportService.ResolveOptionalPageContent(
+                    notebookContext.ActorId,
                     contentJson,
+                    contentUploadId,
+                    contentFormat,
                     "invalid_content_json",
                     "ContentJson must be valid JSON.");
                 if (!contentJsonResult.Succeeded)
                 {
                     return McpMutationResult<CreatePageToolResponse>.Failure(contentJsonResult.Error!, notebookContext.Notebook.Id);
+                }
+
+                if (contentJsonResult.Value is JsonElement contentValue)
+                {
+                    var sizeResult = contentImportService.EnforcePageContentSize(contentValue, "content_too_large");
+                    if (!sizeResult.Succeeded)
+                    {
+                        return McpMutationResult<CreatePageToolResponse>.Failure(sizeResult.Error!, notebookContext.Notebook.Id);
+                    }
                 }
 
                 var createResult = await notebookCommandService.CreateNotebookItemAsync(
@@ -262,6 +522,7 @@ public sealed class NotesMcpItemTools
                 }
 
                 var response = NotesMcpSupport.ToCreatePageToolResponse(notebookContext.Notebook, createResult.Value!);
+                contentImportService.DeleteUpload(notebookContext.ActorId, contentUploadId);
                 return McpMutationResult<CreatePageToolResponse>.Success(
                     response,
                     $"Page '{response.Title}' created.",
@@ -279,18 +540,21 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
-    [Description("Replace a page TipTap JSON document.")]
+    [Description("Replace a page's stored content. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger edits.")]
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The full TipTap JSON document to store. Can be a JSON object or a JSON string. Supported block nodes: paragraph, heading (level 1-4), bulletList, orderedList, taskList, listItem, taskItem, codeBlock, blockquote, horizontalRule, table (with tableRow/tableHeader/tableCell), image, youtube. Supported inline marks: bold, italic, underline, strike, link, color, highlight, subscript, superscript, fontFamily.")] JsonElement contentJson,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
+        IMcpContentImportService contentImportService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
-        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
+        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
+        [Description("The full TipTap JSON document to store. Use for smaller inline payloads.")] JsonElement? contentJson = null,
+        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON content.")] string? contentUploadId = null,
+        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null)
     {
         return await mutationExecutor.ExecuteAsync(
             user,
@@ -310,14 +574,26 @@ public sealed class NotesMcpItemTools
                     return McpMutationResult<UpdatePageContentToolResponse>.Failure(pageContextResult.Error!);
                 }
 
-                var contentJsonResult = NotesMcpSupport.ParseRequiredJsonArgument(
+                var contentJsonResult = contentImportService.ResolveRequiredPageContent(
+                    pageContextResult.Value.ActorId,
                     contentJson,
+                    contentUploadId,
+                    contentFormat,
                     "invalid_content_json",
                     "ContentJson must be valid JSON.");
                 if (!contentJsonResult.Succeeded)
                 {
                     return McpMutationResult<UpdatePageContentToolResponse>.Failure(
                         contentJsonResult.Error!,
+                        pageContextResult.Value.Notebook.Id,
+                        pageContextResult.Value.Item.Id);
+                }
+
+                var sizeResult = contentImportService.EnforcePageContentSize(contentJsonResult.Value, "content_too_large");
+                if (!sizeResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        sizeResult.Error!,
                         pageContextResult.Value.Notebook.Id,
                         pageContextResult.Value.Item.Id);
                 }
@@ -342,6 +618,7 @@ public sealed class NotesMcpItemTools
                 }
 
                 var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
+                contentImportService.DeleteUpload(pageContext.ActorId, contentUploadId);
                 return McpMutationResult<UpdatePageContentToolResponse>.Success(
                     response,
                     $"Page '{response.Title}' content updated.",
@@ -359,18 +636,21 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
-    [Description("Append TipTap block nodes to an existing page document.")]
+    [Description("Append block content to an existing page document. Accepts small inline TipTap blocks JSON or uploaded Markdown / TipTap blocks JSON for larger additions.")]
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
-        [Description("The TipTap block nodes JSON array to append. Can be a JSON array or a JSON string. Supported block nodes: paragraph, heading (level 1-4), bulletList, orderedList, taskList, listItem, taskItem, codeBlock, blockquote, horizontalRule, table (with tableRow/tableHeader/tableCell), image, youtube. Supported inline marks: bold, italic, underline, strike, link, color, highlight, subscript, superscript, fontFamily.")] JsonElement blocks,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
         INotebookCommandService notebookCommandService,
+        IMcpContentImportService contentImportService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
-        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null)
+        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
+        [Description("The TipTap block nodes JSON array to append. Use for smaller inline payloads.")] JsonElement? blocks = null,
+        [Description("Optional upload id returned by notes_create_upload for larger TipTap blocks JSON or Markdown content.")] string? blocksUploadId = null,
+        [Description("Format of blocksUploadId: tiptap_blocks_json or markdown. Markdown is converted server-side into TipTap blocks before append. When omitted, the server infers it from the file name or media type.")] string? blocksFormat = null)
     {
         return await mutationExecutor.ExecuteAsync(
             user,
@@ -390,8 +670,11 @@ public sealed class NotesMcpItemTools
                     return McpMutationResult<UpdatePageContentToolResponse>.Failure(pageContextResult.Error!);
                 }
 
-                var blocksResult = NotesMcpSupport.ParseRequiredJsonArgument(
+                var blocksResult = contentImportService.ResolveRequiredBlocks(
+                    pageContextResult.Value.ActorId,
                     blocks,
+                    blocksUploadId,
+                    blocksFormat,
                     "invalid_blocks",
                     "Blocks must be valid JSON.");
                 if (!blocksResult.Succeeded)
@@ -414,6 +697,15 @@ public sealed class NotesMcpItemTools
 
                 var pageContext = pageContextResult.Value;
                 var nextContentJson = NotesMcpSupport.AppendBlocks(pageContext.Item.ContentJson, blocksResult.Value);
+                var sizeResult = contentImportService.EnforcePageContentSize(nextContentJson, "content_too_large");
+                if (!sizeResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        sizeResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
                 var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
                     pageContext.Notebook.Id,
                     pageContext.Item.Id,
@@ -433,6 +725,7 @@ public sealed class NotesMcpItemTools
                 }
 
                 var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
+                contentImportService.DeleteUpload(pageContext.ActorId, blocksUploadId);
                 return McpMutationResult<UpdatePageContentToolResponse>.Success(
                     response,
                     $"Appended blocks to page '{response.Title}'.",
@@ -908,5 +1201,61 @@ public sealed class NotesMcpItemTools
                     itemContext.Item.Id);
             },
             cancellationToken);
+    }
+
+    private static McpAuditRecord CreateUploadAuditRecord(
+        Guid actorUserId,
+        string toolName,
+        bool succeeded,
+        string resultCode,
+        string? errorCode)
+        => new(
+            actorUserId,
+            "user",
+            toolName,
+            null,
+            null,
+            succeeded,
+            resultCode,
+            errorCode);
+
+    private static async Task WriteUploadObservationAsync(
+        IMcpAuditService auditService,
+        ILogger<NotesMcpItemTools> logger,
+        Guid actorUserId,
+        string toolName,
+        string? uploadId,
+        bool succeeded,
+        string resultCode,
+        string? errorCode,
+        int? bytesReceived,
+        CancellationToken cancellationToken)
+    {
+        logger.LogInformation(
+            "MCP upload tool completed. ActorUserId={ActorUserId}; ToolName={ToolName}; UploadId={UploadId}; BytesReceived={BytesReceived}; Succeeded={Succeeded}; ResultCode={ResultCode}; ErrorCode={ErrorCode}",
+            actorUserId,
+            toolName,
+            uploadId,
+            bytesReceived,
+            succeeded,
+            resultCode,
+            errorCode);
+
+        try
+        {
+            await auditService.WriteIndependentAsync(
+                CreateUploadAuditRecord(actorUserId, toolName, succeeded, resultCode, errorCode),
+                cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(
+                exception,
+                "Failed to write MCP upload audit entry. ActorUserId={ActorUserId}; ToolName={ToolName}; UploadId={UploadId}; ResultCode={ResultCode}",
+                actorUserId,
+                toolName,
+                uploadId,
+                resultCode);
+        }
     }
 }

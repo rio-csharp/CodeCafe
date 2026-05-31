@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Plus, Folder, FileText } from 'lucide-react'
-import { useClickOutside } from '../../../../hooks/useClickOutside'
+import { useClickOutside } from '@/hooks/useClickOutside'
 
 interface TreeRootActionsProps {
   onCreateRoot: (type: 'folder' | 'page') => void

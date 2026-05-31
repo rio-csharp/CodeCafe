@@ -120,6 +120,10 @@ Tool scope matrix:
 | `notes_get_notebook` | `notes.read` | Existing visibility and owner rules |
 | `notes_list_items` | `notes.read` | Existing visibility and owner rules |
 | `notes_get_page` | `notes.read` | Existing visibility and owner rules; item must be a page |
+| `notes_get_limits` | `notes.read` | Return current MCP payload and pagination limits |
+| `notes_create_upload` | `notes.write` | Create temporary upload session for chunked content transfer |
+| `notes_append_upload_chunk` | `notes.write` | Append UTF-8 chunk to temporary upload session |
+| `notes_discard_upload` | `notes.write` | Discard temporary upload session |
 | `notes_create_page` | `notes.write` | Actor must own notebook |
 | `notes_update_page_content_json` | `notes.write` | Actor must own notebook; concurrency token must match |
 | `notes_append_blocks_to_page` | `notes.write` | Actor must own notebook; concurrency token should match |
@@ -224,6 +228,10 @@ Use namespaced tool names to avoid collisions:
 | `notes_get_notebook` | Read | Read notebook metadata by slug |
 | `notes_list_items` | Read | List folder/page tree items |
 | `notes_get_page` | Read | Read one page by notebook slug and path |
+| `notes_get_limits` | Read | Return content, upload, and pagination limits |
+| `notes_create_upload` | Write | Create temporary upload session |
+| `notes_append_upload_chunk` | Write | Append chunk to temporary upload session |
+| `notes_discard_upload` | Write | Discard temporary upload session |
 | `notes_create_page` | Write | Create page under parent path/id |
 | `notes_update_page_content_json` | Write | Replace page TipTap document |
 | `notes_append_blocks_to_page` | Write | Append TipTap block nodes |
@@ -239,6 +247,10 @@ Tool schema rules:
 - Prefer `notebookSlug` plus `path` for agent-facing reads/writes.
 - Include `expectedUpdatedAtUtc` on full-document write tools.
 - Do not accept `plainTextContent` in MCP write inputs.
+- Large content should use upload sessions instead of assuming shared local
+  filesystems between the MCP client and server.
+- Markdown uploads may be accepted for convenience, but the server must convert
+  them into TipTap JSON before validation and persistence.
 - Return structured data as the primary result.
 - Include a concise text content block when useful for clients that still rely
   on textual tool output.

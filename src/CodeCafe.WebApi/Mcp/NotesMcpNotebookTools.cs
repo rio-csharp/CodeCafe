@@ -105,6 +105,30 @@ public sealed class NotesMcpNotebookTools
     }
 
     [McpServerTool(
+        Name = NotesMcpToolNames.GetLimits,
+        Title = "Get MCP Limits",
+        ReadOnly = true,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(GetNotesLimitsToolResponse))]
+    [Description("Return inline, upload, page-size, and pagination limits. Call this before sending large content.")]
+    public CallToolResult GetLimits(
+        IOptions<McpOptions> mcpOptionsAccessor)
+    {
+        var options = mcpOptionsAccessor.Value;
+        var response = new GetNotesLimitsToolResponse(
+            options.MaxInlineContentBytes,
+            options.MaxUploadChunkBytes,
+            options.MaxUploadBytes,
+            options.MaxPageContentBytes,
+            options.MaxListItemsLimit,
+            ["tiptap_json", "tiptap_blocks_json", "markdown"]);
+
+        return NotesMcpResultMapper.Success(response, "MCP limits loaded.");
+    }
+
+    [McpServerTool(
         Name = NotesMcpToolNames.Search,
         Title = "Search Notes",
         ReadOnly = true,
@@ -112,7 +136,7 @@ public sealed class NotesMcpNotebookTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(SearchNotesToolResponse))]
-    [Description("Search visible notebooks and notebook items.")]
+    [Description("Search visible notebooks and notebook items, including page plain-text content.")]
     public async Task<CallToolResult> SearchAsync(
         [Description("The search query.")] string query,
         ClaimsPrincipal user,

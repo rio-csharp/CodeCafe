@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import logoIcon from '../../../assets/codecafe-icon.png'
+import logoIcon from '@/assets/codecafe-icon.png'
 
 interface AuthLayoutProps {
   title: string

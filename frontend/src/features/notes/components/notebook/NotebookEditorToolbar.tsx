@@ -25,13 +25,12 @@ import {
   Minus,
   Undo,
   Redo,
-  Type,
-  Highlighter,
   Table as TableIcon,
   Trash2,
   Plus,
 } from 'lucide-react'
 import ToolbarGroup from './ToolbarGroup'
+import ToolbarColorControls from './ToolbarColorControls'
 
 const MenuButton = ({
   active,
@@ -112,10 +111,6 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
     }
   }
 
-  const currentColor = (editor.getAttributes('textStyle').color as string | undefined) || '#000000'
-  const currentHighlight = (editor.getAttributes('highlight').color as string | undefined) || '#fef08a'
-  const hasColor = !!editor.getAttributes('textStyle').color
-  const hasHighlight = editor.isActive('highlight')
   const currentLang = (editor.getAttributes('codeBlock').language as string | undefined) || 'plaintext'
   const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) || ''
 
@@ -153,14 +148,7 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
             <option key={f.value} value={f.value}>{f.label}</option>
           ))}
         </select>
-        <label className={`p-1.5 rounded-md cursor-pointer transition-colors ${hasColor ? 'bg-stone-100 text-brand-brown' : 'text-gray-500 hover:bg-gray-50 hover:text-black'}`} title="Text color">
-          <Type className="h-4 w-4" style={{ color: hasColor ? currentColor : undefined }} />
-          <input type="color" value={currentColor} onChange={(e) => editor.chain().focus().setColor(e.target.value).run()} className="sr-only" />
-        </label>
-        <label className={`p-1.5 rounded-md cursor-pointer transition-colors ${hasHighlight ? 'bg-stone-100 text-brand-brown' : 'text-gray-500 hover:bg-gray-50 hover:text-black'}`} title="Highlight">
-          <Highlighter className="h-4 w-4" style={{ color: hasHighlight ? currentHighlight : undefined }} />
-          <input type="color" value={currentHighlight} onChange={(e) => editor.chain().focus().toggleHighlight({ color: e.target.value }).run()} className="sr-only" />
-        </label>
+        <ToolbarColorControls editor={editor} />
       </ToolbarGroup>
       <ToolbarGroup showDivider>
         <MenuButton active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()} title="Align left"><AlignLeft className="h-4 w-4" /></MenuButton>
