@@ -13,6 +13,10 @@ internal static class NotesMcpContentFormatter
             ListNotebookItemsToolResponse response => FormatListItems(response, fallbackSummary),
             GetPageToolResponse response => FormatGetPage(response, fallbackSummary),
             SearchNotesToolResponse response => FormatSearch(response, fallbackSummary),
+            GetNotesLimitsToolResponse response => FormatLimits(response),
+            CreateUploadToolResponse response => FormatCreateUpload(response),
+            AppendUploadChunkToolResponse response => FormatAppendUploadChunk(response),
+            DiscardUploadToolResponse response => FormatDiscardUpload(response),
             CreateItemToolResponse response => FormatCreateItem(response),
             CreatePageToolResponse response => FormatCreatePage(response),
             UpdatePageContentToolResponse response => FormatUpdatePageContent(response),
@@ -73,6 +77,9 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine(fallbackSummary);
         builder.AppendLine($"notebookSlug: {response.NotebookSlug}");
         builder.AppendLine($"canEdit: {response.CanEdit}");
+        builder.AppendLine($"totalCount: {response.TotalCount}");
+        builder.AppendLine($"offset: {response.Offset}");
+        builder.AppendLine($"returnedCount: {response.ReturnedCount}");
         builder.AppendLine();
         builder.AppendLine("Items:");
 
@@ -88,6 +95,43 @@ internal static class NotesMcpContentFormatter
         }
 
         return builder.ToString().TrimEnd();
+    }
+
+    private static string FormatLimits(GetNotesLimitsToolResponse response)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("MCP limits loaded.");
+        builder.AppendLine($"maxInlineContentBytes: {response.MaxInlineContentBytes}");
+        builder.AppendLine($"maxUploadChunkBytes: {response.MaxUploadChunkBytes}");
+        builder.AppendLine($"maxUploadBytes: {response.MaxUploadBytes}");
+        builder.AppendLine($"maxPageContentBytes: {response.MaxPageContentBytes}");
+        builder.AppendLine($"maxListItemsLimit: {response.MaxListItemsLimit}");
+        builder.AppendLine($"supportedImportFormats: {string.Join(", ", response.SupportedImportFormats)}");
+        return builder.ToString().TrimEnd();
+    }
+
+    private static string FormatCreateUpload(CreateUploadToolResponse response)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine($"Upload '{response.UploadId}' created.");
+        builder.AppendLine($"mediaType: {response.MediaType}");
+        builder.AppendLine($"bytesReceived: {response.BytesReceived}");
+        if (!string.IsNullOrWhiteSpace(response.FileName))
+        {
+            builder.AppendLine($"fileName: {response.FileName}");
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    private static string FormatAppendUploadChunk(AppendUploadChunkToolResponse response)
+    {
+        return $"Upload '{response.UploadId}' now holds {response.BytesReceived} bytes after appending {response.ChunkBytesReceived} bytes.";
+    }
+
+    private static string FormatDiscardUpload(DiscardUploadToolResponse response)
+    {
+        return $"Upload '{response.UploadId}' discarded.";
     }
 
     private static string FormatGetPage(GetPageToolResponse response, string fallbackSummary)

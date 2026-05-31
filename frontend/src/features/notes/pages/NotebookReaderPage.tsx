@@ -2,7 +2,8 @@ import { useState, useMemo, useCallback } from 'react'
 import { useParams, Navigate } from 'react-router-dom'
 import { Edit3 } from 'lucide-react'
 import { useNotebook, useNotebookItems, useUpdateNotebookItem } from '../hooks/useNotesQueries'
-import { useToast } from '../../../components/ui/useToast'
+import { useToast } from '@/components/ui/useToast'
+import { getErrorMessage } from '@/lib/errorUtils'
 import { buildTree, findFirstPage, findPageByPath } from '../utils/buildTree'
 import { extractOutline } from '../utils/extractOutline'
 import NotebookLayout from '../components/notebook/NotebookLayout'
@@ -12,7 +13,7 @@ import NotebookPageContent from '../components/notebook/NotebookPageContent'
 import NotebookPageEditor from '../components/notebook/NotebookPageEditor'
 import NotebookOutline from '../components/notebook/NotebookOutline'
 import AiAssistant from '../components/notebook/AiAssistant'
-import RouteGuardSpinner from '../../../components/RouteGuardSpinner'
+import RouteGuardSpinner from '@/components/RouteGuardSpinner'
 
 export default function NotebookReaderPage() {
   const { notebookSlug, '*': splat } = useParams<{ notebookSlug: string; '*': string }>()
@@ -70,8 +71,7 @@ export default function NotebookReaderPage() {
             setEditClickedForPath(null)
           },
           onError: (err: unknown) => {
-            const msg = err instanceof Error ? err.message : 'Failed to save page'
-            showToast(msg, 'error')
+            showToast(getErrorMessage(err, 'Failed to save page'), 'error')
           },
         },
       )
@@ -88,7 +88,7 @@ export default function NotebookReaderPage() {
   }
 
   if (notebookIsError || !notebook) {
-    const errMsg = notebookError instanceof Error ? notebookError.message : 'Failed to load notebook.'
+    const errMsg = getErrorMessage(notebookError, 'Failed to load notebook.')
     return (
       <div className="h-screen flex items-center justify-center bg-white">
         <p className="text-sm text-red-600">{errMsg}</p>
@@ -105,7 +105,7 @@ export default function NotebookReaderPage() {
   }
 
   if (itemsIsError) {
-    const errMsg = itemsError instanceof Error ? itemsError.message : 'Failed to load notebook items.'
+    const errMsg = getErrorMessage(itemsError, 'Failed to load notebook items.')
     return (
       <div className="h-screen flex items-center justify-center bg-white">
         <p className="text-sm text-red-600">{errMsg}</p>

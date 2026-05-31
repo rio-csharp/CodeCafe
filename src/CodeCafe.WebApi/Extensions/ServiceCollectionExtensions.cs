@@ -113,6 +113,18 @@ public static class ServiceCollectionExtensions
                 Uri.TryCreate(origin, UriKind.Absolute, out var uri)
                 && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)),
                 "Mcp:AllowedOrigins values must be absolute HTTP or HTTPS origins.")
+            .Validate(options => options.MaxInlineContentBytes > 0,
+                "Mcp:MaxInlineContentBytes must be greater than zero.")
+            .Validate(options => options.MaxUploadChunkBytes > 0,
+                "Mcp:MaxUploadChunkBytes must be greater than zero.")
+            .Validate(options => options.MaxUploadBytes >= options.MaxUploadChunkBytes,
+                "Mcp:MaxUploadBytes must be greater than or equal to MaxUploadChunkBytes.")
+            .Validate(options => options.MaxPageContentBytes >= options.MaxInlineContentBytes,
+                "Mcp:MaxPageContentBytes must be greater than or equal to MaxInlineContentBytes.")
+            .Validate(options => options.MaxListItemsLimit > 0,
+                "Mcp:MaxListItemsLimit must be greater than zero.")
+            .Validate(options => options.UploadIdleTimeoutSeconds > 0,
+                "Mcp:UploadIdleTimeoutSeconds must be greater than zero.")
             .Validate(options => !options.Enabled
                 || !options.RequireAuthorization
                 || !string.IsNullOrWhiteSpace(options.RequiredAudience),
@@ -148,6 +160,10 @@ public static class ServiceCollectionExtensions
             .WithTools<NotesMcpItemTools>()
             .WithResources<NotesMcpResources>()
             .WithPrompts<NotesMcpPrompts>();
+
+        services.AddSingleton<IMcpUploadStore, InMemoryMcpUploadStore>();
+        services.AddSingleton<IMcpMarkdownImporter, MarkdigMcpMarkdownImporter>();
+        services.AddSingleton<IMcpContentImportService, McpContentImportService>();
 
         return services;
     }

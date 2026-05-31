@@ -11,6 +11,10 @@ public static class NotesMcpToolNames
 
     public const string ListItems = "notes_list_items";
     public const string GetPage = "notes_get_page";
+    public const string GetLimits = "notes_get_limits";
+    public const string CreateUpload = "notes_create_upload";
+    public const string AppendUploadChunk = "notes_append_upload_chunk";
+    public const string DiscardUpload = "notes_discard_upload";
     public const string CreateFolder = "notes_create_folder";
     public const string CreatePage = "notes_create_page";
     public const string UpdatePageContentJson = "notes_update_page_content_json";

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useLayout } from '../../../app/LayoutContext'
+import { useLayout } from '@/app/LayoutContext'
 import { notesKeys } from '../api/queryKeys'
 import {
   getPublicNotes,

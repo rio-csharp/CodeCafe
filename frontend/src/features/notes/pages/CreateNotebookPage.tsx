@@ -4,8 +4,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useCreateNotebook } from '../hooks/useNotesQueries'
-import { useToast } from '../../../components/ui/useToast'
+import { useToast } from '@/components/ui/useToast'
 import VisibilityField from '../components/notebook/VisibilityField'
+import { getErrorMessage } from '@/lib/errorUtils'
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -47,8 +48,7 @@ export default function CreateNotebookPage() {
           navigate(`/notes/${responseData.slug}`)
         },
         onError: (err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Failed to create notebook'
-          showToast(msg, 'error')
+          showToast(getErrorMessage(err, 'Failed to create notebook'), 'error')
         },
       },
     )

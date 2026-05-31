@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { TreeNode } from '../../utils/buildTree'
 import type { NotebookItem } from '../../types'
@@ -18,6 +19,7 @@ interface TreeContentProps {
     onDragStart: (id: string) => void
     onDragEnd: () => void
     onDropOnFolder: (folderId: string) => void
+    onDropOnRoot: () => void
   }
   onMoveUp: (itemId: string) => void
   onMoveDown: (itemId: string) => void
@@ -46,6 +48,8 @@ export default function TreeContent({
   onRestoreItem,
   onDeleteItem,
 }: TreeContentProps) {
+  const [rootDragOver, setRootDragOver] = useState(false)
+
   if (isSearching) {
     if (searchPending) {
       return (
@@ -74,8 +78,31 @@ export default function TreeContent({
     )
   }
 
+  const handleRootDragOver = (e: React.DragEvent) => {
+    if (!dragState || !canEdit) return
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    setRootDragOver(true)
+  }
+
+  const handleRootDragLeave = () => {
+    setRootDragOver(false)
+  }
+
+  const handleRootDrop = (e: React.DragEvent) => {
+    if (!dragState || !canEdit) return
+    e.preventDefault()
+    setRootDragOver(false)
+    dragState.onDropOnRoot()
+  }
+
   return (
-    <>
+    <div
+      className={`space-y-0.5 ${rootDragOver ? 'bg-amber-50/30 rounded-md' : ''}`}
+      onDragOver={handleRootDragOver}
+      onDragLeave={handleRootDragLeave}
+      onDrop={handleRootDrop}
+    >
       {tree.map((node, idx) => (
         <TreeItem
           key={node.item.id}
@@ -104,6 +131,6 @@ export default function TreeContent({
           )}
         </div>
       )}
-    </>
+    </div>
   )
 }

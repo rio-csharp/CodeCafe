@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { TreeNode } from '../utils/buildTree'
-import { useToast } from '../../../components/ui/useToast'
+import { useToast } from '@/components/ui/useToast'
+import { getErrorMessage } from '@/lib/errorUtils'
 
 interface UseTreeNodeActionsOptions {
   node: TreeNode
@@ -25,8 +26,7 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
       await onRenameItem(node.item.id, editTitle.trim(), node.item.sortOrder)
       setIsEditing(false)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to rename'
-      showToast(message, 'error')
+      showToast(getErrorMessage(err, 'Failed to rename'), 'error')
     }
   }, [editTitle, node.item.id, node.item.title, node.item.sortOrder, onRenameItem, showToast])
 
@@ -35,8 +35,7 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
     try {
       await onArchiveItem(node.item.id)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to archive'
-      showToast(message, 'error')
+      showToast(getErrorMessage(err, 'Failed to archive'), 'error')
     }
   }, [node.item.id, node.item.title, onArchiveItem, showToast])
 
@@ -44,8 +43,7 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
     try {
       await onRestoreItem(node.item.id)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to restore'
-      showToast(message, 'error')
+      showToast(getErrorMessage(err, 'Failed to restore'), 'error')
     }
   }, [node.item.id, onRestoreItem, showToast])
 
@@ -58,8 +56,7 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
       }
       await onDeleteItem(node.item.id)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to delete'
-      showToast(message, 'error')
+      showToast(getErrorMessage(err, 'Failed to delete'), 'error')
     }
   }, [node.item.id, node.item.title, node.item.isArchived, onArchiveItem, onDeleteItem, showToast])
 

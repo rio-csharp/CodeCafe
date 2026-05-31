@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { Mail } from 'lucide-react'
 import AuthLayout from '../components/AuthLayout'
 import PasswordInput from '../components/PasswordInput'
-import GitHubIcon from '../../../components/icons/GitHubIcon'
+import GitHubIcon from '@/components/icons/GitHubIcon'
 import { useLogin } from '../hooks/useAuth'
 import { completePostAuthRedirect } from '../lib/postAuthRedirect'
 

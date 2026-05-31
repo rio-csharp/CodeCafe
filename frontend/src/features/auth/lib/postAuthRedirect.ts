@@ -1,5 +1,5 @@
 import type { NavigateFunction } from 'react-router-dom'
-import { API_BASE_URL } from '../../../lib/apiClient'
+import { API_BASE_URL } from '@/lib/apiClient'
 
 function normalizeApiOrigin(): string | null {
   if (!API_BASE_URL) {

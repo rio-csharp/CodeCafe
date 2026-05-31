@@ -11,6 +11,37 @@ namespace CodeCafe.WebApi.Mcp;
 public sealed class NotesMcpResources
 {
     [McpServerResource(
+        UriTemplate = "notes://guide",
+        Name = "notes_guide",
+        Title = "Notes MCP Guide",
+        MimeType = "text/markdown")]
+    [Description("Recommended MCP workflow for reading, searching, and importing Markdown or TipTap JSON content.")]
+    public TextResourceContents GetGuideResource()
+    {
+        var text = string.Join(Environment.NewLine, new[]
+        {
+            "# Notes MCP Guide",
+            string.Empty,
+            "- Use `notebooks://mine`, `notebooks://public`, `notes_list_notebooks`, and `notes_get_notebook` to discover notebooks.",
+            $"- Use `{NotesMcpToolNames.ListItems}` to inspect a notebook tree. It supports `parentPath`, `type`, `offset`, `limit`, and `includeArchived` filters. Archived items are owner-only.",
+            $"- Use `{NotesMcpToolNames.GetPage}` to inspect a page before editing. It returns `contentJson` as a TipTap JSON string plus `plainTextContent` for quick reading.",
+            $"- Use `{NotesMcpToolNames.Search}` to search visible notebooks and page plain-text content.",
+            "- For small edits, send inline TipTap JSON directly to page tools.",
+            $"- For local files or larger payloads, call `{NotesMcpToolNames.GetLimits}` first, then `{NotesMcpToolNames.CreateUpload}`, append one or more chunks with `{NotesMcpToolNames.AppendUploadChunk}`, and finally import with `{NotesMcpToolNames.CreatePage}`, `{NotesMcpToolNames.UpdatePageContentJson}`, or `{NotesMcpToolNames.AppendBlocksToPage}`.",
+            "- Supported uploaded formats are `markdown`, `tiptap_json`, and `tiptap_blocks_json`.",
+            "- Uploaded Markdown is converted server-side into TipTap JSON before validation and persistence.",
+            $"- Upload sessions are temporary, stored in server memory, and can be discarded with `{NotesMcpToolNames.DiscardUpload}` when no longer needed."
+        });
+
+        return new TextResourceContents
+        {
+            Uri = "notes://guide",
+            MimeType = "text/markdown",
+            Text = text
+        };
+    }
+
+    [McpServerResource(
         UriTemplate = "notebooks://mine",
         Name = "my_notebooks",
         Title = "My Notebooks",
@@ -84,7 +115,7 @@ public sealed class NotesMcpResources
         Name = "notebook_items",
         Title = "Notebook Items",
         MimeType = "application/json")]
-    [Description("Notebook folder and page tree.")]
+    [Description("Notebook folder and page tree for quick discovery. Use notes_list_items for archive filters, type filters, and pagination.")]
     public async Task<TextResourceContents> GetNotebookItemsResourceAsync(
         string slug,
         ClaimsPrincipal user,
@@ -109,6 +140,9 @@ public sealed class NotesMcpResources
             notebook.Slug,
             notebook.Title,
             notebook.CanEdit,
+            items.Count,
+            0,
+            items.Count,
             items.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebook, item)).ToList());
 
         return new TextResourceContents
@@ -124,7 +158,7 @@ public sealed class NotesMcpResources
         Name = "page",
         Title = "Page",
         MimeType = "application/json")]
-    [Description("Page TipTap JSON and derived plain text.")]
+    [Description("Page content with the stored TipTap JSON string and derived plain text for inspection before editing.")]
     public async Task<TextResourceContents> GetPageResourceAsync(
         string slug,
         string path,

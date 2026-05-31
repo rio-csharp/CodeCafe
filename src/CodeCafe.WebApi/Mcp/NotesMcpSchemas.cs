@@ -30,6 +30,9 @@ public sealed record ListNotebookItemsToolResponse(
     string NotebookSlug,
     string NotebookTitle,
     bool CanEdit,
+    int TotalCount,
+    int Offset,
+    int ReturnedCount,
     IReadOnlyList<NotebookItemToolResponse> Items);
 
 public sealed record NotebookItemToolResponse(
@@ -161,6 +164,31 @@ public sealed record DeleteNotebookToolResponse(
     string NotebookSlug,
     string Result);
 
+public sealed record GetNotesLimitsToolResponse(
+    int MaxInlineContentBytes,
+    int MaxUploadChunkBytes,
+    int MaxUploadBytes,
+    int MaxPageContentBytes,
+    int MaxListItemsLimit,
+    IReadOnlyList<string> SupportedImportFormats);
+
+public sealed record CreateUploadToolResponse(
+    string UploadId,
+    string? FileName,
+    string MediaType,
+    int BytesReceived,
+    DateTimeOffset CreatedAtUtc);
+
+public sealed record AppendUploadChunkToolResponse(
+    string UploadId,
+    int BytesReceived,
+    int ChunkBytesReceived,
+    bool IsReady);
+
+public sealed record DiscardUploadToolResponse(
+    string UploadId,
+    string Result);
+
 public sealed record ReorderNotesItemRequest(
     string Path,
     string? ParentPath,
@@ -169,4 +197,5 @@ public sealed record ReorderNotesItemRequest(
 public sealed record McpToolErrorResponse(
     string Code,
     string Message,
-    bool Retryable);
+    bool Retryable,
+    string? Suggestion);

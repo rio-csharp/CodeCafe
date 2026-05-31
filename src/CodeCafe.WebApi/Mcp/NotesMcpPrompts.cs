@@ -11,7 +11,7 @@ namespace CodeCafe.WebApi.Mcp;
 public sealed class NotesMcpPrompts
 {
     [McpServerPrompt(Name = "notes.summarize_page", Title = "Summarize Page")]
-    [Description("Guide a client to summarize a notebook page with notes_get_page.")]
+    [Description("Guide a client to summarize a notebook page after fetching its TipTap JSON and plain text with notes_get_page.")]
     public async Task<IEnumerable<ChatMessage>> SummarizePageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
@@ -68,7 +68,7 @@ public sealed class NotesMcpPrompts
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Read page `{page.Path}` in notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetPage}`.",
-            $"Expand the outline into a fuller draft while preserving the existing structure. The editor supports headings, paragraphs, lists (bullet/ordered/task), code blocks, blockquotes, tables, images, YouTube embeds, and inline formatting (bold, italic, underline, strikethrough, links, colors, highlights, subscript, superscript, font family). When applying edits, use `{NotesMcpToolNames.UpdatePageContentJson}` or `{NotesMcpToolNames.AppendBlocksToPage}`.");
+            $"Expand the outline into a fuller draft while preserving the existing structure. The editor supports headings, paragraphs, lists (bullet/ordered/task), code blocks, blockquotes, tables, images, YouTube embeds, and inline formatting (bold, italic, underline, strikethrough, links, colors, highlights, subscript, superscript, font family). Use inline TipTap JSON only for smaller edits. For larger drafts or local Markdown files, call `{NotesMcpToolNames.GetLimits}`, then `{NotesMcpToolNames.CreateUpload}` and `{NotesMcpToolNames.AppendUploadChunk}`, and finally apply the result with `{NotesMcpToolNames.UpdatePageContentJson}` or `{NotesMcpToolNames.AppendBlocksToPage}` using `markdown` format.");
     }
 
     [McpServerPrompt(Name = "notes.review_for_staleness", Title = "Review For Staleness")]
@@ -87,6 +87,6 @@ public sealed class NotesMcpPrompts
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Inspect notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetNotebook}`, `{NotesMcpToolNames.ListItems}`, and `{NotesMcpToolNames.GetPage}` as needed.",
-            "Identify pages that appear stale based on timestamps, structure, and content drift. Produce findings before proposing edits.");
+            $"Identify pages that appear stale based on timestamps, structure, and content drift. Produce findings before proposing edits. If archived items matter, remember `{NotesMcpToolNames.ListItems}` with `includeArchived=true` is only available to the notebook owner.");
     }
 }

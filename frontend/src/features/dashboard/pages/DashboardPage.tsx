@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { FileText, Code, ArrowRight } from 'lucide-react'
-import logoIcon from '../../../assets/codecafe-icon.png'
-import { useLayout } from '../../../app/LayoutContext'
+import logoIcon from '@/assets/codecafe-icon.png'
+import { useLayout } from '@/app/LayoutContext'
 import NotesIllustration from '../components/NotesIllustration'
 import CodesIllustration from '../components/CodesIllustration'
 

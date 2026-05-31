@@ -9,8 +9,18 @@ import {
   useDeleteNotebookItem,
   useReorderNotebookItems,
 } from './useNotesQueries'
-import { useToast } from '../../../components/ui/useToast'
+import { useToast } from '@/components/ui/useToast'
+import { getErrorMessage } from '@/lib/errorUtils'
 import { findSiblings } from '../components/notebook/findSiblings'
+
+function findNode(nodes: TreeNode[], id: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.item.id === id) return node
+    const found = findNode(node.children, id)
+    if (found) return found
+  }
+  return null
+}
 
 export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -36,8 +46,7 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
       {
         onSuccess: () => showTreeToast('Item created'),
         onError: (err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Failed to create'
-          showTreeToast(msg, 'error')
+          showTreeToast(getErrorMessage(err, 'Failed to create'), 'error')
         },
       },
     )
@@ -92,10 +101,11 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
 
   const computeReorderPayload = useCallback(
     (siblings: TreeNode[]): { itemId: string; parentId: string | null; sortOrder: number }[] => {
+      const REORDER_STEP = 10
       return siblings.map((node, idx) => ({
         itemId: node.item.id,
         parentId: node.item.parentId,
-        sortOrder: idx * 10,
+        sortOrder: idx * REORDER_STEP,
       }))
     },
     [],
@@ -133,13 +143,32 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         setDraggingId(null)
         return
       }
+      const targetNode = findNode(tree, folderId)
+      const children = targetNode?.children ?? []
+      const minSortOrder = children.length > 0
+        ? Math.min(...children.map((n) => n.item.sortOrder))
+        : 0
       reorderItems.mutate(
-        { items: [{ itemId: draggingId, parentId: folderId, sortOrder: 0 }] },
+        { items: [{ itemId: draggingId, parentId: folderId, sortOrder: minSortOrder - 10 }] },
         { onSettled: () => setDraggingId(null) },
       )
     },
-    [draggingId, reorderItems],
+    [draggingId, reorderItems, tree],
   )
+
+  const handleDropOnRoot = useCallback(() => {
+    if (!draggingId) {
+      setDraggingId(null)
+      return
+    }
+    const minSortOrder = tree.length > 0
+      ? Math.min(...tree.map((n) => n.item.sortOrder))
+      : 0
+    reorderItems.mutate(
+      { items: [{ itemId: draggingId, parentId: null, sortOrder: minSortOrder - 10 }] },
+      { onSettled: () => setDraggingId(null) },
+    )
+  }, [draggingId, tree, reorderItems])
 
   const dragState = notebook.canEdit
     ? {
@@ -147,6 +176,7 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         onDragStart: setDraggingId,
         onDragEnd: () => setDraggingId(null),
         onDropOnFolder: handleDropOnFolder,
+        onDropOnRoot: handleDropOnRoot,
       }
     : undefined
 

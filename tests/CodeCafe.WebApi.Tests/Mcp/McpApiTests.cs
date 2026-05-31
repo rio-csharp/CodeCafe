@@ -2,6 +2,7 @@ using CodeCafe.Application.Notes;
 using CodeCafe.WebApi.Mcp;
 using CodeCafe.WebApi.Tests.Auth;
 using ModelContextProtocol;
+using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,6 +41,10 @@ public sealed class McpApiTests
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.UpdateNotebook);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.DeleteNotebook);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.CreateFolder);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.GetLimits);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.CreateUpload);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.AppendUploadChunk);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.DiscardUpload);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.RenameItem);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.Search);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.GetPage);
@@ -47,6 +52,7 @@ public sealed class McpApiTests
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.ArchiveItem);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.RestoreItem);
         Assert.All(tools, tool => Assert.Matches("^[a-zA-Z0-9_-]{1,64}$", tool.Name));
+        Assert.Contains(resources, resource => resource.Uri == "notes://guide");
         Assert.Contains(resources, resource => resource.Uri == "notebooks://mine");
         Assert.Contains(resources, resource => resource.Uri == "notebooks://public");
         Assert.Contains(resourceTemplates, resource => resource.UriTemplate == "notebook://{slug}");
@@ -115,6 +121,11 @@ public sealed class McpApiTests
         var textResource = Assert.IsType<TextResourceContents>(Assert.Single(resourceResult.Contents));
         using var resourceJson = JsonDocument.Parse(textResource.Text);
         Assert.Equal(page.Path, resourceJson.RootElement.GetProperty("path").GetString());
+
+        var guideResult = await mcpClient.ReadResourceAsync("notes://guide");
+        var guideResource = Assert.IsType<TextResourceContents>(Assert.Single(guideResult.Contents));
+        Assert.Contains(NotesMcpToolNames.CreateUpload, guideResource.Text);
+        Assert.Contains("markdown", guideResource.Text, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -256,6 +267,104 @@ public sealed class McpApiTests
                 ["path"] = movedPath
             });
         Assert.Equal("deleted", deleted.StructuredContent!.Value.GetProperty("result").GetString());
+    }
+
+    [Fact]
+    public async Task McpWriteTools_SupportChunkedMarkdownAndJsonUploads()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true,
+            McpMaxUploadChunkBytes = 1024
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"upload-import+{Guid.NewGuid():N}@example.com", "203.0.113.152");
+        var notebook = await CreateNotebookAsync(client, "MCP Upload Notebook");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var markdownUploadId = await UploadTextAsync(
+            mcpClient,
+            "import.md",
+            "text/markdown",
+            """
+            # Imported Draft
+
+            Intro paragraph from markdown.
+
+            - First bullet
+            - Second bullet
+            """,
+            700);
+
+        var created = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.CreatePage,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["title"] = "Imported Page",
+                ["contentUploadId"] = markdownUploadId,
+                ["contentFormat"] = "markdown"
+            });
+        Assert.False(created.IsError ?? false, ReadText(created));
+        var createdPath = created.StructuredContent!.Value.GetProperty("path").GetString();
+
+        var updatedJsonUploadId = await UploadTextAsync(
+            mcpClient,
+            "page.json",
+            "application/json",
+            CreateDocElement("Updated from uploaded json").GetRawText(),
+            700);
+
+        var updated = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.UpdatePageContentJson,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = createdPath,
+                ["contentUploadId"] = updatedJsonUploadId,
+                ["contentFormat"] = "tiptap_json"
+            });
+
+        Assert.False(updated.IsError ?? false, ReadText(updated));
+
+        var appendMarkdownUploadId = await UploadTextAsync(
+            mcpClient,
+            "append.md",
+            "text/markdown",
+            """
+            ## Appended Section
+
+            More detail from markdown append.
+            """,
+            700);
+
+        var appended = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.AppendBlocksToPage,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = createdPath,
+                ["blocksUploadId"] = appendMarkdownUploadId,
+                ["blocksFormat"] = "markdown"
+            });
+
+        Assert.False(appended.IsError ?? false, ReadText(appended));
+
+        var pageAfterUpdate = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.GetPage,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = createdPath
+            });
+        var plainText = pageAfterUpdate.StructuredContent!.Value.GetProperty("plainTextContent").GetString();
+        Assert.Contains("Updated from uploaded json", plainText, StringComparison.Ordinal);
+        Assert.Contains("Appended Section", plainText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -534,6 +643,146 @@ public sealed class McpApiTests
     }
 
     [Fact]
+    public async Task McpGetLimits_ReturnsConfiguredThresholds()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true,
+            McpMaxInlineContentBytes = 2048,
+            McpMaxUploadChunkBytes = 4096,
+            McpMaxUploadBytes = 8192,
+            McpMaxPageContentBytes = 16384,
+            McpMaxListItemsLimit = 55
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"limits+{Guid.NewGuid():N}@example.com", "203.0.113.151");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var result = await mcpClient.CallToolAsync(NotesMcpToolNames.GetLimits, new Dictionary<string, object?>());
+        var content = result.StructuredContent!.Value;
+        Assert.Equal(2048, content.GetProperty("maxInlineContentBytes").GetInt32());
+        Assert.Equal(4096, content.GetProperty("maxUploadChunkBytes").GetInt32());
+        Assert.Equal(8192, content.GetProperty("maxUploadBytes").GetInt32());
+        Assert.Equal(16384, content.GetProperty("maxPageContentBytes").GetInt32());
+        Assert.Equal(55, content.GetProperty("maxListItemsLimit").GetInt32());
+    }
+
+    [Fact]
+    public async Task McpListItems_SupportsArchivedFilteringAndPagination()
+    {
+        using var factory = new AuthApiFactory { McpEnabled = true, McpMaxListItemsLimit = 2 };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"list-items+{Guid.NewGuid():N}@example.com", "203.0.113.154");
+        var notebook = await CreateNotebookAsync(client, "List Items Notebook");
+        await CreateFolderAsync(client, notebook.Id, "Folder A", 1);
+        await CreateFolderAsync(client, notebook.Id, "Folder B", 2);
+        await CreatePageAsync(client, notebook.Id, "Alpha", "Alpha body");
+        var pageB = await CreatePageAsync(client, notebook.Id, "Beta", "Beta body");
+        await ArchiveItemAsync(client, notebook.Id, pageB.Id);
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var activeOnly = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.ListItems,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["type"] = "page"
+            });
+        Assert.DoesNotContain(
+            activeOnly.StructuredContent!.Value.GetProperty("items").EnumerateArray(),
+            item => item.GetProperty("path").GetString() == pageB.Path);
+
+        var archivedIncluded = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.ListItems,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["type"] = "page",
+                ["includeArchived"] = true,
+                ["offset"] = 0,
+                ["limit"] = 2
+            });
+
+        Assert.Equal(2, archivedIncluded.StructuredContent!.Value.GetProperty("totalCount").GetInt32());
+        Assert.Equal(2, archivedIncluded.StructuredContent!.Value.GetProperty("returnedCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task McpListItems_RejectsArchivedVisibilityForNonOwner()
+    {
+        using var factory = new AuthApiFactory { McpEnabled = true };
+        using var owner = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+        using var other = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(owner, $"archived-owner+{Guid.NewGuid():N}@example.com", "203.0.113.160");
+        await RegisterAsync(other, $"archived-other+{Guid.NewGuid():N}@example.com", "203.0.113.161");
+
+        var notebook = await CreateNotebookAsync(owner, "Archived Visibility Notebook");
+        var page = await CreatePageAsync(owner, notebook.Id, "Archived Page", "Text");
+        await ArchiveItemAsync(owner, notebook.Id, page.Id);
+
+        await using var otherMcpClient = await McpTestAuth.CreateMcpClientAsync(factory, other, "notes.read");
+        var result = await otherMcpClient.CallToolAsync(
+            NotesMcpToolNames.ListItems,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["includeArchived"] = true
+            });
+
+        AssertToolError(result, "notebook_forbidden");
+    }
+
+    [Fact]
+    public async Task McpUploadStore_ExpiresIdleUploads()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true,
+            McpUploadIdleTimeoutSeconds = 1
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"upload-expire+{Guid.NewGuid():N}@example.com", "203.0.113.162");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var uploadId = await UploadTextAsync(mcpClient, "expire.md", "text/markdown", "hello", 16);
+        await Task.Delay(TimeSpan.FromMilliseconds(1200));
+
+        var result = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.AppendUploadChunk,
+            new Dictionary<string, object?>
+            {
+                ["uploadId"] = uploadId,
+                ["chunkText"] = "world"
+            });
+
+        AssertToolError(result, "upload_not_found");
+    }
+
+    [Fact]
     public async Task McpPrompt_GetPromptReturnsMessages()
     {
         using var factory = new AuthApiFactory
@@ -689,6 +938,9 @@ public sealed class McpApiTests
                 ["path"] = page.Path
             });
         AssertToolError(result, "notebook_item_not_archived");
+        Assert.Equal(
+            $"Call {NotesMcpToolNames.ArchiveItem} first, then retry {NotesMcpToolNames.DeleteItem}.",
+            result.StructuredContent!.Value.GetProperty("suggestion").GetString());
     }
 
     [Fact]
@@ -716,6 +968,40 @@ public sealed class McpApiTests
                 ["expectedUpdatedAtUtc"] = DateTimeOffset.UtcNow.AddHours(-1).ToString("O")
             });
         AssertToolError(result, "content_conflict");
+    }
+
+    [Fact]
+    public async Task McpUpdatePageContentJson_RejectsOversizedInlinePayloadWithSuggestion()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true,
+            McpMaxInlineContentBytes = 128
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"payload-limit+{Guid.NewGuid():N}@example.com", "203.0.113.153");
+        var notebook = await CreateNotebookAsync(client, "Payload Limit Notebook");
+        var page = await CreatePageAsync(client, notebook.Id, "Blocked Page", "Original");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var oversized = CreateDocElement(new string('x', 512));
+        var result = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.UpdatePageContentJson,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = notebook.Slug,
+                ["path"] = page.Path,
+                ["contentJson"] = oversized
+            });
+
+        AssertToolError(result, "content_too_large");
+        Assert.Contains("exceeds the limit", result.StructuredContent!.Value.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.Contains(NotesMcpToolNames.CreateUpload, result.StructuredContent!.Value.GetProperty("suggestion").GetString(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -785,6 +1071,54 @@ public sealed class McpApiTests
             });
 
         AssertToolError(result, "invalid_visibility");
+    }
+
+    [Fact]
+    public async Task McpUploadTools_WhenAuditFails_StillReturnOriginalToolResults()
+    {
+        using var factory = new AuthApiFactory
+        {
+            McpEnabled = true,
+            FailMcpAuditWrites = true
+        };
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false,
+            HandleCookies = true
+        });
+
+        await RegisterAsync(client, $"upload-audit+{Guid.NewGuid():N}@example.com", "203.0.113.163");
+        await using var mcpClient = await McpTestAuth.CreateMcpClientAsync(factory, client, "notes.read", "notes.write");
+
+        var createResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.CreateUpload,
+            new Dictionary<string, object?>
+            {
+                ["fileName"] = "audit.md",
+                ["mediaType"] = "text/markdown"
+            });
+
+        Assert.False(createResult.IsError ?? false, ReadText(createResult));
+        var uploadId = createResult.StructuredContent!.Value.GetProperty("uploadId").GetString();
+
+        var appendResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.AppendUploadChunk,
+            new Dictionary<string, object?>
+            {
+                ["uploadId"] = uploadId,
+                ["chunkText"] = "# hello"
+            });
+
+        Assert.False(appendResult.IsError ?? false, ReadText(appendResult));
+
+        var discardResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.DiscardUpload,
+            new Dictionary<string, object?>
+            {
+                ["uploadId"] = uploadId
+            });
+
+        Assert.False(discardResult.IsError ?? false, ReadText(discardResult));
     }
 
     [Fact]
@@ -1024,6 +1358,51 @@ public sealed class McpApiTests
                 }
             }
         });
+    }
+
+    private static async Task ArchiveItemAsync(HttpClient client, Guid notebookId, Guid itemId)
+    {
+        var csrf = await GetCsrfTokenAsync(client);
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/api/notes/{notebookId}/items/{itemId}/archive");
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    private static async Task<string> UploadTextAsync(
+        McpClient mcpClient,
+        string fileName,
+        string mediaType,
+        string content,
+        int chunkSize)
+    {
+        var createResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.CreateUpload,
+            new Dictionary<string, object?>
+            {
+                ["fileName"] = fileName,
+                ["mediaType"] = mediaType
+            });
+
+        var uploadId = createResult.StructuredContent!.Value.GetProperty("uploadId").GetString()
+            ?? throw new InvalidOperationException("Missing upload id.");
+
+        for (var offset = 0; offset < content.Length; offset += chunkSize)
+        {
+            var chunk = content.Substring(offset, Math.Min(chunkSize, content.Length - offset));
+            var appendResult = await mcpClient.CallToolAsync(
+                NotesMcpToolNames.AppendUploadChunk,
+                new Dictionary<string, object?>
+                {
+                    ["uploadId"] = uploadId,
+                    ["chunkText"] = chunk
+                });
+
+            Assert.False(appendResult.IsError ?? false, ReadText(appendResult));
+        }
+
+        return uploadId;
     }
 
     private static string ReadText(CallToolResult result)
