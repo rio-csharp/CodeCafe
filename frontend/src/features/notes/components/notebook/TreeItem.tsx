@@ -17,6 +17,7 @@ interface TreeItemProps {
     onDragStart: (id: string) => void
     onDragEnd: () => void
     onDropOnFolder: (folderId: string) => void
+    onDropOnRoot: () => void
   }
   onCreateItem: (parentId: string | null, type: 'folder' | 'page') => Promise<void>
   onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>

@@ -596,6 +596,9 @@ Rules:
   summaries when useful for clients.
 - Write tools must enforce ownership, scopes, validation, and rate limits before
   changing state.
+- Temporary adapter state, such as MCP upload sessions, must be explicitly
+  bounded: scope it to the actor, cap bytes, expire it automatically, and
+  document whether it is process-local or shared across instances.
 - Deployed MCP endpoints must require bearer-token authentication, validate token
   audience/resource and scopes, and reject tokens supplied through query strings.
 - Production startup should fail if MCP is enabled without auth, audience
@@ -606,6 +609,9 @@ Rules:
   as `expectedUpdatedAtUtc` or a future integer revision.
 - Every agent write should be observable through structured logs at minimum:
   actor id, actor type, operation, notebook id, item id when present, and result.
+- If adapter-only state is introduced, such as chunked upload buffers, observe
+  those writes too. Do not make audit/log coverage depend only on database
+  mutations.
 - Prompt injection and data exfiltration risks are part of tool design. Never
   include secrets, hidden system data, or unrelated user data in tool results.
 

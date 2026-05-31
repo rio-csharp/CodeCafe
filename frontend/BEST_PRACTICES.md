@@ -720,6 +720,121 @@ frontend/
 | `<input>` without `<label>` | Require associated label |
 | Missing Error Boundary at route level | Request addition |
 
+## 19. Unified Error Message Extraction
+
+Don't repeat `err instanceof Error ? err.message : '...'` in every mutation onError handler.
+
+Create a shared utility:
+
+```ts
+// src/lib/errorUtils.ts
+export function getErrorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error ? err.message : fallback
+}
+```
+
+Use it:
+```tsx
+onError: (err) => showToast(getErrorMessage(err, 'Failed to save page'), 'error')
+```
+
+**Review rule of thumb**: If you see `err instanceof Error` more than once in a file, use the shared helper.
+
+---
+
+## 20. Import Path Aliases
+
+Avoid `../../../` hell. Configure Vite + TypeScript path aliases so cross-feature imports are readable.
+
+```ts
+// vite.config.ts
+resolve: {
+  alias: {
+    '@': path.resolve(__dirname, './src'),
+  },
+}
+```
+
+```json
+// tsconfig.app.json
+"baseUrl": ".",
+"paths": {
+  "@/*": ["src/*"]
+}
+```
+
+```tsx
+// ✅ Good
+import { useToast } from '@/components/ui/useToast'
+
+// ❌ Bad smell
+import { useToast } from '../../../../components/ui/useToast'
+```
+
+**Review rule of thumb**: If an import path contains `../../..`, replace it with `@/`.
+
+---
+
+## 21. Named Constants over Magic Values
+
+Any number or string whose meaning isn't obvious from the surrounding code should be named.
+
+```ts
+// ✅ Good
+const TREE_INDENT_PER_LEVEL = 14
+const TREE_INDENT_BASE = 10
+const paddingLeft = level * TREE_INDENT_PER_LEVEL + TREE_INDENT_BASE
+
+// ❌ Bad smell: what do 14 and 10 mean?
+const paddingLeft = level * 14 + 10
+```
+
+Keep constants close to where they are used (file-level). Promote to shared modules only when used by 3+ files.
+
+**Review rule of thumb**: If you have to scroll to understand what a literal means, give it a name.
+
+---
+
+## 22. React 19 Feature Adoption
+
+We use React 19. Prefer new features over legacy patterns:
+
+- **ref as a regular prop** — no more `forwardRef`
+  ```tsx
+  // ✅ Good (React 19)
+  function Input({ ref, ...props }: { ref?: React.Ref<HTMLInputElement> }) {
+    return <input ref={ref} {...props} />
+  }
+  
+  // ❌ Legacy
+  const Input = forwardRef<HTMLInputElement, Props>((props, ref) => ...)
+  ```
+
+- **`use()` for reading Context / Promises** — in Server Components or async boundaries
+
+**Review rule of thumb**: New code should not use `forwardRef`. Refactor existing usages opportunistically.
+
+---
+
+## 23. Organizing Long Tailwind className Strings
+
+If a `className` exceeds 3 lines, extract it to a named constant or shared module.
+
+```ts
+// ✅ Good: extracted constant
+export const PROSE_CONTENT_CLASSES =
+  'prose prose-sm max-w-none ' +
+  'prose-headings:font-semibold prose-headings:text-black ' +
+  '...'
+
+// ❌ Bad smell: 10+ lines of className inline in JSX, duplicated in 2+ files
+<div className="prose prose-sm max-w-none prose-headings:font-semibold ...">
+```
+
+This prevents drift between reader and editor styles, and makes changes a single-point update.
+
+**Review rule of thumb**: `className` longer than your thumb is too long. Extract it.
+
 ---
 
 ## Tech Stack

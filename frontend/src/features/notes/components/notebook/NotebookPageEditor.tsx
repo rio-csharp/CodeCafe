@@ -23,6 +23,7 @@ import CharacterCount from '@tiptap/extension-character-count'
 import Youtube from '@tiptap/extension-youtube'
 import FontFamily from '@tiptap/extension-font-family'
 import type { NotebookItem } from '../../types'
+import { PROSE_CONTENT_CLASSES } from './proseContentClasses'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
 import NotebookEditorActions from './NotebookEditorActions'
 import './codeHighlight.css'
@@ -67,17 +68,7 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
     autofocus: 'end',
     editorProps: {
       attributes: {
-        class:
-          'prose prose-sm max-w-none outline-none min-h-[200px] ' +
-          'prose-headings:font-semibold prose-headings:text-black ' +
-          'prose-p:text-gray-700 prose-a:text-brand-brown ' +
-          'prose-pre:bg-stone-50 prose-pre:text-gray-800 prose-pre:border prose-pre:border-stone-200 prose-pre:border-l-4 prose-pre:border-l-brand-brown prose-pre:rounded-r-lg prose-pre:rounded-l-none prose-pre:px-5 prose-pre:py-4 prose-pre:font-mono prose-pre:text-sm prose-pre:leading-relaxed prose-pre:overflow-x-auto ' +
-          '[&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:p-0 [&_pre_code]:rounded-none ' +
-          'prose-code:font-mono prose-code:text-sm prose-code:bg-stone-100 prose-code:text-gray-800 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded ' +
-          '[&_ul[data-type=\'taskList\']]:list-none [&_ul[data-type=\'taskList\']]:pl-0 ' +
-          '[&_ul[data-type=\'taskList\']_li]:flex [&_ul[data-type=\'taskList\']_li]:items-start [&_ul[data-type=\'taskList\']_li]:gap-2 ' +
-          '[&_ul[data-type=\'taskList\']_li>label]:flex [&_ul[data-type=\'taskList\']_li>label]:items-center [&_ul[data-type=\'taskList\']_li>label]:mt-0.5 ' +
-          '[&_ul[data-type=\'taskList\']_li>div]:flex-1 [&_ul[data-type=\'taskList\']_p]:my-0',
+        class: `${PROSE_CONTENT_CLASSES} outline-none min-h-[200px]`,
       },
     },
     onTransaction: () => {

@@ -433,66 +433,6 @@ internal static class NotesMcpSupport
         return value.Value.GetRawText();
     }
 
-    public static NotesResult<JsonElement?> ParseOptionalJsonArgument(
-        JsonElement? json,
-        string code,
-        string invalidMessage)
-    {
-        if (json is null || json.Value.ValueKind == JsonValueKind.Undefined || json.Value.ValueKind == JsonValueKind.Null)
-        {
-            return NotesResult<JsonElement?>.Success(null);
-        }
-
-        var result = ParseRequiredJsonArgument(json.Value, code, invalidMessage);
-        if (!result.Succeeded)
-        {
-            return NotesResult<JsonElement?>.Failure(result.Error!.Kind, result.Error.Code, result.Error.Message);
-        }
-
-        return NotesResult<JsonElement?>.Success(result.Value);
-    }
-
-    public static NotesResult<JsonElement> ParseRequiredJsonArgument(
-        JsonElement json,
-        string code,
-        string invalidMessage)
-    {
-        if (json.ValueKind == JsonValueKind.Undefined || json.ValueKind == JsonValueKind.Null)
-        {
-            return NotesResult<JsonElement>.Failure(
-                NotesFailureKind.Validation,
-                code,
-                invalidMessage);
-        }
-
-        if (json.ValueKind == JsonValueKind.String)
-        {
-            var raw = json.GetString();
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return NotesResult<JsonElement>.Failure(
-                    NotesFailureKind.Validation,
-                    code,
-                    invalidMessage);
-            }
-
-            try
-            {
-                using var document = JsonDocument.Parse(raw);
-                return NotesResult<JsonElement>.Success(document.RootElement.Clone());
-            }
-            catch (JsonException)
-            {
-                return NotesResult<JsonElement>.Failure(
-                    NotesFailureKind.Validation,
-                    code,
-                    invalidMessage);
-            }
-        }
-
-        return NotesResult<JsonElement>.Success(json);
-    }
-
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
     {
         return new MoveItemToolResponse(

@@ -769,6 +769,18 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
 
     public bool FailMcpAuditWrites { get; set; }
 
+    public int McpMaxInlineContentBytes { get; set; } = 16 * 1024;
+
+    public int McpMaxUploadChunkBytes { get; set; } = 16 * 1024;
+
+    public int McpMaxUploadBytes { get; set; } = 256 * 1024;
+
+    public int McpMaxPageContentBytes { get; set; } = 128 * 1024;
+
+    public int McpMaxListItemsLimit { get; set; } = 200;
+
+    public int McpUploadIdleTimeoutSeconds { get; set; } = 15 * 60;
+
     public string CanonicalMcpResource => new Uri(new Uri(AuthorizationServerIssuer, UriKind.Absolute), "/mcp").AbsoluteUri;
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -776,7 +788,7 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
         builder.UseEnvironment("Testing");
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
-            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            var settings = new Dictionary<string, string?>
             {
                 ["Auth:RegistrationEnabled"] = RegistrationEnabled.ToString(),
                 ["Mcp:Enabled"] = McpEnabled.ToString(),
@@ -786,13 +798,21 @@ public sealed class AuthApiFactory : WebApplicationFactory<Program>, IDisposable
                 ["Mcp:RequiredAudience"] = McpAudience,
                 ["Mcp:RequiredReadScopes:0"] = "notes.read",
                 ["Mcp:RequiredWriteScopes:0"] = "notes.write",
+                ["Mcp:MaxInlineContentBytes"] = McpMaxInlineContentBytes.ToString(),
+                ["Mcp:MaxUploadChunkBytes"] = McpMaxUploadChunkBytes.ToString(),
+                ["Mcp:MaxUploadBytes"] = McpMaxUploadBytes.ToString(),
+                ["Mcp:MaxPageContentBytes"] = McpMaxPageContentBytes.ToString(),
+                ["Mcp:MaxListItemsLimit"] = McpMaxListItemsLimit.ToString(),
+                ["Mcp:UploadIdleTimeoutSeconds"] = McpUploadIdleTimeoutSeconds.ToString(),
                 ["AuthorizationServer:Issuer"] = AuthorizationServerIssuer,
                 ["AuthorizationServer:FrontendBaseUrl"] = FrontendBaseUrl,
                 ["AuthorizationServer:PublicClients:0:ClientId"] = McpClientId,
                 ["AuthorizationServer:PublicClients:0:DisplayName"] = "Claude Code Tests",
                 ["AuthorizationServer:PublicClients:0:RedirectUris:0"] = McpClientRedirectUri,
                 ["Cors:AllowedOrigins:0"] = "http://localhost"
-            });
+            };
+
+            configurationBuilder.AddInMemoryCollection(settings);
         });
         builder.ConfigureServices(services =>
         {

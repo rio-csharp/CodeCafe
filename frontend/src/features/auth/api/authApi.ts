@@ -1,4 +1,4 @@
-import { apiFetch, ApiError, clearCsrfToken } from '../../../lib/apiClient'
+import { apiFetch, ApiError, clearCsrfToken } from '@/lib/apiClient'
 import type { AuthResponse, LoginRequest, RegisterRequest } from '../types'
 
 export async function login(data: LoginRequest): Promise<AuthResponse> {

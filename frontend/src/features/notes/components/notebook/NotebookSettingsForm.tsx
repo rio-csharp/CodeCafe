@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useUpdateNotebook, useDeleteNotebook } from '../../hooks/useNotesQueries'
-import { useToast } from '../../../../components/ui/useToast'
+import { useToast } from '@/components/ui/useToast'
+import { getErrorMessage } from '@/lib/errorUtils'
 import VisibilityField from './VisibilityField'
 import SettingsFormActions from './SettingsFormActions'
 import type { Notebook } from '../../types'
@@ -63,8 +64,7 @@ export default function NotebookSettingsForm({
           if (responseData.slug !== notebook.slug && onSlugChange) onSlugChange(responseData.slug)
         },
         onError: (err: unknown) => {
-          const msg = err instanceof Error ? err.message : 'Failed to update notebook'
-          showToast(msg, 'error')
+          showToast(getErrorMessage(err, 'Failed to update notebook'), 'error')
         },
       },
     )
@@ -77,8 +77,7 @@ export default function NotebookSettingsForm({
         onDeleteSuccess?.()
       },
       onError: (err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Failed to delete notebook'
-        showToast(msg, 'error')
+        showToast(getErrorMessage(err, 'Failed to delete notebook'), 'error')
       },
     })
   }

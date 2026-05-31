@@ -59,6 +59,18 @@
   position: relative;
 }
 
+/* Remove backticks around inline code added by @tailwindcss/typography */
+.prose code::before,
+.prose code::after {
+  content: none;
+}
+
+/* Reduce vertical margin on horizontal rules */
+.prose hr {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
 /* TipTap image */
 .prose img {
   max-width: 100%;
