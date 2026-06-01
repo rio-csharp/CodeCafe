@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace CodeCafe.Application.Notes;
@@ -41,6 +40,6 @@ public static class NotebookSlugGenerator
     {
         return suffix == 0
             ? baseSlug
-            : $"{baseSlug}-{RandomNumberGenerator.GetInt32(0x1000, 0x10000):x4}";
+            : $"{baseSlug}-{suffix}";
     }
 }

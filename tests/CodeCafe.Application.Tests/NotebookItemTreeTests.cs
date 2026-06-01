@@ -22,6 +22,38 @@ public sealed class NotebookItemTreeTests
     }
 
     [Fact]
+    public void WouldCreateCycle_Terminates_On_PreExistingCycle_Not_Involving_Item()
+    {
+        // a -> b -> a is a pre-existing cycle that does not involve the moved item.
+        var aId = Guid.NewGuid();
+        var bId = Guid.NewGuid();
+        var movedId = Guid.NewGuid();
+        var items = new[]
+        {
+            CreateItem(aId, bId, "a"),
+            CreateItem(bId, aId, "b"),
+            CreateItem(movedId, null, "moved")
+        };
+
+        // Must not loop forever; treated as a cycle.
+        Assert.True(NotebookItemTree.WouldCreateCycle(items, movedId, aId));
+    }
+
+    [Fact]
+    public void GeneratePath_Uses_Deterministic_Suffix()
+    {
+        var itemId = Guid.NewGuid();
+        var items = new[]
+        {
+            CreateItem(Guid.NewGuid(), null, "hello-world")
+        };
+
+        var path = NotebookItemTree.GeneratePath(items, null, "Hello World", itemId);
+
+        Assert.Equal("hello-world-1", path);
+    }
+
+    [Fact]
     public void GeneratePath_Adds_Suffix_When_Sibling_Path_Already_Exists()
     {
         var itemId = Guid.NewGuid();

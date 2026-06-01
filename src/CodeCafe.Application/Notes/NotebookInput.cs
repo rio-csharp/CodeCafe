@@ -30,12 +30,14 @@ public static class NotebookInput
             return true;
         }
 
-        return Enum.TryParse(value, ignoreCase: true, out visibility);
+        return Enum.TryParse(value, ignoreCase: true, out visibility)
+            && Enum.IsDefined(visibility);
     }
 
     public static bool TryParseItemType(string value, out NotebookItemType type)
     {
-        return Enum.TryParse(value, ignoreCase: true, out type);
+        return Enum.TryParse(value, ignoreCase: true, out type)
+            && Enum.IsDefined(type);
     }
 
     public static bool IsOptionalGuid(JsonElement value)

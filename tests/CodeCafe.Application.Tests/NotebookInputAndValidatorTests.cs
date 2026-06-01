@@ -38,6 +38,33 @@ public sealed class NotebookInputAndValidatorTests
         Assert.False(NotebookInput.TryParseOptionalGuid(invalidDocument.RootElement, out _));
     }
 
+    [Theory]
+    [InlineData("public", true)]
+    [InlineData("Private", true)]
+    [InlineData("unlisted", true)]
+    public void TryParseVisibility_Accepts_DefinedNames(string value, bool expected)
+    {
+        Assert.Equal(expected, NotebookInput.TryParseVisibility(value, out _));
+    }
+
+    [Theory]
+    [InlineData("5")]
+    [InlineData("99")]
+    [InlineData("nonsense")]
+    public void TryParseVisibility_Rejects_NumericOrUndefinedValues(string value)
+    {
+        Assert.False(NotebookInput.TryParseVisibility(value, out _));
+    }
+
+    [Theory]
+    [InlineData("7")]
+    [InlineData("42")]
+    [InlineData("section")]
+    public void TryParseItemType_Rejects_NumericOrUndefinedValues(string value)
+    {
+        Assert.False(NotebookInput.TryParseItemType(value, out _));
+    }
+
     [Fact]
     public void CreateNotebookValidator_Rejects_Invalid_Visibility()
     {

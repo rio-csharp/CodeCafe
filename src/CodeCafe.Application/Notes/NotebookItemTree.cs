@@ -33,10 +33,17 @@ public static class NotebookItemTree
         }
 
         Guid? currentParentId = proposedParentId;
+        var visited = new HashSet<Guid>();
         while (currentParentId is not null)
         {
             if (currentParentId == itemId)
             {
+                return true;
+            }
+
+            if (!visited.Add(currentParentId.Value))
+            {
+                // A pre-existing cycle that does not involve itemId; stop walking.
                 return true;
             }
 

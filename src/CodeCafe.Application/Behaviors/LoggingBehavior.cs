@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -15,9 +16,27 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
         var requestName = typeof(TRequest).Name;
         logger.LogInformation("Handling application request {RequestName}", requestName);
 
-        var response = await next(cancellationToken);
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            var response = await next(cancellationToken);
 
-        logger.LogInformation("Handled application request {RequestName}", requestName);
-        return response;
+            stopwatch.Stop();
+            logger.LogInformation(
+                "Handled application request {RequestName} in {ElapsedMilliseconds}ms",
+                requestName,
+                stopwatch.ElapsedMilliseconds);
+            return response;
+        }
+        catch (Exception exception)
+        {
+            stopwatch.Stop();
+            logger.LogError(
+                exception,
+                "Application request {RequestName} failed after {ElapsedMilliseconds}ms",
+                requestName,
+                stopwatch.ElapsedMilliseconds);
+            throw;
+        }
     }
 }
