@@ -1,9 +1,22 @@
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
+using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
 using CodeCafe.Application.Notes.Commands.DeleteNotebook;
+using CodeCafe.Application.Notes.Commands.DeleteNotebookItem;
+using CodeCafe.Application.Notes.Commands.ReorderNotebookItems;
+using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
 using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
+using CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
 using CodeCafe.Application.Notes.Queries.GetMyNotebooks;
+using CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
 using CodeCafe.Application.Notes.Queries.GetNotebookById;
 using CodeCafe.Application.Notes.Queries.GetNotebookBySlug;
+using CodeCafe.Application.Notes.Queries.GetNotebookItems;
+using CodeCafe.Application.Notes.Queries.GetPublicNotebook;
+using CodeCafe.Application.Notes.Queries.GetPublicNotebookItem;
+using CodeCafe.Application.Notes.Queries.GetPublicNotebookItems;
 using CodeCafe.Application.Notes.Queries.GetPublicNotebooks;
 using CodeCafe.Application.Notes;
 using CodeCafe.WebApi.Errors;
@@ -17,10 +30,7 @@ namespace CodeCafe.WebApi.Notes;
 [ApiController]
 [Route("api/notes")]
 public sealed class NotesController(
-    ISender sender,
-    INotebookQueryService notebookQueryService,
-    INotebookCommandService notebookCommandService,
-    INotebookFavoriteService notebookFavoriteService)
+    ISender sender)
     : ControllerBase
 {
     [AllowAnonymous]
@@ -45,7 +55,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookQueryService.GetPublicNotebookAsync(slug, GetCurrentUserId(), cancellationToken),
+            await sender.Send(
+                new GetPublicNotebookQuery(slug, GetCurrentUserId()),
+                cancellationToken),
             ToDetailResponse);
     }
 
@@ -58,7 +70,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult<IReadOnlyList<NotebookItemModel>, IReadOnlyList<NotebookItemResponse>>(
-            await notebookQueryService.GetPublicNotebookItemsAsync(slug, cancellationToken),
+            await sender.Send(
+                new GetPublicNotebookItemsQuery(slug),
+                cancellationToken),
             items => items.Select(ToItemResponse).ToList());
     }
 
@@ -72,7 +86,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookQueryService.GetPublicNotebookItemAsync(slug, path, cancellationToken),
+            await sender.Send(
+                new GetPublicNotebookItemQuery(slug, path),
+                cancellationToken),
             ToItemResponse);
     }
 
@@ -180,7 +196,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookFavoriteService.GetFavoriteStatusAsync(notebookId, GetCurrentUserId(), cancellationToken),
+            await sender.Send(
+                new GetNotebookFavoriteStatusQuery(notebookId, GetCurrentUserId()),
+                cancellationToken),
             ToFavoriteResponse);
     }
 
@@ -194,7 +212,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookFavoriteService.AddFavoriteAsync(notebookId, GetCurrentUserId(), cancellationToken),
+            await sender.Send(
+                new AddNotebookFavoriteCommand(notebookId, GetCurrentUserId()),
+                cancellationToken),
             ToFavoriteResponse);
     }
 
@@ -208,7 +228,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookFavoriteService.RemoveFavoriteAsync(notebookId, GetCurrentUserId(), cancellationToken),
+            await sender.Send(
+                new RemoveNotebookFavoriteCommand(notebookId, GetCurrentUserId()),
+                cancellationToken),
             ToFavoriteResponse);
     }
 
@@ -236,25 +258,14 @@ public sealed class NotesController(
         [FromQuery] bool includeArchived = false,
         CancellationToken cancellationToken = default)
     {
-        var currentUserId = GetCurrentUserId();
-
-        // Only the notebook owner can read archived items
-        if (includeArchived)
-        {
-            var notebook = await notebookQueryService.GetNotebookByIdAsync(notebookId, currentUserId, cancellationToken);
-            
-            if (!notebook.Succeeded)
-            {
-                return ToFailureResult(notebook.Error!);
-            }
-            if (notebook.Value!.OwnerId != currentUserId)
-            {
-                return ToFailureResult(new NotesError(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can view archived items."));
-            }
-        }
-
         return ToActionResult<IReadOnlyList<NotebookItemModel>, IReadOnlyList<NotebookItemResponse>>(
-            await notebookQueryService.GetNotebookItemsAsync(notebookId, currentUserId, search, cancellationToken, includeArchived),
+            await sender.Send(
+                new GetNotebookItemsQuery(
+                    notebookId,
+                    GetCurrentUserId(),
+                    search,
+                    includeArchived),
+                cancellationToken),
             items => items.Select(ToItemResponse).ToList());
     }
 
@@ -269,14 +280,15 @@ public sealed class NotesController(
         CreateNotebookItemRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await notebookCommandService.CreateNotebookItemAsync(
-            notebookId,
-            GetCurrentUserId(),
-            request.ParentId,
-            request.Type,
-            request.Title,
-            request.SortOrder,
-            request.ContentJson,
+        var result = await sender.Send(
+            new CreateNotebookItemCommand(
+                notebookId,
+                GetCurrentUserId(),
+                request.ParentId,
+                request.Type,
+                request.Title,
+                request.SortOrder,
+                request.ContentJson),
             cancellationToken);
 
         if (!result.Succeeded)
@@ -301,16 +313,17 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookCommandService.UpdateNotebookItemAsync(
-                notebookId,
-                itemId,
-                GetCurrentUserId(),
-                request.Title,
-                request.ParentId,
-                request.SortOrder,
-                request.ContentJson,
-                cancellationToken,
-                request.ExpectedUpdatedAtUtc),
+            await sender.Send(
+                new UpdateNotebookItemCommand(
+                    notebookId,
+                    itemId,
+                    GetCurrentUserId(),
+                    request.Title,
+                    request.ParentId,
+                    request.SortOrder,
+                    request.ContentJson,
+                    request.ExpectedUpdatedAtUtc),
+                cancellationToken),
             ToItemResponse);
     }
 
@@ -326,10 +339,11 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookCommandService.ReorderNotebookItemsAsync(
-                notebookId,
-                GetCurrentUserId(),
-                request.Items.Select(item => new ReorderNotebookItemModel(item.ItemId, item.ParentId, item.SortOrder)).ToList(),
+            await sender.Send(
+                new ReorderNotebookItemsCommand(
+                    notebookId,
+                    GetCurrentUserId(),
+                    request.Items.Select(item => new ReorderNotebookItemModel(item.ItemId, item.ParentId, item.SortOrder)).ToList()),
                 cancellationToken),
             items => new ReorderNotebookItemsResponse(items.Select(ToItemResponse).ToList()));
     }
@@ -346,7 +360,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookCommandService.ArchiveNotebookItemAsync(notebookId, itemId, GetCurrentUserId(), cancellationToken),
+            await sender.Send(
+                new ArchiveNotebookItemCommand(notebookId, itemId, GetCurrentUserId()),
+                cancellationToken),
             ToItemResponse);
     }
 
@@ -362,7 +378,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookCommandService.RestoreNotebookItemAsync(notebookId, itemId, GetCurrentUserId(), cancellationToken),
+            await sender.Send(
+                new RestoreNotebookItemCommand(notebookId, itemId, GetCurrentUserId()),
+                cancellationToken),
             ToItemResponse);
     }
 
@@ -376,7 +394,9 @@ public sealed class NotesController(
         Guid itemId,
         CancellationToken cancellationToken)
     {
-        var result = await notebookCommandService.DeleteNotebookItemAsync(notebookId, itemId, GetCurrentUserId(), cancellationToken);
+        var result = await sender.Send(
+            new DeleteNotebookItemCommand(notebookId, itemId, GetCurrentUserId()),
+            cancellationToken);
         return result.Succeeded ? NoContent() : ToFailureResult(result.Error!);
     }
 
