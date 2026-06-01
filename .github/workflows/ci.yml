@@ -101,7 +101,7 @@ jobs:
       - name: Publish API artifact
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
         run: >
-          dotnet publish src/CodeCafe.WebApi/CodeCafe.WebApi.csproj
+          dotnet publish src/CodeCafe.Server/CodeCafe.Server.csproj
           --configuration Release
           --output .artifacts/api
           --no-build
@@ -225,7 +225,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: src/CodeCafe.WebApi/Dockerfile
+          file: src/CodeCafe.Server/Dockerfile
           push: true
           tags: ghcr.io/${{ vars.IMAGE_NAMESPACE }}/api:${{ needs.artifact-policy.outputs.image_tag }}
           cache-from: type=gha,scope=codecafe-api

@@ -1,6 +1,6 @@
 # CodeCafe
 
-CodeCafe is an open-source ASP.NET Core Web API and React project scaffold.
+CodeCafe is an open-source ASP.NET Core and React project scaffold.
 
 ## Structure
 
@@ -10,10 +10,15 @@ CodeCafe/
 │  ├─ CodeCafe.Domain/          # Enterprise entities and domain rules
 │  ├─ CodeCafe.Application/     # Use cases, abstractions, DTOs, validation
 │  ├─ CodeCafe.Infrastructure/  # Persistence, external services, implementations
-│  └─ CodeCafe.WebApi/          # ASP.NET Core API host and HTTP endpoints
+│  ├─ CodeCafe.Api/             # HTTP adapter and endpoint surface
+│  ├─ CodeCafe.Mcp/             # MCP adapter, tools, resources, prompts
+│  └─ CodeCafe.Server/          # Combined backend host for deployment and local run
 ├─ tests/
 │  ├─ CodeCafe.Application.Tests/
-│  └─ CodeCafe.WebApi.Tests/
+│  ├─ CodeCafe.Api.Tests/
+│  ├─ CodeCafe.Mcp.Tests/
+│  ├─ CodeCafe.Server.Tests/
+│  └─ CodeCafe.Architecture.Tests/
 └─ frontend/                    # React app, developed in the same repository
 ```
 
@@ -108,7 +113,7 @@ GRANT ALL PRIVILEGES ON DATABASE codecafe TO codecafe;
 
 ### 5. Configure the Backend
 
-Create `src/CodeCafe.WebApi/appsettings.Development.json` (this file is gitignored):
+Create `src/CodeCafe.Server/appsettings.Development.json` (this file is gitignored):
 
 ```json
 {
@@ -141,13 +146,13 @@ dotnet build CodeCafe.slnx --configuration Release
 dotnet test CodeCafe.slnx --configuration Release
 ```
 
-Run the API (migrations apply automatically in Development mode):
+Run the backend host (migrations apply automatically in Development mode):
 
 ```powershell
-dotnet run --project src/CodeCafe.WebApi
+dotnet run --project src/CodeCafe.Server
 ```
 
-The API will start on:
+The combined backend host will start on:
 - HTTP: `http://localhost:5042`
 - HTTPS: `https://localhost:7239`
 
@@ -188,16 +193,18 @@ The backend follows Clean Architecture dependency direction:
 
 ```text
 Domain <- Application <- Infrastructure
-                      <- WebApi
+                      <- Api
+                      <- Mcp
+Server -> Api + Mcp + Application + Infrastructure
 ```
 
 `Domain` has no dependencies on other application projects. `Application` depends only on `Domain`.
-`Infrastructure` implements application abstractions. `WebApi` composes the app through dependency injection.
+`Infrastructure` implements application abstractions. `CodeCafe.Api` and `CodeCafe.Mcp` are thin adapters.
+`CodeCafe.Server` is the default composed backend host.
 
 Backend development guidelines are documented in [docs/backend-best-practices.md](docs/backend-best-practices.md).
 Frontend development guidelines are documented in [frontend/BEST_PRACTICES.md](frontend/BEST_PRACTICES.md).
-The Notes MCP design and full implementation plan are documented in [docs/notes-mcp-design.md](docs/notes-mcp-design.md) and [docs/mcp-server-setup-plan.md](docs/mcp-server-setup-plan.md).
-Local Claude Code connection steps for the current MCP implementation are documented in [docs/mcp-connection.md](docs/mcp-connection.md).
+The backend rebuild record and remaining cleanup notes are documented in [docs/backend-architecture-rebuild-plan.md](docs/backend-architecture-rebuild-plan.md).
 
 ## Frontend
 

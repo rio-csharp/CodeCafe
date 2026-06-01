@@ -2,6 +2,7 @@ using System.Reflection;
 using CodeCafe.Api.Common;
 using CodeCafe.Domain.Common.Interfaces;
 using CodeCafe.Mcp.Common;
+using CodeCafe.Server.Common;
 
 namespace CodeCafe.Architecture.Tests;
 
@@ -48,6 +49,18 @@ public sealed class DependencyDirectionTests
 
         Assert.DoesNotContain("CodeCafe.Mcp", apiReferences);
         Assert.DoesNotContain("CodeCafe.Api", mcpReferences);
+    }
+
+    [Fact]
+    public void Server_Composes_Adapters_Without_Leaking_Back_Into_Core()
+    {
+        var serverReferences = GetReferenceNames(typeof(ServerAssemblyMarker).Assembly);
+
+        Assert.Contains("CodeCafe.Api", serverReferences);
+        Assert.Contains("CodeCafe.Mcp", serverReferences);
+        Assert.Contains("CodeCafe.Application", serverReferences);
+        Assert.Contains("CodeCafe.Infrastructure", serverReferences);
+        Assert.DoesNotContain("CodeCafe.WebApi", serverReferences);
     }
 
     private static IReadOnlySet<string> GetReferenceNames(Assembly assembly)

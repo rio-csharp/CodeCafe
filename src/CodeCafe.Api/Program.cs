@@ -7,14 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
-builder.Services.AddCodeCafeApi();
+builder.Services.AddCodeCafeApi(builder.Environment);
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapCodeCafeApi();
+app.UseCodeCafeApiPipeline();
 
 await app.RunAsync();
 

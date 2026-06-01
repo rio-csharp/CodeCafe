@@ -2,9 +2,9 @@
 
 ## Status
 
-- Status: Approved rebuild plan
+- Status: Rebuild largely completed; cleanup and core hardening remain
 - Last reviewed: 2026-06-01
-- Scope: Backend architecture, API adapter shape, MCP adapter split, test architecture
+- Scope: Backend architecture, adapter split, server composition, test architecture
 - Target release base: `release/2.3`
 - Working branch intent: `feature/* -> release/2.3`
 
@@ -37,9 +37,9 @@ effects across the solution.
 The current backend already has the beginnings of Clean Architecture, but the
 center of gravity is still misplaced.
 
-Current pain points:
+Original pain points:
 
-- `CodeCafe.WebApi` contains too much adapter-specific and feature-specific code.
+- `CodeCafe.WebApi` contained too much adapter-specific and feature-specific code.
 - Controllers are thin in some places, but several endpoints still contain
   authorization or workflow branching that belongs to the use-case layer.
 - `CodeCafe.Application` is still mostly contracts and models rather than the
@@ -161,8 +161,8 @@ tests/
 
 Notes:
 
-- `CodeCafe.WebApi` should eventually be replaced by `CodeCafe.Api`.
-- MCP should move out of the API host project and into `CodeCafe.Mcp`.
+- `CodeCafe.Api`, `CodeCafe.Mcp`, and `CodeCafe.Server` are now the active host
+  path.
 - `CodeCafe.Migrations` is optional. Only create it if we want to decouple
   startup hosting from migration ownership.
 
@@ -706,12 +706,10 @@ The rebuild is complete when:
 
 ## 19. Immediate Next Steps
 
-1. Create `CodeCafe.Api`, `CodeCafe.Mcp`, and `CodeCafe.Architecture.Tests`.
-2. Add MediatR, FluentValidation, and the first application pipeline behaviors.
-3. Create the Notes slice folder structure in `CodeCafe.Application`.
-4. Migrate one complete Notes read path and one complete Notes write path.
-5. Introduce endpoint classes for those migrated use cases.
-6. Add architecture tests to block backward dependencies before migration grows.
+1. Continue moving Notes business orchestration out of infrastructure-heavy services.
+2. Expand direct `Application` and `Domain` regression coverage.
+3. Keep deployment, CI, and operational docs aligned to `CodeCafe.Server`.
+4. Tighten architecture tests as new backend slices land.
 
 ---
 

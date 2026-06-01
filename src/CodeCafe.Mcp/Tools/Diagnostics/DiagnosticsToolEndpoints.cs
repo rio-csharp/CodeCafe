@@ -4,7 +4,7 @@ public static class DiagnosticsToolEndpoints
 {
     public static IEndpointRouteBuilder MapDiagnosticsToolEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/health/live", () => Results.Ok(new
+        endpoints.MapGet("/mcp/health/live", () => Results.Ok(new
         {
             status = "ok",
             adapter = "mcp"

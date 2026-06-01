@@ -1,8 +1,10 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using CodeCafe.Api.Endpoints.Auth;
 using CodeCafe.Application.Notes;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -31,6 +33,7 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
             services.AddSingleton<INotebookQueryService, TestNotebookQueryService>();
             services.AddSingleton<INotebookCommandService, TestNotebookCommandService>();
             services.AddSingleton<INotebookFavoriteService, TestNotebookFavoriteService>();
+            services.AddSingleton<IAuthEndpointService, TestAuthEndpointService>();
         });
     }
 }
@@ -391,4 +394,48 @@ internal sealed class TestNotebookFavoriteService : INotebookFavoriteService
     public Task<NotesResult<NotebookFavoriteModel>> RemoveFavoriteAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
         => Task.FromResult(NotesResult<NotebookFavoriteModel>.Success(
             new NotebookFavoriteModel(notebookId, false, 1)));
+}
+
+internal sealed class TestAuthEndpointService : IAuthEndpointService
+{
+    public Task<AuthOperationResult<AuthResponse>> RegisterAsync(RegisterRequest request, HttpContext httpContext)
+    {
+        return Task.FromResult(AuthOperationResult<AuthResponse>.Success(
+            StatusCodes.Status200OK,
+            new AuthResponse(new UserResponse(
+                Guid.Parse("55555555-5555-5555-5555-555555555555"),
+                request.Email.Trim().ToLowerInvariant(),
+                request.DisplayName.Trim()))));
+    }
+
+    public Task<AuthOperationResult<AuthResponse>> LoginAsync(LoginRequest request, HttpContext httpContext)
+    {
+        return Task.FromResult(AuthOperationResult<AuthResponse>.Success(
+            StatusCodes.Status200OK,
+            new AuthResponse(new UserResponse(
+                Guid.Parse("55555555-5555-5555-5555-555555555555"),
+                request.Email.Trim().ToLowerInvariant(),
+                "Yao"))));
+    }
+
+    public Task<AuthOperationResult<AuthResponse>> MeAsync(ClaimsPrincipal user)
+    {
+        var subject = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Task.FromResult(subject is null
+            ? AuthOperationResult<AuthResponse>.Failure(
+                StatusCodes.Status401Unauthorized,
+                "unauthorized",
+                "Authentication is required.")
+            : AuthOperationResult<AuthResponse>.Success(
+                StatusCodes.Status200OK,
+                new AuthResponse(new UserResponse(
+                    Guid.Parse(subject),
+                    "yao@example.com",
+                    "Yao"))));
+    }
+
+    public Task<LogoutResponse> LogoutAsync()
+    {
+        return Task.FromResult(new LogoutResponse(true));
+    }
 }

@@ -46,7 +46,7 @@ internal sealed class MigrateEnvironmentCommand(
                     "--project",
                     "src/CodeCafe.Infrastructure/CodeCafe.Infrastructure.csproj",
                     "--startup-project",
-                    "src/CodeCafe.WebApi/CodeCafe.WebApi.csproj",
+                    "src/CodeCafe.Server/CodeCafe.Server.csproj",
                     "--context",
                     "ApplicationDbContext"),
                 environmentVariables: new Dictionary<string, string>

@@ -24,7 +24,7 @@
     <ProjectReference Include="..\..\src\CodeCafe.Domain\CodeCafe.Domain.csproj" />
     <ProjectReference Include="..\..\src\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\CodeCafe.Mcp\CodeCafe.Mcp.csproj" />
-    <ProjectReference Include="..\..\src\CodeCafe.WebApi\CodeCafe.WebApi.csproj" />
+    <ProjectReference Include="..\..\src\CodeCafe.Server\CodeCafe.Server.csproj" />
   </ItemGroup>
 
 </Project>
