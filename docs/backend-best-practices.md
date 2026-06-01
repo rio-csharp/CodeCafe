@@ -122,6 +122,30 @@ Owns:
 
 This is the default backend deployment target.
 
+## Auth / OIDC Stays Controller-Based
+
+The OpenIddict authorization-server endpoints (`/connect/authorize`,
+`/connect/token`, dynamic client registration) live in MVC controllers under
+`CodeCafe.Server/Auth` and intentionally stay there. They are not reshaped into
+MediatR slices like the Notes feature.
+
+Reason: these endpoints are inseparable from the OpenIddict ASP.NET Core
+integration. They resolve the request with `HttpContext.GetOpenIddictServerRequest()`,
+drive authentication through specific schemes, and return results as
+`SignIn` / `Forbid` with `AuthenticationProperties` so the OpenIddict server
+middleware can complete the protocol. That logic is transport, not a portable
+application use case. Pushing it behind a handler would force the handler to take
+an `HttpContext` dependency, which inverts the dependency direction the rebuild
+is protecting.
+
+Guidance:
+
+- Keep the OAuth/OIDC protocol flow in `CodeCafe.Server/Auth` controllers.
+- Application-style auth concerns that are genuinely transport-agnostic
+  (for example user registration/login response shaping behind
+  `IAuthEndpointService`) may still live in the application/adapter layers.
+- Revisit only if a future change makes the flow transport-agnostic.
+
 ## Vertical Slice Rules
 
 New backend work should follow feature slices in `CodeCafe.Application`.
