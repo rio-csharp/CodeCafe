@@ -9,5 +9,9 @@ public sealed class UpdateNotebookItemCommandValidator : AbstractValidator<Updat
         RuleFor(command => command.Title)
             .NotEmpty()
             .MaximumLength(160);
+
+        RuleFor(command => command.ParentId)
+            .Must(NotebookInput.IsOptionalGuid)
+            .WithMessage("ParentId must be a GUID or null.");
     }
 }

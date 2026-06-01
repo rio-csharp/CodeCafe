@@ -11,6 +11,7 @@
     <Project Path="tests/CodeCafe.Api.Tests/CodeCafe.Api.Tests.csproj" />
     <Project Path="tests/CodeCafe.Application.Tests/CodeCafe.Application.Tests.csproj" />
     <Project Path="tests/CodeCafe.Architecture.Tests/CodeCafe.Architecture.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Domain.Tests/CodeCafe.Domain.Tests.csproj" />
     <Project Path="tests/CodeCafe.Mcp.Tests/CodeCafe.Mcp.Tests.csproj" />
     <Project Path="tests/CodeCafe.Server.Tests/CodeCafe.Server.Tests.csproj" />
   </Folder>

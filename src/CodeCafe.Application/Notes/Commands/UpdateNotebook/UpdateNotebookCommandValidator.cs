@@ -12,5 +12,9 @@ public sealed class UpdateNotebookCommandValidator : AbstractValidator<UpdateNot
 
         RuleFor(command => command.Description)
             .MaximumLength(1000);
+
+        RuleFor(command => command.Visibility)
+            .Must(value => NotebookInput.TryParseVisibility(value, out _))
+            .WithMessage("Visibility must be public, private, or unlisted.");
     }
 }

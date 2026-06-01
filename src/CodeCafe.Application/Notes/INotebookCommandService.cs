@@ -4,23 +4,6 @@ namespace CodeCafe.Application.Notes;
 
 public interface INotebookCommandService
 {
-    Task<NotesResult<NotebookDetailModel>> CreateNotebookAsync(
-        Guid currentUserId,
-        string title,
-        string? description,
-        string? visibility,
-        CancellationToken cancellationToken);
-
-    Task<NotesResult<NotebookDetailModel>> UpdateNotebookAsync(
-        Guid notebookId,
-        Guid currentUserId,
-        string title,
-        string? description,
-        string? visibility,
-        CancellationToken cancellationToken);
-
-    Task<NotesResult> DeleteNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken);
-
     Task<NotesResult<NotebookItemModel>> CreateNotebookItemAsync(
         Guid notebookId,
         Guid currentUserId,

@@ -10,105 +10,8 @@ namespace CodeCafe.Infrastructure.Notes;
 public sealed class NotebookCommandService(
     ApplicationDbContext dbContext,
     IDateTimeProvider dateTimeProvider,
-    INotebookQueryService notebookQueryService,
     ITipTapContentService tipTapContentService) : INotebookCommandService
 {
-    public async Task<NotesResult<NotebookDetailModel>> CreateNotebookAsync(
-        Guid currentUserId,
-        string title,
-        string? description,
-        string? visibility,
-        CancellationToken cancellationToken)
-    {
-        if (!NotesSupport.TryParseVisibility(visibility, out var parsedVisibility))
-        {
-            return NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.Validation, "invalid_visibility", "Visibility must be public, private, or unlisted.");
-        }
-
-        var trimmedTitle = title.Trim();
-        var now = dateTimeProvider.UtcNow;
-        var isPublished = parsedVisibility == NotebookVisibility.Public;
-        var notebook = new Notebook
-        {
-            Id = Guid.NewGuid(),
-            OwnerId = currentUserId,
-            Title = trimmedTitle,
-            Slug = await GenerateNotebookSlugAsync(trimmedTitle, null, cancellationToken),
-            Description = NotesSupport.NormalizeOptionalText(description),
-            Visibility = parsedVisibility,
-            IsPublished = isPublished,
-            PublishedAtUtc = isPublished ? now : null
-        };
-
-        dbContext.Notebooks.Add(notebook);
-        await SaveNotebookWithUniqueSlugRetriesAsync(notebook, trimmedTitle, cancellationToken);
-
-        return await notebookQueryService.GetNotebookByIdAsync(notebook.Id, currentUserId, cancellationToken);
-    }
-
-    public async Task<NotesResult<NotebookDetailModel>> UpdateNotebookAsync(
-        Guid notebookId,
-        Guid currentUserId,
-        string title,
-        string? description,
-        string? visibility,
-        CancellationToken cancellationToken)
-    {
-        if (!NotesSupport.TryParseVisibility(visibility, out var parsedVisibility))
-        {
-            return NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.Validation, "invalid_visibility", "Visibility must be public, private, or unlisted.");
-        }
-
-        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
-        if (notebook is null)
-        {
-            return await NotebookExistsAsync(notebookId, cancellationToken)
-                ? NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify it.")
-                : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
-        }
-
-        var wasPublished = notebook.IsPublished;
-        var now = dateTimeProvider.UtcNow;
-        var trimmedTitle = title.Trim();
-        var titleChanged = !string.Equals(notebook.Title, trimmedTitle, StringComparison.Ordinal);
-        notebook.Title = trimmedTitle;
-        if (titleChanged)
-        {
-            notebook.Slug = await GenerateNotebookSlugAsync(trimmedTitle, notebook.Id, cancellationToken);
-        }
-
-        notebook.Description = NotesSupport.NormalizeOptionalText(description);
-        notebook.Visibility = parsedVisibility;
-        notebook.IsPublished = parsedVisibility == NotebookVisibility.Public;
-        notebook.PublishedAtUtc = parsedVisibility == NotebookVisibility.Public
-            ? notebook.PublishedAtUtc ?? now
-            : null;
-
-        if (!wasPublished && notebook.IsPublished)
-        {
-            notebook.PublishedAtUtc = now;
-        }
-
-        await SaveNotebookWithUniqueSlugRetriesAsync(notebook, trimmedTitle, cancellationToken);
-
-        return await notebookQueryService.GetNotebookByIdAsync(notebook.Id, currentUserId, cancellationToken);
-    }
-
-    public async Task<NotesResult> DeleteNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
-    {
-        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
-        if (notebook is null)
-        {
-            return await NotebookExistsAsync(notebookId, cancellationToken)
-                ? NotesResult.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can delete it.")
-                : NotesResult.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
-        }
-
-        dbContext.Notebooks.Remove(notebook);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return NotesResult.Success();
-    }
-
     public async Task<NotesResult<NotebookItemModel>> CreateNotebookItemAsync(
         Guid notebookId,
         Guid currentUserId,
@@ -127,7 +30,7 @@ public sealed class NotebookCommandService(
                 : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
         }
 
-        if (!NotesSupport.TryParseItemType(type, out var itemType))
+        if (!NotebookInput.TryParseItemType(type, out var itemType))
         {
             return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_item_type", "Item type must be folder or page.");
         }
@@ -218,17 +121,17 @@ public sealed class NotebookCommandService(
             .Where(existingItem => existingItem.NotebookId == notebookId && !existingItem.IsArchived)
             .ToListAsync(cancellationToken);
         var requestedParentId = item.ParentId;
-        var currentParent = NotesSupport.ValidateRequestedParent(notebookItems, item.Id, item.ParentId);
+        var currentParent = NotebookItemTree.FindRequestedParent(notebookItems, item.Id, item.ParentId);
         var nextParent = currentParent;
 
         if (parentId.ValueKind != JsonValueKind.Undefined)
         {
-            if (!NotesSupport.TryParseOptionalGuid(parentId, out requestedParentId))
+            if (!NotebookInput.TryParseOptionalGuid(parentId, out requestedParentId))
             {
                 return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "ParentId must be a GUID or null.");
             }
 
-            nextParent = NotesSupport.ValidateRequestedParent(notebookItems, item.Id, requestedParentId);
+            nextParent = NotebookItemTree.FindRequestedParent(notebookItems, item.Id, requestedParentId);
             if (requestedParentId is not null && nextParent is null)
             {
                 return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item was not found in this notebook.");
@@ -239,7 +142,7 @@ public sealed class NotebookCommandService(
                 return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item must be a folder.");
             }
 
-            if (nextParent is not null && NotesSupport.WouldCreateCycle(notebookItems, item.Id, nextParent.Id))
+            if (nextParent is not null && NotebookItemTree.WouldCreateCycle(notebookItems, item.Id, nextParent.Id))
             {
                 return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Item cannot be moved into itself or its descendants.");
             }
@@ -247,14 +150,9 @@ public sealed class NotebookCommandService(
 
         var oldPath = item.Path;
         var parentPath = nextParent?.Path;
-        item.ParentId = requestedParentId;
-        item.Title = title.Trim();
-        item.Path = NotesSupport.GenerateItemPath(notebookItems, parentPath, item.Title, item.Id);
-        item.Slug = item.Path.Split('/')[^1];
-        if (sortOrder.HasValue)
-        {
-            item.SortOrder = sortOrder.Value;
-        }
+        var trimmedTitle = title.Trim();
+        var nextPath = NotebookItemTree.GeneratePath(notebookItems, parentPath, trimmedTitle, item.Id);
+        item.UpdateStructure(requestedParentId, trimmedTitle, nextPath, sortOrder);
 
         if (item.Type == NotebookItemType.Page)
         {
@@ -269,9 +167,10 @@ public sealed class NotebookCommandService(
                         normalizedContent.Error.Message);
                 }
 
-                item.ContentFormat = NotesSupport.PageContentFormat;
-                item.ContentJson = normalizedContent.Value!.ContentJson;
-                item.PlainTextContent = normalizedContent.Value!.PlainTextContent;
+                item.SetPageContent(
+                    NotesSupport.PageContentFormat,
+                    normalizedContent.Value!.ContentJson,
+                    normalizedContent.Value!.PlainTextContent);
             }
         }
 
@@ -334,7 +233,7 @@ public sealed class NotebookCommandService(
                 return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item must be a folder.");
             }
 
-            if (parent is not null && NotesSupport.WouldCreateCycle(notebookItems, item.Id, parent.Id, items))
+            if (parent is not null && NotebookItemTree.WouldCreateCycle(notebookItems, item.Id, parent.Id, items))
             {
                 return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "invalid_parent", "Item cannot be moved into itself or its descendants.");
             }
@@ -351,18 +250,15 @@ public sealed class NotebookCommandService(
             {
                 var item = notebookItemsById[reorderItem.ItemId];
                 var oldPath = item.Path;
-                item.ParentId = reorderItem.ParentId;
-                item.SortOrder = reorderItem.SortOrder;
-
                 var parentPath = reorderItem.ParentId is null
                     ? null
                     : notebookItemsById[reorderItem.ParentId.Value].Path;
-                item.Path = NotesSupport.GenerateItemPath(notebookItems, parentPath, item.Title, item.Id);
-                item.Slug = item.Path.Split('/')[^1];
+                var nextPath = NotebookItemTree.GeneratePath(notebookItems, parentPath, item.Title, item.Id);
+                item.UpdateStructure(reorderItem.ParentId, item.Title, nextPath, reorderItem.SortOrder);
 
                 if (!string.Equals(oldPath, item.Path, StringComparison.Ordinal))
                 {
-                    NotesSupport.ApplyDescendantPathUpdate(notebookItems, item.Id, oldPath, item.Path);
+                    NotebookItemTree.ApplyDescendantPathUpdate(notebookItems, item.Id, oldPath, item.Path);
                 }
             }
 
@@ -417,7 +313,7 @@ public sealed class NotebookCommandService(
                 "Archive the notebook item before deleting it permanently.");
         }
 
-        var idsToDelete = NotesSupport.GetDescendantIds(items, itemId);
+        var idsToDelete = NotebookItemTree.GetDescendantIds(items, itemId);
         idsToDelete.Add(itemId);
         dbContext.NotebookItems.RemoveRange(items.Where(existingItem => idsToDelete.Contains(existingItem.Id)));
         try
@@ -463,15 +359,13 @@ public sealed class NotebookCommandService(
             return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "notebook_item_archived", "Notebook item is already archived.");
         }
 
-        var idsToArchive = NotesSupport.GetDescendantIds(items, itemId);
+        var idsToArchive = NotebookItemTree.GetDescendantIds(items, itemId);
         idsToArchive.Add(itemId);
         var now = dateTimeProvider.UtcNow;
 
         foreach (var existingItem in items.Where(candidate => idsToArchive.Contains(candidate.Id)))
         {
-            existingItem.IsArchived = true;
-            existingItem.ArchivedAtUtc = now;
-            existingItem.ArchivedByUserId = currentUserId;
+            existingItem.Archive(now, currentUserId);
         }
 
         try
@@ -525,7 +419,7 @@ public sealed class NotebookCommandService(
                 return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item was not found in this notebook.");
             }
 
-            var subtreeIds = NotesSupport.GetDescendantIds(items, itemId);
+            var subtreeIds = NotebookItemTree.GetDescendantIds(items, itemId);
             subtreeIds.Add(itemId);
             if (parent.IsArchived && !subtreeIds.Contains(parent.Id))
             {
@@ -536,14 +430,12 @@ public sealed class NotebookCommandService(
             }
         }
 
-        var idsToRestore = NotesSupport.GetDescendantIds(items, itemId);
+        var idsToRestore = NotebookItemTree.GetDescendantIds(items, itemId);
         idsToRestore.Add(itemId);
 
         foreach (var existingItem in items.Where(candidate => idsToRestore.Contains(candidate.Id)))
         {
-            existingItem.IsArchived = false;
-            existingItem.ArchivedAtUtc = null;
-            existingItem.ArchivedByUserId = null;
+            existingItem.Restore();
         }
 
         try
@@ -573,50 +465,6 @@ public sealed class NotebookCommandService(
         return await dbContext.Notebooks.AnyAsync(notebook => notebook.Id == notebookId, cancellationToken);
     }
 
-    private async Task<string> GenerateNotebookSlugAsync(
-        string title,
-        Guid? currentNotebookId,
-        CancellationToken cancellationToken)
-    {
-        var baseSlug = SlugGenerator.FromTitle(title, "note");
-        for (var attempt = 0; attempt < 10; attempt++)
-        {
-            var slug = SlugGenerator.WithSuffix(baseSlug, attempt);
-            var exists = await dbContext.Notebooks.AnyAsync(
-                notebook => notebook.Slug == slug && notebook.Id != currentNotebookId,
-                cancellationToken);
-            if (!exists)
-            {
-                return slug;
-            }
-        }
-
-        return $"{baseSlug}-{Guid.NewGuid():N}"[..Math.Min(baseSlug.Length + 33, 180)];
-    }
-
-    private async Task SaveNotebookWithUniqueSlugRetriesAsync(
-        Notebook notebook,
-        string title,
-        CancellationToken cancellationToken)
-    {
-        for (var attempt = 0; attempt < 5; attempt++)
-        {
-            try
-            {
-                await dbContext.SaveChangesAsync(cancellationToken);
-                return;
-            }
-            catch (DbUpdateException exception) when (NotesSupport.IsDuplicateNotebookSlugException(exception) && attempt < 4)
-            {
-                notebook.Slug = await GenerateNotebookSlugAsync(title, notebook.Id, cancellationToken);
-                if (dbContext.Entry(notebook).State == EntityState.Modified)
-                {
-                    dbContext.Entry(notebook).Property(existingNotebook => existingNotebook.Slug).IsModified = true;
-                }
-            }
-        }
-    }
-
     private async Task<string> GenerateItemPathAsync(
         Guid notebookId,
         string? parentPath,
@@ -624,10 +472,10 @@ public sealed class NotebookCommandService(
         Guid? currentItemId,
         CancellationToken cancellationToken)
     {
-        var baseSlug = SlugGenerator.FromTitle(title, "page");
+        var baseSlug = NotebookSlugGenerator.FromTitle(title, "page");
         for (var attempt = 0; attempt < 10; attempt++)
         {
-            var slug = SlugGenerator.WithSuffix(baseSlug, attempt);
+            var slug = NotebookSlugGenerator.WithSuffix(baseSlug, attempt);
             var path = string.IsNullOrWhiteSpace(parentPath) ? slug : $"{parentPath}/{slug}";
             var exists = await dbContext.NotebookItems.AnyAsync(
                 item => item.NotebookId == notebookId

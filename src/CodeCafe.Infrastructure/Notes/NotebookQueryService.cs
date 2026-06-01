@@ -13,7 +13,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         CancellationToken cancellationToken,
         int? limit = null)
     {
-        var normalizedSearch = NotesSupport.NormalizeSearch(search);
+        var normalizedSearch = NotebookInput.NormalizeSearch(search);
         var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.Notebooks
             .AsNoTracking()
@@ -42,7 +42,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         CancellationToken cancellationToken,
         int? limit = null)
     {
-        var normalizedSearch = NotesSupport.NormalizeSearch(search);
+        var normalizedSearch = NotebookInput.NormalizeSearch(search);
         var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.Notebooks
             .AsNoTracking()
@@ -71,7 +71,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
         CancellationToken cancellationToken,
         int? limit = null)
     {
-        var normalizedSearch = NotesSupport.NormalizeSearch(search);
+        var normalizedSearch = NotebookInput.NormalizeSearch(search);
         if (normalizedSearch is null)
         {
             return [];
@@ -173,7 +173,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
                 "Notebook was not found.");
         }
 
-        var normalizedPath = NotesSupport.NormalizePath(path);
+        var normalizedPath = NotebookInput.NormalizePath(path);
         var item = await dbContext.NotebookItems
             .AsNoTracking()
             .SingleOrDefaultAsync(
@@ -201,7 +201,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
             return NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
         }
 
-        if (!NotesSupport.CanReadNotebook(notebook, currentUserId))
+        if (!NotebookAccessPolicy.CanReadNotebook(notebook, currentUserId))
         {
             return NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "You do not have access to this notebook.");
         }
@@ -225,7 +225,7 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
             return NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
         }
 
-        if (!NotesSupport.CanReadNotebook(notebook, currentUserId))
+        if (!NotebookAccessPolicy.CanReadNotebook(notebook, currentUserId))
         {
             return NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "You do not have access to this notebook.");
         }
@@ -250,12 +250,12 @@ public sealed class NotebookQueryService(ApplicationDbContext dbContext) : INote
             return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
         }
 
-        if (!NotesSupport.CanReadNotebook(notebook, currentUserId))
+        if (!NotebookAccessPolicy.CanReadNotebook(notebook, currentUserId))
         {
             return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "You do not have access to this notebook.");
         }
 
-        var normalizedSearch = NotesSupport.NormalizeSearch(search);
+        var normalizedSearch = NotebookInput.NormalizeSearch(search);
         var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.NotebookItems
             .AsNoTracking()

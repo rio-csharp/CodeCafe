@@ -37,7 +37,7 @@ public sealed class TipTapContentService(ITipTapPlainTextExtractor plainTextExtr
         var normalizedJson = root.ToJsonString();
 
         using var normalizedDocument = JsonDocument.Parse(normalizedJson);
-        var plainTextContent = NotesSupport.NormalizeOptionalText(
+        var plainTextContent = NotebookInput.NormalizeOptionalText(
             plainTextExtractor.Extract(normalizedDocument.RootElement));
 
         return NotesResult<TipTapContentModel>.Success(new TipTapContentModel(normalizedJson, plainTextContent));
@@ -154,7 +154,7 @@ public sealed class TipTapContentService(ITipTapPlainTextExtractor plainTextExtr
 
     private static void StripLeadingDuplicateTitleHeading(JsonObject root, string? pageTitle)
     {
-        var normalizedTitle = NotesSupport.NormalizeOptionalText(pageTitle);
+        var normalizedTitle = NotebookInput.NormalizeOptionalText(pageTitle);
         if (string.IsNullOrWhiteSpace(normalizedTitle))
         {
             return;
@@ -177,7 +177,7 @@ public sealed class TipTapContentService(ITipTapPlainTextExtractor plainTextExtr
         }
 
         var headingText = ExtractText(firstNode);
-        if (!string.Equals(NotesSupport.NormalizeOptionalText(headingText), normalizedTitle, StringComparison.Ordinal))
+        if (!string.Equals(NotebookInput.NormalizeOptionalText(headingText), normalizedTitle, StringComparison.Ordinal))
         {
             return;
         }

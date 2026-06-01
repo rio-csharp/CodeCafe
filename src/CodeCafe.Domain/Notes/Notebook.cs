@@ -27,4 +27,32 @@ public sealed class Notebook : IAuditableEntity
     public List<NotebookItem> Items { get; } = [];
 
     public List<NotebookFavorite> Favorites { get; } = [];
+
+    public void Rename(string title)
+    {
+        Title = title;
+    }
+
+    public void SetDescription(string? description)
+    {
+        Description = description;
+    }
+
+    public void ApplyVisibility(NotebookVisibility visibility, DateTimeOffset now)
+    {
+        var wasPublished = IsPublished;
+
+        Visibility = visibility;
+        IsPublished = visibility == NotebookVisibility.Public;
+
+        if (!IsPublished)
+        {
+            PublishedAtUtc = null;
+            return;
+        }
+
+        PublishedAtUtc = wasPublished
+            ? PublishedAtUtc ?? now
+            : now;
+    }
 }

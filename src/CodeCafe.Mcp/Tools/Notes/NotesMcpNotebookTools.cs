@@ -1,6 +1,10 @@
 using CodeCafe.Mcp.Configuration;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Interfaces;
+using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Notes.Commands.DeleteNotebook;
+using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using MediatR;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
@@ -314,7 +318,7 @@ public sealed class NotesMcpNotebookTools
     public async Task<CallToolResult> CreateNotebookAsync(
         [Description("Notebook title.")] string title,
         ClaimsPrincipal user,
-        INotebookCommandService notebookCommandService,
+        ISender sender,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
@@ -349,11 +353,12 @@ public sealed class NotesMcpNotebookTools
                         "Visibility must be public, unlisted, or private."));
                 }
 
-                var createResult = await notebookCommandService.CreateNotebookAsync(
-                    actorResult.Value,
-                    title,
-                    description,
-                    visibility,
+                var createResult = await sender.Send(
+                    new CreateNotebookCommand(
+                        actorResult.Value,
+                        title,
+                        description,
+                        visibility),
                     ct);
                 if (!createResult.Succeeded)
                 {
@@ -383,7 +388,7 @@ public sealed class NotesMcpNotebookTools
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        ISender sender,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
@@ -434,12 +439,13 @@ public sealed class NotesMcpNotebookTools
 
                 var notebookContext = notebookContextResult.Value;
                 var notebook = notebookContext.Notebook;
-                var updateResult = await notebookCommandService.UpdateNotebookAsync(
-                    notebook.Id,
-                    notebookContext.ActorId,
-                    string.IsNullOrWhiteSpace(title) ? notebook.Title : title,
-                    description is null ? notebook.Description : description,
-                    string.IsNullOrWhiteSpace(visibility) ? notebook.Visibility : visibility,
+                var updateResult = await sender.Send(
+                    new UpdateNotebookCommand(
+                        notebook.Id,
+                        notebookContext.ActorId,
+                        string.IsNullOrWhiteSpace(title) ? notebook.Title : title,
+                        description is null ? notebook.Description : description,
+                        string.IsNullOrWhiteSpace(visibility) ? notebook.Visibility : visibility),
                     ct);
                 if (!updateResult.Succeeded)
                 {
@@ -469,7 +475,7 @@ public sealed class NotesMcpNotebookTools
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
         INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        ISender sender,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
@@ -493,9 +499,10 @@ public sealed class NotesMcpNotebookTools
 
                 var notebookContext = notebookContextResult.Value;
                 var notebook = notebookContext.Notebook;
-                var deleteResult = await notebookCommandService.DeleteNotebookAsync(
-                    notebook.Id,
-                    notebookContext.ActorId,
+                var deleteResult = await sender.Send(
+                    new DeleteNotebookCommand(
+                        notebook.Id,
+                        notebookContext.ActorId),
                     ct);
                 if (!deleteResult.Succeeded)
                 {

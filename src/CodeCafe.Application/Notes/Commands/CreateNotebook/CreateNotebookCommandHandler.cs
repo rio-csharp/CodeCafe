@@ -1,20 +1,41 @@
 using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Application.Common.Interfaces;
+using CodeCafe.Domain.Notes;
 
 namespace CodeCafe.Application.Notes.Commands.CreateNotebook;
 
 public sealed class CreateNotebookCommandHandler(
-    INotebookCommandService notebookCommandService)
+    INotebookMutationStore notebookMutationStore,
+    INotebookQueryService notebookQueryService,
+    IDateTimeProvider dateTimeProvider)
     : ICommandHandler<CreateNotebookCommand, NotesResult<NotebookDetailModel>>
 {
     public async Task<NotesResult<NotebookDetailModel>> Handle(
         CreateNotebookCommand request,
         CancellationToken cancellationToken)
     {
-        return await notebookCommandService.CreateNotebookAsync(
-            request.CurrentUserId,
-            request.Title,
-            request.Description,
-            request.Visibility,
-            cancellationToken);
+        if (!NotebookInput.TryParseVisibility(request.Visibility, out var parsedVisibility))
+        {
+            return NotesResult<NotebookDetailModel>.Failure(
+                NotesFailureKind.Validation,
+                "invalid_visibility",
+                "Visibility must be public, private, or unlisted.");
+        }
+
+        var trimmedTitle = request.Title.Trim();
+        var notebook = new Notebook
+        {
+            Id = Guid.NewGuid(),
+            OwnerId = request.CurrentUserId,
+            Title = trimmedTitle,
+            Slug = await notebookMutationStore.GenerateUniqueNotebookSlugAsync(trimmedTitle, null, cancellationToken),
+            Description = NotebookInput.NormalizeOptionalText(request.Description)
+        };
+        notebook.ApplyVisibility(parsedVisibility, dateTimeProvider.UtcNow);
+
+        notebookMutationStore.AddNotebook(notebook);
+        await notebookMutationStore.SaveNotebookAsync(notebook, trimmedTitle, cancellationToken);
+
+        return await notebookQueryService.GetNotebookByIdAsync(notebook.Id, request.CurrentUserId, cancellationToken);
     }
 }

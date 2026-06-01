@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using CodeCafe.Api.Endpoints.Auth;
 using CodeCafe.Application.Notes;
+using CodeCafe.Domain.Notes;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -30,9 +31,10 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
                 options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
             });
 
+            services.AddSingleton<TestNotebookMutationStore>();
+            services.AddSingleton<INotebookMutationStore>(serviceProvider => serviceProvider.GetRequiredService<TestNotebookMutationStore>());
             services.AddSingleton<INotebookQueryService, TestNotebookQueryService>();
             services.AddSingleton<INotebookCommandService, TestNotebookCommandService>();
-            services.AddSingleton<INotebookFavoriteService, TestNotebookFavoriteService>();
             services.AddSingleton<IAuthEndpointService, TestAuthEndpointService>();
         });
     }
@@ -68,7 +70,7 @@ internal sealed class TestAuthHandler(
     }
 }
 
-internal sealed class TestNotebookQueryService : INotebookQueryService
+internal sealed class TestNotebookQueryService(TestNotebookMutationStore notebookMutationStore) : INotebookQueryService
 {
     private static readonly Guid NotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -191,21 +193,14 @@ internal sealed class TestNotebookQueryService : INotebookQueryService
 
     public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
         => Task.FromResult(
-            notebookId == NotebookId
-                ? NotesResult<NotebookDetailModel>.Success(PublicNotebook with
-                {
-                    OwnerId = currentUserId,
-                    CanEdit = true
-                })
+            notebookMutationStore.TryGetNotebookDetail(notebookId, currentUserId, out var notebookDetail)
+                ? NotesResult<NotebookDetailModel>.Success(notebookDetail)
                 : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
         => Task.FromResult(
-            string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
-                ? NotesResult<NotebookDetailModel>.Success(PublicNotebook with
-                {
-                    CanEdit = currentUserId == OwnerId
-                })
+            notebookMutationStore.TryGetNotebookDetailBySlug(slug, currentUserId, out var notebookDetail)
+                ? NotesResult<NotebookDetailModel>.Success(notebookDetail)
                 : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, int? limit = null)
@@ -218,62 +213,6 @@ internal sealed class TestNotebookQueryService : INotebookQueryService
 internal sealed class TestNotebookCommandService : INotebookCommandService
 {
     private static readonly Guid DefaultItemId = Guid.Parse("33333333-3333-3333-3333-333333333333");
-
-    public Task<NotesResult<NotebookDetailModel>> CreateNotebookAsync(Guid currentUserId, string title, string? description, string? visibility, CancellationToken cancellationToken)
-    {
-        var result = new NotebookDetailModel(
-            Guid.Parse("22222222-2222-2222-2222-222222222222"),
-            currentUserId,
-            title,
-            "new-notebook",
-            description,
-            visibility ?? "private",
-            string.Equals(visibility, "public", StringComparison.OrdinalIgnoreCase),
-            "Yao",
-            true,
-            0,
-            0,
-            0,
-            0,
-            false,
-            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-            string.Equals(visibility, "public", StringComparison.OrdinalIgnoreCase)
-                ? DateTimeOffset.Parse("2026-06-01T00:00:00+00:00")
-                : null,
-            []);
-
-        return Task.FromResult(NotesResult<NotebookDetailModel>.Success(result));
-    }
-
-    public Task<NotesResult<NotebookDetailModel>> UpdateNotebookAsync(Guid notebookId, Guid currentUserId, string title, string? description, string? visibility, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<NotebookDetailModel>.Success(
-            new NotebookDetailModel(
-                notebookId,
-                currentUserId,
-                title,
-                "updated-notebook",
-                description,
-                visibility ?? "private",
-                string.Equals(visibility, "public", StringComparison.OrdinalIgnoreCase),
-                "Yao",
-                true,
-                1,
-                0,
-                1,
-                0,
-                false,
-                DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-                DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
-                DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-                string.Equals(visibility, "public", StringComparison.OrdinalIgnoreCase)
-                    ? DateTimeOffset.Parse("2026-06-01T00:00:00+00:00")
-                    : null,
-                [])));
-
-    public Task<NotesResult> DeleteNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult.Success());
 
     public Task<NotesResult<NotebookItemModel>> CreateNotebookItemAsync(Guid notebookId, Guid currentUserId, Guid? parentId, string type, string title, int sortOrder, System.Text.Json.JsonElement? contentJson, CancellationToken cancellationToken)
         => Task.FromResult(NotesResult<NotebookItemModel>.Success(
@@ -381,19 +320,131 @@ internal sealed class TestNotebookCommandService : INotebookCommandService
                 DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"))));
 }
 
-internal sealed class TestNotebookFavoriteService : INotebookFavoriteService
+internal sealed class TestNotebookMutationStore : INotebookMutationStore
 {
-    public Task<NotesResult<NotebookFavoriteModel>> GetFavoriteStatusAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<NotebookFavoriteModel>.Success(
-            new NotebookFavoriteModel(notebookId, false, 1)));
+    private static readonly Guid DefaultNotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+    private static readonly Guid DefaultOwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private readonly Dictionary<Guid, Notebook> _notebooks;
+    private readonly List<NotebookFavorite> _favorites;
 
-    public Task<NotesResult<NotebookFavoriteModel>> AddFavoriteAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<NotebookFavoriteModel>.Success(
-            new NotebookFavoriteModel(notebookId, true, 2)));
+    public TestNotebookMutationStore()
+    {
+        _notebooks = new Dictionary<Guid, Notebook>
+        {
+            [DefaultNotebookId] = new Notebook
+            {
+                Id = DefaultNotebookId,
+                OwnerId = DefaultOwnerId,
+                Title = "Architecture Notes",
+                Slug = "architecture-notes",
+                Description = "Refactor plan",
+                Visibility = NotebookVisibility.Public,
+                IsPublished = true,
+                CreatedAtUtc = DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+                UpdatedAtUtc = DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+                PublishedAtUtc = DateTimeOffset.Parse("2026-06-01T00:00:00+00:00")
+            }
+        };
+        _favorites =
+        [
+            new NotebookFavorite
+            {
+                Id = Guid.Parse("99999999-9999-9999-9999-999999999999"),
+                NotebookId = DefaultNotebookId,
+                UserId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb")
+            }
+        ];
+    }
 
-    public Task<NotesResult<NotebookFavoriteModel>> RemoveFavoriteAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<NotebookFavoriteModel>.Success(
-            new NotebookFavoriteModel(notebookId, false, 1)));
+    public void AddNotebook(Notebook notebook) => _notebooks[notebook.Id] = notebook;
+
+    public Task<NotebookFavorite?> GetFavoriteAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
+        => Task.FromResult(_favorites.SingleOrDefault(favorite => favorite.NotebookId == notebookId && favorite.UserId == currentUserId));
+
+    public Task<Notebook?> GetNotebookAsync(Guid notebookId, CancellationToken cancellationToken)
+        => Task.FromResult(_notebooks.GetValueOrDefault(notebookId));
+
+    public Task<Notebook?> GetOwnedNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
+        => Task.FromResult(_notebooks.TryGetValue(notebookId, out var notebook) && notebook.OwnerId == currentUserId ? notebook : null);
+
+    public Task<bool> NotebookExistsAsync(Guid notebookId, CancellationToken cancellationToken)
+        => Task.FromResult(_notebooks.ContainsKey(notebookId));
+
+    public Task<string> GenerateUniqueNotebookSlugAsync(string title, Guid? currentNotebookId, CancellationToken cancellationToken)
+    {
+        var baseSlug = string.Join('-', title.Trim().ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        if (_notebooks.Values.All(notebook => notebook.Id == currentNotebookId || notebook.Slug != baseSlug))
+        {
+            return Task.FromResult(baseSlug);
+        }
+
+        return Task.FromResult($"{baseSlug}-{_notebooks.Count}");
+    }
+
+    public void RemoveNotebook(Notebook notebook) => _notebooks.Remove(notebook.Id);
+
+    public Task SaveNotebookAsync(Notebook notebook, string title, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task<int> CountFavoritesAsync(Guid notebookId, CancellationToken cancellationToken)
+        => Task.FromResult(_favorites.Count(favorite => favorite.NotebookId == notebookId));
+
+    public Task<bool> IsFavoritedAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
+        => Task.FromResult(_favorites.Any(favorite => favorite.NotebookId == notebookId && favorite.UserId == currentUserId));
+
+    public void AddFavorite(NotebookFavorite favorite) => _favorites.Add(favorite);
+
+    public void RemoveFavorite(NotebookFavorite favorite) => _favorites.Remove(favorite);
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public bool TryGetNotebookDetail(Guid notebookId, Guid currentUserId, out NotebookDetailModel notebookDetail)
+    {
+        if (_notebooks.TryGetValue(notebookId, out var notebook))
+        {
+            notebookDetail = ToDetail(notebook, currentUserId);
+            return true;
+        }
+
+        notebookDetail = null!;
+        return false;
+    }
+
+    public bool TryGetNotebookDetailBySlug(string slug, Guid currentUserId, out NotebookDetailModel notebookDetail)
+    {
+        var notebook = _notebooks.Values.SingleOrDefault(existingNotebook => string.Equals(existingNotebook.Slug, slug, StringComparison.Ordinal));
+        if (notebook is not null)
+        {
+            notebookDetail = ToDetail(notebook, currentUserId);
+            return true;
+        }
+
+        notebookDetail = null!;
+        return false;
+    }
+
+    private NotebookDetailModel ToDetail(Notebook notebook, Guid currentUserId)
+    {
+        return new NotebookDetailModel(
+            notebook.Id,
+            notebook.OwnerId,
+            notebook.Title,
+            notebook.Slug,
+            notebook.Description,
+            notebook.Visibility.ToString().ToLowerInvariant(),
+            notebook.IsPublished,
+            "Yao",
+            notebook.OwnerId == currentUserId,
+            0,
+            0,
+            0,
+            _favorites.Count(favorite => favorite.NotebookId == notebook.Id),
+            _favorites.Any(favorite => favorite.NotebookId == notebook.Id && favorite.UserId == currentUserId),
+            notebook.UpdatedAtUtc ?? notebook.CreatedAtUtc,
+            notebook.CreatedAtUtc,
+            notebook.UpdatedAtUtc,
+            notebook.PublishedAtUtc,
+            []);
+    }
 }
 
 internal sealed class TestAuthEndpointService : IAuthEndpointService

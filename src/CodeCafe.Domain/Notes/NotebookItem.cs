@@ -43,4 +43,38 @@ public sealed class NotebookItem : IAuditableEntity
     public DateTimeOffset CreatedAtUtc { get; set; }
 
     public DateTimeOffset? UpdatedAtUtc { get; set; }
+
+    public void UpdateStructure(Guid? parentId, string title, string path, int? sortOrder = null)
+    {
+        ParentId = parentId;
+        Title = title;
+        Path = path;
+        Slug = path.Split('/')[^1];
+
+        if (sortOrder.HasValue)
+        {
+            SortOrder = sortOrder.Value;
+        }
+    }
+
+    public void SetPageContent(string? contentFormat, string? contentJson, string? plainTextContent)
+    {
+        ContentFormat = contentFormat;
+        ContentJson = contentJson;
+        PlainTextContent = plainTextContent;
+    }
+
+    public void Archive(DateTimeOffset archivedAtUtc, Guid archivedByUserId)
+    {
+        IsArchived = true;
+        ArchivedAtUtc = archivedAtUtc;
+        ArchivedByUserId = archivedByUserId;
+    }
+
+    public void Restore()
+    {
+        IsArchived = false;
+        ArchivedAtUtc = null;
+        ArchivedByUserId = null;
+    }
 }

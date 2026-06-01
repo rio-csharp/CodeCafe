@@ -32,8 +32,8 @@ public static class DependencyInjection
             options.UseOpenIddict<Guid>();
         });
         services.AddScoped<INotebookQueryService, NotebookQueryService>();
+        services.AddScoped<INotebookMutationStore, NotebookMutationStore>();
         services.AddScoped<INotebookCommandService, NotebookCommandService>();
-        services.AddScoped<INotebookFavoriteService, NotebookFavoriteService>();
         services.AddScoped<IMcpAuditService, McpAuditService>();
         services.AddSingleton<ITipTapPlainTextExtractor, TipTapPlainTextExtractor>();
         services.AddSingleton<ITipTapContentService, TipTapContentService>();

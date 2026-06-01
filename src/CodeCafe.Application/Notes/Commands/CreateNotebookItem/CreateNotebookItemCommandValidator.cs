@@ -7,7 +7,9 @@ public sealed class CreateNotebookItemCommandValidator : AbstractValidator<Creat
     public CreateNotebookItemCommandValidator()
     {
         RuleFor(command => command.Type)
-            .NotEmpty();
+            .NotEmpty()
+            .Must(value => NotebookInput.TryParseItemType(value, out _))
+            .WithMessage("Item type must be folder or page.");
 
         RuleFor(command => command.Title)
             .NotEmpty()

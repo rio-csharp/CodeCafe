@@ -2,9 +2,9 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace CodeCafe.Infrastructure.Notes;
+namespace CodeCafe.Application.Notes;
 
-public static class SlugGenerator
+public static class NotebookSlugGenerator
 {
     public static string FromTitle(string title, string fallback)
     {
