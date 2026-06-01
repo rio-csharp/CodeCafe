@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.Extensions.Options;
 using CodeCafe.WebApi.Mcp;
+using FluentValidation;
 
 namespace CodeCafe.WebApi.Errors;
 
@@ -25,6 +26,9 @@ public sealed class GlobalExceptionHandler(
             AntiforgeryValidationException => (
                 StatusCodes.Status400BadRequest,
                 new ApiError("invalid_csrf_token", "The CSRF token is missing or invalid.")),
+            ValidationException validationException => (
+                StatusCodes.Status400BadRequest,
+                new ApiError("validation_error", validationException.Errors.FirstOrDefault()?.ErrorMessage ?? "One or more validation errors occurred.")),
             DbUpdateException => (
                 StatusCodes.Status500InternalServerError,
                 new ApiError("database_error", "A database error occurred.")),

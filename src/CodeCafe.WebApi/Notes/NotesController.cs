@@ -1,5 +1,8 @@
+using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Notes.Queries.GetPublicNotebooks;
 using CodeCafe.Application.Notes;
 using CodeCafe.WebApi.Errors;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -9,6 +12,7 @@ namespace CodeCafe.WebApi.Notes;
 [ApiController]
 [Route("api/notes")]
 public sealed class NotesController(
+    ISender sender,
     INotebookQueryService notebookQueryService,
     INotebookCommandService notebookCommandService,
     INotebookFavoriteService notebookFavoriteService)
@@ -21,7 +25,9 @@ public sealed class NotesController(
         [FromQuery] string? search,
         CancellationToken cancellationToken)
     {
-        var notebooks = await notebookQueryService.GetPublicNotebooksAsync(search, GetCurrentUserId(), cancellationToken);
+        var notebooks = await sender.Send(
+            new GetPublicNotebooksQuery(search, GetCurrentUserId()),
+            cancellationToken);
         return Ok(notebooks.Select(ToSummaryResponse).ToList());
     }
 
@@ -85,11 +91,12 @@ public sealed class NotesController(
         CreateNotebookRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await notebookCommandService.CreateNotebookAsync(
-            GetCurrentUserId(),
-            request.Title,
-            request.Description,
-            request.Visibility,
+        var result = await sender.Send(
+            new CreateNotebookCommand(
+                GetCurrentUserId(),
+                request.Title,
+                request.Description,
+                request.Visibility),
             cancellationToken);
 
         if (!result.Succeeded)
