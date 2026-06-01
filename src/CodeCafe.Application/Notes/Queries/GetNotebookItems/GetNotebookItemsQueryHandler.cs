@@ -3,7 +3,7 @@ using CodeCafe.Application.Common.Abstractions.Messaging;
 namespace CodeCafe.Application.Notes.Queries.GetNotebookItems;
 
 public sealed class GetNotebookItemsQueryHandler(
-    INotebookQueryService notebookQueryService)
+    INotebookReadService notebookReadService)
     : IQueryHandler<GetNotebookItemsQuery, NotesResult<IReadOnlyList<NotebookItemModel>>>
 {
     public async Task<NotesResult<IReadOnlyList<NotebookItemModel>>> Handle(
@@ -12,7 +12,7 @@ public sealed class GetNotebookItemsQueryHandler(
     {
         if (request.IncludeArchived)
         {
-            var notebook = await notebookQueryService.GetNotebookByIdAsync(
+            var notebook = await notebookReadService.GetNotebookByIdAsync(
                 request.NotebookId,
                 request.CurrentUserId,
                 cancellationToken);
@@ -34,7 +34,7 @@ public sealed class GetNotebookItemsQueryHandler(
             }
         }
 
-        return await notebookQueryService.GetNotebookItemsAsync(
+        return await notebookReadService.GetNotebookItemsAsync(
             request.NotebookId,
             request.CurrentUserId,
             request.Search,

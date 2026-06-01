@@ -50,7 +50,7 @@ public sealed class NotesMcpResources
     [Description("Discover notebooks owned by the authenticated actor, including URIs for deeper notebook resources.")]
     public async Task<TextResourceContents> GetMyNotebooksResourceAsync(
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
@@ -58,7 +58,7 @@ public sealed class NotesMcpResources
             "notebooks://mine",
             "mine",
             user,
-            notebookQueryService,
+            notebookReadService,
             mcpOptionsAccessor.Value,
             cancellationToken);
     }
@@ -71,7 +71,7 @@ public sealed class NotesMcpResources
     [Description("Discover public notebooks visible to the authenticated actor, including URIs for deeper notebook resources.")]
     public async Task<TextResourceContents> GetPublicNotebooksResourceAsync(
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
@@ -79,7 +79,7 @@ public sealed class NotesMcpResources
             "notebooks://public",
             "public",
             user,
-            notebookQueryService,
+            notebookReadService,
             mcpOptionsAccessor.Value,
             cancellationToken);
     }
@@ -93,14 +93,14 @@ public sealed class NotesMcpResources
     public async Task<TextResourceContents> GetNotebookResourceAsync(
         string slug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
-            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken));
+            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookReadService, cancellationToken));
         var payload = NotesMcpSupport.ToGetNotebookToolResponse(notebook);
 
         return new TextResourceContents
@@ -120,16 +120,16 @@ public sealed class NotesMcpResources
     public async Task<TextResourceContents> GetNotebookItemsResourceAsync(
         string slug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
-            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken));
+            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookReadService, cancellationToken));
 
-        var itemsResult = await notebookQueryService.GetNotebookItemsAsync(
+        var itemsResult = await notebookReadService.GetNotebookItemsAsync(
             notebook.Id,
             NotesMcpSupport.GetCurrentUserId(user),
             null,
@@ -164,14 +164,14 @@ public sealed class NotesMcpResources
         string slug,
         string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
-            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookQueryService, cancellationToken));
+            await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookReadService, cancellationToken));
         var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
         var payload = NotesMcpSupport.ToGetPageToolResponse(notebook, page);
         return new TextResourceContents
@@ -186,7 +186,7 @@ public sealed class NotesMcpResources
         string resourceUri,
         string scope,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         McpOptions mcpOptions,
         CancellationToken cancellationToken)
     {
@@ -194,8 +194,8 @@ public sealed class NotesMcpResources
             NotesMcpSupport.RequireActor(user, mcpOptions.RequiredReadScopes));
         IReadOnlyList<NotebookSummaryModel> notebooks = scope switch
         {
-            "mine" => await notebookQueryService.GetMyNotebooksAsync(actorId, search: null, cancellationToken, limit: 100),
-            "public" => await notebookQueryService.GetPublicNotebooksAsync(search: null, actorId, cancellationToken, limit: 100),
+            "mine" => await notebookReadService.GetMyNotebooksAsync(actorId, search: null, cancellationToken, limit: 100),
+            "public" => await notebookReadService.GetPublicNotebooksAsync(search: null, actorId, cancellationToken, limit: 100),
             _ => []
         };
 

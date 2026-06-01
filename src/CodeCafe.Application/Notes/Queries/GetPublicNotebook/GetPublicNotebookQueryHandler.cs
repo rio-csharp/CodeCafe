@@ -3,14 +3,14 @@ using CodeCafe.Application.Common.Abstractions.Messaging;
 namespace CodeCafe.Application.Notes.Queries.GetPublicNotebook;
 
 public sealed class GetPublicNotebookQueryHandler(
-    INotebookQueryService notebookQueryService)
+    INotebookReadService notebookReadService)
     : IQueryHandler<GetPublicNotebookQuery, NotesResult<NotebookDetailModel>>
 {
     public async Task<NotesResult<NotebookDetailModel>> Handle(
         GetPublicNotebookQuery request,
         CancellationToken cancellationToken)
     {
-        return await notebookQueryService.GetPublicNotebookAsync(
+        return await notebookReadService.GetPublicNotebookAsync(
             request.Slug,
             request.CurrentUserId,
             cancellationToken,

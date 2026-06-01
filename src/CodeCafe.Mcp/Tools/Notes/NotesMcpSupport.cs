@@ -71,7 +71,7 @@ internal static class NotesMcpSupport
     public static async Task<NotesResult<NotebookDetailModel>> RequireNotebookAsync(
         string notebookSlug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken)
     {
         var currentUserId = GetCurrentUserId(user);
@@ -91,13 +91,13 @@ internal static class NotesMcpSupport
                 "The notebook slug is required.");
         }
 
-        return await notebookQueryService.GetNotebookBySlugAsync(notebookSlug.Trim(), currentUserId, cancellationToken);
+        return await notebookReadService.GetNotebookBySlugAsync(notebookSlug.Trim(), currentUserId, cancellationToken);
     }
 
     public static async Task<NotesResult<NotebookContext>> RequireNotebookContextAsync(
         string notebookSlug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         string[] requiredScopes,
         bool includeArchived = false)
@@ -116,7 +116,7 @@ internal static class NotesMcpSupport
                 "The notebook slug is required.");
         }
 
-        var notebookResult = await notebookQueryService.GetNotebookBySlugAsync(
+        var notebookResult = await notebookReadService.GetNotebookBySlugAsync(
             notebookSlug.Trim(),
             actorResult.Value,
             cancellationToken,
@@ -178,7 +178,7 @@ internal static class NotesMcpSupport
         string notebookSlug,
         string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         string[] requiredScopes,
         bool includeArchived = false)
@@ -186,7 +186,7 @@ internal static class NotesMcpSupport
         var notebookContextResult = await RequireNotebookContextAsync(
             notebookSlug,
             user,
-            notebookQueryService,
+            notebookReadService,
             cancellationToken,
             requiredScopes,
             includeArchived);
@@ -215,14 +215,14 @@ internal static class NotesMcpSupport
         string notebookSlug,
         string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         string[] requiredScopes)
     {
         var notebookContextResult = await RequireNotebookContextAsync(
             notebookSlug,
             user,
-            notebookQueryService,
+            notebookReadService,
             cancellationToken,
             requiredScopes);
         if (!notebookContextResult.Succeeded)

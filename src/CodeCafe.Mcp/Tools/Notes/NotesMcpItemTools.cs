@@ -25,7 +25,7 @@ public sealed class NotesMcpItemTools
     public async Task<CallToolResult> ListItemsAsync(
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         IOptions<McpOptions> mcpOptionsAccessor,
         [Description("Optional search term to filter notebook items.")] string? search = null,
@@ -39,7 +39,7 @@ public sealed class NotesMcpItemTools
         var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
             notebookSlug,
             user,
-            notebookQueryService,
+            notebookReadService,
             cancellationToken,
             mcpOptions.RequiredReadScopes,
             includeArchived);
@@ -58,7 +58,7 @@ public sealed class NotesMcpItemTools
                 "Only the notebook owner can view archived items."));
         }
 
-        var itemsResult = await notebookQueryService.GetNotebookItemsAsync(
+        var itemsResult = await notebookReadService.GetNotebookItemsAsync(
             notebook.Id,
             notebookContext.ActorId,
             search,
@@ -138,7 +138,7 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path within the notebook.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
@@ -147,7 +147,7 @@ public sealed class NotesMcpItemTools
             notebookSlug,
             path,
             user,
-            notebookQueryService,
+            notebookReadService,
             cancellationToken,
             mcpOptions.RequiredReadScopes);
         if (!pageContextResult.Succeeded)
@@ -358,8 +358,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The folder title.")] string title,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
@@ -375,7 +375,7 @@ public sealed class NotesMcpItemTools
                 var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
                     notebookSlug,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes);
                 if (!notebookContextResult.Succeeded)
@@ -399,7 +399,7 @@ public sealed class NotesMcpItemTools
                         notebookContext.Notebook.Id);
                 }
 
-                var createResult = await notebookCommandService.CreateNotebookItemAsync(
+                var createResult = await notebookItemMutationService.CreateNotebookItemAsync(
                     notebookContext.Notebook.Id,
                     notebookContext.ActorId,
                     parentResult.Value?.Id,
@@ -439,8 +439,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page title.")] string title,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpContentImportService contentImportService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
@@ -460,7 +460,7 @@ public sealed class NotesMcpItemTools
                 var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
                     notebookSlug,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes);
                 if (!notebookContextResult.Succeeded)
@@ -505,7 +505,7 @@ public sealed class NotesMcpItemTools
                     }
                 }
 
-                var createResult = await notebookCommandService.CreateNotebookItemAsync(
+                var createResult = await notebookItemMutationService.CreateNotebookItemAsync(
                     notebookContext.Notebook.Id,
                     notebookContext.ActorId,
                     parentResult.Value?.Id,
@@ -546,8 +546,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpContentImportService contentImportService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
@@ -567,7 +567,7 @@ public sealed class NotesMcpItemTools
                     notebookSlug,
                     path,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes);
                 if (!pageContextResult.Succeeded)
@@ -600,7 +600,7 @@ public sealed class NotesMcpItemTools
                 }
 
                 var pageContext = pageContextResult.Value;
-                var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
+                var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
                     pageContext.Notebook.Id,
                     pageContext.Item.Id,
                     pageContext.ActorId,
@@ -642,8 +642,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpContentImportService contentImportService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
@@ -663,7 +663,7 @@ public sealed class NotesMcpItemTools
                     notebookSlug,
                     path,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes);
                 if (!pageContextResult.Succeeded)
@@ -707,7 +707,7 @@ public sealed class NotesMcpItemTools
                         pageContext.Item.Id);
                 }
 
-                var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
+                var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
                     pageContext.Notebook.Id,
                     pageContext.Item.Id,
                     pageContext.ActorId,
@@ -750,8 +750,8 @@ public sealed class NotesMcpItemTools
         [Description("The current item path.")] string path,
         [Description("The new title for the page or folder.")] string title,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
@@ -767,7 +767,7 @@ public sealed class NotesMcpItemTools
                     notebookSlug,
                     path,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes,
                     includeArchived: true);
@@ -787,7 +787,7 @@ public sealed class NotesMcpItemTools
                 }
 
                 var itemContext = itemContextResult.Value;
-                var renameResult = await notebookCommandService.UpdateNotebookItemAsync(
+                var renameResult = await notebookItemMutationService.UpdateNotebookItemAsync(
                     itemContext.Notebook.Id,
                     itemContext.Item.Id,
                     itemContext.ActorId,
@@ -805,7 +805,7 @@ public sealed class NotesMcpItemTools
                         itemContext.Item.Id);
                 }
 
-                var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, ct);
+                var refreshedNotebook = await notebookReadService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, ct);
                 if (!refreshedNotebook.Succeeded)
                 {
                     return McpMutationResult<MoveItemToolResponse>.Failure(
@@ -837,8 +837,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The current item path.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
@@ -855,7 +855,7 @@ public sealed class NotesMcpItemTools
                     notebookSlug,
                     path,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes,
                     includeArchived: true);
@@ -874,7 +874,7 @@ public sealed class NotesMcpItemTools
                         itemContext.Item.Id);
                 }
 
-                var updateResult = await notebookCommandService.UpdateNotebookItemAsync(
+                var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
                     itemContext.Notebook.Id,
                     itemContext.Item.Id,
                     itemContext.ActorId,
@@ -914,8 +914,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The set of item reorder operations.")] IReadOnlyList<ReorderNotesItemRequest> items,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
@@ -937,7 +937,7 @@ public sealed class NotesMcpItemTools
                 var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
                     notebookSlug,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes);
                 if (!notebookContextResult.Succeeded)
@@ -977,7 +977,7 @@ public sealed class NotesMcpItemTools
                         item.SortOrder));
                 }
 
-                var reorderResult = await notebookCommandService.ReorderNotebookItemsAsync(
+                var reorderResult = await notebookItemMutationService.ReorderNotebookItemsAsync(
                     notebookContext.Notebook.Id,
                     notebookContext.ActorId,
                     reorderModels,
@@ -1016,8 +1016,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The item path.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
@@ -1032,7 +1032,7 @@ public sealed class NotesMcpItemTools
                     notebookSlug,
                     path,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes,
                     includeArchived: true);
@@ -1042,7 +1042,7 @@ public sealed class NotesMcpItemTools
                 }
 
                 var itemContext = itemContextResult.Value;
-                var deleteResult = await notebookCommandService.DeleteNotebookItemAsync(
+                var deleteResult = await notebookItemMutationService.DeleteNotebookItemAsync(
                     itemContext.Notebook.Id,
                     itemContext.Item.Id,
                     itemContext.ActorId,
@@ -1084,8 +1084,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The item path.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
@@ -1100,7 +1100,7 @@ public sealed class NotesMcpItemTools
                     notebookSlug,
                     path,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes,
                     includeArchived: true);
@@ -1110,7 +1110,7 @@ public sealed class NotesMcpItemTools
                 }
 
                 var itemContext = itemContextResult.Value;
-                var archiveResult = await notebookCommandService.ArchiveNotebookItemAsync(
+                var archiveResult = await notebookItemMutationService.ArchiveNotebookItemAsync(
                     itemContext.Notebook.Id,
                     itemContext.Item.Id,
                     itemContext.ActorId,
@@ -1146,8 +1146,8 @@ public sealed class NotesMcpItemTools
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The archived item path.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
-        INotebookCommandService notebookCommandService,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
@@ -1162,7 +1162,7 @@ public sealed class NotesMcpItemTools
                     notebookSlug,
                     path,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes,
                     includeArchived: true);
@@ -1172,7 +1172,7 @@ public sealed class NotesMcpItemTools
                 }
 
                 var itemContext = itemContextResult.Value;
-                var restoreResult = await notebookCommandService.RestoreNotebookItemAsync(
+                var restoreResult = await notebookItemMutationService.RestoreNotebookItemAsync(
                     itemContext.Notebook.Id,
                     itemContext.Item.Id,
                     itemContext.ActorId,
@@ -1185,7 +1185,7 @@ public sealed class NotesMcpItemTools
                         itemContext.Item.Id);
                 }
 
-                var refreshedNotebook = await notebookQueryService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, ct);
+                var refreshedNotebook = await notebookReadService.GetNotebookBySlugAsync(notebookSlug, itemContext.ActorId, ct);
                 if (!refreshedNotebook.Succeeded)
                 {
                     return McpMutationResult<MoveItemToolResponse>.Failure(

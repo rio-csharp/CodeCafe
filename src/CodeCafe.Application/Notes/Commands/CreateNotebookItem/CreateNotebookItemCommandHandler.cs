@@ -3,14 +3,14 @@ using CodeCafe.Application.Common.Abstractions.Messaging;
 namespace CodeCafe.Application.Notes.Commands.CreateNotebookItem;
 
 public sealed class CreateNotebookItemCommandHandler(
-    INotebookCommandService notebookCommandService)
+    INotebookItemMutationService notebookItemMutationService)
     : ICommandHandler<CreateNotebookItemCommand, NotesResult<NotebookItemModel>>
 {
     public async Task<NotesResult<NotebookItemModel>> Handle(
         CreateNotebookItemCommand request,
         CancellationToken cancellationToken)
     {
-        return await notebookCommandService.CreateNotebookItemAsync(
+        return await notebookItemMutationService.CreateNotebookItemAsync(
             request.NotebookId,
             request.CurrentUserId,
             request.ParentId,

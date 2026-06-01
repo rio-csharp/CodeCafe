@@ -27,7 +27,7 @@ public sealed class NotesMcpNotebookTools
     [Description("List notebooks visible to the authenticated actor.")]
     public async Task<CallToolResult> ListNotebooksAsync(
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         IOptions<McpOptions> mcpOptionsAccessor,
         [Description("Notebook scope: all, mine, or public.")] string? scope = null,
@@ -56,12 +56,12 @@ public sealed class NotesMcpNotebookTools
 
         if (normalizedScope is "all" or "mine")
         {
-            notebooks.AddRange(await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken, maxResults));
+            notebooks.AddRange(await notebookReadService.GetMyNotebooksAsync(currentUserId, query, cancellationToken, maxResults));
         }
 
         if (normalizedScope is "all" or "public")
         {
-            notebooks.AddRange(await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken, maxResults));
+            notebooks.AddRange(await notebookReadService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken, maxResults));
         }
 
         var notebookDetails = notebooks
@@ -89,7 +89,7 @@ public sealed class NotesMcpNotebookTools
     public async Task<CallToolResult> GetNotebookAsync(
         [Description("The notebook slug.")] string slug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
@@ -97,7 +97,7 @@ public sealed class NotesMcpNotebookTools
         var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
             slug,
             user,
-            notebookQueryService,
+            notebookReadService,
             cancellationToken,
             mcpOptions.RequiredReadScopes);
         if (!notebookContextResult.Succeeded)
@@ -145,7 +145,7 @@ public sealed class NotesMcpNotebookTools
     public async Task<CallToolResult> SearchAsync(
         [Description("The search query.")] string query,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         IOptions<McpOptions> mcpOptionsAccessor,
         [Description("Optional notebook slug to scope the search to one notebook.")] string? notebookSlug = null,
@@ -182,7 +182,7 @@ public sealed class NotesMcpNotebookTools
 
         if (!string.IsNullOrWhiteSpace(notebookSlug))
         {
-            var scopedNotebook = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken);
+            var scopedNotebook = await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookReadService, cancellationToken);
             if (!scopedNotebook.Succeeded)
             {
                 return NotesMcpResultMapper.Failure(scopedNotebook.Error!);
@@ -215,7 +215,7 @@ public sealed class NotesMcpNotebookTools
                 var remainingResults = maxResults - results.Count;
                 if (remainingResults > 0)
                 {
-                    var itemResults = await notebookQueryService.GetNotebookItemsAsync(
+                    var itemResults = await notebookReadService.GetNotebookItemsAsync(
                         notebook.Id,
                         currentUserId,
                         query,
@@ -245,8 +245,8 @@ public sealed class NotesMcpNotebookTools
         {
             if (normalizedScope is "all" or "notebooks")
             {
-                var publicNotebooks = await notebookQueryService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken, maxResults);
-                var myNotebooks = await notebookQueryService.GetMyNotebooksAsync(currentUserId, query, cancellationToken, maxResults);
+                var publicNotebooks = await notebookReadService.GetPublicNotebooksAsync(query, currentUserId, cancellationToken, maxResults);
+                var myNotebooks = await notebookReadService.GetMyNotebooksAsync(currentUserId, query, cancellationToken, maxResults);
                 var summaries = publicNotebooks
                     .Concat(myNotebooks)
                     .GroupBy(notebook => notebook.Id)
@@ -276,7 +276,7 @@ public sealed class NotesMcpNotebookTools
                 var remainingResults = maxResults - results.Count;
                 if (remainingResults > 0)
                 {
-                    var itemResults = await notebookQueryService.SearchVisibleNotebookItemsAsync(
+                    var itemResults = await notebookReadService.SearchVisibleNotebookItemsAsync(
                         currentUserId,
                         query,
                         cancellationToken,
@@ -387,7 +387,7 @@ public sealed class NotesMcpNotebookTools
     public async Task<CallToolResult> UpdateNotebookAsync(
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         ISender sender,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
@@ -405,7 +405,7 @@ public sealed class NotesMcpNotebookTools
                 var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
                     notebookSlug,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes);
                 if (!notebookContextResult.Succeeded)
@@ -474,7 +474,7 @@ public sealed class NotesMcpNotebookTools
     public async Task<CallToolResult> DeleteNotebookAsync(
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         ISender sender,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
@@ -489,7 +489,7 @@ public sealed class NotesMcpNotebookTools
                 var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
                     notebookSlug,
                     user,
-                    notebookQueryService,
+                    notebookReadService,
                     ct,
                     mcpOptions.RequiredWriteScopes);
                 if (!notebookContextResult.Succeeded)

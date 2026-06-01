@@ -17,14 +17,14 @@ public sealed class NotesMcpPrompts
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
-            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken));
+            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookReadService, cancellationToken));
         var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
 
         return NotesMcpSupport.CreatePromptMessages(
@@ -37,14 +37,14 @@ public sealed class NotesMcpPrompts
     public async Task<IEnumerable<ChatMessage>> OrganizeNotebookAsync(
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
-            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken));
+            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookReadService, cancellationToken));
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Inspect notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetNotebook}` and `{NotesMcpToolNames.ListItems}`.",
@@ -57,14 +57,14 @@ public sealed class NotesMcpPrompts
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
-            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken));
+            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookReadService, cancellationToken));
         var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
 
         return NotesMcpSupport.CreatePromptMessages(
@@ -77,14 +77,14 @@ public sealed class NotesMcpPrompts
     public async Task<IEnumerable<ChatMessage>> ReviewForStalenessAsync(
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
-            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookQueryService, cancellationToken));
+            await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookReadService, cancellationToken));
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Inspect notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetNotebook}`, `{NotesMcpToolNames.ListItems}`, and `{NotesMcpToolNames.GetPage}` as needed.",

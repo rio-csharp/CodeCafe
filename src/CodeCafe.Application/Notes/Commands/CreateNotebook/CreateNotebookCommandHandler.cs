@@ -6,7 +6,7 @@ namespace CodeCafe.Application.Notes.Commands.CreateNotebook;
 
 public sealed class CreateNotebookCommandHandler(
     INotebookMutationStore notebookMutationStore,
-    INotebookQueryService notebookQueryService,
+    INotebookReadService notebookReadService,
     IDateTimeProvider dateTimeProvider)
     : ICommandHandler<CreateNotebookCommand, NotesResult<NotebookDetailModel>>
 {
@@ -36,6 +36,6 @@ public sealed class CreateNotebookCommandHandler(
         notebookMutationStore.AddNotebook(notebook);
         await notebookMutationStore.SaveNotebookAsync(notebook, trimmedTitle, cancellationToken);
 
-        return await notebookQueryService.GetNotebookByIdAsync(notebook.Id, request.CurrentUserId, cancellationToken);
+        return await notebookReadService.GetNotebookByIdAsync(notebook.Id, request.CurrentUserId, cancellationToken);
     }
 }

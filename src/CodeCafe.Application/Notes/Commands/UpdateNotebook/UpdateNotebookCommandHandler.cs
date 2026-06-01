@@ -5,7 +5,7 @@ namespace CodeCafe.Application.Notes.Commands.UpdateNotebook;
 
 public sealed class UpdateNotebookCommandHandler(
     INotebookMutationStore notebookMutationStore,
-    INotebookQueryService notebookQueryService,
+    INotebookReadService notebookReadService,
     IDateTimeProvider dateTimeProvider)
     : ICommandHandler<UpdateNotebookCommand, NotesResult<NotebookDetailModel>>
 {
@@ -54,6 +54,6 @@ public sealed class UpdateNotebookCommandHandler(
 
         await notebookMutationStore.SaveNotebookAsync(notebook, trimmedTitle, cancellationToken);
 
-        return await notebookQueryService.GetNotebookByIdAsync(notebook.Id, request.CurrentUserId, cancellationToken);
+        return await notebookReadService.GetNotebookByIdAsync(notebook.Id, request.CurrentUserId, cancellationToken);
     }
 }

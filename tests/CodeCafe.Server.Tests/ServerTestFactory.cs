@@ -36,7 +36,9 @@ public sealed class ServerTestFactory : WebApplicationFactory<ServerAssemblyMark
             services.AddSingleton<ServerTestNotebookMutationStore>();
             services.AddSingleton<INotebookMutationStore>(serviceProvider => serviceProvider.GetRequiredService<ServerTestNotebookMutationStore>());
             services.AddSingleton<INotebookQueryService, ServerTestNotebookQueryService>();
+            services.AddSingleton<INotebookReadService>(serviceProvider => (ServerTestNotebookQueryService)serviceProvider.GetRequiredService<INotebookQueryService>());
             services.AddSingleton<INotebookCommandService, ServerTestNotebookCommandService>();
+            services.AddSingleton<INotebookItemMutationService>(serviceProvider => (ServerTestNotebookCommandService)serviceProvider.GetRequiredService<INotebookCommandService>());
             services.AddSingleton<IAuthEndpointService, ServerTestAuthEndpointService>();
         });
     }
@@ -73,7 +75,7 @@ public sealed class ServerTestAuthHandler(
     }
 }
 
-internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationStore notebookMutationStore) : INotebookQueryService
+internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationStore notebookMutationStore) : INotebookQueryService, INotebookReadService
 {
     private static readonly Guid NotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -266,7 +268,7 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
                 : NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 }
 
-internal sealed class ServerTestNotebookCommandService : INotebookCommandService
+internal sealed class ServerTestNotebookCommandService : INotebookCommandService, INotebookItemMutationService
 {
     public Task<NotesResult<NotebookItemModel>> CreateNotebookItemAsync(Guid notebookId, Guid currentUserId, Guid? parentId, string type, string title, int sortOrder, JsonElement? contentJson, CancellationToken cancellationToken)
         => Task.FromResult(NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "not_implemented", "Not implemented in server tests."));

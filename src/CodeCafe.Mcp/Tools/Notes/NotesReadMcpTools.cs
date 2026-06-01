@@ -18,12 +18,12 @@ public sealed class NotesReadMcpTools
         OutputSchemaType = typeof(ListPublicNotebooksResponse))]
     [Description("List public notebooks visible to anonymous or shared MCP readers.")]
     public async Task<CallToolResult> ListPublicNotebooksAsync(
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         [Description("Optional search query.")] string? query = null,
         [Description("Maximum number of notebooks to return.")] int? limit = null)
     {
-        var notebooks = await notebookQueryService.GetPublicNotebooksAsync(
+        var notebooks = await notebookReadService.GetPublicNotebooksAsync(
             query,
             Guid.Empty,
             cancellationToken,
@@ -66,10 +66,10 @@ public sealed class NotesReadMcpTools
     [Description("Load one public notebook by slug, including its visible items.")]
     public async Task<CallToolResult> GetPublicNotebookAsync(
         [Description("The notebook slug.")] string slug,
-        INotebookQueryService notebookQueryService,
+        INotebookReadService notebookReadService,
         CancellationToken cancellationToken)
     {
-        var result = await notebookQueryService.GetPublicNotebookAsync(
+        var result = await notebookReadService.GetPublicNotebookAsync(
             slug,
             Guid.Empty,
             cancellationToken);
