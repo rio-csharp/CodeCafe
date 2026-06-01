@@ -1,4 +1,9 @@
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Notes.Commands.DeleteNotebook;
+using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Application.Notes.Queries.GetMyNotebooks;
+using CodeCafe.Application.Notes.Queries.GetNotebookById;
+using CodeCafe.Application.Notes.Queries.GetNotebookBySlug;
 using CodeCafe.Application.Notes.Queries.GetPublicNotebooks;
 using CodeCafe.Application.Notes;
 using CodeCafe.WebApi.Errors;
@@ -79,7 +84,9 @@ public sealed class NotesController(
         [FromQuery] string? search,
         CancellationToken cancellationToken)
     {
-        var notebooks = await notebookQueryService.GetMyNotebooksAsync(GetCurrentUserId(), search, cancellationToken);
+        var notebooks = await sender.Send(
+            new GetMyNotebooksQuery(GetCurrentUserId(), search),
+            cancellationToken);
         return Ok(notebooks.Select(ToSummaryResponse).ToList());
     }
 
@@ -118,7 +125,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookQueryService.GetNotebookByIdAsync(notebookId, GetCurrentUserId(), cancellationToken),
+            await sender.Send(
+                new GetNotebookByIdQuery(notebookId, GetCurrentUserId()),
+                cancellationToken),
             ToDetailResponse);
     }
 
@@ -132,7 +141,9 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookQueryService.GetNotebookBySlugAsync(slug, GetCurrentUserId(), cancellationToken),
+            await sender.Send(
+                new GetNotebookBySlugQuery(slug, GetCurrentUserId()),
+                cancellationToken),
             ToDetailResponse);
     }
 
@@ -148,12 +159,13 @@ public sealed class NotesController(
         CancellationToken cancellationToken)
     {
         return ToActionResult(
-            await notebookCommandService.UpdateNotebookAsync(
-                notebookId,
-                GetCurrentUserId(),
-                request.Title,
-                request.Description,
-                request.Visibility,
+            await sender.Send(
+                new UpdateNotebookCommand(
+                    notebookId,
+                    GetCurrentUserId(),
+                    request.Title,
+                    request.Description,
+                    request.Visibility),
                 cancellationToken),
             ToDetailResponse);
     }
@@ -207,7 +219,9 @@ public sealed class NotesController(
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteNotebook(Guid notebookId, CancellationToken cancellationToken)
     {
-        var result = await notebookCommandService.DeleteNotebookAsync(notebookId, GetCurrentUserId(), cancellationToken);
+        var result = await sender.Send(
+            new DeleteNotebookCommand(notebookId, GetCurrentUserId()),
+            cancellationToken);
         return result.Succeeded ? NoContent() : ToFailureResult(result.Error!);
     }
 
@@ -228,6 +242,7 @@ public sealed class NotesController(
         if (includeArchived)
         {
             var notebook = await notebookQueryService.GetNotebookByIdAsync(notebookId, currentUserId, cancellationToken);
+            
             if (!notebook.Succeeded)
             {
                 return ToFailureResult(notebook.Error!);
