@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import type { ReactNode } from 'react'
-import { ToastProvider } from '../components/ui/Toast'
-import { ApiError } from '../lib/apiClient'
+import { BrowserRouter } from 'react-router-dom'
+import { ToastContainer } from '@/shared/ui/Toast'
+import { ApiError } from '@/shared/api/client'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,8 +26,12 @@ interface AppProvidersProps {
 
 export function AppProviders({ children }: AppProvidersProps) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>{children}</ToastProvider>
-    </QueryClientProvider>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        {children}
+        <ToastContainer />
+        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      </QueryClientProvider>
+    </BrowserRouter>
   )
 }

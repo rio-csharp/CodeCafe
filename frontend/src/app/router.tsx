@@ -1,71 +1,56 @@
+import { Suspense, lazy } from 'react'
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
-import { AnimatePresence, motion } from 'framer-motion'
-import { useMe } from '../features/auth/hooks/useAuth'
-import RouteGuardSpinner from '../components/RouteGuardSpinner'
-import ErrorBoundary from '../components/ErrorBoundary'
-import HomePage from '../features/home/HomePage'
-import NotesSelectionPage from '../features/notes/pages/NotesSelectionPage'
-import NotebookReaderPage from '../features/notes/pages/NotebookReaderPage'
-import CreateNotebookPage from '../features/notes/pages/CreateNotebookPage'
-import EditNotebookPage from '../features/notes/pages/EditNotebookPage'
-import CodesPage from '../features/codes/CodesPage'
-import AboutPage from '../features/about/AboutPage'
-import LoginPage from '../features/auth/pages/LoginPage'
-import RegisterPage from '../features/auth/pages/RegisterPage'
-import DashboardPage from '../features/dashboard/pages/DashboardPage'
+import { AnimatePresence } from 'framer-motion'
+import PageTransition from '@/shared/ui/PageTransition'
+import { ProtectedRoute, AuthRedirect } from '@/features/authenticate'
+import ErrorBoundary from '@/shared/ui/ErrorBoundary'
+import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
 
-function PageTransition({ children }: { children: React.ReactNode }) {
+const HomePage = lazy(() => import('@/pages/home'))
+const NotesSelectionPage = lazy(() => import('@/pages/notes'))
+const NotebookReaderPage = lazy(() => import('@/pages/notebook-reader'))
+const CreateNotebookPage = lazy(() => import('@/pages/notebook-create'))
+const EditNotebookPage = lazy(() => import('@/pages/notebook-edit'))
+const CodesPage = lazy(() => import('@/pages/codes'))
+const AboutPage = lazy(() => import('@/pages/about'))
+const LoginPage = lazy(() => import('@/pages/login'))
+const RegisterPage = lazy(() => import('@/pages/register'))
+const DashboardPage = lazy(() => import('@/pages/dashboard'))
+
+function LazyWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.25, ease: 'easeOut' }}
-    >
+    <Suspense fallback={<RouteGuardSpinner />}>
       {children}
-    </motion.div>
+    </Suspense>
   )
 }
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { data, isPending } = useMe()
+function useRouteKey() {
+  const location = useLocation()
+  const pathname = location.pathname
 
-  if (isPending) {
-    return <RouteGuardSpinner />
+  // For notebook reader sub-routes, use the notebook slug as key
+  // to prevent full page animation when switching between pages
+  const notebookMatch = pathname.match(/^\/notes\/([^/]+)/)
+  if (notebookMatch && pathname !== '/notes') {
+    return `/notes/${notebookMatch[1]}`
   }
 
-  if (!data?.user) {
-    return <Navigate to="/login" replace />
-  }
-
-  return children
-}
-
-function AuthRedirect({ children }: { children: React.ReactNode }) {
-  const { data, isPending } = useMe()
-
-  if (isPending) {
-    return <RouteGuardSpinner />
-  }
-
-  if (data?.user) {
-    return <Navigate to="/dashboard" replace />
-  }
-
-  return children
+  return pathname
 }
 
 export function AppRouter() {
   const location = useLocation()
+  const routeKey = useRouteKey()
 
   return (
     <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+      <Routes location={location} key={routeKey}>
         <Route
           path="/"
           element={
             <PageTransition>
-              <HomePage />
+              <LazyWrapper><HomePage /></LazyWrapper>
             </PageTransition>
           }
         />
@@ -73,7 +58,7 @@ export function AppRouter() {
           path="/notes"
           element={
             <PageTransition>
-              <NotesSelectionPage />
+              <LazyWrapper><NotesSelectionPage /></LazyWrapper>
             </PageTransition>
           }
         />
@@ -83,7 +68,7 @@ export function AppRouter() {
             <PageTransition>
               <ProtectedRoute>
                 <ErrorBoundary>
-                  <CreateNotebookPage />
+                  <LazyWrapper><CreateNotebookPage /></LazyWrapper>
                 </ErrorBoundary>
               </ProtectedRoute>
             </PageTransition>
@@ -95,7 +80,7 @@ export function AppRouter() {
             <PageTransition>
               <ProtectedRoute>
                 <ErrorBoundary>
-                  <EditNotebookPage />
+                  <LazyWrapper><EditNotebookPage /></LazyWrapper>
                 </ErrorBoundary>
               </ProtectedRoute>
             </PageTransition>
@@ -106,7 +91,7 @@ export function AppRouter() {
           element={
             <PageTransition>
               <ErrorBoundary>
-                <NotebookReaderPage />
+                <LazyWrapper><NotebookReaderPage /></LazyWrapper>
               </ErrorBoundary>
             </PageTransition>
           }
@@ -115,7 +100,7 @@ export function AppRouter() {
           path="/codes"
           element={
             <PageTransition>
-              <CodesPage />
+              <LazyWrapper><CodesPage /></LazyWrapper>
             </PageTransition>
           }
         />
@@ -123,7 +108,7 @@ export function AppRouter() {
           path="/about"
           element={
             <PageTransition>
-              <AboutPage />
+              <LazyWrapper><AboutPage /></LazyWrapper>
             </PageTransition>
           }
         />
@@ -132,7 +117,7 @@ export function AppRouter() {
           element={
             <PageTransition>
               <AuthRedirect>
-                <LoginPage />
+                <LazyWrapper><LoginPage /></LazyWrapper>
               </AuthRedirect>
             </PageTransition>
           }
@@ -142,7 +127,7 @@ export function AppRouter() {
           element={
             <PageTransition>
               <AuthRedirect>
-                <RegisterPage />
+                <LazyWrapper><RegisterPage /></LazyWrapper>
               </AuthRedirect>
             </PageTransition>
           }
@@ -152,11 +137,12 @@ export function AppRouter() {
           element={
             <PageTransition>
               <ProtectedRoute>
-                <DashboardPage />
+                <LazyWrapper><DashboardPage /></LazyWrapper>
               </ProtectedRoute>
             </PageTransition>
           }
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AnimatePresence>
   )
