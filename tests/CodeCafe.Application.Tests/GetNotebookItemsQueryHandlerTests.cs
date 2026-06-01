@@ -64,7 +64,7 @@ public sealed class GetNotebookItemsQueryHandlerTests
         Assert.True(service.GetNotebookItemsCalled);
     }
 
-    private sealed class StubNotebookQueryService : INotebookQueryService, INotebookReadService
+    private sealed class StubNotebookQueryService : INotebookReadService
     {
         public NotesResult<NotebookDetailModel> NotebookByIdResult { get; init; } =
             NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "missing", "missing");

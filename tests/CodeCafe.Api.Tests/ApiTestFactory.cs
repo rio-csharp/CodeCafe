@@ -33,10 +33,8 @@ public sealed class ApiTestFactory : WebApplicationFactory<Program>
 
             services.AddSingleton<TestNotebookMutationStore>();
             services.AddSingleton<INotebookMutationStore>(serviceProvider => serviceProvider.GetRequiredService<TestNotebookMutationStore>());
-            services.AddSingleton<INotebookQueryService, TestNotebookQueryService>();
-            services.AddSingleton<INotebookReadService>(serviceProvider => (TestNotebookQueryService)serviceProvider.GetRequiredService<INotebookQueryService>());
-            services.AddSingleton<INotebookCommandService, TestNotebookCommandService>();
-            services.AddSingleton<INotebookItemMutationService>(serviceProvider => (TestNotebookCommandService)serviceProvider.GetRequiredService<INotebookCommandService>());
+            services.AddSingleton<INotebookReadService, TestNotebookQueryService>();
+            services.AddSingleton<INotebookItemMutationService, TestNotebookCommandService>();
             services.AddSingleton<IAuthEndpointService, TestAuthEndpointService>();
         });
     }
@@ -72,7 +70,7 @@ internal sealed class TestAuthHandler(
     }
 }
 
-internal sealed class TestNotebookQueryService(TestNotebookMutationStore notebookMutationStore) : INotebookQueryService, INotebookReadService
+internal sealed class TestNotebookQueryService(TestNotebookMutationStore notebookMutationStore) : INotebookReadService
 {
     private static readonly Guid NotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -212,7 +210,7 @@ internal sealed class TestNotebookQueryService(TestNotebookMutationStore noteboo
                 : NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 }
 
-internal sealed class TestNotebookCommandService : INotebookCommandService, INotebookItemMutationService
+internal sealed class TestNotebookCommandService : INotebookItemMutationService
 {
     private static readonly Guid DefaultItemId = Guid.Parse("33333333-3333-3333-3333-333333333333");
 

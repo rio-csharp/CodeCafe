@@ -156,7 +156,7 @@ public sealed class NotebookMutationHandlerTests
         public DateTimeOffset UtcNow => utcNow;
     }
 
-    private sealed class StubNotebookQueryService : INotebookQueryService, INotebookReadService
+    private sealed class StubNotebookQueryService : INotebookReadService
     {
         public Guid LastNotebookId { get; private set; }
 

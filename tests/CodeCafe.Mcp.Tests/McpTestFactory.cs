@@ -12,13 +12,12 @@ public sealed class McpTestFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Testing");
         builder.ConfigureServices(services =>
         {
-            services.AddSingleton<INotebookQueryService, TestNotebookQueryService>();
-            services.AddSingleton<INotebookReadService>(serviceProvider => (TestNotebookQueryService)serviceProvider.GetRequiredService<INotebookQueryService>());
+            services.AddSingleton<INotebookReadService, TestNotebookQueryService>();
         });
     }
 }
 
-internal sealed class TestNotebookQueryService : INotebookQueryService, INotebookReadService
+internal sealed class TestNotebookQueryService : INotebookReadService
 {
     private static readonly Guid NotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
