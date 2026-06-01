@@ -10,6 +10,8 @@ builder.Services.AddCodeCafeApi();
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapCodeCafeApi();
 
 await app.RunAsync();

@@ -5,6 +5,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddCodeCafeApi(this IServiceCollection services)
     {
         services.AddProblemDetails();
+        services.AddAuthentication();
+        services.AddAuthorization();
         return services;
     }
 }

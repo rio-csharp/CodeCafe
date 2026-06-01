@@ -8,6 +8,7 @@
     <Project Path="src/CodeCafe.WebApi/CodeCafe.WebApi.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/CodeCafe.Api.Tests/CodeCafe.Api.Tests.csproj" />
     <Project Path="tests/CodeCafe.Application.Tests/CodeCafe.Application.Tests.csproj" />
     <Project Path="tests/CodeCafe.Architecture.Tests/CodeCafe.Architecture.Tests.csproj" />
     <Project Path="tests/CodeCafe.WebApi.Tests/CodeCafe.WebApi.Tests.csproj" />
