@@ -106,6 +106,31 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     }
 
     [Fact]
+    public async Task PublicNotebookItems_ReturnsItems()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/notes/public/architecture-notes/items");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var item = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Equal("Overview", item.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task PublicNotebookItem_ReturnsSingleItem()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/notes/public/architecture-notes/items/overview");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("overview", document.RootElement.GetProperty("slug").GetString());
+    }
+
+    [Fact]
     public async Task CreateNotebook_RequiresAuthentication()
     {
         using var client = _factory.CreateClient();
@@ -137,5 +162,66 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
         Assert.Equal("New Notebook", document.RootElement.GetProperty("title").GetString());
         Assert.Equal("public", document.RootElement.GetProperty("visibility").GetString());
         Assert.Equal("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", document.RootElement.GetProperty("ownerId").GetGuid().ToString());
+    }
+
+    [Fact]
+    public async Task FavoriteStatus_WhenAuthenticated_ReturnsFavoritePayload()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await client.GetAsync("/api/notes/11111111-1111-1111-1111-111111111111/favorite");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, document.RootElement.GetProperty("favoriteCount").GetInt32());
+        Assert.False(document.RootElement.GetProperty("isFavorited").GetBoolean());
+    }
+
+    [Fact]
+    public async Task NotebookItems_WhenAuthenticated_ReturnsItemList()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await client.GetAsync("/api/notes/11111111-1111-1111-1111-111111111111/items");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var item = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Equal("Overview", item.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task CreateNotebookItem_WhenAuthenticated_ReturnsCreatedItem()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await client.PostAsJsonAsync("/api/notes/11111111-1111-1111-1111-111111111111/items", new
+        {
+            type = "page",
+            title = "New Item",
+            sortOrder = 2,
+            contentJson = new
+            {
+                type = "doc"
+            }
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("New Item", document.RootElement.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task DeleteNotebook_WhenAuthenticated_ReturnsNoContent()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await client.DeleteAsync("/api/notes/11111111-1111-1111-1111-111111111111");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 }

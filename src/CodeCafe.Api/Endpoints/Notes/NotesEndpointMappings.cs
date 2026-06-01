@@ -51,7 +51,15 @@ internal static class NotesEndpointMappings
             model.Items.Select(ToItemResponse).ToList());
     }
 
-    private static NotebookItemResponse ToItemResponse(NotebookItemModel model)
+    public static NotebookFavoriteResponse ToFavoriteResponse(NotebookFavoriteModel model)
+    {
+        return new NotebookFavoriteResponse(
+            model.NotebookId,
+            model.IsFavorited,
+            model.FavoriteCount);
+    }
+
+    public static NotebookItemResponse ToItemResponse(NotebookItemModel model)
     {
         return new NotebookItemResponse(
             model.Id,

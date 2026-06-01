@@ -71,3 +71,33 @@ public sealed record CreateNotebookRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     [StringLength(1000)] string? Description,
     string? Visibility);
+
+public sealed record UpdateNotebookRequest(
+    [Required, StringLength(160, MinimumLength = 1)] string Title,
+    [StringLength(1000)] string? Description,
+    string? Visibility);
+
+public sealed record CreateNotebookItemRequest(
+    Guid? ParentId,
+    [Required] string Type,
+    [Required, StringLength(160, MinimumLength = 1)] string Title,
+    int SortOrder,
+    JsonElement? ContentJson);
+
+public sealed record UpdateNotebookItemRequest(
+    [Required, StringLength(160, MinimumLength = 1)] string Title,
+    JsonElement ParentId,
+    int? SortOrder,
+    JsonElement ContentJson,
+    DateTimeOffset? ExpectedUpdatedAtUtc = null);
+
+public sealed record ReorderNotebookItemsRequest(
+    [Required] IReadOnlyList<ReorderNotebookItemRequest> Items);
+
+public sealed record ReorderNotebookItemRequest(
+    Guid ItemId,
+    Guid? ParentId,
+    int SortOrder);
+
+public sealed record ReorderNotebookItemsResponse(
+    IReadOnlyList<NotebookItemResponse> Items);

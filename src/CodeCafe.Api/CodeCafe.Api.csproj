@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CodeCafe.Application\CodeCafe.Application.csproj" />
+    <ProjectReference Include="..\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
