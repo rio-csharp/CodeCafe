@@ -22,12 +22,9 @@ public sealed class NotebookItemMutationService(
         JsonElement? contentJson,
         CancellationToken cancellationToken)
     {
-        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
-        if (notebook is null)
+        if (await EnsureOwnedNotebookAsync(notebookId, currentUserId, cancellationToken) is { } accessError)
         {
-            return await NotebookExistsAsync(notebookId, cancellationToken)
-                ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
-                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+            return NotesResult<NotebookItemModel>.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
         if (!NotebookInput.TryParseItemType(type, out var itemType))
@@ -93,12 +90,9 @@ public sealed class NotebookItemMutationService(
         CancellationToken cancellationToken,
         DateTimeOffset? expectedUpdatedAtUtc = null)
     {
-        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
-        if (notebook is null)
+        if (await EnsureOwnedNotebookAsync(notebookId, currentUserId, cancellationToken) is { } accessError)
         {
-            return await NotebookExistsAsync(notebookId, cancellationToken)
-                ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
-                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+            return NotesResult<NotebookItemModel>.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
         var item = await dbContext.NotebookItems.SingleOrDefaultAsync(
@@ -200,12 +194,9 @@ public sealed class NotebookItemMutationService(
         IReadOnlyList<ReorderNotebookItemModel> items,
         CancellationToken cancellationToken)
     {
-        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
-        if (notebook is null)
+        if (await EnsureOwnedNotebookAsync(notebookId, currentUserId, cancellationToken) is { } accessError)
         {
-            return await NotebookExistsAsync(notebookId, cancellationToken)
-                ? NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
-                : NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+            return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
         var notebookItems = await dbContext.NotebookItems
@@ -288,12 +279,9 @@ public sealed class NotebookItemMutationService(
 
     public async Task<NotesResult> DeleteNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken)
     {
-        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
-        if (notebook is null)
+        if (await EnsureOwnedNotebookAsync(notebookId, currentUserId, cancellationToken) is { } accessError)
         {
-            return await NotebookExistsAsync(notebookId, cancellationToken)
-                ? NotesResult.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
-                : NotesResult.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+            return NotesResult.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
         var items = await dbContext.NotebookItems
@@ -337,12 +325,9 @@ public sealed class NotebookItemMutationService(
         Guid currentUserId,
         CancellationToken cancellationToken)
     {
-        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
-        if (notebook is null)
+        if (await EnsureOwnedNotebookAsync(notebookId, currentUserId, cancellationToken) is { } accessError)
         {
-            return await NotebookExistsAsync(notebookId, cancellationToken)
-                ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
-                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+            return NotesResult<NotebookItemModel>.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
         var items = await dbContext.NotebookItems
@@ -389,12 +374,9 @@ public sealed class NotebookItemMutationService(
         Guid currentUserId,
         CancellationToken cancellationToken)
     {
-        var notebook = await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken);
-        if (notebook is null)
+        if (await EnsureOwnedNotebookAsync(notebookId, currentUserId, cancellationToken) is { } accessError)
         {
-            return await NotebookExistsAsync(notebookId, cancellationToken)
-                ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
-                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+            return NotesResult<NotebookItemModel>.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
         var items = await dbContext.NotebookItems
@@ -458,6 +440,24 @@ public sealed class NotebookItemMutationService(
         return await dbContext.Notebooks.SingleOrDefaultAsync(
             notebook => notebook.Id == notebookId && notebook.OwnerId == currentUserId,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// Resolves the notebook the caller is allowed to mutate. Returns a non-null
+    /// <see cref="NotesError"/> describing why access is denied (forbidden when the
+    /// notebook exists but is owned by someone else, not-found when it does not exist),
+    /// or null when the caller owns the notebook.
+    /// </summary>
+    private async Task<NotesError?> EnsureOwnedNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
+    {
+        if (await GetOwnedNotebookAsync(notebookId, currentUserId, cancellationToken) is not null)
+        {
+            return null;
+        }
+
+        return await NotebookExistsAsync(notebookId, cancellationToken)
+            ? new NotesError(NotesFailureKind.Forbidden, "notebook_forbidden", "Only the notebook owner can modify items.")
+            : new NotesError(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
     }
 
     private async Task<bool> NotebookExistsAsync(Guid notebookId, CancellationToken cancellationToken)

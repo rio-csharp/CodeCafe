@@ -14,21 +14,13 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         int? limit = null)
     {
         var normalizedSearch = NotebookInput.NormalizeSearch(search);
-        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.Notebooks
             .AsNoTracking()
             .Where(notebook => notebook.Visibility == NotebookVisibility.Public && notebook.IsPublished);
 
         if (normalizedSearch is not null)
         {
-            query = usePostgresCaseInsensitiveSearch
-                ? query.Where(notebook =>
-                    EF.Functions.ILike(notebook.Title, normalizedSearch)
-                    || (notebook.Description != null && EF.Functions.ILike(notebook.Description, normalizedSearch)))
-                : query.Where(notebook =>
-                    EF.Functions.Like(notebook.Title.ToLower(), normalizedSearch.ToLower())
-                    || (notebook.Description != null
-                        && EF.Functions.Like(notebook.Description.ToLower(), normalizedSearch.ToLower())));
+            query = ApplyNotebookSearch(query, normalizedSearch);
         }
 
         var notebooks = await query.ToListAsync(cancellationToken);
@@ -43,21 +35,13 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         int? limit = null)
     {
         var normalizedSearch = NotebookInput.NormalizeSearch(search);
-        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.Notebooks
             .AsNoTracking()
             .Where(notebook => notebook.OwnerId == currentUserId);
 
         if (normalizedSearch is not null)
         {
-            query = usePostgresCaseInsensitiveSearch
-                ? query.Where(notebook =>
-                    EF.Functions.ILike(notebook.Title, normalizedSearch)
-                    || (notebook.Description != null && EF.Functions.ILike(notebook.Description, normalizedSearch)))
-                : query.Where(notebook =>
-                    EF.Functions.Like(notebook.Title.ToLower(), normalizedSearch.ToLower())
-                    || (notebook.Description != null
-                        && EF.Functions.Like(notebook.Description.ToLower(), normalizedSearch.ToLower())));
+            query = ApplyNotebookSearch(query, normalizedSearch);
         }
 
         var notebooks = await query.ToListAsync(cancellationToken);
@@ -77,7 +61,6 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
             return [];
         }
 
-        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.NotebookItems
             .AsNoTracking()
             .Where(item => !item.IsArchived)
@@ -85,14 +68,7 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 item.Notebook.OwnerId == currentUserId
                 || (item.Notebook.Visibility == NotebookVisibility.Public && item.Notebook.IsPublished));
 
-        query = usePostgresCaseInsensitiveSearch
-            ? query.Where(item =>
-                EF.Functions.ILike(item.Title, normalizedSearch)
-                || (item.PlainTextContent != null && EF.Functions.ILike(item.PlainTextContent, normalizedSearch)))
-            : query.Where(item =>
-                EF.Functions.Like(item.Title.ToLower(), normalizedSearch.ToLower())
-                || (item.PlainTextContent != null
-                    && EF.Functions.Like(item.PlainTextContent.ToLower(), normalizedSearch.ToLower())));
+        query = ApplyItemSearch(query, normalizedSearch);
 
         return await ApplyLimit(
                 query.OrderBy(item => item.Notebook.Title)
@@ -256,21 +232,13 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         }
 
         var normalizedSearch = NotebookInput.NormalizeSearch(search);
-        var usePostgresCaseInsensitiveSearch = UsesPostgresProvider();
         var query = dbContext.NotebookItems
             .AsNoTracking()
             .Where(item => item.NotebookId == notebookId && (includeArchived || !item.IsArchived));
 
         if (normalizedSearch is not null)
         {
-            query = usePostgresCaseInsensitiveSearch
-                ? query.Where(item =>
-                    EF.Functions.ILike(item.Title, normalizedSearch)
-                    || (item.PlainTextContent != null && EF.Functions.ILike(item.PlainTextContent, normalizedSearch)))
-                : query.Where(item =>
-                    EF.Functions.Like(item.Title.ToLower(), normalizedSearch.ToLower())
-                    || (item.PlainTextContent != null
-                        && EF.Functions.Like(item.PlainTextContent.ToLower(), normalizedSearch.ToLower())));
+            query = ApplyItemSearch(query, normalizedSearch);
         }
 
         var orderedQuery = query
@@ -297,6 +265,30 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
     private bool UsesPostgresProvider()
     {
         return string.Equals(dbContext.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal);
+    }
+
+    private IQueryable<Notebook> ApplyNotebookSearch(IQueryable<Notebook> query, string normalizedSearch)
+    {
+        return UsesPostgresProvider()
+            ? query.Where(notebook =>
+                EF.Functions.ILike(notebook.Title, normalizedSearch)
+                || (notebook.Description != null && EF.Functions.ILike(notebook.Description, normalizedSearch)))
+            : query.Where(notebook =>
+                EF.Functions.Like(notebook.Title.ToLower(), normalizedSearch.ToLower())
+                || (notebook.Description != null
+                    && EF.Functions.Like(notebook.Description.ToLower(), normalizedSearch.ToLower())));
+    }
+
+    private IQueryable<NotebookItem> ApplyItemSearch(IQueryable<NotebookItem> query, string normalizedSearch)
+    {
+        return UsesPostgresProvider()
+            ? query.Where(item =>
+                EF.Functions.ILike(item.Title, normalizedSearch)
+                || (item.PlainTextContent != null && EF.Functions.ILike(item.PlainTextContent, normalizedSearch)))
+            : query.Where(item =>
+                EF.Functions.Like(item.Title.ToLower(), normalizedSearch.ToLower())
+                || (item.PlainTextContent != null
+                    && EF.Functions.Like(item.PlainTextContent.ToLower(), normalizedSearch.ToLower())));
     }
 
     private static IQueryable<T> ApplyLimit<T>(IQueryable<T> query, int? limit)
