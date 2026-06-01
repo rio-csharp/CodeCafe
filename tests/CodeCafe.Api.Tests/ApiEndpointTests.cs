@@ -41,6 +41,71 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     }
 
     [Fact]
+    public async Task PublicNotebookDetail_ReturnsNotebookPayload()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/notes/public/architecture-notes");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("architecture-notes", document.RootElement.GetProperty("slug").GetString());
+        Assert.Equal("Refactor plan", document.RootElement.GetProperty("description").GetString());
+    }
+
+    [Fact]
+    public async Task MyNotes_RequiresAuthentication()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/notes/mine");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task MyNotes_WhenAuthenticated_ReturnsOwnedSummaries()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await client.GetAsync("/api/notes/mine");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var notebook = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Equal("my-notes", notebook.GetProperty("slug").GetString());
+        Assert.True(notebook.GetProperty("canEdit").GetBoolean());
+    }
+
+    [Fact]
+    public async Task NotebookByGuid_WhenAuthenticated_ReturnsDetail()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await client.GetAsync("/api/notes/11111111-1111-1111-1111-111111111111");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Architecture Notes", document.RootElement.GetProperty("title").GetString());
+        Assert.True(document.RootElement.GetProperty("canEdit").GetBoolean());
+    }
+
+    [Fact]
+    public async Task NotebookBySlug_ReturnsDetailForAnonymousReader()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/notes/architecture-notes");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("architecture-notes", document.RootElement.GetProperty("slug").GetString());
+        Assert.False(document.RootElement.GetProperty("canEdit").GetBoolean());
+    }
+
+    [Fact]
     public async Task CreateNotebook_RequiresAuthentication()
     {
         using var client = _factory.CreateClient();

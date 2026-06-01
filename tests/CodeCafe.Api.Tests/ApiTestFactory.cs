@@ -68,6 +68,47 @@ internal sealed class TestNotebookQueryService : INotebookQueryService
 {
     private static readonly Guid NotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static readonly NotebookItemModel[] Items =
+    [
+        new(
+            Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            NotebookId,
+            null,
+            "page",
+            "Overview",
+            "overview",
+            "overview",
+            1,
+            "tiptap_json",
+            null,
+            "Overview content",
+            false,
+            null,
+            null,
+            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"))
+    ];
+
+    private static readonly NotebookDetailModel PublicNotebook = new(
+        NotebookId,
+        OwnerId,
+        "Architecture Notes",
+        "architecture-notes",
+        "Refactor plan",
+        "public",
+        true,
+        "Yao",
+        false,
+        2,
+        1,
+        1,
+        0,
+        false,
+        DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+        DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+        DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+        DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+        Items);
 
     public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null)
     {
@@ -98,13 +139,37 @@ internal sealed class TestNotebookQueryService : INotebookQueryService
     }
 
     public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null)
-        => Task.FromResult<IReadOnlyList<NotebookSummaryModel>>([]);
+        => Task.FromResult<IReadOnlyList<NotebookSummaryModel>>(
+        [
+            new(
+                NotebookId,
+                currentUserId,
+                "My Notes",
+                "my-notes",
+                "Owned notebook",
+                "private",
+                false,
+                "Yao",
+                true,
+                1,
+                0,
+                1,
+                0,
+                false,
+                DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+                DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+                DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+                null)
+        ]);
 
     public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(Guid currentUserId, string search, CancellationToken cancellationToken, int? limit = null)
         => Task.FromResult<IReadOnlyList<NotebookItemSearchModel>>([]);
 
     public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
-        => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "not_implemented", "Not implemented in API tests."));
+        => Task.FromResult(
+            string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
+                ? NotesResult<NotebookDetailModel>.Success(PublicNotebook)
+                : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken)
         => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "not_implemented", "Not implemented in API tests."));
@@ -113,10 +178,23 @@ internal sealed class TestNotebookQueryService : INotebookQueryService
         => Task.FromResult(NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "not_implemented", "Not implemented in API tests."));
 
     public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
-        => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "not_implemented", "Not implemented in API tests."));
+        => Task.FromResult(
+            notebookId == NotebookId
+                ? NotesResult<NotebookDetailModel>.Success(PublicNotebook with
+                {
+                    OwnerId = currentUserId,
+                    CanEdit = true
+                })
+                : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
-        => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "not_implemented", "Not implemented in API tests."));
+        => Task.FromResult(
+            string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
+                ? NotesResult<NotebookDetailModel>.Success(PublicNotebook with
+                {
+                    CanEdit = currentUserId == OwnerId
+                })
+                : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, int? limit = null)
         => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "not_implemented", "Not implemented in API tests."));

@@ -62,6 +62,11 @@ public sealed record NotebookItemResponse(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
 
+public sealed record NotebookFavoriteResponse(
+    Guid NotebookId,
+    bool IsFavorited,
+    int FavoriteCount);
+
 public sealed record CreateNotebookRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     [StringLength(1000)] string? Description,
