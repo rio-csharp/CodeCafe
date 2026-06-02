@@ -1,7 +1,7 @@
 using CodeCafe.Mcp.Configuration;
+using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Text;
-using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Mcp.Tools.Notes;
 

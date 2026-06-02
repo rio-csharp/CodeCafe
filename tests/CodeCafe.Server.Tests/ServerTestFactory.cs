@@ -1,7 +1,6 @@
 using CodeCafe.Api.Endpoints.Auth;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
-using OpenIddict.Validation.AspNetCore;
 using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -10,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using OpenIddict.Validation.AspNetCore;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using System.Text.Json;

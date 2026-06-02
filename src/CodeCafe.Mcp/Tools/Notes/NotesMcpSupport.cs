@@ -1,5 +1,4 @@
 using CodeCafe.Application.Notes;
-using CodeCafe.Application.Common.Interfaces;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol;
 using System.Security.Claims;

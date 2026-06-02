@@ -1,10 +1,10 @@
-using CodeCafe.Mcp.Configuration;
 using CodeCafe.Application.Notes;
+using CodeCafe.Mcp.Configuration;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Security.Claims;
-using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Mcp.Tools.Notes;
 

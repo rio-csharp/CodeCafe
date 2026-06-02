@@ -1,5 +1,5 @@
-using CodeCafe.Mcp.Configuration;
 using CodeCafe.Application.Notes;
+using CodeCafe.Mcp.Configuration;
 using Markdig;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;

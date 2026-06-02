@@ -1,7 +1,6 @@
 using CodeCafe.Mcp.Configuration;
 using CodeCafe.Mcp.Tools.Diagnostics;
 using Microsoft.Extensions.Options;
-using ModelContextProtocol.AspNetCore;
 
 namespace CodeCafe.Mcp.Common;
 

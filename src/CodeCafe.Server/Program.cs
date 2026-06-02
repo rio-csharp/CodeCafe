@@ -1,8 +1,6 @@
-using CodeCafe.Api.Common;
 using CodeCafe.Api.DependencyInjection;
 using CodeCafe.Application;
 using CodeCafe.Infrastructure;
-using CodeCafe.Mcp.Common;
 using CodeCafe.Mcp.DependencyInjection;
 using CodeCafe.Server.Common;
 using CodeCafe.Server.DependencyInjection;

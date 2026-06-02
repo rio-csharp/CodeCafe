@@ -1,7 +1,7 @@
 using CodeCafe.Mcp.Tools.Notes;
+using Microsoft.AspNetCore.Mvc.Testing;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;

@@ -1,5 +1,3 @@
-using System.Security.Claims;
-using System.Text.Encodings.Web;
 using CodeCafe.Api.Endpoints.Auth;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
@@ -10,6 +8,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 
 namespace CodeCafe.Api.Tests;
 

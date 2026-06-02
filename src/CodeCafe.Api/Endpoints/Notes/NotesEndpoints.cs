@@ -1,14 +1,15 @@
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
+using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
 using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
 using CodeCafe.Application.Notes.Commands.DeleteNotebook;
 using CodeCafe.Application.Notes.Commands.DeleteNotebookItem;
+using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
 using CodeCafe.Application.Notes.Commands.ReorderNotebookItems;
+using CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
 using CodeCafe.Application.Notes.Commands.UpdateNotebook;
 using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
-using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
-using CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
-using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
-using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
 using CodeCafe.Application.Notes.Queries.GetMyNotebooks;
 using CodeCafe.Application.Notes.Queries.GetNotebookById;
 using CodeCafe.Application.Notes.Queries.GetNotebookBySlug;
@@ -21,7 +22,6 @@ using CodeCafe.Application.Notes.Queries.GetPublicNotebooks;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
-using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Api.Endpoints.Notes;
 

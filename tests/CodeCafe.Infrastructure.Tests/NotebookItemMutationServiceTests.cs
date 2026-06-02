@@ -1,6 +1,6 @@
-using System.Text.Json;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
+using System.Text.Json;
 
 namespace CodeCafe.Infrastructure.Tests;
 

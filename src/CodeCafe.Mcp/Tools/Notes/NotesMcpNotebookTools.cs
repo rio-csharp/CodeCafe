@@ -1,15 +1,14 @@
-using CodeCafe.Mcp.Configuration;
 using CodeCafe.Application.Notes;
-using CodeCafe.Application.Common.Interfaces;
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
 using CodeCafe.Application.Notes.Commands.DeleteNotebook;
 using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Mcp.Configuration;
 using MediatR;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Security.Claims;
-using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Mcp.Tools.Notes;
 

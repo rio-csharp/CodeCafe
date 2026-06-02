@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Antiforgery;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeCafe.Api.Endpoints.Auth;

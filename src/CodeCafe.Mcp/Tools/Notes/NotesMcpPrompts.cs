@@ -1,5 +1,5 @@
-using CodeCafe.Mcp.Configuration;
 using CodeCafe.Application.Notes;
+using CodeCafe.Mcp.Configuration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;

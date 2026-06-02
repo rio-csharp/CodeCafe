@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Hosting;
-
 namespace CodeCafe.Server.Configuration;
 
 public sealed class AuthorizationServerOptions

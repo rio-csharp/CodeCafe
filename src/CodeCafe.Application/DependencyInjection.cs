@@ -1,6 +1,5 @@
 using CodeCafe.Application.Behaviors;
 using FluentValidation;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeCafe.Application;

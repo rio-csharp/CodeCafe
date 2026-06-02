@@ -1,8 +1,8 @@
-using System.Reflection;
 using CodeCafe.Api.Common;
 using CodeCafe.Domain.Common.Interfaces;
 using CodeCafe.Mcp.Common;
 using CodeCafe.Server.Common;
+using System.Reflection;
 
 namespace CodeCafe.Architecture.Tests;
 

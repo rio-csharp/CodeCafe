@@ -1,5 +1,4 @@
 using CodeCafe.Api.Configuration;
-using CodeCafe.Api.Errors;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.Extensions.Options;
 

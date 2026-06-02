@@ -2,8 +2,6 @@ using CodeCafe.Infrastructure.Persistence;
 using CodeCafe.Server.Auth;
 using CodeCafe.Server.Configuration;
 using CodeCafe.Server.Infrastructure;
-using Microsoft.Extensions.Options;
-using OpenIddict.Validation.AspNetCore;
 using System.Security.Cryptography.X509Certificates;
 
 namespace CodeCafe.Server.DependencyInjection;

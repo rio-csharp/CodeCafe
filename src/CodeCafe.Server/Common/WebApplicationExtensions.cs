@@ -1,9 +1,8 @@
 using CodeCafe.Api.Common;
-using CodeCafe.Server.Configuration;
 using CodeCafe.Mcp.Tools.Diagnostics;
+using CodeCafe.Server.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using ModelContextProtocol.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
 
 namespace CodeCafe.Server.Common;

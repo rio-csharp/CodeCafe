@@ -1,9 +1,9 @@
-using System.Security.Claims;
 using CodeCafe.Api.Configuration;
 using CodeCafe.Api.Networking;
 using CodeCafe.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
+using System.Security.Claims;
 
 namespace CodeCafe.Api.Endpoints.Auth;
 

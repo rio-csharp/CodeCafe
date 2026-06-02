@@ -1,7 +1,6 @@
 using CodeCafe.Mcp.Configuration;
 using CodeCafe.Mcp.Tools.Diagnostics;
 using CodeCafe.Mcp.Tools.Notes;
-using ModelContextProtocol.Server;
 
 namespace CodeCafe.Mcp.DependencyInjection;
 

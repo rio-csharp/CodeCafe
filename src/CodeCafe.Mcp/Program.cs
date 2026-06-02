@@ -1,7 +1,7 @@
-using CodeCafe.Mcp.Common;
 using CodeCafe.Application;
-using CodeCafe.Mcp.DependencyInjection;
 using CodeCafe.Infrastructure;
+using CodeCafe.Mcp.Common;
+using CodeCafe.Mcp.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -1,6 +1,4 @@
 using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Domain.Notes;
-using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
