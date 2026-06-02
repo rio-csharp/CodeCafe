@@ -75,7 +75,7 @@ public sealed record CreateNotebookRequest(
 public sealed record UpdateNotebookRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     [StringLength(1000)] string? Description,
-    string? Visibility);
+    [Required] string Visibility);
 
 public sealed record CreateNotebookItemRequest(
     Guid? ParentId,

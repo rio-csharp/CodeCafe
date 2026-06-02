@@ -56,9 +56,8 @@ export default function NotebookSettingsForm({
   }, [notebook, reset])
 
   const onSubmit = (data: FormData) => {
-    const isPublished = data.visibility === 'public'
     update.mutate(
-      { title: data.title.trim(), description: data.description.trim() || null, visibility: data.visibility, isPublished },
+      { title: data.title.trim(), description: data.description.trim() || null, visibility: data.visibility },
       {
         onSuccess: (responseData) => {
           showToast('Notebook updated')

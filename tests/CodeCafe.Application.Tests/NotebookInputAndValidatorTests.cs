@@ -88,6 +88,17 @@ public sealed class NotebookInputAndValidatorTests
     }
 
     [Fact]
+    public void UpdateNotebookValidator_Rejects_Missing_Visibility()
+    {
+        var validator = new UpdateNotebookCommandValidator();
+        var command = new UpdateNotebookCommand(Guid.NewGuid(), Guid.NewGuid(), "Title", null, string.Empty);
+
+        var result = validator.Validate(command);
+
+        Assert.False(result.IsValid);
+    }
+
+    [Fact]
     public void CreateNotebookItemValidator_Rejects_Invalid_ItemType()
     {
         var validator = new CreateNotebookItemCommandValidator();

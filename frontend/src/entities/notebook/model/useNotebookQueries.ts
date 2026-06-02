@@ -8,10 +8,10 @@ export function useNotebook(slug: string) {
   })
 }
 
-export function useNotebookItems(notebookId: string, search?: string, includeArchived?: boolean) {
+export function useNotebookItems(notebookId: string, search?: string, includeArchived?: boolean, extraEnabled = true) {
   return useQuery({
     queryKey: notesKeys.items(notebookId, search, includeArchived),
     queryFn: () => getNotebookItems(notebookId, search, includeArchived),
-    enabled: !!notebookId,
+    enabled: !!notebookId && extraEnabled,
   })
 }

@@ -17,8 +17,9 @@ public static partial class NotesEndpoints
         group.MapGet("/mine", GetMyNotebooksAsync)
             .RequireAuthorization();
         group.MapGet("/{notebookId:guid}", GetNotebookByIdAsync)
-            .RequireAuthorization();
-        group.MapGet("/{slug}", GetNotebookBySlugAsync);
+            .AllowAnonymous();
+        group.MapGet("/{slug}", GetNotebookBySlugAsync)
+            .AllowAnonymous();
         group.MapPost("/", CreateNotebookAsync)
             .RequireAuthorization();
         group.MapPut("/{notebookId:guid}", UpdateNotebookAsync)

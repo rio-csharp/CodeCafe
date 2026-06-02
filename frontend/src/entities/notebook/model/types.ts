@@ -1,3 +1,5 @@
+import type { NotebookItem } from '@/entities/notebook-item'
+
 export type NotebookVisibility = 'public' | 'private' | 'unlisted'
 
 export interface Notebook {
@@ -19,6 +21,7 @@ export interface Notebook {
   updatedAtUtc: string | null
   publishedAtUtc: string | null
   canEdit?: boolean
+  items?: NotebookItem[]
 }
 
 export interface NotebookFavorite {
@@ -34,8 +37,7 @@ export interface CreateNotebookRequest {
 }
 
 export interface UpdateNotebookRequest {
-  title?: string
+  title: string
   description?: string | null
-  visibility?: NotebookVisibility
-  isPublished?: boolean
+  visibility: NotebookVisibility
 }

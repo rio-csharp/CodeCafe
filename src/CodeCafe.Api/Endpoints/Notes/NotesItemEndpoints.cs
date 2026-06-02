@@ -15,7 +15,8 @@ public static partial class NotesEndpoints
 {
     private static void MapItemEndpoints(RouteGroupBuilder group)
     {
-        group.MapGet("/{notebookId:guid}/items", GetNotebookItemsAsync);
+        group.MapGet("/{notebookId:guid}/items", GetNotebookItemsAsync)
+            .AllowAnonymous();
         group.MapPost("/{notebookId:guid}/items", CreateNotebookItemAsync)
             .RequireAuthorization();
         group.MapPut("/{notebookId:guid}/items/reorder", ReorderNotebookItemsAsync)

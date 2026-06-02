@@ -23,13 +23,13 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
 
+  const isSearching = debouncedSearch.length > 0
+
   const {
     data: searchResults,
     isPending: searchPending,
     isError: searchError,
-  } = useNotebookItems(notebook.id, debouncedSearch || undefined, showArchived)
-
-  const isSearching = debouncedSearch.length > 0
+  } = useNotebookItems(notebook.id, debouncedSearch || undefined, showArchived, isSearching)
 
   const {
     handleCreateRoot,

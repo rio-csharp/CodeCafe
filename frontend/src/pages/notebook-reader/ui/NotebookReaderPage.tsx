@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
 import { useEditorStore } from '@/widgets/notebook-page-editor/store'
 import { useParams, Navigate } from 'react-router-dom'
 import { Edit3 } from 'lucide-react'
-import { useNotebook, useNotebookItems, buildTree, findFirstPage, findPageByPath, extractOutline } from '@/entities/notebook'
+import { useNotebook, buildTree, findFirstPage, findPageByPath, extractOutline } from '@/entities/notebook'
 import { useUpdateNotebookItem } from '@/features/manage-notebook-items'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
@@ -31,17 +31,15 @@ export default function NotebookReaderPage() {
     error: notebookError,
   } = useNotebook(notebookSlug!)
 
-  const {
-    data: items,
-    isPending: itemsPending,
-    isError: itemsIsError,
-    error: itemsError,
-  } = useNotebookItems(notebook?.id ?? '', undefined, showArchived)
+  const allItems = notebook?.items ?? []
+  const visibleItems = useMemo(() => {
+    return showArchived ? allItems : allItems.filter((item) => !item.isArchived)
+  }, [allItems, showArchived])
 
   const updateItem = useUpdateNotebookItem(notebook?.id ?? '')
   const { showToast } = useToast()
 
-  const tree = useMemo(() => buildTree(items ?? []), [items])
+  const tree = useMemo(() => buildTree(visibleItems), [visibleItems])
 
   const activePage = useMemo(() => {
     if (!notebook) return null
@@ -91,23 +89,6 @@ export default function NotebookReaderPage() {
 
   if (notebookIsError || !notebook) {
     const errMsg = getErrorMessage(notebookError, 'Failed to load notebook.')
-    return (
-      <div className="h-screen flex items-center justify-center bg-surface">
-        <p className="text-sm text-status-error">{errMsg}</p>
-      </div>
-    )
-  }
-
-  if (itemsPending) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-surface">
-        <RouteGuardSpinner />
-      </div>
-    )
-  }
-
-  if (itemsIsError) {
-    const errMsg = getErrorMessage(itemsError, 'Failed to load notebook items.')
     return (
       <div className="h-screen flex items-center justify-center bg-surface">
         <p className="text-sm text-status-error">{errMsg}</p>
