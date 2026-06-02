@@ -2,6 +2,7 @@ using CodeCafe.Application.Notes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CodeCafe.Mcp.Tests;
 
@@ -10,6 +11,7 @@ public sealed class McpTestFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.ConfigureServices(services =>
         {
             services.AddSingleton<INotebookReadService, TestNotebookQueryService>();

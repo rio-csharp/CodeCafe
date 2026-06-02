@@ -51,6 +51,7 @@ export default function LoginPage() {
             <input
               type="email"
               placeholder="you@example.com"
+              data-testid="login-email"
               className={`w-full rounded-lg border bg-surface py-2.5 pl-10 pr-4 text-sm text-text-primary outline-none transition-colors focus:border-border-focus ${
                 errors.email ? 'border-status-error-border' : 'border-border-default'
               }`}
@@ -71,6 +72,7 @@ export default function LoginPage() {
           </div>
           <PasswordInput
             placeholder="Enter your password"
+            data-testid="login-password"
             error={errors.password?.message}
             {...register('password')}
           />
@@ -78,6 +80,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
+          data-testid="login-submit"
           disabled={isPending}
           className="w-full rounded-lg bg-text-primary py-2.5 text-sm font-medium text-text-inverse hover:bg-surface-inverse-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >

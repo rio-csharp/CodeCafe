@@ -1,5 +1,7 @@
+using CodeCafe.Api.Configuration;
 using CodeCafe.Api.Errors;
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Api.Common;
 
@@ -8,11 +10,32 @@ public static class WebApplicationExtensions
     public static WebApplication UseCodeCafeApiPipeline(this WebApplication app)
     {
         app.UseExceptionHandler();
+        app.UseForwardedHeaders();
+        app.UseCodeCafeCors();
         app.UseAuthentication();
         app.UseRateLimiter();
         app.UseCodeCafeApiAntiforgery();
         app.UseAuthorization();
         app.MapCodeCafeApi();
+        return app;
+    }
+
+    private static IApplicationBuilder UseCodeCafeCors(this WebApplication app)
+    {
+        var corsOptions = app.Services.GetRequiredService<IOptions<CorsOptions>>().Value;
+        if (corsOptions.AllowedOrigins.Length == 0)
+        {
+            return app;
+        }
+
+        app.UseCors(policy =>
+        {
+            policy.WithOrigins(corsOptions.AllowedOrigins)
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+
         return app;
     }
 

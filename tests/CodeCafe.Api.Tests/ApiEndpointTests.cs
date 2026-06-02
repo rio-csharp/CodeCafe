@@ -28,6 +28,19 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     }
 
     [Fact]
+    public async Task HealthReady_ReturnsAdapterStatus()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/health/ready");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("ready", document.RootElement.GetProperty("status").GetString());
+        Assert.Equal("api", document.RootElement.GetProperty("adapter").GetString());
+    }
+
+    [Fact]
     public async Task CsrfEndpoint_ReturnsRequestToken()
     {
         using var client = _factory.CreateClient();

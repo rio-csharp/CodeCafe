@@ -47,7 +47,7 @@ export function completePostAuthRedirect(
   navigate: NavigateFunction,
   fallbackPath = '/dashboard',
 ): void {
-  const target = resolvePostAuthRedirect(search)
+  const target = resolvePostAuthRedirect(search) ?? getPostAuthRedirect()
   if (!target) {
     navigate(fallbackPath)
     return

@@ -41,6 +41,10 @@ public static class ServiceCollectionExtensions
             .Validate(options => !string.IsNullOrWhiteSpace(options.ProtectedResourceMetadataPath)
                 && options.ProtectedResourceMetadataPath.StartsWith("/", StringComparison.Ordinal),
                 "Mcp:ProtectedResourceMetadataPath must start with '/'.")
+            .Validate(options => options.AllowedOrigins.All(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)),
+                "Mcp:AllowedOrigins values must be absolute HTTP or HTTPS origins.")
             .Validate(options => !options.Enabled
                 || !options.RequireAuthorization
                 || !string.IsNullOrWhiteSpace(options.RequiredAudience),

@@ -11,6 +11,11 @@ public static class HealthEndpoints
             status = "ok",
             adapter = "api"
         }));
+        group.MapGet("/ready", () => Results.Ok(new
+        {
+            status = "ready",
+            adapter = "api"
+        }));
 
         return endpoints;
     }

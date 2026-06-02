@@ -7,7 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
-builder.Services.AddCodeCafeApi(builder.Environment);
+builder.Services.AddCodeCafeApi(builder.Configuration, builder.Environment);
+builder.Services.AddCodeCafeForwardedHeaders();
 
 var app = builder.Build();
 

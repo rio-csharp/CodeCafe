@@ -5,6 +5,7 @@ using CodeCafe.Api.Networking;
 using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
@@ -15,11 +16,29 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCodeCafeApi(
         this IServiceCollection services,
+        IConfiguration configuration,
         IHostEnvironment environment)
     {
         services.AddSingleton<IClientIpAddressAccessor, ClientIpAddressAccessor>();
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddCors();
+        services.AddOptions<CorsOptions>()
+            .Bind(configuration.GetSection(CorsOptions.SectionName))
+            .PostConfigure(options =>
+            {
+                if (environment.IsDevelopment() && options.AllowedOrigins.Length == 0)
+                {
+                    options.AllowedOrigins = CorsOptions.DevelopmentAllowedOrigins;
+                }
+            })
+            .Validate(options => environment.IsDevelopment() || environment.IsEnvironment("Testing") || options.AllowedOrigins.Length > 0,
+                "Cors:AllowedOrigins must be set in non-development environments.")
+            .Validate(options => options.AllowedOrigins.All(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)),
+                "Cors:AllowedOrigins values must be absolute HTTP or HTTPS origins.")
+            .ValidateOnStart();
         services.AddAntiforgery(options =>
         {
             options.HeaderName = "X-CSRF-TOKEN";
@@ -123,6 +142,20 @@ public static class ServiceCollectionExtensions
                         AutoReplenishment = true
                     });
             });
+
+            options.AddPolicy("mcp", httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: true),
+                    _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 120,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    });
+            });
         });
 
         services.AddIdentityCore<ApplicationUser>(options =>
@@ -163,6 +196,24 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddScoped<IAuthEndpointService, IdentityAuthEndpointService>();
+        return services;
+    }
+
+    public static IServiceCollection AddCodeCafeForwardedHeaders(this IServiceCollection services)
+    {
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.ForwardLimit = 2;
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+
+            foreach (var network in TrustedProxyNetworks.All)
+            {
+                options.KnownIPNetworks.Add(network);
+            }
+        });
+
         return services;
     }
 

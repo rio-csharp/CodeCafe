@@ -12,8 +12,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
-builder.Services.AddCodeCafeApi(builder.Environment);
-builder.Services.AddCodeCafeMcp();
+builder.Services.AddCodeCafeApi(builder.Configuration, builder.Environment);
+builder.Services.AddCodeCafeForwardedHeaders();
+builder.Services.AddCodeCafeMcp(builder.Configuration);
 builder.Services.AddCodeCafeServerHost(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
@@ -29,10 +30,7 @@ if (app.Environment.IsDevelopment())
     await app.Services.GetRequiredService<DatabaseMigrationRunner>().RunAsync(CancellationToken.None);
 }
 
-app.UseCodeCafeApiPipeline();
-app.MapControllers();
-app.MapCodeCafeMcpProtectedResourceMetadata();
-app.MapCodeCafeMcp();
+app.UseCodeCafeServerPipeline();
 
 await app.RunAsync();
 

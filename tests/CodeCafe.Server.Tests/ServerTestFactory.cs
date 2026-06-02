@@ -1,6 +1,7 @@
 using CodeCafe.Api.Endpoints.Auth;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
+using OpenIddict.Validation.AspNetCore;
 using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -20,6 +21,7 @@ public sealed class ServerTestFactory : WebApplicationFactory<ServerAssemblyMark
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.ConfigureServices(services =>
         {
             services.AddAuthentication(ServerTestAuthHandler.SchemeName)
@@ -29,6 +31,18 @@ public sealed class ServerTestFactory : WebApplicationFactory<ServerAssemblyMark
 
             services.PostConfigure<AuthenticationOptions>(options =>
             {
+                if (options.SchemeMap.Remove(
+                    OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+                    out var existingScheme)
+                    && options.Schemes is IList<AuthenticationSchemeBuilder> schemes)
+                {
+                    _ = schemes.Remove(existingScheme);
+                }
+
+                options.AddScheme(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, authScheme =>
+                {
+                    authScheme.HandlerType = typeof(ServerTestAuthHandler);
+                });
                 options.DefaultAuthenticateScheme = ServerTestAuthHandler.SchemeName;
                 options.DefaultChallengeScheme = ServerTestAuthHandler.SchemeName;
             });
