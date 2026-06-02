@@ -228,8 +228,6 @@ jobs:
       - name: Run E2E tests
         working-directory: frontend
         run: npx playwright test
-        env:
-          E2E_BASE_URL: http://localhost:5173
 
       - name: Upload Playwright report
         if: failure()
