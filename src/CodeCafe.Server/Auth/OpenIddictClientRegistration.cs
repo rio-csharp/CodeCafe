@@ -1,3 +1,4 @@
+using CodeCafe.Mcp.Configuration;
 using CodeCafe.Server.Configuration;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -10,7 +11,7 @@ internal static class OpenIddictClientRegistration
         string clientId,
         string? displayName,
         IEnumerable<string> redirectUris,
-        McpServerOptions mcpOptions,
+        McpOptions mcpOptions,
         AuthorizationServerOptions authorizationServerOptions)
     {
         var descriptor = new OpenIddictApplicationDescriptor

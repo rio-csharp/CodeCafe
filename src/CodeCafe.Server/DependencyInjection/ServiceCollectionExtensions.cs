@@ -1,8 +1,19 @@
+using CodeCafe.Api.Configuration;
+using CodeCafe.Api.Errors;
+using CodeCafe.Api.Networking;
+using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Mcp.Configuration;
 using CodeCafe.Server.Auth;
 using CodeCafe.Server.Configuration;
 using CodeCafe.Server.Infrastructure;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
+using System.Threading.RateLimiting;
 
 namespace CodeCafe.Server.DependencyInjection;
 
@@ -14,6 +25,18 @@ public static class ServiceCollectionExtensions
         IHostEnvironment environment)
     {
         services.AddControllers();
+        services.AddProblemDetails();
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddCors();
+        services.AddCodeCafeCorsOptions(configuration, environment);
+        services.AddCodeCafeForwardedHeaders();
+        services.AddCodeCafeAntiforgery(environment);
+        services.AddCodeCafeDataProtection(environment);
+        services.AddCodeCafeAuthentication();
+        services.AddCodeCafeRateLimiting();
+        services.AddCodeCafeIdentity();
+        services.AddCodeCafeApplicationCookie();
+        services.AddSingleton<IClientIpAddressAccessor, ClientIpAddressAccessor>();
         services.AddSingleton<DatabaseMigrationRunner>();
         services.AddOptions<AuthorizationServerOptions>()
             .Bind(configuration.GetSection(AuthorizationServerOptions.SectionName))
@@ -31,24 +54,6 @@ public static class ServiceCollectionExtensions
                 "Production AuthorizationServer configuration requires signing and encryption certificates via path or base64 value.")
             .ValidateOnStart();
 
-        services.AddOptions<McpServerOptions>()
-            .Bind(configuration.GetSection(McpServerOptions.SectionName))
-            .Validate(options => !string.IsNullOrWhiteSpace(options.EndpointPath)
-                && options.EndpointPath.StartsWith("/", StringComparison.Ordinal),
-                "Mcp:EndpointPath must start with '/'.")
-            .Validate(options => !string.IsNullOrWhiteSpace(options.ProtectedResourceMetadataPath)
-                && options.ProtectedResourceMetadataPath.StartsWith("/", StringComparison.Ordinal),
-                "Mcp:ProtectedResourceMetadataPath must start with '/'.")
-            .Validate(options => options.AllowedOrigins.All(origin =>
-                Uri.TryCreate(origin, UriKind.Absolute, out var uri)
-                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)),
-                "Mcp:AllowedOrigins values must be absolute HTTP or HTTPS origins.")
-            .Validate(options => !options.Enabled
-                || !options.RequireAuthorization
-                || !string.IsNullOrWhiteSpace(options.RequiredAudience),
-                "Mcp protected resource auth requires RequiredAudience when enabled.")
-            .ValidateOnStart();
-
         services.AddOpenIddict()
             .AddCore(options =>
             {
@@ -59,7 +64,7 @@ public static class ServiceCollectionExtensions
             .AddServer(options =>
             {
                 var authOptions = GetAuthorizationServerOptions(configuration, environment);
-                var mcpOptions = configuration.GetSection(McpServerOptions.SectionName).Get<McpServerOptions>() ?? new McpServerOptions();
+                var mcpOptions = configuration.GetSection(McpOptions.SectionName).Get<McpOptions>() ?? new McpOptions();
 
                 options.SetIssuer(new Uri(authOptions.Issuer, UriKind.Absolute));
                 options.SetAuthorizationEndpointUris("/connect/authorize");
@@ -97,7 +102,7 @@ public static class ServiceCollectionExtensions
             })
             .AddValidation(options =>
             {
-                var mcpOptions = configuration.GetSection(McpServerOptions.SectionName).Get<McpServerOptions>() ?? new McpServerOptions();
+                var mcpOptions = configuration.GetSection(McpOptions.SectionName).Get<McpOptions>() ?? new McpOptions();
 
                 options.UseLocalServer();
                 options.AddAudiences(McpResourceIdentifiers.GetAudienceValues(mcpOptions, GetAuthorizationServerOptions(configuration, environment)));
@@ -108,6 +113,190 @@ public static class ServiceCollectionExtensions
         {
             services.AddHostedService<OpenIddictSeedHostedService>();
         }
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeCorsOptions(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        services.AddOptions<CorsOptions>()
+            .Bind(configuration.GetSection(CorsOptions.SectionName))
+            .PostConfigure(options =>
+            {
+                if (environment.IsDevelopment() && options.AllowedOrigins.Length == 0)
+                {
+                    options.AllowedOrigins = CorsOptions.DevelopmentAllowedOrigins;
+                }
+            })
+            .Validate(options => environment.IsDevelopment() || environment.IsEnvironment("Testing") || options.AllowedOrigins.Length > 0,
+                "Cors:AllowedOrigins must be set in non-development environments.")
+            .Validate(options => options.AllowedOrigins.All(origin =>
+                Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+                && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps)),
+                "Cors:AllowedOrigins values must be absolute HTTP or HTTPS origins.")
+            .ValidateOnStart();
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeForwardedHeaders(this IServiceCollection services)
+    {
+        services.Configure<ForwardedHeadersOptions>(options =>
+        {
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            options.ForwardLimit = 2;
+            options.KnownIPNetworks.Clear();
+            options.KnownProxies.Clear();
+
+            foreach (var network in TrustedProxyNetworks.All)
+            {
+                options.KnownIPNetworks.Add(network);
+            }
+        });
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeAntiforgery(
+        this IServiceCollection services,
+        IHostEnvironment environment)
+    {
+        services.AddAntiforgery(options =>
+        {
+            options.HeaderName = "X-CSRF-TOKEN";
+            options.Cookie.Name = "CodeCafe.Api.Csrf";
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SameSite = SameSiteMode.Lax;
+            options.Cookie.SecurePolicy = environment.IsProduction()
+                ? CookieSecurePolicy.Always
+                : CookieSecurePolicy.SameAsRequest;
+            options.Cookie.Path = "/";
+        });
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeDataProtection(
+        this IServiceCollection services,
+        IHostEnvironment environment)
+    {
+        var dataProtectionBuilder = services.AddDataProtection()
+            .SetApplicationName("CodeCafe");
+
+        if (!environment.IsEnvironment("Testing"))
+        {
+            dataProtectionBuilder.PersistKeysToDbContext<ApplicationDbContext>();
+        }
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeAuthentication(this IServiceCollection services)
+    {
+        services.AddAuthentication(IdentityConstants.ApplicationScheme)
+            .AddIdentityCookies();
+        services.AddAuthorization();
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeRateLimiting(this IServiceCollection services)
+    {
+        services.AddRateLimiter(options =>
+        {
+            options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = OnRateLimitRejectedAsync;
+
+            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: true),
+                    _ => CreateFixedWindowRateLimiterOptions(300, TimeSpan.FromMinutes(1)));
+            });
+
+            options.AddPolicy("registration", httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: false),
+                    _ => CreateFixedWindowRateLimiterOptions(3, TimeSpan.FromHours(1)));
+            });
+
+            options.AddPolicy("login", httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: false),
+                    _ => CreateFixedWindowRateLimiterOptions(10, TimeSpan.FromMinutes(1)));
+            });
+
+            options.AddPolicy("oauth-registration", httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: false),
+                    _ => CreateFixedWindowRateLimiterOptions(20, TimeSpan.FromHours(1)));
+            });
+
+            options.AddPolicy("mcp", httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: true),
+                    _ => CreateFixedWindowRateLimiterOptions(120, TimeSpan.FromMinutes(1)));
+            });
+        });
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeIdentity(this IServiceCollection services)
+    {
+        services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.User.RequireUniqueEmail = true;
+                options.Password.RequiredLength = 8;
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequireNonAlphanumeric = true;
+                options.SignIn.RequireConfirmedAccount = false;
+            })
+            .AddEntityFrameworkStores<ApplicationDbContext>()
+            .AddSignInManager()
+            .AddDefaultTokenProviders();
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeApplicationCookie(this IServiceCollection services)
+    {
+        services.ConfigureApplicationCookie(options =>
+        {
+            options.Cookie.Name = "CodeCafe.Auth";
+            options.Cookie.HttpOnly = true;
+            options.Cookie.SameSite = SameSiteMode.Lax;
+            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            options.Cookie.Path = "/";
+            options.ExpireTimeSpan = TimeSpan.FromDays(7);
+            options.SlidingExpiration = true;
+
+            options.Events.OnRedirectToLogin = context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                return Task.CompletedTask;
+            };
+
+            options.Events.OnRedirectToAccessDenied = context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return Task.CompletedTask;
+            };
+        });
 
         return services;
     }
@@ -150,5 +339,52 @@ public static class ServiceCollectionExtensions
             path,
             password,
             X509KeyStorageFlags.EphemeralKeySet);
+    }
+
+    private static ValueTask OnRateLimitRejectedAsync(OnRejectedContext context, CancellationToken cancellationToken)
+    {
+        var clientIpAddressAccessor = context.HttpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("CodeCafe.Server.RateLimiting");
+
+        logger.LogWarning(
+            "Rate limit rejected request. Path={Path}; ClientIp={ClientIp}",
+            context.HttpContext.Request.Path,
+            clientIpAddressAccessor.GetClientIpAddress(context.HttpContext));
+
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        return new ValueTask(context.HttpContext.Response.WriteAsJsonAsync(
+            new ApiError("rate_limited", "Too many requests. Please try again later."),
+            cancellationToken));
+    }
+
+    private static FixedWindowRateLimiterOptions CreateFixedWindowRateLimiterOptions(int permitLimit, TimeSpan window)
+    {
+        return new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = permitLimit,
+            Window = window,
+            QueueLimit = 0,
+            AutoReplenishment = true
+        };
+    }
+
+    private static string GetRateLimitPartitionKey(
+        HttpContext httpContext,
+        IClientIpAddressAccessor clientIpAddressAccessor,
+        bool allowAuthenticatedUserKey)
+    {
+        if (allowAuthenticatedUserKey && httpContext.User.Identity?.IsAuthenticated == true)
+        {
+            var subject = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? httpContext.User.FindFirstValue("sub");
+            if (!string.IsNullOrWhiteSpace(subject))
+            {
+                return $"user:{subject}";
+            }
+        }
+
+        return $"ip:{clientIpAddressAccessor.GetClientIpAddress(httpContext)}";
     }
 }

@@ -32,8 +32,8 @@ Rules:
 - `CodeCafe.Domain` references nothing outside itself.
 - `CodeCafe.Application` references only `CodeCafe.Domain`.
 - `CodeCafe.Infrastructure` implements application abstractions.
-- `CodeCafe.Api` and `CodeCafe.Mcp` are thin adapters.
-- `CodeCafe.Server` is the composed deployment host.
+- `CodeCafe.Api` and `CodeCafe.Mcp` are thin adapter libraries.
+- `CodeCafe.Server` is the only runnable backend host and composition root.
 
 ## Project Responsibilities
 
@@ -87,21 +87,22 @@ Must not own:
 Owns:
 
 - HTTP endpoint registration
-- auth cookie flow
-- antiforgery
 - HTTP error mapping
-- rate limiting and health endpoints
+- request/response shaping
+- health endpoints
 
 Must not own:
 
 - business rules
 - direct persistence logic
+- startup hosting
+- cookie/auth middleware policy
+- rate limiting, CORS, or forwarded-header policy
 
 ### `CodeCafe.Mcp`
 
 Owns:
 
-- MCP transport wiring
 - tools, resources, and prompts
 - MCP result mapping
 - MCP-specific upload/import support
@@ -109,13 +110,16 @@ Owns:
 Must not own:
 
 - notebook business rules outside shared application behavior
-- direct transport bypasses around authorization and validation
+- startup hosting
+- deployment-only auth, origin, or rate-limit policy
 
 ### `CodeCafe.Server`
 
 Owns:
 
 - single-host composition of API and MCP
+- backend middleware and host policy
+- CORS, forwarded headers, antiforgery, auth cookies, and rate limiting
 - OpenIddict/OAuth endpoints
 - protected resource metadata
 - migration startup command
@@ -232,7 +236,7 @@ Current test layers:
 Focus:
 
 - domain and application rules below HTTP
-- adapter contract tests at API and MCP boundaries
+- adapter contract tests at API and MCP boundaries using the combined `CodeCafe.Server` host
 - architecture tests for dependency direction
 
 ## Deployment Standard

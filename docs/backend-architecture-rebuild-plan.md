@@ -161,8 +161,8 @@ tests/
 
 Notes:
 
-- `CodeCafe.Api`, `CodeCafe.Mcp`, and `CodeCafe.Server` are now the active host
-  path.
+- `CodeCafe.Api` and `CodeCafe.Mcp` are adapter class libraries composed by
+  `CodeCafe.Server`, which is the only backend host path.
 - `CodeCafe.Migrations` is optional. Only create it if we want to decouple
   startup hosting from migration ownership.
 

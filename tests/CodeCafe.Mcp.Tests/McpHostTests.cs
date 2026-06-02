@@ -42,6 +42,8 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
     public async Task McpToolsResourcesAndPrompts_AreExposedByTheStandaloneHost()
     {
         using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(McpTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
         var transport = new HttpClientTransport(
             new HttpClientTransportOptions
             {

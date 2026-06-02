@@ -1,10 +1,11 @@
+using CodeCafe.Mcp.Configuration;
 using CodeCafe.Server.Configuration;
 
 namespace CodeCafe.Server.Auth;
 
 internal static class McpResourceIdentifiers
 {
-    public static string[] GetAudienceValues(McpServerOptions mcpOptions, AuthorizationServerOptions authorizationServerOptions)
+    public static string[] GetAudienceValues(McpOptions mcpOptions, AuthorizationServerOptions authorizationServerOptions)
     {
         var audiences = new HashSet<string>(StringComparer.Ordinal);
 
@@ -21,7 +22,7 @@ internal static class McpResourceIdentifiers
         return audiences.ToArray();
     }
 
-    public static string[] GetResourceValues(McpServerOptions mcpOptions, AuthorizationServerOptions authorizationServerOptions)
+    public static string[] GetResourceValues(McpOptions mcpOptions, AuthorizationServerOptions authorizationServerOptions)
     {
         var resources = new HashSet<string>(StringComparer.Ordinal);
 

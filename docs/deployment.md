@@ -8,6 +8,8 @@ The backend deployment target is now `CodeCafe.Server`.
 - `CodeCafe.Mcp`
 - OpenIddict/OAuth endpoints
 
+`CodeCafe.Api` and `CodeCafe.Mcp` are class libraries. They are not independent deployment or startup targets.
+
 ## CI Publish Target
 
 CI publishes the backend from:

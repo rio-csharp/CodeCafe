@@ -1,4 +1,5 @@
 using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Mcp.Configuration;
 using CodeCafe.Server.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -16,7 +17,7 @@ namespace CodeCafe.Server.Auth;
 public sealed class DynamicClientRegistrationController(
     ApplicationDbContext dbContext,
     IOpenIddictApplicationManager applicationManager,
-    IOptions<McpServerOptions> mcpOptionsAccessor,
+    IOptions<McpOptions> mcpOptionsAccessor,
     IOptions<AuthorizationServerOptions> authorizationServerOptionsAccessor)
     : ControllerBase
 {

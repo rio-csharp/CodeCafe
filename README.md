@@ -10,9 +10,9 @@ CodeCafe/
 │  ├─ CodeCafe.Domain/          # Enterprise entities and domain rules
 │  ├─ CodeCafe.Application/     # Use cases, abstractions, DTOs, validation
 │  ├─ CodeCafe.Infrastructure/  # Persistence, external services, implementations
-│  ├─ CodeCafe.Api/             # HTTP adapter and endpoint surface
-│  ├─ CodeCafe.Mcp/             # MCP adapter, tools, resources, prompts
-│  └─ CodeCafe.Server/          # Combined backend host for deployment and local run
+│  ├─ CodeCafe.Api/             # HTTP adapter library and endpoint surface
+│  ├─ CodeCafe.Mcp/             # MCP adapter library, tools, resources, prompts
+│  └─ CodeCafe.Server/          # Only runnable backend host and composition root
 ├─ tests/
 │  ├─ CodeCafe.Application.Tests/
 │  ├─ CodeCafe.Api.Tests/
@@ -199,8 +199,8 @@ Server -> Api + Mcp + Application + Infrastructure
 ```
 
 `Domain` has no dependencies on other application projects. `Application` depends only on `Domain`.
-`Infrastructure` implements application abstractions. `CodeCafe.Api` and `CodeCafe.Mcp` are thin adapters.
-`CodeCafe.Server` is the default composed backend host.
+`Infrastructure` implements application abstractions. `CodeCafe.Api` and `CodeCafe.Mcp` are thin adapter libraries.
+`CodeCafe.Server` is the only backend entrypoint used for local run, publish, deploy, and migrations.
 
 Backend development guidelines are documented in [docs/backend-best-practices.md](docs/backend-best-practices.md).
 Frontend development guidelines are documented in [frontend/BEST_PRACTICES.md](frontend/BEST_PRACTICES.md).

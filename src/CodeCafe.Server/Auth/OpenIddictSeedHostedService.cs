@@ -1,3 +1,4 @@
+using CodeCafe.Mcp.Configuration;
 using CodeCafe.Server.Configuration;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
@@ -7,7 +8,7 @@ namespace CodeCafe.Server.Auth;
 public sealed class OpenIddictSeedHostedService(
     IServiceScopeFactory serviceScopeFactory,
     IOptions<AuthorizationServerOptions> authorizationServerOptionsAccessor,
-    IOptions<McpServerOptions> mcpOptionsAccessor,
+    IOptions<McpOptions> mcpOptionsAccessor,
     ILogger<OpenIddictSeedHostedService> logger)
     : IHostedService
 {
@@ -168,7 +169,7 @@ public sealed class OpenIddictSeedHostedService(
 
     private static OpenIddictApplicationDescriptor CreateApplicationDescriptor(
         OAuthClientOptions client,
-        McpServerOptions mcpOptions,
+        McpOptions mcpOptions,
         AuthorizationServerOptions authorizationServerOptions)
     {
         return OpenIddictClientRegistration.CreatePublicNativeDescriptor(

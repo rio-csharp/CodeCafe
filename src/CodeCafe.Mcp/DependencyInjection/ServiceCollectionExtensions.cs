@@ -8,12 +8,11 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCodeCafeMcp(
         this IServiceCollection services,
-        IConfiguration? configuration = null)
+        IConfiguration configuration)
     {
-        services.AddProblemDetails();
         services.AddHttpContextAccessor();
         services.AddOptions<McpOptions>()
-            .Bind(configuration?.GetSection(McpOptions.SectionName) ?? new ConfigurationBuilder().Build().GetSection(McpOptions.SectionName))
+            .Bind(configuration.GetSection(McpOptions.SectionName))
             .Validate(options => !string.IsNullOrWhiteSpace(options.EndpointPath)
                 && options.EndpointPath.StartsWith("/", StringComparison.Ordinal),
                 "Mcp:EndpointPath must start with '/'.")

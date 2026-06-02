@@ -10,8 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
-builder.Services.AddCodeCafeApi(builder.Configuration, builder.Environment);
-builder.Services.AddCodeCafeForwardedHeaders();
+builder.Services.AddCodeCafeApi();
 builder.Services.AddCodeCafeMcp(builder.Configuration);
 builder.Services.AddCodeCafeServerHost(builder.Configuration, builder.Environment);
 

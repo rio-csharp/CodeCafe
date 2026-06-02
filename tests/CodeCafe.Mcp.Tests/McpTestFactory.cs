@@ -1,12 +1,18 @@
 using CodeCafe.Application.Notes;
+using CodeCafe.Server.Common;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using OpenIddict.Validation.AspNetCore;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 
 namespace CodeCafe.Mcp.Tests;
 
-public sealed class McpTestFactory : WebApplicationFactory<Program>
+public sealed class McpTestFactory : WebApplicationFactory<ServerAssemblyMarker>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -14,8 +20,62 @@ public sealed class McpTestFactory : WebApplicationFactory<Program>
         builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.ConfigureServices(services =>
         {
+            services.AddAuthentication(McpTestAuthHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, McpTestAuthHandler>(
+                    McpTestAuthHandler.SchemeName,
+                    _ => { });
+
+            services.PostConfigure<AuthenticationOptions>(options =>
+            {
+                if (options.SchemeMap.Remove(
+                    OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+                    out var existingScheme)
+                    && options.Schemes is IList<AuthenticationSchemeBuilder> schemes)
+                {
+                    _ = schemes.Remove(existingScheme);
+                }
+
+                options.AddScheme(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme, authScheme =>
+                {
+                    authScheme.HandlerType = typeof(McpTestAuthHandler);
+                });
+                options.DefaultAuthenticateScheme = McpTestAuthHandler.SchemeName;
+                options.DefaultChallengeScheme = McpTestAuthHandler.SchemeName;
+            });
+
             services.AddSingleton<INotebookReadService, TestNotebookQueryService>();
         });
+    }
+}
+
+internal sealed class McpTestAuthHandler(
+    IOptionsMonitor<AuthenticationSchemeOptions> options,
+    ILoggerFactory logger,
+    UrlEncoder encoder)
+    : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    public const string SchemeName = "McpTest";
+    public const string UserIdHeader = "X-Test-UserId";
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (!Request.Headers.TryGetValue(UserIdHeader, out var userIdValues)
+            || !Guid.TryParse(userIdValues.SingleOrDefault(), out var userId))
+        {
+            return Task.FromResult(AuthenticateResult.NoResult());
+        }
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+            new Claim("scope", "notes.read notes.write")
+        };
+
+        var identity = new ClaimsIdentity(claims, SchemeName);
+        var principal = new ClaimsPrincipal(identity);
+        var ticket = new AuthenticationTicket(principal, SchemeName);
+
+        return Task.FromResult(AuthenticateResult.Success(ticket));
     }
 }
 

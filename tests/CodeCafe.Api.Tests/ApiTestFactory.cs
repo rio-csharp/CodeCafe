@@ -1,6 +1,7 @@
 using CodeCafe.Api.Endpoints.Auth;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
+using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -13,7 +14,7 @@ using System.Text.Encodings.Web;
 
 namespace CodeCafe.Api.Tests;
 
-public sealed class ApiTestFactory : WebApplicationFactory<Program>
+public sealed class ApiTestFactory : WebApplicationFactory<ServerAssemblyMarker>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
