@@ -119,6 +119,41 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     }
 
     [Fact]
+    public async Task CreateNotebook_WithoutCsrfToken_ReturnsProblemDetails()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await client.PostAsJsonAsync("/api/notes", new
+        {
+            title = "Missing CSRF Notebook"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("invalid_csrf_token", document.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Register_WithDuplicateEmail_ReturnsProblemDetails()
+    {
+        using var client = CreateCookieClient();
+
+        using var response = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/auth/register", new
+        {
+            email = "existing.user@example.com",
+            password = "Password123!",
+            displayName = "Existing User"
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("email_already_registered", document.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
     public async Task PublicNotesEndpoint_ReturnsNotebookSummaries()
     {
         using var client = _factory.CreateClient();

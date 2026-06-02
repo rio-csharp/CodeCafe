@@ -20,15 +20,15 @@ public sealed class McpOptions
 
     public string[] RequiredWriteScopes { get; set; } = ["notes.write"];
 
-    public int MaxInlineContentBytes { get; set; } = 16 * 1024;
+    public int MaxInlineContentBytes { get; set; } = 128 * 1024;
 
-    public int MaxUploadChunkBytes { get; set; } = 16 * 1024;
+    public int MaxUploadChunkBytes { get; set; } = 256 * 1024;
 
-    public int MaxUploadBytes { get; set; } = 256 * 1024;
+    public int MaxUploadBytes { get; set; } = 4 * 1024 * 1024;
 
-    public int MaxPageContentBytes { get; set; } = 128 * 1024;
+    public int MaxPageContentBytes { get; set; } = 1024 * 1024;
 
-    public int MaxListItemsLimit { get; set; } = 200;
+    public int MaxListItemsLimit { get; set; } = 500;
 
     public int UploadIdleTimeoutSeconds { get; set; } = 15 * 60;
 }

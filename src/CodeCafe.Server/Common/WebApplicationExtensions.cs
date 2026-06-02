@@ -1,5 +1,6 @@
 using CodeCafe.Api.Common;
 using CodeCafe.Api.Configuration;
+using CodeCafe.Api.Errors;
 using CodeCafe.Mcp.Configuration;
 using CodeCafe.Mcp.Tools.Diagnostics;
 using CodeCafe.Server.Configuration;
@@ -75,11 +76,10 @@ public static class WebApplicationExtensions
                 && !originValues.Any(value => options.AllowedOrigins.Contains(value, StringComparer.OrdinalIgnoreCase)))
             {
                 httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await httpContext.Response.WriteAsJsonAsync(new
-                {
-                    code = "origin_forbidden",
-                    message = "Origin is not allowed for MCP."
-                });
+                await Results.Problem(ApiProblems.Create(
+                    "origin_forbidden",
+                    "Origin is not allowed for MCP.",
+                    StatusCodes.Status403Forbidden)).ExecuteAsync(httpContext);
                 return;
             }
 

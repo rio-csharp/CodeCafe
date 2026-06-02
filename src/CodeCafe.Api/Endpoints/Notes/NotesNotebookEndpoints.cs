@@ -4,6 +4,7 @@ using CodeCafe.Application.Notes.Commands.UpdateNotebook;
 using CodeCafe.Application.Notes.Queries.GetMyNotebooks;
 using CodeCafe.Application.Notes.Queries.GetNotebookById;
 using CodeCafe.Application.Notes.Queries.GetNotebookBySlug;
+using CodeCafe.Api.Errors;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -82,10 +83,10 @@ public static partial class NotesEndpoints
 
         if (!result.Succeeded)
         {
-            return TypedResults.Problem(
-                detail: result.Error!.Message,
-                statusCode: ToStatusCode(result.Error.Kind),
-                title: result.Error.Code);
+            return TypedResults.Problem(ApiProblems.Create(
+                result.Error!.Code,
+                result.Error.Message,
+                ToStatusCode(result.Error.Kind)));
         }
 
         var response = NotesEndpointMappings.ToDetailResponse(result.Value!);

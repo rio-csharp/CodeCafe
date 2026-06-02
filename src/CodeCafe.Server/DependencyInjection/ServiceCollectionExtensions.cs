@@ -1,6 +1,6 @@
 using CodeCafe.Api.Configuration;
-using CodeCafe.Api.Errors;
 using CodeCafe.Api.Endpoints.Auth;
+using CodeCafe.Api.Errors;
 using CodeCafe.Api.Networking;
 using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Infrastructure.Persistence;
@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
@@ -340,13 +339,19 @@ public static class ServiceCollectionExtensions
             options.Events.OnRedirectToLogin = context =>
             {
                 context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return Task.CompletedTask;
+                return Results.Problem(ApiProblems.Create(
+                    "authentication_required",
+                    "Authentication is required to access this resource.",
+                    StatusCodes.Status401Unauthorized)).ExecuteAsync(context.HttpContext);
             };
 
             options.Events.OnRedirectToAccessDenied = context =>
             {
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
-                return Task.CompletedTask;
+                return Results.Problem(ApiProblems.Create(
+                    "access_denied",
+                    "You do not have permission to access this resource.",
+                    StatusCodes.Status403Forbidden)).ExecuteAsync(context.HttpContext);
             };
         });
 
@@ -406,9 +411,10 @@ public static class ServiceCollectionExtensions
             clientIpAddressAccessor.GetClientIpAddress(context.HttpContext));
 
         context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-        return new ValueTask(context.HttpContext.Response.WriteAsJsonAsync(
-            new ApiError("rate_limited", "Too many requests. Please try again later."),
-            cancellationToken));
+        return new ValueTask(Results.Problem(ApiProblems.Create(
+            "rate_limited",
+            "Too many requests. Please try again later.",
+            StatusCodes.Status429TooManyRequests)).ExecuteAsync(context.HttpContext));
     }
 
     private static FixedWindowRateLimiterOptions CreateFixedWindowRateLimiterOptions(int permitLimit, TimeSpan window)

@@ -1,4 +1,5 @@
 using CodeCafe.Application.Notes;
+using CodeCafe.Api.Errors;
 using System.Security.Claims;
 
 namespace CodeCafe.Api.Endpoints.Notes;
@@ -70,10 +71,10 @@ public static partial class NotesEndpoints
 
     private static IResult ToProblemResult(NotesError error)
     {
-        return TypedResults.Problem(
-            detail: error.Message,
-            statusCode: ToStatusCode(error.Kind),
-            title: error.Code);
+        return TypedResults.Problem(ApiProblems.Create(
+            error.Code,
+            error.Message,
+            ToStatusCode(error.Kind)));
     }
 
     private static Guid GetCurrentUserId(ClaimsPrincipal user)

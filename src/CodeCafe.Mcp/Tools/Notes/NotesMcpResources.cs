@@ -31,7 +31,7 @@ public sealed class NotesMcpResources
             $"- For local files or larger payloads, call `{NotesMcpToolNames.GetLimits}` first, then `{NotesMcpToolNames.CreateUpload}`, append one or more chunks with `{NotesMcpToolNames.AppendUploadChunk}`, and finally import with `{NotesMcpToolNames.CreatePage}`, `{NotesMcpToolNames.UpdatePageContentJson}`, or `{NotesMcpToolNames.AppendBlocksToPage}`.",
             "- Supported uploaded formats are `markdown`, `tiptap_json`, and `tiptap_blocks_json`.",
             "- Uploaded Markdown is converted server-side into TipTap JSON before validation and persistence.",
-            $"- Upload sessions are temporary, stored in server memory, and can be discarded with `{NotesMcpToolNames.DiscardUpload}` when no longer needed."
+            $"- Upload sessions are temporary, database-backed, and can be discarded with `{NotesMcpToolNames.DiscardUpload}` when no longer needed."
         });
 
         return new TextResourceContents
@@ -172,7 +172,12 @@ public sealed class NotesMcpResources
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
             await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookReadService, cancellationToken));
-        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
+        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(
+            NotesMcpSupport.EnsureMcpSuccess(await notebookReadService.GetNotebookItemByPathAsync(
+                notebook.Slug,
+                path,
+                NotesMcpSupport.GetCurrentUserId(user),
+                cancellationToken))));
         var payload = NotesMcpSupport.ToGetPageToolResponse(notebook, page);
         return new TextResourceContents
         {

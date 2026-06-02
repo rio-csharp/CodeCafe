@@ -50,7 +50,7 @@ public sealed class NotesMcpNotebookTools
                 "Scope must be all, mine, or public."));
         }
 
-        var maxResults = Math.Clamp(limit ?? 25, 1, 100);
+        var maxResults = Math.Clamp(limit ?? 25, 1, mcpOptions.MaxListItemsLimit);
         var notebooks = new List<NotebookSummaryModel>();
 
         if (normalizedScope is "all" or "mine")
@@ -93,7 +93,7 @@ public sealed class NotesMcpNotebookTools
         CancellationToken cancellationToken)
     {
         var mcpOptions = mcpOptionsAccessor.Value;
-        var notebookContextResult = await NotesMcpSupport.RequireNotebookContextAsync(
+        var notebookContextResult = await NotesMcpSupport.RequireNotebookSummaryContextAsync(
             slug,
             user,
             notebookReadService,
@@ -176,7 +176,7 @@ public sealed class NotesMcpNotebookTools
         }
 
         var currentUserId = actorResult.Value;
-        var maxResults = Math.Clamp(limit ?? 25, 1, 100);
+        var maxResults = Math.Clamp(limit ?? 25, 1, mcpOptions.MaxListItemsLimit);
         var results = new List<NotebookSearchResultResponse>();
 
         if (!string.IsNullOrWhiteSpace(notebookSlug))

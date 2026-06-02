@@ -69,18 +69,53 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.Contains(prompts, prompt => prompt.Name == "notes.summarize_page");
 
         var limitsResult = await mcpClient.CallToolAsync(NotesMcpToolNames.GetLimits, new Dictionary<string, object?>());
-        Assert.Equal(16384, limitsResult.StructuredContent!.Value.GetProperty("maxInlineContentBytes").GetInt32());
+        Assert.Equal(131072, limitsResult.StructuredContent!.Value.GetProperty("maxInlineContentBytes").GetInt32());
 
         var guideResult = await mcpClient.ReadResourceAsync("notes://guide");
         var guide = Assert.IsType<TextResourceContents>(Assert.Single(guideResult.Contents));
         Assert.Contains(NotesMcpToolNames.AppendUploadChunk, guide.Text, StringComparison.Ordinal);
 
         var listResult = await mcpClient.CallToolAsync("notes_list_public_notebooks", new Dictionary<string, object?>());
-        Assert.Equal(1, listResult.StructuredContent!.Value.GetProperty("TotalCount").GetInt32());
+        Assert.Equal(1, listResult.StructuredContent!.Value.GetProperty("totalCount").GetInt32());
 
         var detailResult = await mcpClient.CallToolAsync(
             "notes_get_public_notebook",
             new Dictionary<string, object?> { ["slug"] = "architecture-notes" });
-        Assert.Equal("Architecture Notes", detailResult.StructuredContent!.Value.GetProperty("Title").GetString());
+        Assert.Equal("Architecture Notes", detailResult.StructuredContent!.Value.GetProperty("title").GetString());
+    }
+
+    [Fact]
+    public async Task McpUpload_AllowsChunksLargerThanTheOldDefaultLimit()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(McpTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(client.BaseAddress!, "/mcp"),
+                TransportMode = HttpTransportMode.StreamableHttp
+            },
+            client);
+
+        await using var mcpClient = await McpClient.CreateAsync(transport);
+
+        var createResult = await mcpClient.CallToolAsync(NotesMcpToolNames.CreateUpload, new Dictionary<string, object?>
+        {
+            ["fileName"] = "large-page.md",
+            ["mediaType"] = "text/markdown"
+        });
+        var uploadId = createResult.StructuredContent!.Value.GetProperty("uploadId").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(uploadId));
+
+        var chunkText = new string('a', 20_000);
+        var appendResult = await mcpClient.CallToolAsync(NotesMcpToolNames.AppendUploadChunk, new Dictionary<string, object?>
+        {
+            ["uploadId"] = uploadId,
+            ["chunkText"] = chunkText
+        });
+
+        Assert.False(appendResult.IsError ?? false);
+        Assert.Equal(20_000, appendResult.StructuredContent!.Value.GetProperty("bytesReceived").GetInt32());
     }
 }

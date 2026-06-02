@@ -162,4 +162,44 @@ public sealed class NotebookReadServiceTests
         var missing = await service.GetPublicNotebookItemAsync("architecture-notes", "chapters/missing", CancellationToken.None);
         Assert.Equal(NotesFailureKind.NotFound, missing.Error!.Kind);
     }
+
+    [Fact]
+    public async Task GetNotebookSummaryBySlug_ReturnsSummaryForAccessibleNotebook()
+    {
+        using var harness = CreateSeededHarness();
+        await using var context = harness.CreateContext();
+        var service = harness.CreateReadService(context);
+
+        var result = await service.GetNotebookSummaryBySlugAsync("architecture-notes", OtherUserId, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("architecture-notes", result.Value!.Slug);
+        Assert.Equal(2, result.Value.ItemCount);
+        Assert.False(result.Value.CanEdit);
+    }
+
+    [Fact]
+    public async Task GetNotebookItemsPage_AppliesParentTypeAndPaginationFilters()
+    {
+        using var harness = CreateSeededHarness();
+        await using var context = harness.CreateContext();
+        var service = harness.CreateReadService(context);
+
+        var result = await service.GetNotebookItemsPageAsync(
+            PublicNotebookId,
+            OwnerId,
+            search: null,
+            CancellationToken.None,
+            includeArchived: false,
+            parentId: FolderItemId,
+            type: "page",
+            offset: 0,
+            limit: 1);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(1, result.Value!.TotalCount);
+        var item = Assert.Single(result.Value.Items);
+        Assert.Equal(PageItemId, item.Id);
+        Assert.Equal("page", item.Type);
+    }
 }

@@ -53,9 +53,9 @@ public static class ServiceCollectionExtensions
             .WithResources<NotesMcpResources>()
             .WithPrompts<NotesMcpPrompts>();
 
-        services.AddSingleton<IMcpUploadStore, InMemoryMcpUploadStore>();
+        services.AddScoped<IMcpUploadStore, DatabaseMcpUploadStore>();
         services.AddSingleton<IMcpMarkdownImporter, MarkdigMcpMarkdownImporter>();
-        services.AddSingleton<IMcpContentImportService, McpContentImportService>();
+        services.AddScoped<IMcpContentImportService, McpContentImportService>();
         services.AddScoped<IMcpMutationExecutor, McpMutationExecutor>();
 
         return services;

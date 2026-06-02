@@ -1,4 +1,3 @@
-using CodeCafe.Application.Notes;
 using CodeCafe.Application.Notes.Queries.GetPublicNotebook;
 using CodeCafe.Application.Notes.Queries.GetPublicNotebookItem;
 using CodeCafe.Application.Notes.Queries.GetPublicNotebookItems;

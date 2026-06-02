@@ -16,7 +16,7 @@ public sealed class NotesReadMcpTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(ListPublicNotebooksResponse))]
-    [Description("List public notebooks visible to anonymous or shared MCP readers.")]
+    [Description("List public notebooks exposed through this MCP endpoint.")]
     public async Task<CallToolResult> ListPublicNotebooksAsync(
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
@@ -42,17 +42,7 @@ public sealed class NotesReadMcpTools
                 notebook.PageCount,
                 notebook.PublishedAtUtc)).ToList());
 
-        return new CallToolResult
-        {
-            Content =
-            [
-                new TextContentBlock
-                {
-                    Text = $"Listed {response.TotalCount} public notebook(s)."
-                }
-            ],
-            StructuredContent = System.Text.Json.JsonSerializer.SerializeToElement(response)
-        };
+        return NotesMcpResultMapper.Success(response, $"Listed {response.TotalCount} public notebook(s).");
     }
 
     [McpServerTool(
@@ -76,17 +66,7 @@ public sealed class NotesReadMcpTools
 
         if (!result.Succeeded)
         {
-            return new CallToolResult
-            {
-                IsError = true,
-                Content =
-                [
-                    new TextContentBlock
-                    {
-                        Text = result.Error!.Message
-                    }
-                ]
-            };
+            return NotesMcpResultMapper.Failure(result.Error!);
         }
 
         var notebook = result.Value!;
@@ -108,17 +88,7 @@ public sealed class NotesReadMcpTools
                 item.SortOrder,
                 item.PlainTextContent)).ToList());
 
-        return new CallToolResult
-        {
-            Content =
-            [
-                new TextContentBlock
-                {
-                    Text = $"Loaded public notebook '{response.Title}'."
-                }
-            ],
-            StructuredContent = System.Text.Json.JsonSerializer.SerializeToElement(response)
-        };
+        return NotesMcpResultMapper.Success(response, $"Loaded public notebook '{response.Title}'.");
     }
 }
 

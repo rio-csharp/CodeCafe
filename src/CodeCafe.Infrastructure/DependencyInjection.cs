@@ -37,6 +37,8 @@ public static class DependencyInjection
         services.AddScoped<INotebookReadService, NotebookReadService>();
         services.AddScoped<INotebookMutationStore, NotebookMutationStore>();
         services.AddScoped<INotebookItemMutationService, NotebookItemMutationService>();
+        services.AddSingleton<IMcpIndependentAuditQueue, McpIndependentAuditQueue>();
+        services.AddHostedService(serviceProvider => (McpIndependentAuditQueue)serviceProvider.GetRequiredService<IMcpIndependentAuditQueue>());
         services.AddScoped<IMcpAuditService, McpAuditService>();
         services.AddSingleton<ITipTapPlainTextExtractor, TipTapPlainTextExtractor>();
         services.AddSingleton<ITipTapContentService, TipTapContentService>();

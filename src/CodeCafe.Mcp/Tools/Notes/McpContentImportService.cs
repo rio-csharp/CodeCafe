@@ -13,33 +13,36 @@ namespace CodeCafe.Mcp.Tools.Notes;
 
 public interface IMcpContentImportService
 {
-    NotesResult<JsonElement?> ResolveOptionalPageContent(
+    Task<NotesResult<JsonElement?>> ResolveOptionalPageContentAsync(
         Guid actorId,
         JsonElement? inlineContentJson,
         string? contentUploadId,
         string? contentFormat,
         string errorCode,
-        string invalidMessage);
+        string invalidMessage,
+        CancellationToken cancellationToken);
 
-    NotesResult<JsonElement> ResolveRequiredPageContent(
+    Task<NotesResult<JsonElement>> ResolveRequiredPageContentAsync(
         Guid actorId,
         JsonElement? inlineContentJson,
         string? contentUploadId,
         string? contentFormat,
         string errorCode,
-        string invalidMessage);
+        string invalidMessage,
+        CancellationToken cancellationToken);
 
-    NotesResult<JsonElement> ResolveRequiredBlocks(
+    Task<NotesResult<JsonElement>> ResolveRequiredBlocksAsync(
         Guid actorId,
         JsonElement? inlineBlocks,
         string? blocksUploadId,
         string? blocksFormat,
         string errorCode,
-        string invalidMessage);
+        string invalidMessage,
+        CancellationToken cancellationToken);
 
     NotesResult EnforcePageContentSize(JsonElement contentJson, string errorCode);
 
-    void DeleteUpload(Guid actorId, string? uploadId);
+    Task DeleteUploadAsync(Guid actorId, string? uploadId, CancellationToken cancellationToken);
 }
 
 public interface IMcpMarkdownImporter
@@ -54,13 +57,14 @@ public sealed class McpContentImportService(
     IMcpMarkdownImporter markdownImporter,
     IOptions<McpOptions> mcpOptionsAccessor) : IMcpContentImportService
 {
-    public NotesResult<JsonElement?> ResolveOptionalPageContent(
+    public async Task<NotesResult<JsonElement?>> ResolveOptionalPageContentAsync(
         Guid actorId,
         JsonElement? inlineContentJson,
         string? contentUploadId,
         string? contentFormat,
         string errorCode,
-        string invalidMessage)
+        string invalidMessage,
+        CancellationToken cancellationToken)
     {
         var hasInlineContent = inlineContentJson is not null
             && inlineContentJson.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null;
@@ -80,7 +84,7 @@ public sealed class McpContentImportService(
         }
 
         var resolved = hasUpload
-            ? ResolveUploadAsPageContent(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage)
+            ? await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken)
             : ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage);
 
         if (!resolved.Succeeded)
@@ -91,13 +95,14 @@ public sealed class McpContentImportService(
         return NotesResult<JsonElement?>.Success(resolved.Value);
     }
 
-    public NotesResult<JsonElement> ResolveRequiredPageContent(
+    public async Task<NotesResult<JsonElement>> ResolveRequiredPageContentAsync(
         Guid actorId,
         JsonElement? inlineContentJson,
         string? contentUploadId,
         string? contentFormat,
         string errorCode,
-        string invalidMessage)
+        string invalidMessage,
+        CancellationToken cancellationToken)
     {
         var hasInlineContent = inlineContentJson is not null
             && inlineContentJson.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null;
@@ -113,7 +118,7 @@ public sealed class McpContentImportService(
 
         if (hasUpload)
         {
-            return ResolveUploadAsPageContent(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage);
+            return await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken);
         }
 
         if (!hasInlineContent)
@@ -124,13 +129,14 @@ public sealed class McpContentImportService(
         return ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage);
     }
 
-    public NotesResult<JsonElement> ResolveRequiredBlocks(
+    public async Task<NotesResult<JsonElement>> ResolveRequiredBlocksAsync(
         Guid actorId,
         JsonElement? inlineBlocks,
         string? blocksUploadId,
         string? blocksFormat,
         string errorCode,
-        string invalidMessage)
+        string invalidMessage,
+        CancellationToken cancellationToken)
     {
         var hasInlineBlocks = inlineBlocks is not null
             && inlineBlocks.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null;
@@ -146,7 +152,7 @@ public sealed class McpContentImportService(
 
         if (hasUpload)
         {
-            return ResolveUploadAsBlocks(actorId, blocksUploadId!, blocksFormat, errorCode, invalidMessage);
+            return await ResolveUploadAsBlocksAsync(actorId, blocksUploadId!, blocksFormat, errorCode, invalidMessage, cancellationToken);
         }
 
         if (!hasInlineBlocks)
@@ -177,24 +183,25 @@ public sealed class McpContentImportService(
                 $"Page content exceeds the limit of {maxBytes} bytes (received {currentBytes} bytes).");
     }
 
-    public void DeleteUpload(Guid actorId, string? uploadId)
+    public async Task DeleteUploadAsync(Guid actorId, string? uploadId, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(uploadId))
         {
             return;
         }
 
-        uploadStore.Delete(actorId, uploadId);
+        _ = await uploadStore.DeleteAsync(actorId, uploadId, cancellationToken);
     }
 
-    private NotesResult<JsonElement> ResolveUploadAsPageContent(
+    private async Task<NotesResult<JsonElement>> ResolveUploadAsPageContentAsync(
         Guid actorId,
         string contentUploadId,
         string? contentFormat,
         string errorCode,
-        string invalidMessage)
+        string invalidMessage,
+        CancellationToken cancellationToken)
     {
-        var uploadResult = uploadStore.Get(actorId, contentUploadId);
+        var uploadResult = await uploadStore.GetAsync(actorId, contentUploadId, cancellationToken);
         if (!uploadResult.Succeeded)
         {
             return ToNotesResult(uploadResult.Error!, errorCode);
@@ -213,14 +220,15 @@ public sealed class McpContentImportService(
         };
     }
 
-    private NotesResult<JsonElement> ResolveUploadAsBlocks(
+    private async Task<NotesResult<JsonElement>> ResolveUploadAsBlocksAsync(
         Guid actorId,
         string blocksUploadId,
         string? blocksFormat,
         string errorCode,
-        string invalidMessage)
+        string invalidMessage,
+        CancellationToken cancellationToken)
     {
-        var uploadResult = uploadStore.Get(actorId, blocksUploadId);
+        var uploadResult = await uploadStore.GetAsync(actorId, blocksUploadId, cancellationToken);
         if (!uploadResult.Succeeded)
         {
             return ToNotesResult(uploadResult.Error!, errorCode);

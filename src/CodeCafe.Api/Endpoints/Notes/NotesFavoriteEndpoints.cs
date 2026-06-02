@@ -1,6 +1,6 @@
-using CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
 using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
 using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
+using CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,4 +1,6 @@
+using CodeCafe.Application.Common.Interfaces;
 using CodeCafe.Application.Notes;
+using CodeCafe.Mcp.Tools.Notes;
 using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -7,7 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenIddict.Validation.AspNetCore;
+using System.Collections.Concurrent;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Encodings.Web;
 
 namespace CodeCafe.Mcp.Tests;
@@ -44,6 +48,9 @@ public sealed class McpTestFactory : WebApplicationFactory<ServerAssemblyMarker>
             });
 
             services.AddSingleton<INotebookReadService, TestNotebookQueryService>();
+            services.AddSingleton<TestMcpUploadStore>();
+            services.AddScoped<IMcpUploadStore>(serviceProvider => serviceProvider.GetRequiredService<TestMcpUploadStore>());
+            services.AddScoped<IMcpAuditService, NoopMcpAuditService>();
         });
     }
 }
@@ -174,4 +181,116 @@ internal sealed class TestNotebookQueryService : INotebookReadService
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, int? limit = null)
         => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
+}
+
+internal sealed class TestMcpUploadStore : IMcpUploadStore
+{
+    private readonly ConcurrentDictionary<string, UploadState> uploads = new(StringComparer.Ordinal);
+
+    public Task<McpUploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var uploadId = Guid.NewGuid().ToString("N");
+        var status = new McpUploadStatus(
+            uploadId,
+            actorId,
+            string.IsNullOrWhiteSpace(fileName) ? null : fileName.Trim(),
+            string.IsNullOrWhiteSpace(mediaType) ? "text/plain" : mediaType.Trim(),
+            0,
+            now,
+            now);
+        uploads[uploadId] = new UploadState(status);
+        return Task.FromResult(status);
+    }
+
+    public Task<NotesUploadResult<McpUploadStatus>> AppendTextAsync(
+        Guid actorId,
+        string uploadId,
+        string chunkText,
+        int maxChunkBytes,
+        int maxUploadBytes,
+        CancellationToken cancellationToken)
+    {
+        if (!uploads.TryGetValue(uploadId, out var state) || state.Status.ActorId != actorId)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("upload_not_found", "Upload session was not found."));
+        }
+
+        var chunkBytes = Encoding.UTF8.GetByteCount(chunkText);
+        if (chunkBytes == 0)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload chunk text is required."));
+        }
+
+        if (chunkBytes > maxChunkBytes)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+                "upload_chunk_too_large",
+                $"Upload chunk exceeds the limit of {maxChunkBytes} bytes (received {chunkBytes} bytes)."));
+        }
+
+        lock (state.SyncRoot)
+        {
+            var nextBytes = state.Status.BytesReceived + chunkBytes;
+            if (nextBytes > maxUploadBytes)
+            {
+                return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+                    "upload_too_large",
+                    $"Upload exceeds the limit of {maxUploadBytes} bytes (received {nextBytes} bytes)."));
+            }
+
+            state.Content.Append(chunkText);
+            state.Status = state.Status with
+            {
+                BytesReceived = nextBytes,
+                UpdatedAtUtc = DateTimeOffset.UtcNow
+            };
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Success(state.Status));
+        }
+    }
+
+    public Task<NotesUploadResult<McpUploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
+    {
+        if (!uploads.TryGetValue(uploadId, out var state) || state.Status.ActorId != actorId)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadSession>.Failure("upload_not_found", "Upload session was not found."));
+        }
+
+        lock (state.SyncRoot)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadSession>.Success(new McpUploadSession(
+                state.Status.UploadId,
+                state.Status.ActorId,
+                state.Status.FileName,
+                state.Status.MediaType,
+                state.Content.ToString(),
+                state.Status.BytesReceived,
+                state.Status.CreatedAtUtc,
+                state.Status.UpdatedAtUtc)));
+        }
+    }
+
+    public Task<bool> DeleteAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(
+            uploads.TryGetValue(uploadId, out var state)
+            && state.Status.ActorId == actorId
+            && uploads.TryRemove(uploadId, out _));
+    }
+
+    private sealed class UploadState(McpUploadStatus status)
+    {
+        public object SyncRoot { get; } = new();
+
+        public StringBuilder Content { get; } = new();
+
+        public McpUploadStatus Status { get; set; } = status;
+    }
+}
+
+internal sealed class NoopMcpAuditService : IMcpAuditService
+{
+    public Task WriteAsync(McpAuditRecord auditRecord, CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public Task WriteIndependentAsync(McpAuditRecord auditRecord, CancellationToken cancellationToken) => Task.CompletedTask;
 }

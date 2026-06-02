@@ -1,4 +1,5 @@
 using CodeCafe.Api.Configuration;
+using CodeCafe.Api.Errors;
 using CodeCafe.Api.Networking;
 using CodeCafe.Application.Auth;
 using CodeCafe.Application.Auth.Commands.AuthenticateUser;
@@ -138,10 +139,10 @@ public static class AuthEndpoints
             return TypedResults.Ok(new AuthResponse(ToUserResponse(result.Value!)));
         }
 
-        return TypedResults.Problem(
-            detail: result.Error!.Message,
-            statusCode: ToStatusCode(result.Error.Kind),
-            title: result.Error.Code);
+        return TypedResults.Problem(ApiProblems.Create(
+            result.Error!.Code,
+            result.Error.Message,
+            ToStatusCode(result.Error.Kind)));
     }
 
     private static int ToStatusCode(AuthFailureKind kind)

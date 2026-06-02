@@ -111,9 +111,7 @@ public sealed class NotebookItemMutationService(
                 "The page changed after the expected timestamp.");
         }
 
-        var notebookItems = await dbContext.NotebookItems
-            .Where(existingItem => existingItem.NotebookId == notebookId && !existingItem.IsArchived)
-            .ToListAsync(cancellationToken);
+        var notebookItems = await GetNotebookStructureAsync(notebookId, includeArchived: false, cancellationToken);
         var requestedParentId = item.ParentId;
         var currentParent = NotebookItemTree.FindRequestedParent(notebookItems, item.Id, item.ParentId);
         var nextParent = currentParent;
@@ -199,10 +197,9 @@ public sealed class NotebookItemMutationService(
             return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
-        var notebookItems = await dbContext.NotebookItems
-            .Where(existingItem => existingItem.NotebookId == notebookId && !existingItem.IsArchived)
-            .ToListAsync(cancellationToken);
+        var notebookItems = await GetNotebookStructureAsync(notebookId, includeArchived: false, cancellationToken);
         var notebookItemsById = notebookItems.ToDictionary(existingItem => existingItem.Id);
+        var idsToLoad = items.Select(item => item.ItemId).ToHashSet();
 
         foreach (var reorderItem in items)
         {
@@ -249,8 +246,23 @@ public sealed class NotebookItemMutationService(
 
                 if (!string.Equals(oldPath, item.Path, StringComparison.Ordinal))
                 {
+                    foreach (var descendantId in NotebookItemTree.GetDescendantIds(notebookItems, item.Id))
+                    {
+                        idsToLoad.Add(descendantId);
+                    }
+
                     NotebookItemTree.ApplyDescendantPathUpdate(notebookItems, item.Id, oldPath, item.Path);
                 }
+            }
+
+            var trackedItems = await dbContext.NotebookItems
+                .Where(existingItem => existingItem.NotebookId == notebookId && idsToLoad.Contains(existingItem.Id))
+                .ToDictionaryAsync(existingItem => existingItem.Id, cancellationToken);
+
+            foreach (var notebookItem in notebookItems.Where(existingItem => idsToLoad.Contains(existingItem.Id)))
+            {
+                var trackedItem = trackedItems[notebookItem.Id];
+                trackedItem.UpdateStructure(notebookItem.ParentId, notebookItem.Title, notebookItem.Path, notebookItem.SortOrder);
             }
 
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -267,12 +279,14 @@ public sealed class NotebookItemMutationService(
                 "One or more notebook items changed while the reorder was being applied.");
         }
 
-        var orderedItems = notebookItems
+        var orderedItems = await dbContext.NotebookItems
+            .AsNoTracking()
+            .Where(item => item.NotebookId == notebookId && !item.IsArchived)
             .OrderBy(item => item.ParentId)
             .ThenBy(item => item.SortOrder)
             .ThenBy(item => item.Title)
-            .Select(NotesSupport.ToItemModel)
-            .ToList();
+            .Select(item => NotesSupport.ToItemModel(item))
+            .ToListAsync(cancellationToken);
 
         return NotesResult<IReadOnlyList<NotebookItemModel>>.Success(orderedItems);
     }
@@ -284,9 +298,7 @@ public sealed class NotebookItemMutationService(
             return NotesResult.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
-        var items = await dbContext.NotebookItems
-            .Where(item => item.NotebookId == notebookId)
-            .ToListAsync(cancellationToken);
+        var items = await GetNotebookStructureAsync(notebookId, includeArchived: true, cancellationToken);
         var item = items.SingleOrDefault(existingItem => existingItem.Id == itemId);
         if (item is null)
         {
@@ -303,7 +315,10 @@ public sealed class NotebookItemMutationService(
 
         var idsToDelete = NotebookItemTree.GetDescendantIds(items, itemId);
         idsToDelete.Add(itemId);
-        dbContext.NotebookItems.RemoveRange(items.Where(existingItem => idsToDelete.Contains(existingItem.Id)));
+        var entitiesToDelete = await dbContext.NotebookItems
+            .Where(existingItem => existingItem.NotebookId == notebookId && idsToDelete.Contains(existingItem.Id))
+            .ToListAsync(cancellationToken);
+        dbContext.NotebookItems.RemoveRange(entitiesToDelete);
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -330,9 +345,7 @@ public sealed class NotebookItemMutationService(
             return NotesResult<NotebookItemModel>.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
-        var items = await dbContext.NotebookItems
-            .Where(item => item.NotebookId == notebookId)
-            .ToListAsync(cancellationToken);
+        var items = await GetNotebookStructureAsync(notebookId, includeArchived: true, cancellationToken);
         var item = items.SingleOrDefault(existingItem => existingItem.Id == itemId);
         if (item is null)
         {
@@ -347,8 +360,11 @@ public sealed class NotebookItemMutationService(
         var idsToArchive = NotebookItemTree.GetDescendantIds(items, itemId);
         idsToArchive.Add(itemId);
         var now = dateTimeProvider.UtcNow;
+        var entitiesToArchive = await dbContext.NotebookItems
+            .Where(existingItem => existingItem.NotebookId == notebookId && idsToArchive.Contains(existingItem.Id))
+            .ToListAsync(cancellationToken);
 
-        foreach (var existingItem in items.Where(candidate => idsToArchive.Contains(candidate.Id)))
+        foreach (var existingItem in entitiesToArchive)
         {
             existingItem.Archive(now, currentUserId);
         }
@@ -365,7 +381,8 @@ public sealed class NotebookItemMutationService(
                 "The notebook item changed while the archive was being applied.");
         }
 
-        return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
+        var archivedItem = entitiesToArchive.Single(existingItem => existingItem.Id == itemId);
+        return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(archivedItem));
     }
 
     public async Task<NotesResult<NotebookItemModel>> RestoreNotebookItemAsync(
@@ -379,9 +396,7 @@ public sealed class NotebookItemMutationService(
             return NotesResult<NotebookItemModel>.Failure(accessError.Kind, accessError.Code, accessError.Message);
         }
 
-        var items = await dbContext.NotebookItems
-            .Where(item => item.NotebookId == notebookId)
-            .ToListAsync(cancellationToken);
+        var items = await GetNotebookStructureAsync(notebookId, includeArchived: true, cancellationToken);
         var item = items.SingleOrDefault(existingItem => existingItem.Id == itemId);
         if (item is null)
         {
@@ -414,8 +429,11 @@ public sealed class NotebookItemMutationService(
 
         var idsToRestore = NotebookItemTree.GetDescendantIds(items, itemId);
         idsToRestore.Add(itemId);
+        var entitiesToRestore = await dbContext.NotebookItems
+            .Where(existingItem => existingItem.NotebookId == notebookId && idsToRestore.Contains(existingItem.Id))
+            .ToListAsync(cancellationToken);
 
-        foreach (var existingItem in items.Where(candidate => idsToRestore.Contains(candidate.Id)))
+        foreach (var existingItem in entitiesToRestore)
         {
             existingItem.Restore();
         }
@@ -432,7 +450,8 @@ public sealed class NotebookItemMutationService(
                 "The notebook item changed while the restore was being applied.");
         }
 
-        return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
+        var restoredItem = entitiesToRestore.Single(existingItem => existingItem.Id == itemId);
+        return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(restoredItem));
     }
 
     private async Task<Notebook?> GetOwnedNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
@@ -502,6 +521,34 @@ public sealed class NotebookItemMutationService(
             : await dbContext.NotebookItems.SingleOrDefaultAsync(
                 item => item.NotebookId == notebookId && item.Id == parentId && !item.IsArchived,
                 cancellationToken);
+    }
+
+    private Task<List<NotebookItem>> GetNotebookStructureAsync(
+        Guid notebookId,
+        bool includeArchived,
+        CancellationToken cancellationToken)
+    {
+        return dbContext.NotebookItems
+            .AsNoTracking()
+            .Where(item => item.NotebookId == notebookId && (includeArchived || !item.IsArchived))
+            .Select(item => new NotebookItem
+            {
+                Id = item.Id,
+                NotebookId = item.NotebookId,
+                ParentId = item.ParentId,
+                Type = item.Type,
+                Title = item.Title,
+                Slug = item.Slug,
+                Path = item.Path,
+                SortOrder = item.SortOrder,
+                IsArchived = item.IsArchived,
+                ArchivedAtUtc = item.ArchivedAtUtc,
+                ArchivedByUserId = item.ArchivedByUserId,
+                Revision = item.Revision,
+                CreatedAtUtc = item.CreatedAtUtc,
+                UpdatedAtUtc = item.UpdatedAtUtc
+            })
+            .ToListAsync(cancellationToken);
     }
 
     private async Task UpdateDescendantPathsAsync(

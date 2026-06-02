@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CodeCafe.Api.Errors;
 
@@ -13,26 +14,32 @@ public sealed class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
-        var (statusCode, error) = exception switch
+        var (statusCode, problem) = exception switch
         {
             AntiforgeryValidationException => (
                 StatusCodes.Status400BadRequest,
-                new ApiError("invalid_csrf_token", "The CSRF token is missing or invalid.")),
-            ValidationException validationException => (
+                ApiProblems.Create("invalid_csrf_token", "The CSRF token is missing or invalid.", StatusCodes.Status400BadRequest)),
+            ValidationException validationException when validationException.Errors.Any() => (
                 StatusCodes.Status400BadRequest,
-                new ApiError("validation_error", validationException.Errors.FirstOrDefault()?.ErrorMessage ?? "One or more validation errors occurred.")),
+                ApiProblems.CreateValidation(
+                    "validation_error",
+                    validationException.Errors.GroupBy(error => error.PropertyName, error => error.ErrorMessage),
+                    StatusCodes.Status400BadRequest)),
+            ValidationException => (
+                StatusCodes.Status400BadRequest,
+                ApiProblems.Create("validation_error", "One or more validation errors occurred.", StatusCodes.Status400BadRequest)),
             DbUpdateException => (
                 StatusCodes.Status500InternalServerError,
-                new ApiError("database_error", "A database error occurred.")),
+                ApiProblems.Create("database_error", "A database error occurred.", StatusCodes.Status500InternalServerError)),
             TimeoutException => (
                 StatusCodes.Status504GatewayTimeout,
-                new ApiError("timeout", "The request timed out.")),
+                ApiProblems.Create("timeout", "The request timed out.", StatusCodes.Status504GatewayTimeout)),
             OperationCanceledException when httpContext.RequestAborted.IsCancellationRequested => (
                 StatusCodes.Status499ClientClosedRequest,
-                new ApiError("request_cancelled", "The request was cancelled.")),
+                ApiProblems.Create("request_cancelled", "The request was cancelled.", StatusCodes.Status499ClientClosedRequest)),
             _ => (
                 StatusCodes.Status500InternalServerError,
-                new ApiError("internal_error", "An unexpected error occurred."))
+                ApiProblems.Create("internal_error", "An unexpected error occurred.", StatusCodes.Status500InternalServerError))
         };
 
         if (statusCode == StatusCodes.Status500InternalServerError)
@@ -41,7 +48,7 @@ public sealed class GlobalExceptionHandler(
         }
 
         httpContext.Response.StatusCode = statusCode;
-        await httpContext.Response.WriteAsJsonAsync(error, cancellationToken);
+        await Results.Problem(problem).ExecuteAsync(httpContext);
         return true;
     }
 }

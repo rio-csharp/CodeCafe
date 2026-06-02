@@ -25,7 +25,12 @@ public sealed class NotesMcpPrompts
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
             await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookReadService, cancellationToken));
-        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
+        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(
+            NotesMcpSupport.EnsureMcpSuccess(await notebookReadService.GetNotebookItemByPathAsync(
+                notebook.Slug,
+                path,
+                NotesMcpSupport.GetCurrentUserId(user),
+                cancellationToken))));
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Use `{NotesMcpToolNames.GetPage}` for notebook `{notebook.Slug}` and path `{page.Path}`.",
@@ -65,7 +70,12 @@ public sealed class NotesMcpPrompts
         NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequireScope(user, mcpOptions.RequiredReadScopes));
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
             await NotesMcpSupport.RequireNotebookAsync(notebookSlug, user, notebookReadService, cancellationToken));
-        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(notebook, path));
+        var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(
+            NotesMcpSupport.EnsureMcpSuccess(await notebookReadService.GetNotebookItemByPathAsync(
+                notebook.Slug,
+                path,
+                NotesMcpSupport.GetCurrentUserId(user),
+                cancellationToken))));
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Read page `{page.Path}` in notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetPage}`.",
