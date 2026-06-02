@@ -1,5 +1,6 @@
 using CodeCafe.Api.Configuration;
 using CodeCafe.Api.Errors;
+using CodeCafe.Api.Endpoints.Auth;
 using CodeCafe.Api.Networking;
 using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Infrastructure.Persistence;
@@ -11,6 +12,9 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.RateLimiting;
@@ -35,7 +39,12 @@ public static class ServiceCollectionExtensions
         services.AddCodeCafeAuthentication();
         services.AddCodeCafeRateLimiting();
         services.AddCodeCafeIdentity();
+        services.AddScoped<IAuthSessionService, IdentityAuthSessionService>();
         services.AddCodeCafeApplicationCookie();
+        services.AddCodeCafeShutdownOptions(configuration);
+        services.AddCodeCafeHealthChecks(environment);
+        services.AddSingleton<ServerDrainState>();
+        services.AddHostedService<ServerDrainHostedService>();
         services.AddSingleton<IClientIpAddressAccessor, ClientIpAddressAccessor>();
         services.AddSingleton<DatabaseMigrationRunner>();
         services.AddOptions<AuthorizationServerOptions>()
@@ -112,6 +121,49 @@ public static class ServiceCollectionExtensions
         if (!environment.IsEnvironment("Testing"))
         {
             services.AddHostedService<OpenIddictSeedHostedService>();
+        }
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeShutdownOptions(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddOptions<ShutdownOptions>()
+            .Bind(configuration.GetSection(ShutdownOptions.SectionName))
+            .Validate(options => options.TimeoutSeconds > 0,
+                "Shutdown:TimeoutSeconds must be greater than zero.")
+            .ValidateOnStart();
+
+        services.AddOptions<HostOptions>()
+            .Configure<IOptions<ShutdownOptions>>((options, shutdownOptionsAccessor) =>
+            {
+                options.ShutdownTimeout = TimeSpan.FromSeconds(shutdownOptionsAccessor.Value.TimeoutSeconds);
+            });
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeHealthChecks(
+        this IServiceCollection services,
+        IHostEnvironment environment)
+    {
+        var healthChecks = services.AddHealthChecks()
+            .AddCheck(
+                "self",
+                () => HealthCheckResult.Healthy("The host process is running."),
+                tags: ["live", "ready"]);
+
+        healthChecks.AddCheck<ServerDrainReadinessHealthCheck>(
+            "drain",
+            tags: ["ready"]);
+
+        if (!environment.IsEnvironment("Testing"))
+        {
+            healthChecks.AddCheck<DatabaseReadinessHealthCheck>(
+                "database",
+                tags: ["ready"]);
         }
 
         return services;

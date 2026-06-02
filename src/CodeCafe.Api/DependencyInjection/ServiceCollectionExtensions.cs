@@ -1,5 +1,4 @@
 using CodeCafe.Api.Configuration;
-using CodeCafe.Api.Endpoints.Auth;
 
 namespace CodeCafe.Api.DependencyInjection;
 
@@ -8,9 +7,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddCodeCafeApi(
         this IServiceCollection services)
     {
-        services.AddCodeCafeAuthOptions();
-        services.AddCodeCafeAuthEndpointService();
-        return services;
+        return services.AddCodeCafeAuthOptions();
     }
 
     private static IServiceCollection AddCodeCafeAuthOptions(this IServiceCollection services)
@@ -19,12 +16,6 @@ public static class ServiceCollectionExtensions
             .BindConfiguration(AuthOptions.SectionName)
             .ValidateOnStart();
 
-        return services;
-    }
-
-    private static IServiceCollection AddCodeCafeAuthEndpointService(this IServiceCollection services)
-    {
-        services.AddScoped<IAuthEndpointService, IdentityAuthEndpointService>();
         return services;
     }
 }

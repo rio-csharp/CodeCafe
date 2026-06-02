@@ -8,8 +8,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
     <ProjectReference Include="..\CodeCafe.Application\CodeCafe.Application.csproj" />
-    <ProjectReference Include="..\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

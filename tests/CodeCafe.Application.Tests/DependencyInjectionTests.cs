@@ -1,3 +1,4 @@
+using CodeCafe.Application.Auth.Commands.RegisterUser;
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
 using FluentValidation;
 using MediatR;
@@ -28,5 +29,6 @@ public sealed class DependencyInjectionTests
 
         Assert.NotNull(serviceProvider.GetService<ISender>());
         Assert.Single(serviceProvider.GetServices<IValidator<CreateNotebookCommand>>());
+        Assert.Single(serviceProvider.GetServices<IValidator<RegisterUserCommand>>());
     }
 }

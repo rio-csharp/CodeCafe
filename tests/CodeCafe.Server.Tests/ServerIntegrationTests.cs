@@ -1,5 +1,7 @@
 using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using System.Net;
@@ -133,6 +135,23 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         var guideResult = await mcpClient.ReadResourceAsync("notes://guide");
         var guide = Assert.IsType<TextResourceContents>(Assert.Single(guideResult.Contents));
         Assert.Contains(NotesMcpToolNames.CreateUpload, guide.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CombinedHost_ReadinessFails_WhenServerIsDraining()
+    {
+        using var factory = new ServerTestFactory();
+        var drainState = factory.Services.GetRequiredService<ServerDrainState>();
+        _ = drainState.BeginDraining("test");
+
+        using var client = factory.CreateClient();
+        using var response = await client.GetAsync("/health/ready");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("unhealthy", document.RootElement.GetProperty("status").GetString());
+        Assert.Equal("unhealthy", document.RootElement.GetProperty("checks").GetProperty("drain").GetProperty("status").GetString());
     }
 
     private static async Task<HttpResponseMessage> SendWithCsrfAsync(

@@ -54,3 +54,12 @@ That backend image is responsible for:
 - MCP routes
 - OAuth/OpenIddict endpoints
 - migration startup command
+
+## Graceful Shutdown
+
+Rolling deployments rely on readiness-driven draining before process shutdown:
+
+- the pod `preStop` hook sends `SIGUSR1` to the running `CodeCafe.Server` process
+- the server immediately marks itself draining, so `/health/ready` starts failing
+- Kubernetes stops routing new traffic to the pod while the hook waits briefly
+- after the wait, normal termination continues and the host uses its shutdown timeout to let in-flight requests finish

@@ -49,6 +49,8 @@ spec:
           env:
             - name: Auth__RegistrationEnabled
               value: {{ .Values.api.auth.registrationEnabled | quote }}
+            - name: Shutdown__TimeoutSeconds
+              value: {{ max 1 (sub .Values.api.terminationGracePeriodSeconds .Values.api.preStopSleepSeconds) | quote }}
             {{- range $index, $origin := .Values.api.cors.allowedOrigins }}
             - name: Cors__AllowedOrigins__{{ $index }}
               value: {{ $origin | quote }}
@@ -62,7 +64,7 @@ spec:
                 command:
                   - /bin/sh
                   - -c
-                  - sleep {{ .Values.api.preStopSleepSeconds }}
+                  - kill -USR1 1 || true; sleep {{ .Values.api.preStopSleepSeconds }}
           readinessProbe:
             httpGet:
               path: {{ .Values.api.probes.readiness.path }}

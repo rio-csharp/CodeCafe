@@ -1,4 +1,5 @@
 using CodeCafe.Api.Endpoints.Auth;
+using CodeCafe.Application.Auth;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
 using CodeCafe.Server.Common;
@@ -51,7 +52,8 @@ public sealed class ServerTestFactory : WebApplicationFactory<ServerAssemblyMark
             services.AddSingleton<INotebookMutationStore>(serviceProvider => serviceProvider.GetRequiredService<ServerTestNotebookMutationStore>());
             services.AddSingleton<INotebookReadService, ServerTestNotebookQueryService>();
             services.AddSingleton<INotebookItemMutationService, ServerTestNotebookCommandService>();
-            services.AddSingleton<IAuthEndpointService, ServerTestAuthEndpointService>();
+            services.AddSingleton<IAuthUserGateway, ServerTestAuthUserGateway>();
+            services.AddSingleton<IAuthSessionService, ServerTestAuthSessionService>();
         });
     }
 }
@@ -409,40 +411,58 @@ internal sealed class ServerTestNotebookMutationStore : INotebookMutationStore
     }
 }
 
-internal sealed class ServerTestAuthEndpointService : IAuthEndpointService
+internal sealed class ServerTestAuthUserGateway : IAuthUserGateway
 {
-    public Task<AuthOperationResult<AuthResponse>> RegisterAsync(RegisterRequest request, HttpContext httpContext)
-        => Task.FromResult(AuthOperationResult<AuthResponse>.Success(
-            StatusCodes.Status200OK,
-            new AuthResponse(new UserResponse(
-                Guid.Parse("55555555-5555-5555-5555-555555555555"),
-                request.Email.Trim().ToLowerInvariant(),
-                request.DisplayName.Trim()))));
+    private static readonly Guid DefaultUserId = Guid.Parse("55555555-5555-5555-5555-555555555555");
 
-    public Task<AuthOperationResult<AuthResponse>> LoginAsync(LoginRequest request, HttpContext httpContext)
-        => Task.FromResult(AuthOperationResult<AuthResponse>.Success(
-            StatusCodes.Status200OK,
-            new AuthResponse(new UserResponse(
-                Guid.Parse("55555555-5555-5555-5555-555555555555"),
-                request.Email.Trim().ToLowerInvariant(),
-                "Yao"))));
-
-    public Task<AuthOperationResult<AuthResponse>> MeAsync(ClaimsPrincipal user)
+    public Task<AuthUserModel?> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
     {
-        var subject = user.FindFirstValue(ClaimTypes.NameIdentifier);
-        return Task.FromResult(subject is null
-            ? AuthOperationResult<AuthResponse>.Failure(
-                StatusCodes.Status401Unauthorized,
-                "unauthorized",
-                "Authentication is required.")
-            : AuthOperationResult<AuthResponse>.Success(
-                StatusCodes.Status200OK,
-                new AuthResponse(new UserResponse(
-                    Guid.Parse(subject),
-                    "yao@example.com",
-                    "Yao"))));
+        AuthUserModel? user = normalizedEmail switch
+        {
+            "yao@example.com" => new AuthUserModel(DefaultUserId, normalizedEmail, "Yao"),
+            "existing.user@example.com" => new AuthUserModel(DefaultUserId, normalizedEmail, "Existing User"),
+            _ => null
+        };
+
+        return Task.FromResult(user);
     }
 
-    public Task<LogoutResponse> LogoutAsync()
-        => Task.FromResult(new LogoutResponse(true));
+    public Task<AuthUserModel?> FindByIdAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult<AuthUserModel?>(
+            userId == Guid.Empty
+                ? null
+                : new AuthUserModel(userId, "yao@example.com", "Yao"));
+    }
+
+    public Task<AuthCreateUserResult> CreateUserAsync(
+        string normalizedEmail,
+        string displayName,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult(
+            string.Equals(normalizedEmail, "existing.user@example.com", StringComparison.Ordinal)
+                ? AuthCreateUserResult.Failure(["DuplicateEmail"])
+                : AuthCreateUserResult.Success(new AuthUserModel(DefaultUserId, normalizedEmail, displayName)));
+    }
+
+    public Task<AuthPasswordVerificationResult> VerifyPasswordAsync(
+        Guid userId,
+        string password,
+        bool lockoutOnFailure,
+        CancellationToken cancellationToken)
+    {
+        return Task.FromResult(
+            password == "Password123!"
+                ? AuthPasswordVerificationResult.Success()
+                : AuthPasswordVerificationResult.Failure(isLockedOut: false));
+    }
+}
+
+internal sealed class ServerTestAuthSessionService : IAuthSessionService
+{
+    public Task SignInAsync(Guid userId, bool isPersistent) => Task.CompletedTask;
+
+    public Task SignOutAsync() => Task.CompletedTask;
 }
