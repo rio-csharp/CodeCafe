@@ -29,4 +29,10 @@ export { buildTree, findFirstPage, findPageByPath, flattenTree } from './lib/bui
 export { extractOutline, slugifyHeadingId } from './lib/extractOutline'
 export type { OutlineHeading } from './lib/extractOutline'
 export { findSiblings } from './lib/findSiblings'
+export {
+  NOTEBOOK_VISIBILITY_COLLECTION_LABELS,
+  NOTEBOOK_VISIBILITY_CONTEXT_LABELS,
+  NOTEBOOK_VISIBILITY_HELP_TEXT,
+  NOTEBOOK_VISIBILITY_LABELS,
+} from './lib/visibility'
 export { useNotebook, useNotebookItems } from './model/useNotebookQueries'

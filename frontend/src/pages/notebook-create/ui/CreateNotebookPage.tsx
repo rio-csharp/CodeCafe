@@ -40,7 +40,7 @@ export default function CreateNotebookPage() {
 
         <h1 className="text-2xl font-bold text-text-primary">Create Notebook</h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Start a new knowledge base. You can add folders and pages inside.
+          Start a new notebook, then organize it with folders, pages, and the visibility that fits your audience.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
@@ -68,7 +68,7 @@ export default function CreateNotebookPage() {
               id="notebook-description"
               data-testid="create-notebook-description"
               {...register('description')}
-              placeholder="What is this notebook about?"
+              placeholder="What will this notebook help you capture?"
               rows={3}
               className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
             />

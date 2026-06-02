@@ -31,10 +31,10 @@ export default function NotebookReaderPage() {
     error: notebookError,
   } = useNotebook(notebookSlug!)
 
-  const allItems = notebook?.items ?? []
   const visibleItems = useMemo(() => {
-    return showArchived ? allItems : allItems.filter((item) => !item.isArchived)
-  }, [allItems, showArchived])
+    const items = notebook?.items ?? []
+    return showArchived ? items : items.filter((item) => !item.isArchived)
+  }, [notebook?.items, showArchived])
 
   const updateItem = useUpdateNotebookItem(notebook?.id ?? '')
   const { showToast } = useToast()
@@ -154,9 +154,9 @@ export default function NotebookReaderPage() {
         ) : (
           <div className="flex items-center justify-center h-64">
             <div className="text-center">
-              <p className="text-sm text-text-tertiary">This notebook has no pages yet.</p>
+              <p className="text-sm text-text-tertiary">This notebook does not have any pages yet.</p>
               {notebook.canEdit && (
-                <p className="text-xs text-text-tertiary mt-2">Use the sidebar to add a new page.</p>
+                <p className="text-xs text-text-tertiary mt-2">Use the left panel to add a page or folder.</p>
               )}
             </div>
           </div>

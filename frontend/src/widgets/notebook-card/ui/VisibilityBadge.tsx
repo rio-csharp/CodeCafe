@@ -1,5 +1,5 @@
 import { Globe, Lock, EyeOff } from 'lucide-react'
-import type { NotebookVisibility } from '@/entities/notebook'
+import { NOTEBOOK_VISIBILITY_LABELS, type NotebookVisibility } from '@/entities/notebook'
 
 const config: Record<
   NotebookVisibility,
@@ -29,7 +29,7 @@ export default function VisibilityBadge({ visibility }: { visibility: NotebookVi
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${className}`}
     >
       <Icon className="h-3 w-3" />
-      {label}
+      {NOTEBOOK_VISIBILITY_LABELS[visibility] ?? label}
     </span>
   )
 }

@@ -63,24 +63,24 @@ function FeaturesSection() {
           transition={{ duration: 0.4 }}
           className="text-center mb-10"
         >
-          <h2 className="text-2xl font-bold text-text-primary">What you can do</h2>
+          <h2 className="text-2xl font-bold text-text-primary">What is live today</h2>
           <p className="mt-2 text-text-secondary">
-            Simple tools for your daily workflow.
+            Notes are ready now, and deeper code workflows are still taking shape.
           </p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto">
           <FeatureCard
             icon={<FileText className="h-5 w-5 text-text-secondary" strokeWidth={1.5} />}
-            title="Notes"
-            description="Write and organize your notes. Keep your knowledge structured and easy to find."
+            title="Notebooks"
+            description="Create structured notebooks with folders, pages, rich text, search, favorites, and visibility controls."
             delay={0.1}
             href="/notes"
           />
           <FeatureCard
             icon={<Code2 className="h-5 w-5 text-text-secondary" strokeWidth={1.5} />}
             title="Codes"
-            description="Explore code with AI assistance. Understand, explain, and learn more effectively."
+            description="A dedicated code-reading workspace is planned next. Today CodeCafe focuses on notebooks and MCP-ready note workflows."
             delay={0.15}
           />
         </div>

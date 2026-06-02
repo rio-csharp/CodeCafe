@@ -8,7 +8,10 @@ import { useDeleteNotebook } from '@/features/delete-notebook'
 import { useToggleFavorite } from '@/features/toggle-favorite'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
-import type { Notebook } from '@/entities/notebook'
+import {
+  NOTEBOOK_VISIBILITY_COLLECTION_LABELS,
+  type Notebook,
+} from '@/entities/notebook'
 
 interface NotebookTopBarProps {
   notebook: Notebook
@@ -18,7 +21,7 @@ export default function NotebookTopBar({ notebook }: NotebookTopBarProps) {
   const { user } = useLayout()
   const navigate = useNavigate()
   const isAuthenticated = !!user
-  const visibilityLabel = notebook.visibility === 'public' ? 'Public Notes' : 'My Notes'
+  const visibilityLabel = NOTEBOOK_VISIBILITY_COLLECTION_LABELS[notebook.visibility]
 
   const [menuOpen, setMenuOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -129,7 +132,7 @@ export default function NotebookTopBar({ notebook }: NotebookTopBarProps) {
             className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse hover:opacity-90 transition-opacity"
           >
             <Edit3 className="h-3 w-3" />
-            Edit
+            Edit notebook
           </Link>
         ) : !isAuthenticated ? (
           <Link

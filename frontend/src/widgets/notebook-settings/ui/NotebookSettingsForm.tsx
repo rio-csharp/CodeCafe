@@ -102,7 +102,7 @@ export default function NotebookSettingsForm({
         <textarea
           id="notebook-description"
           {...register('description')}
-          placeholder="What is this notebook about?"
+          placeholder="What will this notebook help you capture?"
           rows={3}
           className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
         />

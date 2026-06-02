@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { Search, FolderOpen, Coffee, Archive } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
+import {
+  NOTEBOOK_VISIBILITY_CONTEXT_LABELS,
+  useNotebookItems,
+} from '@/entities/notebook'
 import { useDebounce } from '@/shared/hooks/useDebounce'
-import { useNotebookItems } from '@/entities/notebook'
 import { useTreeActions } from '@/features/manage-notebook-items'
 import { TreeContext } from '../model/TreeContext'
 import TreeRootActions from './TreeRootActions'
@@ -69,7 +72,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
             <h2 className="text-sm font-bold text-text-primary leading-tight line-clamp-2">{notebook.title}</h2>
           </div>
           <p className="text-xs text-text-tertiary ml-11">
-            {notebook.visibility === 'public' ? 'Public Notebook' : 'Private Notebook'}
+            {NOTEBOOK_VISIBILITY_CONTEXT_LABELS[notebook.visibility]}
           </p>
         </div>
 
@@ -120,7 +123,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
         <div className="px-5 py-3 border-t border-border-subtle">
           <div className="flex items-center gap-2 text-xs text-text-tertiary">
             <Coffee className="h-3.5 w-3.5" />
-            <span>Powered by CodeCafe</span>
+            <span>Browser + MCP ready</span>
           </div>
         </div>
       </div>

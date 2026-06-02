@@ -37,9 +37,9 @@ export default function AiAssistant() {
         <div className="h-10 w-10 rounded-full bg-brand-brown/10 flex items-center justify-center mb-3">
           <Sparkles className="h-5 w-5 text-brand-brown" />
         </div>
-        <p className="text-sm font-medium text-text-secondary">Coming soon</p>
+        <p className="text-sm font-medium text-text-secondary">Planned</p>
         <p className="text-xs text-text-tertiary mt-1 max-w-[200px]">
-          AI-powered assistance for reading, writing, and understanding your notes.
+          A future assistant for summarizing pages, expanding outlines, and helping with notebook edits.
         </p>
       </div>
     </div>

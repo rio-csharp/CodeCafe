@@ -1,5 +1,5 @@
 import { useLayout } from '@/shared/model/layoutContext'
-import { FileText, Code2, Sparkles, Coffee } from 'lucide-react'
+import { FileText, Code2, Sparkles, Coffee, Globe } from 'lucide-react'
 
 function FeatureItem({ icon, title, status }: { icon: React.ReactNode; title: string; status: string }) {
   return (
@@ -27,8 +27,9 @@ function AboutPage() {
         </div>
 
         <p className="text-text-secondary leading-relaxed">
-          CodeCafe is a minimal workspace for capturing ideas, organizing knowledge, and exploring code.
-          Built for engineers who want a clean, distraction-free place to write and think.
+          CodeCafe is a notebook workspace for engineers. The browser app is the main surface today,
+          and the same notebooks are also available through an OAuth-protected MCP adapter for AI clients
+          and automations.
         </p>
 
         <div className="mt-10">
@@ -36,18 +37,23 @@ function AboutPage() {
           <div className="space-y-4">
             <FeatureItem
               icon={<FileText className="h-4 w-4 text-text-secondary" />}
-              title="Notes"
-              status="Available — Write, organize, and share structured notebooks with folders and pages."
+              title="Notebooks"
+              status="Available - Structured notebooks with folders, pages, rich text, search, favorites, and archiving."
+            />
+            <FeatureItem
+              icon={<Globe className="h-4 w-4 text-text-secondary" />}
+              title="Sharing"
+              status="Available - Keep notebooks private, share by link, or publish them to public listings."
+            />
+            <FeatureItem
+              icon={<Sparkles className="h-4 w-4 text-text-secondary" />}
+              title="MCP"
+              status="Available - Browse, search, import, and update notebooks through OAuth-protected MCP tools, resources, and prompts."
             />
             <FeatureItem
               icon={<Code2 className="h-4 w-4 text-text-secondary" />}
               title="Codes"
-              status="Coming soon — Explore and understand code with AI assistance."
-            />
-            <FeatureItem
-              icon={<Sparkles className="h-4 w-4 text-text-secondary" />}
-              title="AI Assistant"
-              status="Coming soon — Ask questions, get summaries, and improve your writing."
+              status="Planned - A dedicated code-reading workspace is still on the roadmap."
             />
           </div>
         </div>
@@ -55,7 +61,7 @@ function AboutPage() {
         <div className="mt-10">
           <h2 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-4">Tech Stack</h2>
           <div className="flex flex-wrap gap-2">
-            {['React 19', 'Vite', 'Tailwind CSS', 'TipTap', 'TanStack Query', 'ASP.NET Core', 'PostgreSQL'].map(
+            {['React 19', 'Vite', 'Tailwind CSS', 'TipTap', 'TanStack Query', 'ASP.NET Core 10', 'OpenIddict', 'PostgreSQL', 'MCP'].map(
               (tech) => (
                 <span key={tech} className="rounded-full bg-surface-hover border border-border-subtle px-3 py-1 text-xs text-text-secondary">
                   {tech}

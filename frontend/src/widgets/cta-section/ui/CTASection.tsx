@@ -14,10 +14,10 @@ function CTASection() {
         >
           <Code2 className="mx-auto h-6 w-6 text-text-tertiary mb-4" strokeWidth={1.5} />
           <h2 className="text-xl font-bold text-text-primary">
-            Build knowledge. Read code. Grow every day.
+            Write once. Browse it anywhere. Automate it when needed.
           </h2>
           <p className="mt-2 text-text-secondary">
-            CodeCafe is just getting started.
+            CodeCafe notebooks are available in the web app today, with MCP access built into the backend.
           </p>
         </motion.div>
       </div>

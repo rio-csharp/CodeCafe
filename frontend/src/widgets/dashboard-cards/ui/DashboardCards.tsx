@@ -7,18 +7,18 @@ const CARDS = [
   {
     to: '/notes',
     label: 'Notes',
-    desc: 'Write, organize, and revisit your knowledge. Capture ideas, create tutorials, and build your personal knowledge base.',
+    desc: 'Write, organize, and revisit structured notebooks with folders, pages, search, and sharing controls.',
     icon: FileText,
     illustration: NotesIllustration,
-    btnText: 'Open Notes',
+    btnText: 'Open notebooks',
   },
   {
     to: '/codes',
     label: 'Codes',
-    desc: 'Read and understand code faster with AI-assisted explanations. Explore, learn, and ship better code.',
+    desc: 'A dedicated code-reading workspace is planned next. The current product focus is notebooks and MCP-ready note workflows.',
     icon: Code,
     illustration: CodesIllustration,
-    btnText: 'Open Codes',
+    btnText: 'See roadmap',
   },
 ] as const
 

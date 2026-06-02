@@ -1,6 +1,10 @@
 import { useWatch, useController } from 'react-hook-form'
 import type { Control, FieldValues, Path } from 'react-hook-form'
-import type { NotebookVisibility } from '@/entities/notebook'
+import {
+  NOTEBOOK_VISIBILITY_HELP_TEXT,
+  NOTEBOOK_VISIBILITY_LABELS,
+  type NotebookVisibility,
+} from '@/entities/notebook'
 
 interface VisibilityFieldProps<T extends FieldValues> {
   control: Control<T>
@@ -8,16 +12,10 @@ interface VisibilityFieldProps<T extends FieldValues> {
 }
 
 const VISIBILITY_OPTIONS: { value: NotebookVisibility; label: string }[] = [
-  { value: 'private', label: 'Private' },
-  { value: 'unlisted', label: 'Unlisted' },
-  { value: 'public', label: 'Public' },
+  { value: 'private', label: NOTEBOOK_VISIBILITY_LABELS.private },
+  { value: 'unlisted', label: NOTEBOOK_VISIBILITY_LABELS.unlisted },
+  { value: 'public', label: NOTEBOOK_VISIBILITY_LABELS.public },
 ]
-
-const visibilityHelp: Record<NotebookVisibility, string> = {
-  public: 'This notebook will be published and visible to everyone.',
-  unlisted: 'Only people with the link can access this notebook.',
-  private: 'Only you can access this notebook.',
-}
 
 export default function VisibilityField<T extends FieldValues>({
   control,
@@ -54,7 +52,7 @@ export default function VisibilityField<T extends FieldValues>({
           </label>
         ))}
       </div>
-      <p className="mt-2 text-xs text-text-tertiary">{visibilityHelp[(visibility as NotebookVisibility) ?? 'private']}</p>
+      <p className="mt-2 text-xs text-text-tertiary">{NOTEBOOK_VISIBILITY_HELP_TEXT[(visibility as NotebookVisibility) ?? 'private']}</p>
     </div>
   )
 }

@@ -41,8 +41,8 @@ function HeroSection() {
               transition={{ duration: 0.4, delay: 0.1 }}
               className="mt-6 text-4xl lg:text-5xl font-bold text-text-primary tracking-tight leading-[1.15]"
             >
-              Your space for notes, code, and{' '}
-              <span className="text-brand-brown">engineering thoughts.</span>
+              Structured notebooks for{' '}
+              <span className="text-brand-brown">engineering work.</span>
             </motion.h1>
 
             <motion.p
@@ -51,8 +51,8 @@ function HeroSection() {
               transition={{ duration: 0.4, delay: 0.2 }}
               className="mt-4 text-base text-text-secondary leading-relaxed"
             >
-              CodeCafe is a minimal workspace where you can capture ideas,
-              organize knowledge, and explore code with clarity.
+              Write in the browser, share the right notebooks publicly or by link,
+              and connect the same knowledge base to MCP clients when you need automation.
             </motion.p>
 
             <motion.div
@@ -65,7 +65,7 @@ function HeroSection() {
                 to="/notes"
                 className="inline-flex items-center gap-2 rounded-lg bg-text-primary px-6 py-2.5 text-sm font-medium text-text-inverse hover:bg-surface-inverse-hover transition-colors"
               >
-                Explore Notes
+                Explore notebooks
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link

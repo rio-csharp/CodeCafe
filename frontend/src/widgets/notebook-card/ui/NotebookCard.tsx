@@ -74,7 +74,7 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
               <h3 className="text-sm font-semibold text-text-primary truncate">{notebook.title}</h3>
               {showVisibility && <VisibilityBadge visibility={notebook.visibility} />}
             </div>
-            <p className="mt-1 text-xs text-text-secondary line-clamp-2 leading-relaxed">{notebook.description || 'No description'}</p>
+            <p className="mt-1 text-xs text-text-secondary line-clamp-2 leading-relaxed">{notebook.description || 'No description yet.'}</p>
           </div>
         </div>
         <div className="mt-3 flex items-center gap-3 text-[11px] text-text-tertiary">
@@ -84,7 +84,7 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
               <span className="flex items-center gap-1"><FolderIcon className="h-3 w-3" />{notebook.folderCount} folder{notebook.folderCount !== 1 ? 's' : ''}</span>
             </>
           ) : (
-            <span>Empty notebook</span>
+            <span>No pages or folders yet</span>
           )}
         </div>
         <div className="mt-3 flex items-center justify-between">

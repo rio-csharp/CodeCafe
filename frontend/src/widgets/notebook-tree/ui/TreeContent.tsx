@@ -88,9 +88,9 @@ export default function TreeContent({
       ))}
       {tree.length === 0 && (
         <div className="px-4 py-6 text-center">
-          <p className="text-xs text-text-tertiary">This notebook is empty.</p>
+          <p className="text-xs text-text-tertiary">No pages or folders yet.</p>
           {canEdit && (
-            <p className="text-xs text-text-tertiary mt-1">Add a folder or page to get started.</p>
+            <p className="text-xs text-text-tertiary mt-1">Add a folder or page to start building the notebook.</p>
           )}
         </div>
       )}

@@ -29,9 +29,8 @@ export default function NotesSelectionPage() {
   return (
     <div className="pt-24 pb-20 lg:pt-32 lg:pb-24">
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        {/* 页面标题始终显示 */}
         <div className="flex items-center justify-between mb-10">
-          <h1 className="text-3xl font-bold text-text-primary">Notes</h1>
+          <h1 className="text-3xl font-bold text-text-primary">Notebooks</h1>
           <div className="hidden sm:flex items-center gap-3">
             <label className="relative block">
               <span className="sr-only">Search notebooks</span>
@@ -47,11 +46,10 @@ export default function NotesSelectionPage() {
           </div>
         </div>
 
-        {/* Public Notes */}
         <section>
           <SectionHeader
-            title="Public Notes"
-            description="Explore notebooks shared by the community."
+            title="Public notebooks"
+            description="Explore notebooks the community has chosen to publish."
             action={
               <Link
                 to="/notes"
@@ -64,7 +62,7 @@ export default function NotesSelectionPage() {
           {publicPending ? (
             <SkeletonGrid />
           ) : publicError ? (
-            <p className="text-sm text-status-error">Failed to load public notes.</p>
+            <p className="text-sm text-status-error">Failed to load public notebooks.</p>
           ) : !publicNotes?.length ? (
             <p className="text-sm text-text-tertiary">No public notebooks yet.</p>
           ) : (
@@ -76,14 +74,13 @@ export default function NotesSelectionPage() {
           )}
         </section>
 
-        {/* Guest CTA — 未登录时始终显示 */}
         {!isAuthenticated && (
           <div className="mt-10 flex items-center justify-between rounded-xl border border-border-default bg-surface-elevated px-6 py-5">
             <div className="flex items-center gap-4">
               <Coffee className="h-8 w-8 text-brand-brown shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-text-primary">Sign in to create your own notebooks</p>
-                <p className="text-sm text-text-secondary">Save, organize, and share your knowledge with CodeCafe.</p>
+                <p className="text-sm font-semibold text-text-primary">Sign in to build your own notebook library</p>
+                <p className="text-sm text-text-secondary">Create private notes, share by link, or publish the notebooks you want others to discover.</p>
               </div>
             </div>
             <Link
@@ -95,12 +92,11 @@ export default function NotesSelectionPage() {
           </div>
         )}
 
-        {/* My Notes — 已登录时始终显示区域标题 */}
         {isAuthenticated && (
           <section className="mt-14">
             <SectionHeader
-              title="My Notes"
-              description="Your personal notebooks."
+              title="My notebooks"
+              description="Your private, unlisted, and published notebooks."
               action={
                 <Link
                   to="/notes/new"
@@ -115,7 +111,7 @@ export default function NotesSelectionPage() {
             {myPending ? (
               <SkeletonGrid />
             ) : myError ? (
-              <p className="text-sm text-status-error">Failed to load your notes.</p>
+              <p className="text-sm text-status-error">Failed to load your notebooks.</p>
             ) : !myNotes?.length ? (
               <p className="text-sm text-text-tertiary">You haven't created any notebooks yet.</p>
             ) : (
@@ -128,7 +124,7 @@ export default function NotesSelectionPage() {
 
             <div className="mt-8 flex items-center justify-center gap-2 text-xs text-text-tertiary">
               <span className="inline-block h-4 w-4 rounded-full border border-border-hover text-center leading-4">i</span>
-              Tip: You can change the visibility of your notebooks at any time.
+              Tip: Notebook visibility lives in settings, so you can switch between private, unlisted, and public later.
             </div>
           </section>
         )}
