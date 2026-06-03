@@ -215,9 +215,9 @@ jobs:
           ConnectionStrings__DefaultConnection="Host=localhost;Database=codecafe_e2e;Username=codecafe;Password=codecafe" \
           ASPNETCORE_URLS="http://localhost:5042" \
           ASPNETCORE_ENVIRONMENT="Development" \
-          .artifacts/api/CodeCafe.Server &
+          dotnet .artifacts/api/CodeCafe.Server.dll &
           for i in {1..30}; do
-            if curl -sf http://localhost:5042/health/live >/dev/null; then
+            if curl -sf http://localhost:5042/health/ready >/dev/null; then
               echo "Backend is ready"
               break
             fi
