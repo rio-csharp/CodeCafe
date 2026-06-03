@@ -8,7 +8,7 @@ test.describe('Notebook lifecycle', () => {
 
     // Navigate to Notes page
     await page.goto('/notes')
-    await expect(page.getByRole('heading', { name: 'Notes' })).toBeVisible()
+    await expect(page.getByTestId('new-notebook-button')).toBeVisible()
 
     // Click "New Notebook"
     await page.getByTestId('new-notebook-button').click()

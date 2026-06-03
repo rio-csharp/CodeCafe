@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test'
 
+const localExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH
+const localBrowserChannel = process.env.PLAYWRIGHT_BROWSER_CHANNEL
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -11,6 +14,10 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    channel: localBrowserChannel,
+    launchOptions: localExecutablePath
+      ? { executablePath: localExecutablePath }
+      : undefined,
   },
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/ },

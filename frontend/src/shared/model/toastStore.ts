@@ -29,5 +29,6 @@ export const useToastStore = create<ToastStore>((set, get) => ({
 }))
 
 export function useToast() {
-  return useToastStore((state) => ({ showToast: state.showToast }))
+  const showToast = useToastStore((state) => state.showToast)
+  return { showToast }
 }
