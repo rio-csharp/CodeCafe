@@ -52,7 +52,7 @@ frontend:
 api:
   replicaCount: 2
   terminationGracePeriodSeconds: 60
-  preStopSleepSeconds: 10
+  preStopSleepSeconds: 15
   podSecurityContext:
     runAsNonRoot: true
     seccompProfile:
@@ -88,9 +88,9 @@ api:
     readiness:
       path: /health/ready
       initialDelaySeconds: 3
-      periodSeconds: 10
+      periodSeconds: 5
       timeoutSeconds: 2
-      failureThreshold: 3
+      failureThreshold: 1
     liveness:
       path: /health/live
       initialDelaySeconds: 10

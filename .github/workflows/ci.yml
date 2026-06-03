@@ -101,7 +101,7 @@ jobs:
       - name: Publish API artifact
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
         run: >
-          dotnet publish src/CodeCafe.WebApi/CodeCafe.WebApi.csproj
+          dotnet publish src/CodeCafe.Server/CodeCafe.Server.csproj
           --configuration Release
           --output .artifacts/api
           --no-build
@@ -159,6 +159,83 @@ jobs:
           name: codecafe-frontend
           path: frontend/dist
           if-no-files-found: error
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - frontend
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: codecafe
+          POSTGRES_PASSWORD: codecafe
+          POSTGRES_DB: codecafe_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Download API artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: codecafe-api
+          path: .artifacts/api
+
+      - name: Start backend
+        run: |
+          ConnectionStrings__DefaultConnection="Host=localhost;Database=codecafe_e2e;Username=codecafe;Password=codecafe" \
+          ASPNETCORE_URLS="http://localhost:5042" \
+          ASPNETCORE_ENVIRONMENT="Development" \
+          dotnet .artifacts/api/CodeCafe.Server.dll &
+          for i in {1..30}; do
+            if curl -sf http://localhost:5042/health/ready >/dev/null; then
+              echo "Backend is ready"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 4
+          done
+
+      - name: Run E2E tests
+        working-directory: frontend
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          if-no-files-found: ignore
 
   helm-chart:
     name: Helm chart
@@ -225,7 +302,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: src/CodeCafe.WebApi/Dockerfile
+          file: src/CodeCafe.Server/Dockerfile
           push: true
           tags: ghcr.io/${{ vars.IMAGE_NAMESPACE }}/api:${{ needs.artifact-policy.outputs.image_tag }}
           cache-from: type=gha,scope=codecafe-api

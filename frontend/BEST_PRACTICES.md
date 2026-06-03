@@ -1,7 +1,7 @@
-# CodeCafe Frontend Best Practices
+# Frontend Best Practices
 
-> This guide is for the CodeCafe frontend development team to maintain code consistency and maintainability.
-> Tech Stack: React 19 + TypeScript + Vite + Tailwind CSS + TanStack Query + Zustand + TipTap
+> Universal guidelines for React + TypeScript projects using modern tooling.
+> Stack: React 19 + TypeScript + Vite + Tailwind CSS v4 + TanStack Query + Zustand
 
 ---
 
@@ -40,8 +40,8 @@ function Dashboard() {
   return (
     <Layout>
       <StatsSection />
-      <RecentNotes />
-      <AiChatPanel />
+      <RecentActivity />
+      <QuickActions />
     </Layout>
   )
 }
@@ -52,8 +52,6 @@ function Dashboard() {
 ---
 
 ## 2. Server State vs Client State
-
-This is one of the most important concepts in modern React.
 
 | Type | Definition | Tool |
 |------|-----------|------|
@@ -70,8 +68,8 @@ This is one of the most important concepts in modern React.
 ```tsx
 // ✅ Good
 const { data, isLoading, error } = useQuery({
-  queryKey: ['notes'],
-  queryFn: fetchNotes,
+  queryKey: ['users'],
+  queryFn: fetchUsers,
 })
 ```
 
@@ -84,10 +82,10 @@ const { data, isLoading, error } = useQuery({
 
 ```tsx
 // ❌ Bad smell: manually syncing server data with useState
-const [notes, setNotes] = useState([])
+const [users, setUsers] = useState([])
 
 useEffect(() => {
-  fetch('/api/notes').then(r => r.json()).then(setNotes)
+  fetch('/api/users').then(r => r.json()).then(setUsers)
 }, [])
 ```
 
@@ -154,9 +152,9 @@ const useAuthStore = create(() => ({
 ```tsx
 // ❌ Bad smell: manually handling loading/error
 useEffect(() => {
-  fetch('/api/notes')
+  fetch('/api/users')
     .then(r => r.json())
-    .then(setNotes)
+    .then(setUsers)
     .catch(setError)
 }, [])
 ```
@@ -164,8 +162,8 @@ useEffect(() => {
 ```tsx
 // ✅ Good: data requests always go through TanStack Query
 const { data, isLoading, error } = useQuery({
-  queryKey: ['notes'],
-  queryFn: fetchNotes,
+  queryKey: ['users'],
+  queryFn: fetchUsers,
 })
 ```
 
@@ -222,13 +220,13 @@ data.something.wrong()
 
 ```tsx
 // ✅ Good: define explicit types
-interface Note {
+interface User {
   id: string
-  title: string
-  content: string
+  name: string
+  email: string
 }
 
-const data: Note[] = await response.json()
+const data: User[] = await response.json()
 ```
 
 **Review rule of thumb**: `any` is tech debt, `@ts-ignore` is a ticking bomb. Always ask for justification.
@@ -239,75 +237,50 @@ const data: Note[] = await response.json()
 
 ### Never Call fetch/axios Directly Inside Components
 
-All API calls should live in feature modules or `lib/api`.
+All API calls should live in entity modules or a shared API layer.
 
 Allowed direct `fetch` locations:
 
-- `src/lib/apiClient.ts` for normal authenticated API calls
-- `src/lib/api/health.ts` for lightweight health checks
+- Shared API client for authenticated API calls
+- Lightweight health checks
 
 ```
 src/
 ├── features/
-│   └── notes/
-│       ├── NotesPage.tsx
-│       ├── NoteCard.tsx
+│   └── user-management/
+│       ├── UserList.tsx
 │       └── api/
-│           ├── getNotes.ts
-│           ├── createNote.ts
-│           └── updateNote.ts
+│           ├── getUsers.ts
+│           ├── createUser.ts
+│           └── updateUser.ts
 ```
 
 ```tsx
 // ❌ Bad smell: fetch scattered everywhere
-function NotesPage() {
+function UserList() {
   useEffect(() => {
-    fetch('/api/notes').then(...)   // don't do this
+    fetch('/api/users').then(...)   // don't do this
   }, [])
 }
 ```
 
 ```tsx
 // ✅ Good: centralized API layer
-import { useNotes } from '@/features/notes/api/getNotes'
+import { useUsers } from '@/features/user-management/api/getUsers'
 
-function NotesPage() {
-  const { data } = useNotes()   // wraps useQuery
+function UserList() {
+  const { data } = useUsers()   // wraps useQuery
 }
 ```
 
-### CodeCafe API Rules
+### API Rules
 
-- Use `apiFetch` for product API calls so cookies, JSON parsing, CSRF headers,
-  and retry-on-stale-CSRF behavior stay consistent.
-- Mutating requests must go through `apiFetch`; do not manually fetch
-  `/api/auth/csrf` from feature code.
-- Keep API functions small and transport-shaped. React components should call
-  hooks or feature API functions, not assemble URLs and request headers.
-- Preserve backend contracts exactly. If the backend returns nullable fields,
-  model them as nullable in TypeScript instead of assuming success data exists.
-- Treat `updatedAtUtc` as a meaningful contract field. When backend optimistic
-  concurrency lands, note/page writes should send the expected timestamp or
-  revision from the current item.
+- Use a shared `apiFetch` wrapper so cookies, JSON parsing, CSRF headers, and retry behavior stay consistent.
+- Mutating requests must go through the shared client; do not manually fetch CSRF tokens from feature code.
+- Keep API functions small and transport-shaped. React components should call hooks or feature API functions, not assemble URLs and request headers.
+- Preserve backend contracts exactly. If the backend returns nullable fields, model them as nullable in TypeScript instead of assuming success data exists.
 
 **Review rule of thumb**: If you see `fetch(` or `axios(` inside a component, request extraction to the API layer.
-
-### TipTap Content Contract
-
-Notebook page content is TipTap JSON. The frontend owns editor UX, but the
-backend owns persistence validation and derived search text.
-
-Rules:
-
-- Use `{ type: 'doc', content: [] }` for an empty page document.
-- Do not hand-edit TipTap JSON in components outside editor or content utility
-  code.
-- Keep outline extraction, plain-text previews, and display helpers in feature
-  utilities so page components stay focused.
-- Do not make search depend on frontend-generated `plainTextContent`. The
-  backend should derive searchable text from saved `contentJson`.
-- When adding editor extensions, update content rendering, tests, and backend
-  validation expectations together.
 
 ---
 
@@ -371,14 +344,14 @@ function LoginForm() {
 ### Every Async Page Must Handle All Four States
 
 ```tsx
-function NotesPage() {
-  const { data, isLoading, error } = useNotes()
+function UserListPage() {
+  const { data, isLoading, error } = useUsers()
 
-  if (isLoading) return <NotesSkeleton />     // 1. Loading
+  if (isLoading) return <Skeleton />            // 1. Loading
   if (error) return <ErrorFallback error={error} />  // 2. Error
   if (!data || data.length === 0) return <EmptyState />  // 3. Empty
 
-  return <NotesList notes={data} />            // 4. Success
+  return <UserList users={data} />              // 4. Success
 }
 ```
 
@@ -390,14 +363,10 @@ function NotesPage() {
 
 Mutations should leave TanStack Query cache in a predictable state:
 
-- Invalidate affected list/detail keys after create, update, delete, favorite,
-  and reorder operations.
-- Use `setQueryData` only when the replacement is complete enough to render
-  immediately.
-- If a mutation can change a route identity, such as a notebook slug, write the
-  returned object under the new query key before navigating.
-- Avoid optimistic updates for tree moves or document writes until conflict
-  handling exists; stale page content is better than silently losing edits.
+- Invalidate affected list/detail keys after create, update, delete operations.
+- Use `setQueryData` only when the replacement is complete enough to render immediately.
+- If a mutation can change a route identity (e.g. a slug), write the returned object under the new query key before navigating.
+- Avoid optimistic updates for complex moves or document writes until conflict handling exists.
 
 ---
 
@@ -420,6 +389,31 @@ const heavyResult = useMemo(() => expensiveSort(bigList), [bigList])
 
 **Review rule of thumb**: Don't "prematurely optimize". Write simple code first, use Profiler to measure, then add memoization if needed.
 
+### Code Splitting with React.lazy
+
+For heavy components that are not needed on initial page load, use `React.lazy()` + `Suspense`:
+
+```tsx
+// ✅ Good: editor is only needed when user clicks "Edit"
+const RichTextEditor = lazy(() => import('@/widgets/rich-text-editor'))
+
+function DocumentPage() {
+  return (
+    <Suspense fallback={<EditorSkeleton />}>
+      {isEditing && <RichTextEditor content={content} />}
+    </Suspense>
+  )
+}
+```
+
+Candidates for lazy loading:
+- Rich text editors (TipTap, CKEditor, etc.)
+- Heavy data-visualization charts
+- Complex modals that are rarely opened
+- Admin-only panels
+
+**Review rule of thumb**: If a component pulls in >200KB of dependencies and is not visible on first paint, lazy load it.
+
 ---
 
 ## 12. Testing
@@ -428,8 +422,8 @@ We do **not** practice strict TDD. We practice **"test alongside development"**.
 
 ### What Must Be Tested
 
-- **Utility functions** (`lib/`) — pure logic, easy to test, high value
-- **State management logic** (`stores/`) — Zustand stores, reducers, selectors
+- **Utility functions** (`shared/lib/`) — pure logic, easy to test, high value
+- **State management logic** (feature `model/` or `shared/model/`) — Zustand stores, reducers, selectors
 - **API layer transformations** — data parsing, error mapping, request builders
 - **Bug fixes** — always write a regression test that reproduces the bug *before* fixing it
 
@@ -456,7 +450,7 @@ We do **not** practice strict TDD. We practice **"test alongside development"**.
 ### Example: Utility Function Test
 
 ```ts
-// src/lib/dateUtils.ts
+// src/shared/lib/dateUtils.ts
 export function formatDate(date: Date): string {
   const y = date.getFullYear()
   const m = String(date.getMonth() + 1).padStart(2, '0')
@@ -466,7 +460,7 @@ export function formatDate(date: Date): string {
 ```
 
 ```ts
-// src/lib/dateUtils.test.ts
+// src/shared/lib/dateUtils.test.ts
 import { describe, it, expect } from 'vitest'
 import { formatDate } from './dateUtils'
 
@@ -487,9 +481,9 @@ describe('formatDate', () => {
 // ❌ Bad: fix the bug without a test
 // ✅ Good: write the failing test first, then fix
 
-it('should not crash when notes list is empty', () => {
+it('should not crash when list is empty', () => {
   // This test was added after bug #123
-  expect(() => render(<NotesList notes={[]} />)).not.toThrow()
+  expect(() => render(<ItemList items={[]} />)).not.toThrow()
 })
 ```
 
@@ -500,7 +494,9 @@ it('should not crash when notes list is empty', () => {
 3. **Do not chase 100% coverage.** Aim for confidence, not metrics.
 4. **Tests should be as easy to delete as the code they test.** If a feature is removed, its tests go too.
 
-**Review rule of thumb**: If a PR touches `lib/`, `stores/`, or `api/` without test files, request them.
+**Review rule of thumb**: If a PR touches `shared/lib/`, `shared/api/`, or feature `model/` without test files, request them.
+
+---
 
 ## 13. Styling (Tailwind CSS)
 
@@ -518,8 +514,8 @@ The most common pitfall in traditional React projects: **one giant CSS file with
 ### Prefer Tailwind Utilities
 
 ```tsx
-// ❌ Traditional: go hunt for .note-card definition in some CSS file
-<div className="note-card">
+// ❌ Traditional: go hunt for .card definition in some CSS file
+<div className="card">
 
 // ✅ Tailwind: styles live right in the component, self-documenting
 <div className="rounded-lg border p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -554,10 +550,7 @@ body {
 
 ### Inline Style Exceptions
 
-Prefer Tailwind utilities for static styles. Inline styles are acceptable only
-for runtime values Tailwind cannot know ahead of time, such as editor-selected
-colors, calculated tree indentation, CSS variables, or third-party library
-integration points.
+Prefer Tailwind utilities for static styles. Inline styles are acceptable only for runtime values Tailwind cannot know ahead of time, such as editor-selected colors, calculated indentation, CSS variables, or third-party library integration points.
 
 Keep inline styles small:
 
@@ -569,8 +562,40 @@ Keep inline styles small:
 <div style={{ padding: 16, borderRadius: 8, background: '#fff' }} />
 ```
 
-**Review rule of thumb**: `style={{ ... }}` should explain a dynamic runtime
-value. Static visual design belongs in Tailwind classes.
+**Review rule of thumb**: `style={{ ... }}` should explain a dynamic runtime value. Static visual design belongs in Tailwind classes.
+
+### Design Tokens
+
+When your project defines Design Tokens (via Tailwind v4 `@theme` or CSS variables), prefer them over hardcoded Tailwind default colors.
+
+```tsx
+// ❌ Bad smell: hardcoded Tailwind colors
+<button className="border-gray-200 text-gray-700 hover:bg-gray-50">
+
+// ✅ Good: semantic Design Tokens
+<button className="border-border-default text-text-secondary hover:bg-surface-hover">
+```
+
+Define tokens in your global CSS:
+
+```css
+@theme {
+  --color-surface: #ffffff;
+  --color-surface-hover: #f9fafb;
+  --color-border-default: #e5e7eb;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-status-error: #dc2626;
+  --color-status-success: #16a34a;
+}
+```
+
+**When to keep hardcoded colors**:
+- Decorative / illustrative elements (skeleton placeholders, blur backgrounds)
+- Third-party library overrides where tokens don't apply
+- Shadows with opacity variants
+
+**Review rule of thumb**: If your project has Design Tokens, prefer them over raw `gray-*`, `red-*`, `green-*` Tailwind classes for semantic styling.
 
 ---
 
@@ -582,20 +607,40 @@ Never leave the entire app blank on runtime errors. Always show user-friendly fa
 
 ```tsx
 // ❌ Bad smell: uncaught error crashes the whole app
-function NotesPage() {
-  const notes = useNotes()
-  return <div>{notes.map(...)}</div>  // if notes is undefined, white screen
+function DataPage() {
+  const data = useData()
+  return <div>{data.map(...)}</div>  // if data is undefined, white screen
 }
 ```
 
 ```tsx
 // ✅ Good: wrap route-level sections with error boundaries
 <ErrorBoundary fallback={<ErrorFallback />}>
-  <NotesPage />
+  <DataPage />
 </ErrorBoundary>
 ```
 
-**Review rule of thumb**: Route-level and feature-level boundaries prevent one bug from crashing the entire application.
+### Widget-Level Error Boundaries
+
+In addition to the global boundary, wrap complex widgets that have independent failure modes:
+
+```tsx
+function DataTable(props: DataTableProps) {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback title="Table Error" description="Failed to load." />}>
+      <DataTableComponent {...props} />
+    </ErrorBoundary>
+  )
+}
+```
+
+Widgets that should have dedicated boundaries:
+- Complex data grids or trees with recursive rendering
+- Rich text editors with many extensions
+- Heavy visualization components
+- Form panels with async mutations
+
+**Review rule of thumb**: Route-level and widget-level boundaries prevent one bug from crashing the entire application.
 
 ---
 
@@ -663,35 +708,64 @@ const handleDelete = () => {
 
 ---
 
-## 17. Project Directory Structure
+## 17. Project Directory Structure (Feature-Sliced Design)
+
+We follow **Feature-Sliced Design (FSD)**, a scalable frontend architecture standard.
 
 ```
-frontend/
-├── src/
-│   ├── app/              # app entry, router config, global providers
-│   ├── components/       # generic UI components (Button, Input, Modal...)
-│   ├── features/         # feature-based modules (notes, auth, chat...)
-│   │   └── notes/
-│   │       ├── NotesPage.tsx
-│   │       ├── NoteCard.tsx
-│   │       └── api/
-│   │           ├── getNotes.ts
-│   │           └── createNote.ts
-│   ├── lib/              # utility functions, API client setup
-│   ├── hooks/            # reusable custom hooks
-│   ├── stores/           # Zustand global state
-│   ├── main.tsx          # entry point
-│   └── index.css         # global Tailwind import + minimal base styles
-├── index.html
-├── package.json
-├── vite.config.ts
-└── tsconfig.json
+src/
+  app/              # entry point, router, global providers, global styles
+  pages/            # route pages (thin, only compose widgets)
+  widgets/          # independent reusable UI blocks
+  features/         # user-triggered interactions / use cases
+  entities/         # business domain models
+  shared/           # pure infrastructure
+```
+
+### FSD Layer Dependency Rule
+
+Layers can only import from **lower** layers:
+
+```
+app → pages → widgets → features → entities → shared
+```
+
+- `app` can import anything
+- `pages` can import `widgets`, `features`, `entities`, `shared`
+- `widgets` can import `features`, `entities`, `shared`
+- `features` can import `entities`, `shared`
+- `entities` can import `shared` only
+- `shared` cannot import any other layer
+
+### Public API (Barrel Exports)
+
+Every slice **must** expose a public API through `index.ts`. External code **must** only import through the `index.ts`:
+
+```tsx
+// ✅ Good: import through public API
+import { useLogin } from '@/features/authenticate'
+
+// ❌ Bad smell: deep import into slice internals
+import { useLogin } from '@/features/authenticate/model/useLogin'
 ```
 
 **Principles**:
-- Modules under `features/` are self-contained (components, API, state, types together)
-- `components/` is for pure UI with zero business logic only
-- Don't create a `utils/` junk drawer, organize by functionality in `lib/`
+- `shared/` is for pure infrastructure with zero business logic
+- `entities/` owns types and pure domain logic (no UI)
+- `features/` are self-contained user actions (can be deleted without breaking the app)
+- `widgets/` are complex UI compositions that may cross feature boundaries
+- `pages/` are thin routing shells that only compose widgets
+- `app/` is the composition root — no business logic here
+
+### Zustand Store Placement
+
+| Scope | Location | Examples |
+|-------|----------|----------|
+| Global UI | `shared/model/` | Toast queue, theme store |
+| Widget-local | `widgets/<name>/model/` | Sidebar state, editor mode |
+| Feature-local | `features/<name>/model/` | Form drafts, wizard step state |
+
+Global stores go in `shared/model/`; anything scoped to a single widget or feature stays in that slice's `model/` directory.
 
 ---
 
@@ -706,9 +780,8 @@ frontend/
 | `key={index}` | Require unique ID |
 | `: any` / `@ts-ignore` | Require proper types |
 | `fetch(` or `axios(` inside a component | Request extraction to API layer |
-| Mutating API call bypasses `apiFetch` | Require shared CSRF/credentials handling |
+| Mutating API call bypasses shared client | Require shared CSRF/credentials handling |
 | Mutation does not refresh affected query keys | Add invalidation or complete cache replacement |
-| Page write relies on frontend `plainTextContent` | Treat `contentJson` as source of truth |
 | Form with 3+ fields without React Hook Form | Suggest RHF + Zod |
 | Async UI missing loading/error/empty states | Request explicit handling |
 | `useMemo` wrapping simple calculations | Suggest removal |
@@ -719,6 +792,14 @@ frontend/
 | `<div onClick>` | Require `<button>` |
 | `<input>` without `<label>` | Require associated label |
 | Missing Error Boundary at route level | Request addition |
+| Hardcoded Tailwind colors where Design Tokens exist | Replace with semantic tokens |
+| Component imports >200KB and is conditionally rendered | Suggest `React.lazy()` + `Suspense` |
+| Deep import into slice internals (`features/foo/model/bar`) | Import through `index.ts` only |
+| Upper layer importing upper layer (`entities/` → `features/`) | Fix dependency direction per FSD rules |
+| Business logic in `pages/` | Move to `features/` or `widgets/`; pages should be thin shells |
+| Domain logic mixed with UI in `entities/` | Move UI to `widgets/`; entities own types and pure logic only |
+
+---
 
 ## 19. Unified Error Message Extraction
 
@@ -727,7 +808,7 @@ Don't repeat `err instanceof Error ? err.message : '...'` in every mutation onEr
 Create a shared utility:
 
 ```ts
-// src/lib/errorUtils.ts
+// src/shared/lib/errorUtils.ts
 export function getErrorMessage(err: unknown, fallback: string): string {
   return err instanceof Error ? err.message : fallback
 }
@@ -735,7 +816,7 @@ export function getErrorMessage(err: unknown, fallback: string): string {
 
 Use it:
 ```tsx
-onError: (err) => showToast(getErrorMessage(err, 'Failed to save page'), 'error')
+onError: (err) => showToast(getErrorMessage(err, 'Failed to save'), 'error')
 ```
 
 **Review rule of thumb**: If you see `err instanceof Error` more than once in a file, use the shared helper.
@@ -765,10 +846,10 @@ resolve: {
 
 ```tsx
 // ✅ Good
-import { useToast } from '@/components/ui/useToast'
+import { useToast } from '@/shared/ui/Toast'
 
 // ❌ Bad smell
-import { useToast } from '../../../../components/ui/useToast'
+import { useToast } from '../../../../shared/ui/Toast'
 ```
 
 **Review rule of thumb**: If an import path contains `../../..`, replace it with `@/`.
@@ -805,7 +886,7 @@ We use React 19. Prefer new features over legacy patterns:
   function Input({ ref, ...props }: { ref?: React.Ref<HTMLInputElement> }) {
     return <input ref={ref} {...props} />
   }
-  
+
   // ❌ Legacy
   const Input = forwardRef<HTMLInputElement, Props>((props, ref) => ...)
   ```
@@ -822,7 +903,7 @@ If a `className` exceeds 3 lines, extract it to a named constant or shared modul
 
 ```ts
 // ✅ Good: extracted constant
-export const PROSE_CONTENT_CLASSES =
+export const PROSE_CLASSES =
   'prose prose-sm max-w-none ' +
   'prose-headings:font-semibold prose-headings:text-black ' +
   '...'

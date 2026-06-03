@@ -64,7 +64,7 @@ spec:
                 name: ${secret}
           command:
             - dotnet
-            - CodeCafe.WebApi.dll
+            - CodeCafe.Server.dll
             - migrate
 EOF
 

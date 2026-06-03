@@ -1,5 +1,7 @@
+using CodeCafe.Application.Auth;
 using CodeCafe.Application.Common.Interfaces;
 using CodeCafe.Application.Notes;
+using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Infrastructure.Persistence;
 using CodeCafe.Infrastructure.Services;
@@ -31,9 +33,12 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString);
             options.UseOpenIddict<Guid>();
         });
-        services.AddScoped<INotebookQueryService, NotebookQueryService>();
-        services.AddScoped<INotebookCommandService, NotebookCommandService>();
-        services.AddScoped<INotebookFavoriteService, NotebookFavoriteService>();
+        services.AddScoped<IAuthUserGateway, IdentityAuthUserGateway>();
+        services.AddScoped<INotebookReadService, NotebookReadService>();
+        services.AddScoped<INotebookMutationStore, NotebookMutationStore>();
+        services.AddScoped<INotebookItemMutationService, NotebookItemMutationService>();
+        services.AddSingleton<IMcpIndependentAuditQueue, McpIndependentAuditQueue>();
+        services.AddHostedService(serviceProvider => (McpIndependentAuditQueue)serviceProvider.GetRequiredService<IMcpIndependentAuditQueue>());
         services.AddScoped<IMcpAuditService, McpAuditService>();
         services.AddSingleton<ITipTapPlainTextExtractor, TipTapPlainTextExtractor>();
         services.AddSingleton<ITipTapContentService, TipTapContentService>();

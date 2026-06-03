@@ -25,6 +25,10 @@ public sealed class ApplicationDbContext(
 
     public DbSet<McpToolAuditEntry> McpToolAuditEntries { get; set; }
 
+    public DbSet<McpUploadSessionEntry> McpUploadSessions { get; set; }
+
+    public DbSet<McpUploadChunkEntry> McpUploadChunks { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
