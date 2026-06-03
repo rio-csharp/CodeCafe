@@ -131,7 +131,9 @@ internal static class NotesMcpContentFormatter
 
     private static string FormatDiscardUpload(DiscardUploadToolResponse response)
     {
-        return $"Upload '{response.UploadId}' discarded.";
+        return response.Result == "already_absent"
+            ? $"Upload '{response.UploadId}' was already absent."
+            : $"Upload '{response.UploadId}' discarded.";
     }
 
     private static string FormatGetPage(GetPageToolResponse response, string fallbackSummary)
@@ -216,10 +218,9 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"path: {response.Path}");
         builder.AppendLine($"notebookUri: {response.NotebookUri}");
         builder.AppendLine($"pageUri: {response.PageUri}");
-        if (!string.IsNullOrWhiteSpace(response.PlainTextContent))
-        {
-            builder.AppendLine($"plainTextContent: {response.PlainTextContent}");
-        }
+        builder.AppendLine($"contentJsonBytes: {response.ContentJsonBytes}");
+        builder.AppendLine($"plainTextLength: {response.PlainTextLength}");
+        builder.AppendLine($"contentIncluded: {response.ContentIncluded}");
 
         return builder.ToString().TrimEnd();
     }
@@ -232,12 +233,9 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"path: {response.Path}");
         builder.AppendLine($"notebookUri: {response.NotebookUri}");
         builder.AppendLine($"pageUri: {response.PageUri}");
-        if (!string.IsNullOrWhiteSpace(response.PlainTextContent))
-        {
-            builder.AppendLine();
-            builder.AppendLine("Updated plain text content:");
-            builder.AppendLine(response.PlainTextContent);
-        }
+        builder.AppendLine($"contentJsonBytes: {response.ContentJsonBytes}");
+        builder.AppendLine($"plainTextLength: {response.PlainTextLength}");
+        builder.AppendLine($"contentIncluded: {response.ContentIncluded}");
 
         return builder.ToString().TrimEnd();
     }

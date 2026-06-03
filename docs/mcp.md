@@ -191,6 +191,22 @@ Supported uploaded formats:
 
 Markdown uploads are converted server-side into TipTap JSON before validation and persistence.
 
+Upload sessions are consumed and deleted after a successful page create, content replace, or block append. `notes_discard_upload` is idempotent, so clients may still call it during cleanup; already-consumed or already-absent sessions return a successful `already_absent` result.
+
+## Content Mutation Semantics
+
+Use the content mutation tools this way:
+
+| Tool | Use when | Content argument |
+| --- | --- | --- |
+| `notes_create_page` | Creating a new page, optionally with initial body content | `contentJson` or `contentUploadId` |
+| `notes_update_page_content_json` | Replacing the entire stored TipTap document | `contentJson` or `contentUploadId` |
+| `notes_append_blocks_to_page` | Appending block nodes to the end of an existing page | `blocks` or `blocksUploadId` |
+
+Write tools default to lightweight responses: `contentJson` and `plainTextContent` are omitted, while `contentJsonBytes`, `plainTextLength`, and page identifiers are still returned. Pass `includeContent: true` only when the client explicitly needs the full updated document in the mutation response. Use `notes_get_page` for normal full-content reads.
+
+When page content starts with an H1 whose text matches the page title, CodeCafe treats that heading as a duplicate title and strips it during normalization. H1 headings with different text are preserved.
+
 ## Default Limits
 
 From `src/CodeCafe.Server/appsettings.json`:

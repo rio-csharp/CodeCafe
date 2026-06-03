@@ -6,7 +6,7 @@ internal static class NotesMcpErrorAdvisor
     {
         return code switch
         {
-            "content_too_large" or "upload_too_large" or "upload_chunk_too_large" or "invalid_content_json" or "invalid_blocks"
+            "content_too_large" or "upload_too_large" or "upload_chunk_too_large" or "invalid_content_json" or "invalid_blocks" or "markdown_conversion_failed" or "invalid_tiptap_document"
                 => $"Call {NotesMcpToolNames.GetLimits} to inspect MCP limits. For larger content, use {NotesMcpToolNames.CreateUpload} and {NotesMcpToolNames.AppendUploadChunk}, then pass the upload id to the page tool.",
             "notebook_item_not_archived"
                 => $"Call {NotesMcpToolNames.ArchiveItem} first, then retry {NotesMcpToolNames.DeleteItem}.",

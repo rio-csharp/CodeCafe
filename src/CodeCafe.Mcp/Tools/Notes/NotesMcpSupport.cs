@@ -2,6 +2,7 @@ using CodeCafe.Application.Notes;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -516,11 +517,13 @@ internal static class NotesMcpSupport
             page.UpdatedAtUtc);
     }
 
-    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookDetailModel notebook, NotebookItemModel page)
-        => ToCreatePageToolResponse(ToSummaryModel(notebook), page);
+    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookDetailModel notebook, NotebookItemModel page, bool includeContent = false)
+        => ToCreatePageToolResponse(ToSummaryModel(notebook), page, includeContent);
 
-    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookSummaryModel notebook, NotebookItemModel page)
+    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookSummaryModel notebook, NotebookItemModel page, bool includeContent = false)
     {
+        var contentJson = SerializeJsonElement(page.ContentJson);
+        var plainText = page.PlainTextContent;
         return new CreatePageToolResponse(
             page.Id,
             notebook.Id,
@@ -532,8 +535,11 @@ internal static class NotesMcpSupport
             page.ParentId,
             page.SortOrder,
             page.ContentFormat,
-            SerializeJsonElement(page.ContentJson),
-            page.PlainTextContent,
+            includeContent ? contentJson : null,
+            includeContent ? plainText : null,
+            includeContent,
+            GetUtf8ByteCount(contentJson),
+            plainText?.Length ?? 0,
             page.CreatedAtUtc,
             page.UpdatedAtUtc);
     }
@@ -559,11 +565,13 @@ internal static class NotesMcpSupport
             item.UpdatedAtUtc);
     }
 
-    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookDetailModel notebook, NotebookItemModel page)
-        => ToUpdatePageContentToolResponse(ToSummaryModel(notebook), page);
+    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookDetailModel notebook, NotebookItemModel page, bool includeContent = false)
+        => ToUpdatePageContentToolResponse(ToSummaryModel(notebook), page, includeContent);
 
-    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookSummaryModel notebook, NotebookItemModel page)
+    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookSummaryModel notebook, NotebookItemModel page, bool includeContent = false)
     {
+        var contentJson = SerializeJsonElement(page.ContentJson);
+        var plainText = page.PlainTextContent;
         return new UpdatePageContentToolResponse(
             page.Id,
             notebook.Id,
@@ -573,8 +581,11 @@ internal static class NotesMcpSupport
             BuildNotebookUri(notebook.Slug),
             BuildPageUri(notebook.Slug, page.Path),
             page.ContentFormat,
-            SerializeJsonElement(page.ContentJson),
-            page.PlainTextContent,
+            includeContent ? contentJson : null,
+            includeContent ? plainText : null,
+            includeContent,
+            GetUtf8ByteCount(contentJson),
+            plainText?.Length ?? 0,
             page.UpdatedAtUtc);
     }
 
@@ -587,6 +598,9 @@ internal static class NotesMcpSupport
 
         return value.Value.GetRawText();
     }
+
+    private static int GetUtf8ByteCount(string? value)
+        => string.IsNullOrEmpty(value) ? 0 : Encoding.UTF8.GetByteCount(value);
 
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
         => ToMoveItemToolResponse(ToSummaryModel(notebook), item);

@@ -294,7 +294,7 @@ public sealed class McpContentImportService(
         {
             return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
-                errorCode,
+                "markdown_conversion_failed",
                 $"Markdown could not be converted: {ex.Message}");
         }
     }
@@ -309,7 +309,7 @@ public sealed class McpContentImportService(
         {
             return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
-                errorCode,
+                "markdown_conversion_failed",
                 $"Markdown could not be converted: {ex.Message}");
         }
     }
@@ -619,20 +619,28 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
     private static JsonArray ConvertInlineContainer(ContainerInline? container, IReadOnlyList<JsonObject>? marks = null)
     {
         var nodes = new JsonArray();
+        foreach (var node in ConvertInlineChildren(container, marks))
+        {
+            nodes.Add(node);
+        }
+
+        return nodes;
+    }
+
+    private static IEnumerable<JsonNode> ConvertInlineChildren(ContainerInline? container, IReadOnlyList<JsonObject>? marks = null)
+    {
         if (container is null)
         {
-            return nodes;
+            yield break;
         }
 
         foreach (var inline in container)
         {
             foreach (var node in ConvertInline(inline, marks))
             {
-                nodes.Add(node);
+                yield return node;
             }
         }
-
-        return nodes;
     }
 
     private static IEnumerable<JsonNode> ConvertInline(Inline inline, IReadOnlyList<JsonObject>? activeMarks)
@@ -681,23 +689,17 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                     yield break;
                 }
 
-                foreach (var child in ConvertInlineContainer(link, linkMarks))
+                foreach (var child in ConvertInlineChildren(link, linkMarks))
                 {
-                    if (child is not null)
-                    {
-                        yield return child;
-                    }
+                    yield return child;
                 }
                 yield break;
 
             case EmphasisInline emphasis:
                 var emphasisMarks = AddEmphasisMarks(activeMarks, emphasis);
-                foreach (var child in ConvertInlineContainer(emphasis, emphasisMarks))
+                foreach (var child in ConvertInlineChildren(emphasis, emphasisMarks))
                 {
-                    if (child is not null)
-                    {
-                        yield return child;
-                    }
+                    yield return child;
                 }
                 yield break;
 

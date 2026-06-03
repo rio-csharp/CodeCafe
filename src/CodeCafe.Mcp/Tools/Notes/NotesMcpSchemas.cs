@@ -102,6 +102,9 @@ public sealed record CreatePageToolResponse(
     string? ContentFormat,
     string? ContentJson,
     string? PlainTextContent,
+    bool ContentIncluded,
+    int ContentJsonBytes,
+    int PlainTextLength,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
 
@@ -131,6 +134,9 @@ public sealed record UpdatePageContentToolResponse(
     string? ContentFormat,
     string? ContentJson,
     string? PlainTextContent,
+    bool ContentIncluded,
+    int ContentJsonBytes,
+    int PlainTextLength,
     DateTimeOffset? UpdatedAtUtc);
 
 public sealed record MoveItemToolResponse(

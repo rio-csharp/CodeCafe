@@ -118,4 +118,39 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.False(appendResult.IsError ?? false);
         Assert.Equal(20_000, appendResult.StructuredContent!.Value.GetProperty("bytesReceived").GetInt32());
     }
+
+    [Fact]
+    public async Task DiscardUpload_IsIdempotent()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(McpTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(client.BaseAddress!, "/mcp"),
+                TransportMode = HttpTransportMode.StreamableHttp
+            },
+            client);
+
+        await using var mcpClient = await McpClient.CreateAsync(transport);
+
+        var createResult = await mcpClient.CallToolAsync(NotesMcpToolNames.CreateUpload, new Dictionary<string, object?>());
+        var uploadId = createResult.StructuredContent!.Value.GetProperty("uploadId").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(uploadId));
+
+        var firstDiscard = await mcpClient.CallToolAsync(NotesMcpToolNames.DiscardUpload, new Dictionary<string, object?>
+        {
+            ["uploadId"] = uploadId
+        });
+        var secondDiscard = await mcpClient.CallToolAsync(NotesMcpToolNames.DiscardUpload, new Dictionary<string, object?>
+        {
+            ["uploadId"] = uploadId
+        });
+
+        Assert.False(firstDiscard.IsError ?? false);
+        Assert.Equal("discarded", firstDiscard.StructuredContent!.Value.GetProperty("result").GetString());
+        Assert.False(secondDiscard.IsError ?? false);
+        Assert.Equal("already_absent", secondDiscard.StructuredContent!.Value.GetProperty("result").GetString());
+    }
 }

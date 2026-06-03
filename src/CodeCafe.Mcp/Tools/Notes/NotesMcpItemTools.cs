@@ -308,27 +308,7 @@ public sealed class NotesMcpItemTools
         }
 
         var removed = await uploadStore.DeleteAsync(actorResult.Value, uploadId, cancellationToken);
-        if (!removed)
-        {
-            await WriteUploadObservationAsync(
-                auditService,
-                logger,
-                actorResult.Value,
-                NotesMcpToolNames.DiscardUpload,
-                uploadId,
-                succeeded: false,
-                resultCode: "upload_not_found",
-                errorCode: "upload_not_found",
-                bytesReceived: null,
-                cancellationToken);
-
-            return NotesMcpResultMapper.Failure(new NotesError(
-                NotesFailureKind.NotFound,
-                "upload_not_found",
-                "Upload session was not found."));
-        }
-
-        var response = new DiscardUploadToolResponse(uploadId, "discarded");
+        var response = new DiscardUploadToolResponse(uploadId, removed ? "discarded" : "already_absent");
         await WriteUploadObservationAsync(
             auditService,
             logger,
@@ -336,12 +316,14 @@ public sealed class NotesMcpItemTools
             NotesMcpToolNames.DiscardUpload,
             uploadId,
             succeeded: true,
-            resultCode: "success",
+            resultCode: removed ? "success" : "already_absent",
             errorCode: null,
             bytesReceived: null,
             cancellationToken);
 
-        return NotesMcpResultMapper.Success(response, $"Upload '{uploadId}' discarded.");
+        return NotesMcpResultMapper.Success(
+            response,
+            removed ? $"Upload '{uploadId}' discarded." : $"Upload '{uploadId}' was already absent.");
     }
 
     [McpServerTool(
@@ -453,7 +435,8 @@ public sealed class NotesMcpItemTools
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
         [Description("Optional TipTap JSON document for the page content. Use for smaller inline payloads.")] JsonElement? contentJson = null,
         [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON content.")] string? contentUploadId = null,
-        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null)
+        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null,
+        [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
         return await mutationExecutor.ExecuteAsync(
             user,
@@ -532,7 +515,7 @@ public sealed class NotesMcpItemTools
                         createResult.Value?.Id);
                 }
 
-                var response = NotesMcpSupport.ToCreatePageToolResponse(notebookContext.Notebook, createResult.Value!);
+                var response = NotesMcpSupport.ToCreatePageToolResponse(notebookContext.Notebook, createResult.Value!, includeContent);
                 await contentImportService.DeleteUploadAsync(notebookContext.ActorId, contentUploadId, ct);
                 return McpMutationResult<CreatePageToolResponse>.Success(
                     response,
@@ -565,7 +548,8 @@ public sealed class NotesMcpItemTools
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
         [Description("The full TipTap JSON document to store. Use for smaller inline payloads.")] JsonElement? contentJson = null,
         [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON content.")] string? contentUploadId = null,
-        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null)
+        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null,
+        [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
         return await mutationExecutor.ExecuteAsync(
             user,
@@ -629,7 +613,7 @@ public sealed class NotesMcpItemTools
                         pageContext.Item.Id);
                 }
 
-                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
+                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!, includeContent);
                 await contentImportService.DeleteUploadAsync(pageContext.ActorId, contentUploadId, ct);
                 return McpMutationResult<UpdatePageContentToolResponse>.Success(
                     response,
@@ -662,7 +646,8 @@ public sealed class NotesMcpItemTools
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
         [Description("The TipTap block nodes JSON array to append. Use for smaller inline payloads.")] JsonElement? blocks = null,
         [Description("Optional upload id returned by notes_create_upload for larger TipTap blocks JSON or Markdown content.")] string? blocksUploadId = null,
-        [Description("Format of blocksUploadId: tiptap_blocks_json or markdown. Markdown is converted server-side into TipTap blocks before append. When omitted, the server infers it from the file name or media type.")] string? blocksFormat = null)
+        [Description("Format of blocksUploadId: tiptap_blocks_json or markdown. Markdown is converted server-side into TipTap blocks before append. When omitted, the server infers it from the file name or media type.")] string? blocksFormat = null,
+        [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
         return await mutationExecutor.ExecuteAsync(
             user,
@@ -737,7 +722,7 @@ public sealed class NotesMcpItemTools
                         pageContext.Item.Id);
                 }
 
-                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!);
+                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!, includeContent);
                 await contentImportService.DeleteUploadAsync(pageContext.ActorId, blocksUploadId, ct);
                 return McpMutationResult<UpdatePageContentToolResponse>.Success(
                     response,
