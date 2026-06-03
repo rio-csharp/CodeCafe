@@ -41,7 +41,7 @@ spec:
           {{- end }}
           command:
             - dotnet
-            - CodeCafe.WebApi.dll
+            - CodeCafe.Server.dll
             - migrate
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
