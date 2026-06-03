@@ -21,46 +21,44 @@ Choose the base URL for the environment you want to target:
 The MCP endpoint is always `{baseUrl}/mcp`.
 
 For browser users, CodeCafe uses the normal web sign-in flow.
-For MCP clients, sign in through the CodeCafe OAuth flow first, then call `/mcp` with the bearer access token returned by that flow.
+For MCP clients, connect to `{baseUrl}/mcp` and complete the CodeCafe OAuth flow in the browser when the client prompts for authentication.
+
+CodeCafe does not currently expose a separate personal access token or manual bearer-token generation screen for MCP users.
+The intended user-scoped flow is browser-based OAuth, with access tokens issued by the built-in authorization server during that flow.
 
 ### Claude Code
 
-```bash
-claude mcp add codecafe --transport http {baseUrl}/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-Example:
+Recommended user-level install:
 
 ```bash
-claude mcp add codecafe --transport http https://api.codes.cafe/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
+claude mcp add --transport http --scope user codecafe https://api.codes.cafe/mcp
 ```
 
-### Codex CLI
+Project-level install:
 
 ```bash
-codex mcp add codecafe --transport http {baseUrl}/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
+claude mcp add --transport http --scope project codecafe https://api.codes.cafe/mcp
 ```
 
-Example:
+If you omit `--scope`, Claude Code defaults to a local install for the current project only.
 
-```bash
-codex mcp add codecafe --transport http https://api.codes.cafe/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
-```
+After installation:
 
-### Generic JSON Config
+1. Open Claude Code.
+2. Run `/mcp`.
+3. Start authentication for the `codecafe` server if prompted.
+4. Complete the browser sign-in flow with your CodeCafe account.
 
-```json
-{
-  "mcpServers": {
-    "codecafe": {
-      "url": "https://api.codes.cafe/mcp",
-      "headers": {
-        "Authorization": "Bearer <ACCESS_TOKEN>"
-      }
-    }
-  }
-}
-```
+After sign-in completes, Claude Code uses the OAuth-issued token for that authenticated CodeCafe user automatically.
+
+### User-Scoped Access
+
+User-scoped MCP access requires OAuth scopes granted to the signed-in CodeCafe account:
+
+- `notes.read` for authenticated notebook reads and search
+- `notes.write` for notebook and page mutations
+
+After OAuth login completes, the resulting token is tied to the authenticated CodeCafe user and those granted scopes.
 
 ## Auth And Scopes
 

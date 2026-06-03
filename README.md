@@ -52,6 +52,7 @@ The detailed setup, testing, and migration flow lives in [docs/development.md](d
 
 - [docs/development.md](docs/development.md): local setup, testing, migrations, runtime config
 - [docs/architecture.md](docs/architecture.md): system boundaries, auth model, notebook contract conventions
+- [docs/backend-best-practices.md](docs/backend-best-practices.md): backend layering rules, slice guidance, adapter boundaries, review checklist
 - [docs/mcp.md](docs/mcp.md): MCP endpoint, scopes, tools, resources, prompts, upload flow
 - [docs/operations.md](docs/operations.md): CI/CD, Helm, environments, runtime secrets, database maintenance
 
