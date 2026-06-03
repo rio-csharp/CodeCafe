@@ -28,8 +28,14 @@ setup('authenticate', async ({ page }) => {
     await page.waitForURL('/dashboard', { timeout: 10000 })
   }
 
-  // Verify we are authenticated
-  await expect(page.getByRole('heading', { name: /Welcome back|Your Workspace/ })).toBeVisible()
+  if (!page.url().includes('/dashboard')) {
+    await page.goto('/dashboard')
+    await page.waitForURL('/dashboard', { timeout: 10000 })
+  }
+
+  // Verify we are authenticated using stable dashboard UI instead of page copy.
+  await expect(page.getByRole('heading', { name: 'Your knowledge workspace' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Notes' })).toBeVisible()
 
   await page.context().storageState({ path: authFile })
 })
