@@ -11,6 +11,7 @@
     "dashboard": "Dashboard",
     "login": "Login",
     "logout": "Logout",
+    "loggingOut": "Logging out...",
     "workspace": "Workspace",
     "exploreNotebooks": "Explore notebooks"
   },
@@ -104,7 +105,21 @@
     "hideArchived": "Hide archived",
     "newFolder": "New folder",
     "newPage": "New page",
-    "rootActions": "Root actions"
+    "rootActions": "Root actions",
+    "noDescription": "No description yet.",
+    "noItems": "No pages or folders yet",
+    "pages": "page",
+    "pages_plural": "pages",
+    "folders": "folder",
+    "folders_plural": "folders"
+  },
+  "outline": {
+    "onThisPage": "On this page",
+    "noHeadings": "No headings on this page."
+  },
+  "search": {
+    "error": "Search failed. Please try again.",
+    "noResults": "No results found."
   },
   "features": {
     "title": "What is live today",

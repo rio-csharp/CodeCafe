@@ -105,7 +105,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
                 className="h-3 w-3 rounded border-border-hover text-brand-brown focus:ring-brand-brown"
               />
               <Archive className="h-3 w-3" />
-              <span>{showArchived ? t('notebook.hideArchived') : t('notebook.showArchived')}</span>
+              <span>{t('notebook.showArchived')}</span>
             </label>
           </div>
         )}

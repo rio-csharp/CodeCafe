@@ -35,10 +35,10 @@ export default function TreeContent({
       )
     }
     if (searchError) {
-      return <p className="text-xs text-status-error text-center py-8">{t('errors.generic')}</p>
+      return <p className="text-xs text-status-error text-center py-8">{t('search.error')}</p>
     }
     if (!searchResults?.length) {
-      return <p className="text-xs text-text-tertiary text-center py-8">{t('errors.generic')}</p>
+      return <p className="text-xs text-text-tertiary text-center py-8">{t('search.noResults')}</p>
     }
     return (
       <div className="space-y-0.5">

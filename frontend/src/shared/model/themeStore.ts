@@ -7,7 +7,7 @@ interface ThemeState {
   theme: Theme
   resolvedTheme: 'light' | 'dark'
   setTheme: (theme: Theme) => void
-  init: () => void
+  init: () => () => void
 }
 
 function getSystemTheme(): 'light' | 'dark' {
@@ -47,7 +47,9 @@ export const useThemeStore = create<ThemeState>()(
             set({ resolvedTheme: r })
           }
         }
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', listener)
+        const mql = window.matchMedia('(prefers-color-scheme: dark)')
+        mql.addEventListener('change', listener)
+        return () => mql.removeEventListener('change', listener)
       },
     }),
     {

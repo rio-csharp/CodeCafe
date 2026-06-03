@@ -26,7 +26,7 @@ const queryClient = new QueryClient({
 function ThemeInit() {
   const init = useThemeStore((s) => s.init)
   useEffect(() => {
-    init()
+    return init()
   }, [init])
   return null
 }

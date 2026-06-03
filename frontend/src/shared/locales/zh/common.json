@@ -11,6 +11,7 @@
     "dashboard": "控制台",
     "login": "登录",
     "logout": "退出登录",
+    "loggingOut": "正在退出登录...",
     "workspace": "工作区",
     "exploreNotebooks": "浏览笔记"
   },
@@ -104,7 +105,21 @@
     "hideArchived": "隐藏已归档",
     "newFolder": "新建文件夹",
     "newPage": "新建页面",
-    "rootActions": "根操作"
+    "rootActions": "根操作",
+    "noDescription": "暂无描述。",
+    "noItems": "暂无页面或文件夹",
+    "pages": "页面",
+    "pages_plural": "页面",
+    "folders": "文件夹",
+    "folders_plural": "文件夹"
+  },
+  "outline": {
+    "onThisPage": "本页目录",
+    "noHeadings": "本页暂无标题。"
+  },
+  "search": {
+    "error": "搜索失败，请重试。",
+    "noResults": "未找到结果。"
   },
   "features": {
     "title": "当前功能",
