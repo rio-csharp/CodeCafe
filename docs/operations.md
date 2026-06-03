@@ -19,25 +19,96 @@ Container images are built from:
 - `src/CodeCafe.Server/Dockerfile`
 - `frontend/Dockerfile`
 
-## Environments And Branch Flow
+## GitHub Workflow
 
-Current GitHub Actions flow:
+### Branch Rules
 
-- `feature/*` branches can produce preview environments when attached to PRs targeting `release/*`
-- pushes to `release/*` feed the test deployment flow
-- pushes to `main` feed the production deployment flow
-- only `release/* -> main` is allowed for merges into `main`
+- Feature work is done on `feature/*`.
+- Feature PRs target `release/*`.
+- Release PRs target `main`.
+- Only `release/* -> main` is allowed.
+- `main` is protected by required checks. The required checks include backend/frontend CI, `Enforce release-only merge to main`, and `Release E2E`.
 
-## CI Pipeline
+### Workflow Map
 
-`/.github/workflows/ci.yml` does the following:
+| Workflow | Trigger | Purpose |
+| --- | --- | --- |
+| `check-pr-base.yml` | PRs to `main` or `release/*` | Requires the PR branch to be based on the latest target branch head. |
+| `enforce-branch-protection.yml` | PRs to `main` | Rejects anything except same-repository `release/* -> main` PRs. |
+| `ci.yml` | Pushes to `main`, `release/*`, `feature/*`; PRs to `main` or `release/*`; manual | Runs backend/frontend verification and publishes deployment inputs when the ref qualifies. |
+| `release-e2e.yml` | Pushes to `release/*`; manual | Runs Playwright E2E against a locally published API and Postgres service. |
+| `deploy-pr.yml` | Successful CI runs from `feature/*`; manual | Deploys PR preview environments for open same-repository PRs targeting `release/*`. |
+| `cleanup-pr.yml` | Closed PRs to `release/*`; weekly schedule; manual | Deletes a specific PR preview namespace or stale preview namespaces. |
+| `deploy-test.yml` | Successful CI runs from `release/*`; manual | Deploys the shared test environment. |
+| `deploy-production.yml` | Successful CI runs from `main`; manual | Deploys production from CI artifacts and images. |
+| `rollback.yml` | Manual | Rolls production back to the previous or requested Helm revision. |
+
+### CI
+
+`/.github/workflows/ci.yml` always runs the backend and frontend verification jobs:
 
 - restores, builds, and tests the .NET solution
 - installs frontend dependencies
-- runs frontend tests, lint, and production build
-- runs Playwright E2E against the built backend and frontend
-- publishes API, frontend, Helm, and CI-script artifacts when the ref qualifies
-- builds and pushes GHCR images for the backend and frontend
+- runs frontend tests when a frontend test script exists
+- runs frontend lint
+- builds the frontend production bundle
+
+CI publishes deployment inputs only when the artifact policy allows it:
+
+- pushes to `main`
+- pushes to `release/*`
+- pushes to `feature/*` that have an open PR targeting `release/*`
+- non-fork PRs targeting `release/*`
+- manual runs
+
+Published deployment inputs are:
+
+- backend and frontend GHCR images
+- Helm chart artifact
+- CD script artifact
+- deployment metadata containing the image tag and source ref
+
+### Feature PR Preview Flow
+
+1. A `feature/*` branch is pushed.
+2. CI runs backend/frontend checks.
+3. If the feature branch has an open PR targeting `release/*`, CI publishes deployment inputs with a `pr-<number>-<sha>` image tag.
+4. `deploy-pr.yml` runs after CI succeeds.
+5. The preview resolver verifies that the PR is still open, targets `release/*`, comes from this repository, and still points at the CI commit.
+6. The preview deployment creates or updates namespace `codecafe-pr-<number>`.
+7. The workflow checks again that the PR still points at the deployed commit.
+8. If the PR changed while deployment was running, the stale preview is deleted.
+9. If the deployment is still current, the workflow updates the PR preview comment.
+
+Closed PRs targeting `release/*` run `cleanup-pr.yml` and delete their preview namespace when it exists. The scheduled cleanup job also removes preview namespaces whose PRs are no longer open.
+
+### Release And Test Flow
+
+1. A `release/*` branch is pushed.
+2. CI runs backend/frontend checks and publishes deployment inputs with a `test-<sha>` image tag.
+3. `release-e2e.yml` runs Playwright E2E against a local API and Postgres service.
+4. `deploy-test.yml` runs after CI succeeds and deploys the shared `codecafe-test` namespace.
+5. The test deployment uses `deploy-environment.sh`, which sends the Helm chart and CD scripts to the test host.
+6. `deploy-helm.sh` applies secrets, deploys through Helm, waits for frontend/API rollout, and smoke tests frontend, API readiness, and MCP protected-resource metadata.
+
+The test environment has one shared instance. `deploy-test.yml` does not cancel an in-progress Helm deploy; GitHub keeps only the latest pending run for the `deploy-test` concurrency group.
+
+### Release To Production Flow
+
+1. A release PR targets `main`.
+2. `check-pr-base.yml` requires the release branch to be based on the latest `main`.
+3. `enforce-branch-protection.yml` requires the PR source to be a same-repository `release/*` branch.
+4. GitHub branch protection/rulesets require backend/frontend CI, `Enforce release-only merge to main`, and `Release E2E`.
+5. After the release PR is merged, CI runs on `main` and publishes deployment inputs with a `production-<sha>` image tag.
+6. `deploy-production.yml` runs after CI succeeds and deploys the `codecafe-prod` namespace.
+
+Production deploy and rollback share the `production-deployment` concurrency group so they do not run at the same time.
+
+### Manual Deploys And Rollback
+
+Manual test, PR preview, and production deploys require a CI workflow run id. The resolver verifies that the run is a successful `CI` run from the expected branch family before downloading artifacts.
+
+Manual production rollback uses `rollback.yml`. It copies rollback scripts to the production host, runs Helm rollback, waits for frontend/API rollout, and smoke tests frontend plus API readiness.
 
 ## Helm And Deploy Script
 
@@ -50,7 +121,7 @@ deploy/helm/codecafe
 Deployment helper:
 
 ```text
-scripts/ci/deploy-helm.sh
+scripts/cd/deploy-helm.sh
 ```
 
 The deploy script:
@@ -109,8 +180,6 @@ Supported commands:
 - `migrate-test`
 - `prod-to-local`
 - `local-to-test`
-
-There is also a scheduled/manual workflow at `/.github/workflows/sync-prod-to-test-db.yml` for refreshing the test database from production.
 
 ## Shutdown And Readiness
 

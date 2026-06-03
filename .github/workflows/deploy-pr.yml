@@ -6,6 +6,8 @@ on:
       - CI
     types:
       - completed
+    branches:
+      - 'feature/**'
   workflow_dispatch:
     inputs:
       pr_number:
@@ -19,7 +21,11 @@ permissions:
   actions: read
   contents: read
   issues: write
-  pull-requests: write
+  pull-requests: read
+
+concurrency:
+  group: deploy-pr-preview-${{ github.event.workflow_run.pull_requests[0].number || inputs.pr_number || github.event.workflow_run.head_branch || github.run_id }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
@@ -36,60 +42,20 @@ jobs:
     outputs:
       skip: ${{ steps.pr.outputs.skip }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Resolve PR
         id: pr
         uses: actions/github-script@v9
+        env:
+          PREVIEW_PR_NUMBER: ${{ inputs.pr_number }}
+          PREVIEW_CI_RUN_ID: ${{ inputs.ci_run_id }}
+          PREVIEW_REQUIRED_WORKFLOW_NAME: CI
         with:
           script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const isDispatch = context.eventName === 'workflow_dispatch';
-            const run = context.payload.workflow_run;
-
-            if (!isDispatch) {
-              if (run.conclusion !== 'success' || !['push', 'pull_request'].includes(run.event)) {
-                core.setOutput('skip', 'true');
-                return;
-              }
-            }
-
-            let prNumber = isDispatch ? Number('${{ inputs.pr_number }}') : run.pull_requests?.[0]?.number;
-
-            if (!prNumber && run?.head_sha) {
-              const associated = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-                owner,
-                repo,
-                commit_sha: run.head_sha,
-              });
-              prNumber = associated.data.find(pr => pr.base.ref.startsWith('release/'))?.number;
-            }
-
-            if (!prNumber) {
-              core.setOutput('skip', 'true');
-              return;
-            }
-
-            const { data: pr } = await github.rest.pulls.get({
-              owner,
-              repo,
-              pull_number: prNumber,
-            });
-
-            if (pr.state !== 'open' || !pr.base.ref.startsWith('release/')) {
-              core.setOutput('skip', 'true');
-              return;
-            }
-
-            if (pr.head.repo.full_name !== `${owner}/${repo}`) {
-              core.warning('Skipping preview deploy for forked PR to avoid exposing deployment secrets.');
-              core.setOutput('skip', 'true');
-              return;
-            }
-
-            core.setOutput('skip', 'false');
-            core.setOutput('pr_number', String(pr.number));
-            core.setOutput('head_sha', pr.head.sha);
-            core.setOutput('ci_run_id', isDispatch ? '${{ inputs.ci_run_id }}' : String(run.id));
+            const resolvePrPreview = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/resolve-pr-preview.js`);
+            await resolvePrPreview({ github, context, core });
 
       - name: Download CI artifacts
         if: steps.pr.outputs.skip != 'true'
@@ -97,33 +63,23 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .artifacts/helm .artifacts/deployment .artifacts/scripts
-          gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-ci-scripts --dir .artifacts/scripts
+          gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-cd-scripts --dir .artifacts/scripts
           gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-helm-chart --dir .artifacts/helm
           gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-deployment --dir .artifacts/deployment
 
       - name: Set deployment variables
         if: steps.pr.outputs.skip != 'true'
-        run: |
-          . .artifacts/deployment/deployment.env
-          {
-            echo "IMAGE_TAG=$IMAGE_TAG"
-            echo "NAMESPACE=${{ env.NAMESPACE_PREFIX }}-${{ steps.pr.outputs.pr_number }}"
-            echo "RELEASE=codecafe-pr-${{ steps.pr.outputs.pr_number }}"
-            echo "FRONTEND_HOST=pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}"
-            echo "API_HOST=api-pr-${{ steps.pr.outputs.pr_number }}.${{ vars.PREVIEW_BASE_DOMAIN }}"
-          } >> "$GITHUB_ENV"
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          PREVIEW_BASE_DOMAIN: ${{ vars.PREVIEW_BASE_DOMAIN }}
+        run: bash scripts/github/set-pr-preview-env.sh
 
       - name: Prepare OAuth secret payload
         if: steps.pr.outputs.skip != 'true'
         env:
           OAUTH_CERT_BASE64: ${{ secrets.OAUTH_CERT_BASE64 }}
           OAUTH_CERT_PASSWORD: ${{ secrets.OAUTH_CERT_PASSWORD }}
-        run: |
-          umask 077
-          {
-            printf 'OAUTH_CERT_BASE64=%q\n' "$OAUTH_CERT_BASE64"
-            printf 'OAUTH_CERT_PASSWORD=%q\n' "$OAUTH_CERT_PASSWORD"
-          } > .artifacts/deployment/oauth.env
+        run: bash .artifacts/scripts/write-oauth-env.sh
 
       - name: Configure SSH
         if: steps.pr.outputs.skip != 'true'
@@ -138,44 +94,56 @@ jobs:
           printf '%s\n' "${{ secrets.TEST_SSH_KNOWN_HOSTS }}" > "$RUNNER_TEMP/ssh/known_hosts"
           echo "SSH_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
 
-      - name: Deploy preview
-        if: steps.pr.outputs.skip != 'true'
-        run: |
-          CHART_ARCHIVE="codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
-          REMOTE_DIR="/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          tar -czf "$CHART_ARCHIVE" -C .artifacts/helm .
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/scripts/deploy-helm.sh" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/deploy-helm.sh"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/deployment/oauth.env" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/oauth.env"
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='${{ env.TLS_SECRET }}' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='$FRONTEND_HOST' API_HOST='$API_HOST' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DB_SECRET_NAMESPACE='codecafe-test' FRONTEND_REPLICA_COUNT='1' API_REPLICA_COUNT='1' API_MIGRATION_ENABLED='false' OAUTH_ENV_FILE='$REMOTE_DIR/oauth.env' bash '$REMOTE_DIR/deploy-helm.sh'"
-
-      - name: Comment preview
+      - name: Verify preview is still needed
+        id: predeploy
         if: steps.pr.outputs.skip != 'true'
         uses: actions/github-script@v9
+        env:
+          PREVIEW_PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          PREVIEW_EXPECTED_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
         with:
           script: |
-            const marker = '<!-- codecafe-pr-preview -->';
-            const prNumber = Number('${{ steps.pr.outputs.pr_number }}');
-            const body = `${marker}
-            ## PR Preview
+            const verifyPrPreviewCurrent = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/verify-pr-preview-current.js`);
+            await verifyPrPreviewCurrent({ github, context, core });
 
-            | Service | URL |
-            | --- | --- |
-            | Frontend | \`https://${process.env.FRONTEND_HOST}\` |
-            | API readiness | \`https://${process.env.API_HOST}/health/ready\` |
+      - name: Deploy preview
+        if: steps.predeploy.outputs.current == 'true'
+        env:
+          DEPLOY_SSH_PORT: ${{ vars.TEST_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.TEST_SSH_USER }}
+          DEPLOY_SSH_HOST: ${{ secrets.TEST_SSH_HOST }}
+          DB_SECRET_NAMESPACE: codecafe-test
+          FRONTEND_REPLICA_COUNT: '1'
+          API_REPLICA_COUNT: '1'
+          API_MIGRATION_ENABLED: 'false'
+        run: bash .artifacts/scripts/deploy-environment.sh
 
-            Namespace: \`${process.env.NAMESPACE}\`
-            Image tag: \`${process.env.IMAGE_TAG}\`
-            `;
+      - name: Verify deployed preview is still current
+        id: postdeploy
+        if: steps.predeploy.outputs.current == 'true'
+        uses: actions/github-script@v9
+        env:
+          PREVIEW_PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          PREVIEW_EXPECTED_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        with:
+          script: |
+            const verifyPrPreviewCurrent = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/verify-pr-preview-current.js`);
+            await verifyPrPreviewCurrent({ github, context, core });
 
-            const { owner, repo } = context.repo;
-            const comments = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber });
-            const existing = comments.data.find(comment => comment.body?.includes(marker));
+      - name: Delete stale deployed preview
+        if: steps.predeploy.outputs.current == 'true' && steps.postdeploy.outputs.current != 'true'
+        env:
+          TEST_SSH_PORT: ${{ vars.TEST_SSH_PORT }}
+          TEST_SSH_USER: ${{ vars.TEST_SSH_USER }}
+          TEST_SSH_HOST: ${{ secrets.TEST_SSH_HOST }}
+        run: bash .artifacts/scripts/delete-stale-pr-preview.sh
 
-            if (existing) {
-              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
-            } else {
-              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
-            }
+      - name: Comment preview
+        if: steps.postdeploy.outputs.current == 'true'
+        uses: actions/github-script@v9
+        env:
+          PREVIEW_PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+        with:
+          script: |
+            const commentPrPreview = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/comment-pr-preview.js`);
+            await commentPrPreview({ github, context, core });
