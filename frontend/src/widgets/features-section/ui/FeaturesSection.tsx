@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FileText, Code2, ArrowRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface FeatureCardProps {
   icon: React.ReactNode
@@ -11,6 +12,7 @@ interface FeatureCardProps {
 }
 
 function FeatureCard({ icon, title, description, delay, href }: FeatureCardProps) {
+  const { t } = useTranslation()
   const inner = (
     <>
       <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-surface-hover border border-border-subtle">
@@ -20,12 +22,12 @@ function FeatureCard({ icon, title, description, delay, href }: FeatureCardProps
       <p className="mt-2 text-sm text-text-secondary leading-relaxed">{description}</p>
       {href ? (
         <span className="mt-4 inline-flex items-center gap-1 rounded-full bg-brand-brown/10 px-3 py-1 text-xs font-medium text-brand-brown">
-          Try it
+          {t('features.tryIt')}
           <ArrowRight className="h-3 w-3" />
         </span>
       ) : (
         <span className="mt-4 inline-block rounded-full bg-surface-active px-3 py-1 text-xs font-medium text-text-secondary">
-          Coming Soon
+          {t('features.comingSoon')}
         </span>
       )}
     </>
@@ -53,9 +55,10 @@ function FeatureCard({ icon, title, description, delay, href }: FeatureCardProps
 }
 
 function FeaturesSection() {
+  const { t } = useTranslation()
   return (
     <section className="py-16 border-t border-border-subtle">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -63,24 +66,24 @@ function FeaturesSection() {
           transition={{ duration: 0.4 }}
           className="text-center mb-10"
         >
-          <h2 className="text-2xl font-bold text-text-primary">What is live today</h2>
+          <h2 className="text-2xl font-bold text-text-primary">{t('features.title')}</h2>
           <p className="mt-2 text-text-secondary">
-            Notes are ready now, and deeper code workflows are still taking shape.
+            {t('features.subtitle')}
           </p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto">
           <FeatureCard
             icon={<FileText className="h-5 w-5 text-text-secondary" strokeWidth={1.5} />}
-            title="Notebooks"
-            description="Create structured notebooks with folders, pages, rich text, search, favorites, and visibility controls."
+            title={t('features.notebooksTitle')}
+            description={t('features.notebooksDesc')}
             delay={0.1}
             href="/notes"
           />
           <FeatureCard
             icon={<Code2 className="h-5 w-5 text-text-secondary" strokeWidth={1.5} />}
-            title="Codes"
-            description="A dedicated code-reading workspace is planned next. Today CodeCafe focuses on notebooks and MCP-ready note workflows."
+            title={t('features.codesTitle')}
+            description={t('features.codesDesc')}
             delay={0.15}
           />
         </div>

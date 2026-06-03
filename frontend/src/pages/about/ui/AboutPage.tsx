@@ -1,5 +1,6 @@
 import { useLayout } from '@/shared/model/layoutContext'
 import { FileText, Code2, Sparkles, Coffee, Globe } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 function FeatureItem({ icon, title, status }: { icon: React.ReactNode; title: string; status: string }) {
   return (
@@ -17,19 +18,18 @@ function FeatureItem({ icon, title, status }: { icon: React.ReactNode; title: st
 
 function AboutPage() {
   const { layout } = useLayout()
+  const { t } = useTranslation()
 
   return (
-    <div className={layout === 'sidebar' ? 'p-8 lg:p-12' : 'pt-28 pb-20 lg:pt-32 lg:pb-24'}>
-      <div className="mx-auto max-w-2xl px-6 lg:px-8">
+    <div className={layout === 'sidebar' ? 'p-6 sm:p-8 lg:p-12' : 'pt-28 pb-20 lg:pt-32 lg:pb-24'}>
+      <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center gap-3 mb-6">
           <Coffee className="h-8 w-8 text-brand-brown" />
-          <h1 className="text-3xl font-bold text-text-primary">About CodeCafe</h1>
+          <h1 className="text-3xl font-bold text-text-primary">{t('app.name')}</h1>
         </div>
 
         <p className="text-text-secondary leading-relaxed">
-          CodeCafe is a notebook workspace for engineers. The browser app is the main surface today,
-          and the same notebooks are also available through an OAuth-protected MCP adapter for AI clients
-          and automations.
+          {t('about.comingSoon')}
         </p>
 
         <div className="mt-10">
@@ -38,22 +38,22 @@ function AboutPage() {
             <FeatureItem
               icon={<FileText className="h-4 w-4 text-text-secondary" />}
               title="Notebooks"
-              status="Available - Structured notebooks with folders, pages, rich text, search, favorites, and archiving."
+              status="Available"
             />
             <FeatureItem
               icon={<Globe className="h-4 w-4 text-text-secondary" />}
               title="Sharing"
-              status="Available - Keep notebooks private, share by link, or publish them to public listings."
+              status="Available"
             />
             <FeatureItem
               icon={<Sparkles className="h-4 w-4 text-text-secondary" />}
               title="MCP"
-              status="Available - Browse, search, import, and update notebooks through OAuth-protected MCP tools, resources, and prompts."
+              status="Available"
             />
             <FeatureItem
               icon={<Code2 className="h-4 w-4 text-text-secondary" />}
               title="Codes"
-              status="Planned - A dedicated code-reading workspace is still on the roadmap."
+              status="Planned"
             />
           </div>
         </div>

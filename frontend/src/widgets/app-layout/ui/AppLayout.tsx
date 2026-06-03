@@ -37,7 +37,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <LayoutContext.Provider value={{ layout: 'sidebar', user }}>
         <div className="min-h-screen bg-surface flex">
           <Sidebar />
-          <main className={`flex-1 transition-all duration-200 ${isCollapsed ? 'ml-16' : 'ml-[var(--sidebar-width)]'}`}>
+          <main className={`flex-1 transition-all duration-200 ${isCollapsed ? 'md:ml-16' : 'md:ml-[var(--sidebar-width)]'}`}>
             {children}
           </main>
         </div>

@@ -13,6 +13,7 @@ import NotebookPageContent from '@/widgets/notebook-page-content'
 import NotebookOutline from '@/widgets/notebook-outline'
 import AiAssistant from '@/widgets/ai-assistant'
 import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
+import { useTranslation } from 'react-i18next'
 
 const NotebookPageEditor = lazy(() => import('@/widgets/notebook-page-editor'))
 
@@ -23,6 +24,7 @@ export default function NotebookReaderPage() {
   const [showArchived, setShowArchived] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
   const isEditingPage = editClickedForPath === pagePath
+  const { t } = useTranslation()
 
   const {
     data: notebook,
@@ -67,16 +69,16 @@ export default function NotebookReaderPage() {
         },
         {
           onSuccess: () => {
-            showToast('Page saved')
+            showToast(t('notebook.saved'))
             setEditClickedForPath(null)
           },
           onError: (err: unknown) => {
-            showToast(getErrorMessage(err, 'Failed to save page'), 'error')
+            showToast(getErrorMessage(err, t('notebook.saveFailed')), 'error')
           },
         },
       )
     },
-    [activePage, updateItem, showToast, setEditClickedForPath],
+    [activePage, updateItem, showToast, setEditClickedForPath, t],
   )
 
   if (notebookPending) {
@@ -88,7 +90,7 @@ export default function NotebookReaderPage() {
   }
 
   if (notebookIsError || !notebook) {
-    const errMsg = getErrorMessage(notebookError, 'Failed to load notebook.')
+    const errMsg = getErrorMessage(notebookError, t('errors.generic'))
     return (
       <div className="h-screen flex items-center justify-center bg-surface">
         <p className="text-sm text-status-error">{errMsg}</p>
@@ -119,13 +121,13 @@ export default function NotebookReaderPage() {
       contentRef={mainRef}
       content={
         activePage ? (
-          <div className="px-6 py-8 lg:px-12 lg:py-10 max-w-3xl mx-auto">
+          <div className="px-4 sm:px-6 py-8 lg:px-12 lg:py-10 max-w-3xl mx-auto">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <svg className="h-3 w-3 text-text-tertiary" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M12 2L22 12L12 22L2 12Z" />
                 </svg>
-                <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">Page</span>
+                <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">{t('notebook.page')}</span>
               </div>
               {notebook.canEdit && !isEditingPage && !activePage?.isArchived && (
                 <button
@@ -133,11 +135,11 @@ export default function NotebookReaderPage() {
                   className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
                 >
                   <Edit3 className="h-3 w-3" />
-                  Edit page
+                  {t('notebook.editPage')}
                 </button>
               )}
             </div>
-            <h1 className="text-3xl font-bold text-text-primary mb-6">{activePage.title}</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-6">{activePage.title}</h1>
             {isEditingPage ? (
               <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-text-primary" /></div>}>
                 <NotebookPageEditor
@@ -153,10 +155,10 @@ export default function NotebookReaderPage() {
           </div>
         ) : (
           <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <p className="text-sm text-text-tertiary">This notebook does not have any pages yet.</p>
+            <div className="text-center px-4">
+              <p className="text-sm text-text-tertiary">{t('notebook.noPages')}</p>
               {notebook.canEdit && (
-                <p className="text-xs text-text-tertiary mt-2">Use the left panel to add a page or folder.</p>
+                <p className="text-xs text-text-tertiary mt-2">{t('notebook.addPageHint')}</p>
               )}
             </div>
           </div>

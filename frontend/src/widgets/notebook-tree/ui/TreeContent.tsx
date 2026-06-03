@@ -5,6 +5,7 @@ import type { NotebookItem } from '@/entities/notebook-item'
 import { useTreeContext } from '../model/TreeContext'
 import TreeItem from './TreeItem'
 import SearchResultItem from './SearchResultItem'
+import { useTranslation } from 'react-i18next'
 
 interface TreeContentProps {
   isSearching: boolean
@@ -23,6 +24,7 @@ export default function TreeContent({
 }: TreeContentProps) {
   const [rootDragOver, setRootDragOver] = useState(false)
   const { canEdit, dragState, notebookSlug, activePath } = useTreeContext()
+  const { t } = useTranslation()
 
   if (isSearching) {
     if (searchPending) {
@@ -33,10 +35,10 @@ export default function TreeContent({
       )
     }
     if (searchError) {
-      return <p className="text-xs text-status-error text-center py-8">Search failed. Please try again.</p>
+      return <p className="text-xs text-status-error text-center py-8">{t('errors.generic')}</p>
     }
     if (!searchResults?.length) {
-      return <p className="text-xs text-text-tertiary text-center py-8">No results found.</p>
+      return <p className="text-xs text-text-tertiary text-center py-8">{t('errors.generic')}</p>
     }
     return (
       <div className="space-y-0.5">
@@ -88,9 +90,9 @@ export default function TreeContent({
       ))}
       {tree.length === 0 && (
         <div className="px-4 py-6 text-center">
-          <p className="text-xs text-text-tertiary">No pages or folders yet.</p>
+          <p className="text-xs text-text-tertiary">{t('notebook.noPages')}</p>
           {canEdit && (
-            <p className="text-xs text-text-tertiary mt-1">Add a folder or page to start building the notebook.</p>
+            <p className="text-xs text-text-tertiary mt-1">{t('notebook.addPageHint')}</p>
           )}
         </div>
       )}

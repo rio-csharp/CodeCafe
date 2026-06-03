@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Home, FileText, Code, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Home, FileText, Code, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen, X, Menu } from 'lucide-react'
 import logoIcon from '@/shared/assets/codecafe-icon.png'
 import { useLogout } from '@/features/authenticate'
 import { useLayout } from '@/shared/model/layoutContext'
 import { useSidebarStore } from '../model/sidebarStore'
+import { ThemeToggle } from '@/shared/ui/ThemeToggle'
+import { LanguageSwitcher } from '@/shared/ui/LanguageSwitcher'
+import { useTranslation } from 'react-i18next'
 
 export default function Sidebar() {
   const location = useLocation()
@@ -12,9 +15,11 @@ export default function Sidebar() {
   const { user } = useLayout()
   const logout = useLogout()
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const isCollapsed = useSidebarStore((s) => s.isCollapsed)
   const toggle = useSidebarStore((s) => s.toggle)
+  const { t } = useTranslation()
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
@@ -22,9 +27,9 @@ export default function Sidebar() {
   }
 
   const navItems = [
-    { to: '/dashboard', label: 'Workspace', icon: Home },
-    { to: '/notes', label: 'Notes', icon: FileText },
-    { to: '/codes', label: 'Codes', icon: Code },
+    { to: '/dashboard', label: t('nav.workspace'), icon: Home },
+    { to: '/notes', label: t('nav.notes'), icon: FileText },
+    { to: '/codes', label: t('nav.codes'), icon: Code },
   ]
 
   const handleLogout = () => {
@@ -47,17 +52,18 @@ export default function Sidebar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  return (
-    <aside
-      className={`fixed left-0 top-0 h-screen bg-surface border-r border-border-subtle flex flex-col z-50 transition-all duration-200 ${
-        isCollapsed ? 'w-16' : 'w-[var(--sidebar-width)]'
-      }`}
-    >
+  // Close mobile sidebar on route change
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [location.pathname])
+
+  const sidebarContent = (
+    <>
       {/* Toggle + Logo */}
       <div className={`pt-6 pb-4 flex flex-col items-center gap-3 ${isCollapsed ? 'px-2' : 'px-6'}`}>
         <button
           onClick={toggle}
-          className="flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-active transition-colors"
+          className="hidden md:flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-hover transition-colors"
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -95,6 +101,14 @@ export default function Sidebar() {
         ))}
       </nav>
 
+      {/* Tools */}
+      <div className={`px-3 pb-2 ${isCollapsed ? 'px-1.5' : ''}`}>
+        <div className={`flex items-center gap-1 ${isCollapsed ? 'justify-center' : ''}`}>
+          <ThemeToggle />
+          <LanguageSwitcher />
+        </div>
+      </div>
+
       {/* User */}
       <div className={`p-3 border-t border-border-subtle relative ${isCollapsed ? 'px-1.5' : ''}`} ref={menuRef}>
         <button
@@ -130,11 +144,53 @@ export default function Sidebar() {
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-status-error hover:bg-surface-hover transition-colors"
             >
               <LogOut className="h-4 w-4" />
-              {logout.isPending ? 'Logging out...' : 'Logout'}
+              {logout.isPending ? 'Logging out...' : t('nav.logout')}
             </button>
           </div>
         )}
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* Mobile toggle */}
+      <button
+        onClick={() => setMobileOpen(true)}
+        className="md:hidden fixed top-3 left-3 z-50 p-2 rounded-lg bg-surface border border-border-default shadow-sm"
+        aria-label="Open sidebar"
+      >
+        <Menu className="h-5 w-5 text-text-primary" />
+      </button>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Sidebar: mobile drawer + desktop fixed */}
+      <aside
+        className={`fixed left-0 top-0 h-screen bg-surface border-r border-border-subtle flex flex-col z-50 transition-all duration-200 ${
+          isCollapsed ? 'md:w-16' : 'md:w-[var(--sidebar-width)]'
+        } ${
+          mobileOpen ? 'translate-x-0 w-[var(--sidebar-width)]' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        {/* Mobile close button inside sidebar */}
+        <div className="md:hidden absolute top-2 right-2">
+          <button
+            onClick={() => setMobileOpen(false)}
+            className="p-2 rounded-lg hover:bg-surface-hover transition-colors"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5 text-text-secondary" />
+          </button>
+        </div>
+        {sidebarContent}
+      </aside>
+    </>
   )
 }

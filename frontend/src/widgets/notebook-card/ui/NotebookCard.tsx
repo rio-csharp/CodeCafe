@@ -11,6 +11,7 @@ import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { pickIcon, formatTimeAgo } from '@/shared/lib'
 import type { Notebook } from '@/entities/notebook'
+import { useTranslation } from 'react-i18next'
 
 interface NotebookCardProps {
   notebook: Notebook
@@ -30,17 +31,18 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
   const deleteNotebook = useDeleteNotebook()
   const toggleFavorite = useToggleFavorite()
   const { showToast } = useToast()
+  const { t } = useTranslation()
 
   useClickOutside(menuRef, () => setMenuOpen(false))
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm(`Delete "${notebook.title}"? This cannot be undone.`)) return
+    if (!confirm(t('notebook.deleteConfirm', { title: notebook.title }))) return
     deleteNotebook.mutate(notebook.id, {
-      onSuccess: () => { showToast('Notebook deleted'); setMenuOpen(false) },
+      onSuccess: () => { showToast(t('notebook.deleted')); setMenuOpen(false) },
       onError: (err: unknown) => {
-        showToast(getErrorMessage(err, 'Failed to delete'), 'error')
+        showToast(getErrorMessage(err, t('notebook.deleteFailed')), 'error')
       },
     })
   }
@@ -54,7 +56,7 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
       { notebookId: notebook.id, isFavorited: notebook.isFavoritedByMe },
       {
         onError: (err: unknown) => {
-          showToast(getErrorMessage(err, 'Failed to update favorite'), 'error')
+          showToast(getErrorMessage(err, t('notebook.favoriteFailed')), 'error')
         },
       },
     )
@@ -69,7 +71,7 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-active text-text-secondary">
             {createElement(iconComponent, { className: 'h-5 w-5' })}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 pr-8">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-text-primary truncate">{notebook.title}</h3>
               {showVisibility && <VisibilityBadge visibility={notebook.visibility} />}
@@ -100,14 +102,14 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
           type="button"
           onClick={handleToggleFavorite}
           disabled={toggleFavorite.isPending}
-          className={`p-1.5 rounded-md transition-all ${notebook.isFavoritedByMe ? 'text-status-favorite bg-status-favorite-bg opacity-100' : 'text-text-tertiary hover:text-status-favorite hover:bg-status-favorite-bg opacity-0 group-hover:opacity-100'}`}
-          title={notebook.isFavoritedByMe ? 'Remove from favorites' : 'Add to favorites'}
+          className={`p-1.5 rounded-md transition-all ${notebook.isFavoritedByMe ? 'text-status-favorite bg-status-favorite-bg opacity-100' : 'text-text-tertiary hover:text-status-favorite hover:bg-status-favorite-bg opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}
+          title={notebook.isFavoritedByMe ? t('notebook.favoriteRemove') : t('notebook.favoriteAdd')}
         >
           <Star className={`h-4 w-4 ${notebook.isFavoritedByMe ? 'fill-status-favorite' : ''}`} />
         </button>
         {notebook.canEdit && (
           <div ref={menuRef}>
-            <button type="button" data-testid="notebook-menu-button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(!menuOpen) }} className="p-1.5 rounded-md text-text-tertiary hover:text-text-secondary hover:bg-surface-hover opacity-0 group-hover:opacity-100 transition-all">
+            <button type="button" data-testid="notebook-menu-button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(!menuOpen) }} className="p-1.5 rounded-md text-text-tertiary hover:text-text-secondary hover:bg-surface-hover opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
               <MoreHorizontal className="h-4 w-4" />
             </button>
             {menuOpen && (

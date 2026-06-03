@@ -4,10 +4,12 @@ import AuthLayout from '@/widgets/auth-layout'
 import { PasswordInput } from '@/widgets/auth-form'
 import GitHubIcon from '@/shared/ui/icons/GitHubIcon'
 import { useLoginForm, completePostAuthRedirect } from '@/features/authenticate'
+import { useTranslation } from 'react-i18next'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useTranslation()
 
   const handleSuccess = () => {
     completePostAuthRedirect(location.search, navigate)
@@ -24,13 +26,13 @@ export default function LoginPage() {
 
   return (
     <AuthLayout
-      title="Welcome back"
-      subtitle="Sign in to continue to your workspace"
+      title={t('auth.loginTitle')}
+      subtitle={t('auth.loginSubtitle')}
       footer={
         <p className="text-sm text-text-secondary">
-          Don&apos;t have an account?{' '}
+          {t('auth.noAccount')}{' '}
           <Link to={`/register${location.search}`} className="text-brand-brown hover:underline">
-            Create an account
+            {t('auth.createAccount')}
           </Link>
         </p>
       }
@@ -38,19 +40,19 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {isError && (
           <p className="text-sm text-status-error text-center">
-            {error instanceof Error ? error.message : 'Login failed'}
+            {error instanceof Error ? error.message : t('auth.loginError')}
           </p>
         )}
 
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">
-            Email
+            {t('auth.email')}
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-tertiary" />
             <input
               type="email"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               data-testid="login-email"
               className={`w-full rounded-lg border bg-surface py-2.5 pl-10 pr-4 text-sm text-text-primary outline-none transition-colors focus:border-border-focus ${
                 errors.email ? 'border-status-error-border' : 'border-border-default'
@@ -66,12 +68,12 @@ export default function LoginPage() {
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="block text-sm font-medium text-text-primary">
-              Password
+              {t('auth.password')}
             </label>
-            <span className="text-xs text-text-tertiary">Forgot password? Coming soon</span>
+            <span className="text-xs text-text-tertiary">{t('auth.forgotPassword')}</span>
           </div>
           <PasswordInput
-            placeholder="Enter your password"
+            placeholder={t('auth.passwordPlaceholder')}
             data-testid="login-password"
             error={errors.password?.message}
             {...register('password')}
@@ -84,7 +86,7 @@ export default function LoginPage() {
           disabled={isPending}
           className="w-full rounded-lg bg-text-primary py-2.5 text-sm font-medium text-text-inverse hover:bg-surface-inverse-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isPending ? 'Signing in...' : 'Login'}
+          {isPending ? t('auth.loginLoading') : t('auth.loginSubmit')}
         </button>
       </form>
 
@@ -93,7 +95,7 @@ export default function LoginPage() {
           <div className="w-full border-t border-border-default" />
         </div>
         <div className="relative flex justify-center text-xs">
-          <span className="bg-surface px-4 text-text-tertiary">or</span>
+          <span className="bg-surface px-4 text-text-tertiary">{t('auth.or')}</span>
         </div>
       </div>
 
@@ -103,8 +105,8 @@ export default function LoginPage() {
         className="w-full flex items-center justify-center gap-2 rounded-lg border border-border-subtle bg-surface-hover py-2.5 text-sm font-medium text-text-tertiary cursor-not-allowed"
       >
         <GitHubIcon className="h-5 w-5 opacity-50" />
-        Continue with GitHub
-        <span className="text-xs text-text-tertiary">(Coming soon)</span>
+        {t('auth.githubLogin')}
+        <span className="text-xs text-text-tertiary">{t('auth.githubComingSoon')}</span>
       </button>
     </AuthLayout>
   )
