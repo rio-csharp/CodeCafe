@@ -1,13 +1,20 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/CodeCafe.Api/CodeCafe.Api.csproj" />
     <Project Path="src/CodeCafe.Application/CodeCafe.Application.csproj" />
     <Project Path="src/CodeCafe.Domain/CodeCafe.Domain.csproj" />
     <Project Path="src/CodeCafe.Infrastructure/CodeCafe.Infrastructure.csproj" />
-    <Project Path="src/CodeCafe.WebApi/CodeCafe.WebApi.csproj" />
+    <Project Path="src/CodeCafe.Mcp/CodeCafe.Mcp.csproj" />
+    <Project Path="src/CodeCafe.Server/CodeCafe.Server.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/CodeCafe.Api.Tests/CodeCafe.Api.Tests.csproj" />
     <Project Path="tests/CodeCafe.Application.Tests/CodeCafe.Application.Tests.csproj" />
-    <Project Path="tests/CodeCafe.WebApi.Tests/CodeCafe.WebApi.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Architecture.Tests/CodeCafe.Architecture.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Domain.Tests/CodeCafe.Domain.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Infrastructure.Tests/CodeCafe.Infrastructure.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Mcp.Tests/CodeCafe.Mcp.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Server.Tests/CodeCafe.Server.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/CodeCafe.DbSync/CodeCafe.DbSync.csproj" />

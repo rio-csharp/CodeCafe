@@ -9,6 +9,9 @@ deploy/secrets.env
 deploy/cloudflare/*.private.*
 .local-keys/
 .artifacts/
+.tmp/
+.dotnet-user/
+frontend/e2e/.auth/
 
 # Local development configuration can contain secrets.
 appsettings.Development.json

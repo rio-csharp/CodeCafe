@@ -1,7 +1,6 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
 using Microsoft.EntityFrameworkCore;
-using System.Text;
 using System.Text.Json;
 
 namespace CodeCafe.Infrastructure.Notes;
@@ -9,78 +8,6 @@ namespace CodeCafe.Infrastructure.Notes;
 internal static class NotesSupport
 {
     public const string PageContentFormat = "tiptap_json";
-
-    public static bool CanReadNotebook(Notebook notebook, Guid currentUserId)
-    {
-        if (notebook.OwnerId == currentUserId)
-        {
-            return true;
-        }
-
-        if (notebook.Visibility == NotebookVisibility.Unlisted)
-        {
-            return true;
-        }
-
-        return notebook.Visibility == NotebookVisibility.Public && notebook.IsPublished;
-    }
-
-    public static string? NormalizeSearch(string? search)
-    {
-        var trimmed = search?.Trim();
-        return string.IsNullOrWhiteSpace(trimmed) ? null : $"%{trimmed}%";
-    }
-
-    public static string? NormalizeOptionalText(string? value)
-    {
-        var trimmed = value?.Trim();
-        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
-    }
-
-    public static string NormalizePath(string path)
-    {
-        return path.Trim().Trim('/');
-    }
-
-    public static bool TryParseVisibility(string? value, out NotebookVisibility visibility)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            visibility = NotebookVisibility.Private;
-            return true;
-        }
-
-        return Enum.TryParse(value, ignoreCase: true, out visibility);
-    }
-
-    public static bool TryParseItemType(string value, out NotebookItemType type)
-    {
-        return Enum.TryParse(value, ignoreCase: true, out type);
-    }
-
-    public static bool TryParseOptionalGuid(JsonElement value, out Guid? guid)
-    {
-        guid = null;
-
-        if (value.ValueKind == JsonValueKind.Null)
-        {
-            return true;
-        }
-
-        if (value.ValueKind != JsonValueKind.String)
-        {
-            return false;
-        }
-
-        var rawValue = value.GetString();
-        if (!Guid.TryParse(rawValue, out var parsedGuid))
-        {
-            return false;
-        }
-
-        guid = parsedGuid;
-        return true;
-    }
 
     public static string? SerializeContent(JsonElement? content)
     {
@@ -99,105 +26,6 @@ internal static class NotesSupport
 
         using var document = JsonDocument.Parse(content);
         return document.RootElement.Clone();
-    }
-
-    public static NotebookItem? ValidateRequestedParent(
-        IReadOnlyList<NotebookItem> notebookItems,
-        Guid itemId,
-        Guid? parentId)
-    {
-        if (parentId is null)
-        {
-            return null;
-        }
-
-        return notebookItems.SingleOrDefault(item => item.Id == parentId && item.Id != itemId);
-    }
-
-    public static bool WouldCreateCycle(
-        IReadOnlyList<NotebookItem> notebookItems,
-        Guid itemId,
-        Guid proposedParentId,
-        IReadOnlyList<ReorderNotebookItemModel>? reorderItems = null)
-    {
-        var parentMap = notebookItems.ToDictionary(item => item.Id, item => item.ParentId);
-        if (reorderItems is not null)
-        {
-            foreach (var reorderItem in reorderItems)
-            {
-                parentMap[reorderItem.ItemId] = reorderItem.ParentId;
-            }
-        }
-
-        Guid? currentParentId = proposedParentId;
-        while (currentParentId is not null)
-        {
-            if (currentParentId == itemId)
-            {
-                return true;
-            }
-
-            currentParentId = parentMap.GetValueOrDefault(currentParentId.Value);
-        }
-
-        return false;
-    }
-
-    public static string GenerateItemPath(
-        IReadOnlyList<NotebookItem> notebookItems,
-        string? parentPath,
-        string title,
-        Guid currentItemId)
-    {
-        var baseSlug = SlugGenerator.FromTitle(title, "page");
-        for (var attempt = 0; attempt < 10; attempt++)
-        {
-            var slug = SlugGenerator.WithSuffix(baseSlug, attempt);
-            var path = string.IsNullOrWhiteSpace(parentPath) ? slug : $"{parentPath}/{slug}";
-            var exists = notebookItems.Any(item => item.Id != currentItemId && item.Path == path);
-            if (!exists)
-            {
-                return path;
-            }
-        }
-
-        var finalSlug = $"{baseSlug}-{Guid.NewGuid():N}";
-        return string.IsNullOrWhiteSpace(parentPath) ? finalSlug : $"{parentPath}/{finalSlug}";
-    }
-
-    public static void ApplyDescendantPathUpdate(
-        IReadOnlyList<NotebookItem> notebookItems,
-        Guid itemId,
-        string oldPath,
-        string newPath)
-    {
-        foreach (var descendant in notebookItems.Where(item =>
-                     item.Id != itemId
-                     && item.Path.StartsWith(oldPath + "/", StringComparison.Ordinal)))
-        {
-            descendant.Path = newPath + descendant.Path[oldPath.Length..];
-        }
-    }
-
-    public static HashSet<Guid> GetDescendantIds(IReadOnlyList<NotebookItem> items, Guid parentId)
-    {
-        var ids = new HashSet<Guid>();
-        var pending = new Queue<Guid>();
-        pending.Enqueue(parentId);
-
-        while (pending.Count > 0)
-        {
-            var currentId = pending.Dequeue();
-            foreach (var child in items.Where(item => item.ParentId == currentId))
-            {
-                if (ids.Add(child.Id))
-                {
-                    pending.Enqueue(child.Id);
-                }
-            }
-        }
-
-        return ids;
     }
 
     public static string GetAuthorDisplayName(IReadOnlyDictionary<Guid, string> displayNames, Guid ownerId)

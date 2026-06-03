@@ -74,6 +74,75 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
                     b.ToTable("McpToolAuditEntries", (string)null);
                 });
 
+            modelBuilder.Entity("CodeCafe.Domain.Mcp.McpUploadChunkEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentText")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SequenceNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UploadId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UploadId", "SequenceNumber")
+                        .IsUnique();
+
+                    b.ToTable("McpUploadChunks", (string)null);
+                });
+
+            modelBuilder.Entity("CodeCafe.Domain.Mcp.McpUploadSessionEntry", b =>
+                {
+                    b.Property<string>("UploadId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("BytesReceived")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ChunkCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("MediaType")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("character varying(160)");
+
+                    b.Property<DateTimeOffset?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UploadId");
+
+                    b.HasIndex("ActorUserId", "UpdatedAtUtc");
+
+                    b.ToTable("McpUploadSessions", (string)null);
+                });
+
             modelBuilder.Entity("CodeCafe.Domain.Notes.Notebook", b =>
                 {
                     b.Property<Guid>("Id")
@@ -710,6 +779,17 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
                     b.Navigation("Parent");
                 });
 
+            modelBuilder.Entity("CodeCafe.Domain.Mcp.McpUploadChunkEntry", b =>
+                {
+                    b.HasOne("CodeCafe.Domain.Mcp.McpUploadSessionEntry", "UploadSession")
+                        .WithMany("Chunks")
+                        .HasForeignKey("UploadId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UploadSession");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -795,6 +875,11 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("CodeCafe.Domain.Notes.NotebookItem", b =>
                 {
                     b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("CodeCafe.Domain.Mcp.McpUploadSessionEntry", b =>
+                {
+                    b.Navigation("Chunks");
                 });
 
             modelBuilder.Entity("OpenIddict.EntityFrameworkCore.Models.OpenIddictEntityFrameworkCoreApplication<System.Guid>", b =>

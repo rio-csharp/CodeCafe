@@ -79,6 +79,10 @@ public sealed record NotebookItemSearchModel(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
 
+public sealed record NotebookItemsPageModel(
+    int TotalCount,
+    IReadOnlyList<NotebookItemModel> Items);
+
 public sealed record ReorderNotebookItemModel(
     Guid ItemId,
     Guid? ParentId,
