@@ -26,12 +26,42 @@ import { Copy, Check } from 'lucide-react'
 import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
+import ErrorBoundary from '@/shared/ui/ErrorBoundary'
 import '@/widgets/notebook-page-editor/ui/codeHighlight.css'
 
 const lowlight = createLowlight(common)
 
 interface NotebookPageContentProps {
   page: NotebookItem
+}
+
+/**
+ * Remove empty text nodes that ProseMirror rejects.
+ * A text node with text === "" causes: RangeError: Empty text nodes are not allowed
+ */
+function sanitizeTipTapContent(content: Record<string, unknown>): Record<string, unknown> {
+  if (!content || typeof content !== 'object') return content
+  const clone = JSON.parse(JSON.stringify(content))
+
+  function walk(node: unknown): unknown {
+    if (typeof node !== 'object' || node === null) return node
+    const n = node as Record<string, unknown>
+
+    // Filter out empty text nodes
+    if (n.type === 'text' && n.text === '') {
+      return null
+    }
+
+    if (Array.isArray(n.content)) {
+      n.content = n.content
+        .map(walk)
+        .filter((child): child is Record<string, unknown> => child !== null)
+    }
+
+    return n
+  }
+
+  return walk(clone) as Record<string, unknown>
 }
 
 function CopyOverlay({ pre }: { pre: HTMLElement }) {
@@ -59,7 +89,11 @@ function CopyOverlay({ pre }: { pre: HTMLElement }) {
   )
 }
 
-export default function NotebookPageContent({ page }: NotebookPageContentProps) {
+/**
+ * Inner component that actually uses TipTap hooks.
+ * Wrapped by ErrorBoundary so crashes don't blow up the whole page.
+ */
+function TipTapViewer({ content }: { content: Record<string, unknown> }) {
   const contentRef = useRef<HTMLDivElement>(null)
   const [hoveredPre, setHoveredPre] = useState<HTMLElement | null>(null)
   const hoveredPreRef = useRef(hoveredPre)
@@ -67,7 +101,7 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
 
   const editor = useEditor({
     editable: false,
-    content: page.contentJson,
+    content,
     extensions: [
       StarterKit.configure({ codeBlock: false }),
       CodeBlockLowlight.configure({ lowlight, defaultLanguage: 'plaintext' }),
@@ -92,14 +126,12 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
     ],
   })
 
-  // Sync content when the page changes. page.id is the stable identifier;
-  // page.contentJson is derived from the page and not needed as a dep.
+  // Sync content when the editor instance changes
   useEffect(() => {
-    if (editor && page.contentJson) {
-      editor.commands.setContent(page.contentJson)
+    if (editor) {
+      editor.commands.setContent(content)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, page.id])
+  }, [editor, content])
 
   // Inject heading IDs after content renders
   useEffect(() => {
@@ -110,7 +142,7 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
       const text = h.textContent ?? ''
       h.id = slugifyHeadingId(text, idx)
     })
-  }, [editor, page.id])
+  }, [editor, content])
 
   // Track hovered code blocks via event delegation
   useEffect(() => {
@@ -138,9 +170,34 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
       container.removeEventListener('mouseover', handleMouseOver)
       container.removeEventListener('mouseout', handleMouseOut)
     }
-  }, [page.id])
+  }, [content])
 
-  if (!page.contentJson) {
+  return (
+    <div ref={contentRef} className={PROSE_CONTENT_CLASSES}>
+      <EditorContent editor={editor} />
+      {hoveredPre && <CopyOverlay pre={hoveredPre} />}
+    </div>
+  )
+}
+
+/**
+ * Plain-text fallback when TipTap fails to render.
+ */
+function PlainTextViewer({ text }: { text: string }) {
+  return (
+    <div className="prose prose-sm max-w-none">
+      <p className="text-xs text-text-tertiary mb-2">Content could not be rendered in rich text. Showing plain text instead.</p>
+      <pre className="whitespace-pre-wrap font-sans text-text-secondary text-sm leading-relaxed">{text}</pre>
+    </div>
+  )
+}
+
+export default function NotebookPageContent({ page }: NotebookPageContentProps) {
+  const safeContent = page.contentJson ? sanitizeTipTapContent(page.contentJson) : null
+  const hasPlainText = !!page.plainTextContent
+
+  // Nothing to show at all
+  if (!safeContent && !hasPlainText) {
     return (
       <div className="flex items-center justify-center h-64">
         <p className="text-sm text-text-tertiary">This page is empty.</p>
@@ -148,14 +205,26 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
     )
   }
 
-  return (
-    <div
-      ref={contentRef}
-      key={page.id}
-      className={PROSE_CONTENT_CLASSES}
-    >
-      <EditorContent editor={editor} />
-      {hoveredPre && <CopyOverlay pre={hoveredPre} />}
-    </div>
-  )
+  // TipTap content available — try rendering it, but guard with ErrorBoundary
+  if (safeContent) {
+    return (
+      <ErrorBoundary
+        fallback={
+          hasPlainText ? (
+            <PlainTextViewer text={page.plainTextContent!} />
+          ) : (
+            <div className="rounded-xl border border-status-error-border bg-status-error-bg p-6">
+              <p className="text-sm font-semibold text-status-error">Unable to display content</p>
+              <p className="mt-1 text-xs text-status-error">The page content could not be rendered.</p>
+            </div>
+          )
+        }
+      >
+        <TipTapViewer content={safeContent} />
+      </ErrorBoundary>
+    )
+  }
+
+  // No rich content, but we have plain text
+  return <PlainTextViewer text={page.plainTextContent!} />
 }

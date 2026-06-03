@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from 'react'
+import { ErrorFallback } from './ErrorFallback'
 
 interface Props {
   children: ReactNode
@@ -7,6 +8,7 @@ interface Props {
 
 interface State {
   hasError: boolean
+  error?: Error
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -15,13 +17,16 @@ class ErrorBoundary extends Component<Props, State> {
     this.state = { hasError: false }
   }
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true }
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error }
   }
 
   render() {
     if (this.state.hasError) {
-      return this.props.fallback ?? null
+      if (this.props.fallback !== undefined) {
+        return this.props.fallback
+      }
+      return <ErrorFallback />
     }
     return this.props.children
   }
