@@ -9,7 +9,58 @@ Default paths:
 - MCP endpoint: `/mcp`
 - Protected-resource metadata: `/.well-known/oauth-protected-resource/mcp`
 
-The endpoint is enabled by default and protected by OAuth/OIDC bearer tokens unless `Mcp:RequireAuthorization` is turned off.
+The endpoint is enabled by default and protected by OAuth/OIDC unless `Mcp:RequireAuthorization` is turned off.
+
+## Quick Start
+
+Choose the base URL for the environment you want to target:
+
+- Local development: `https://localhost:7239`
+- Example production host: `https://api.codes.cafe`
+
+The MCP endpoint is always `{baseUrl}/mcp`.
+
+For browser users, CodeCafe uses the normal web sign-in flow.
+For MCP clients, sign in through the CodeCafe OAuth flow first, then call `/mcp` with the bearer access token returned by that flow.
+
+### Claude Code
+
+```bash
+claude mcp add codecafe --transport http {baseUrl}/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+Example:
+
+```bash
+claude mcp add codecafe --transport http https://api.codes.cafe/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### Codex CLI
+
+```bash
+codex mcp add codecafe --transport http {baseUrl}/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+Example:
+
+```bash
+codex mcp add codecafe --transport http https://api.codes.cafe/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
+```
+
+### Generic JSON Config
+
+```json
+{
+  "mcpServers": {
+    "codecafe": {
+      "url": "https://api.codes.cafe/mcp",
+      "headers": {
+        "Authorization": "Bearer <ACCESS_TOKEN>"
+      }
+    }
+  }
+}
+```
 
 ## Auth And Scopes
 
@@ -22,8 +73,41 @@ Default MCP configuration:
 When authorization is enabled:
 
 - callers authenticate through the built-in OpenIddict server
+- MCP clients use bearer access tokens obtained from the CodeCafe OAuth flow
 - the MCP endpoint adds `WWW-Authenticate` metadata hints on `401` responses
 - optional origin allowlists are enforced for MCP requests
+
+### Dynamic Client Registration
+
+CodeCafe includes dynamic client registration for native loopback clients at `/connect/register`.
+
+Registration requirements:
+
+- `application_type` must be `native`
+- `token_endpoint_auth_method` must be `none`
+- redirect URIs must be HTTP loopback addresses on `localhost`, `127.0.0.1`, or `::1`
+- supported grants are `authorization_code` and `refresh_token`
+
+Example registration request:
+
+```bash
+curl -X POST https://localhost:7239/connect/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "application_type": "native",
+    "client_name": "My MCP Client",
+    "grant_types": ["authorization_code", "refresh_token"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none",
+    "redirect_uris": ["http://127.0.0.1/callback"]
+  }'
+```
+
+CodeCafe also seeds a built-in public client:
+
+- Client ID: `codecafe-claude`
+- Display name: `Claude Code`
+- Redirect URIs: `http://localhost/callback`, `http://127.0.0.1/callback`
 
 ## Tools
 
@@ -127,3 +211,22 @@ Clients should treat these values as runtime configuration, not hard-coded const
 - MCP diagnostics are exposed at `/mcp/health/live`.
 - Notebook reads and writes still flow through the same notebook rules used by the REST API.
 - Public-only MCP tools are narrower in scope than the authenticated notebook tools, but they still live on the same MCP host surface.
+
+## Local Development
+
+Run the combined backend host locally:
+
+```powershell
+dotnet restore CodeCafe.slnx
+dotnet run --project src/CodeCafe.Server
+```
+
+The checked-in development profile serves:
+
+- HTTP: `http://localhost:5042`
+- HTTPS: `https://localhost:7239`
+
+Local MCP URLs:
+
+- Endpoint: `https://localhost:7239/mcp`
+- Protected-resource metadata: `https://localhost:7239/.well-known/oauth-protected-resource/mcp`
