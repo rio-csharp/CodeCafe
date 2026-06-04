@@ -10,18 +10,20 @@ const locales = [
 
 interface LanguageSwitcherProps {
   placement?: 'top' | 'bottom'
+  align?: 'left' | 'right'
 }
 
-export function LanguageSwitcher({ placement = 'bottom' }: LanguageSwitcherProps) {
+export function LanguageSwitcher({ placement = 'bottom', align = 'right' }: LanguageSwitcherProps) {
   const { i18n } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, () => setOpen(false))
 
+  const horizontalAlign = align === 'left' ? 'left-0' : 'right-0'
   const menuPositionClasses =
     placement === 'top'
-      ? 'absolute right-0 bottom-full mb-2'
-      : 'absolute right-0 mt-2'
+      ? `absolute ${horizontalAlign} bottom-full mb-2`
+      : `absolute ${horizontalAlign} mt-2`
 
   return (
     <div className="relative" ref={ref}>
