@@ -111,7 +111,8 @@
     "pages": "page",
     "pages_plural": "pages",
     "folders": "folder",
-    "folders_plural": "folders"
+    "folders_plural": "folders",
+    "titleCopied": "Title copied to clipboard"
   },
   "outline": {
     "onThisPage": "On this page",

@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
 import { useEditorStore } from '@/widgets/notebook-page-editor/store'
 import { useParams, Navigate } from 'react-router-dom'
-import { Edit3, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
+import { Edit3, Link as LinkIcon, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
 import { useNotebook, buildTree, findFirstPage, findPageByPath, extractOutline } from '@/entities/notebook'
 import { useUpdateNotebookItem } from '@/features/manage-notebook-items'
 import { useToast } from '@/shared/ui/Toast'
@@ -22,7 +22,7 @@ export default function NotebookReaderPage() {
   const pagePath = splat ?? ''
   const { editClickedForPath, setEditClickedForPath } = useEditorStore()
   const [showArchived, setShowArchived] = useState(false)
-  const [isFullWidth, setIsFullWidth] = useState(false)
+  const [isFullWidth, setIsFullWidth] = useState(true)
   const mainRef = useRef<HTMLElement>(null)
   const isEditingPage = editClickedForPath === pagePath
   const { t } = useTranslation()
@@ -123,6 +123,7 @@ export default function NotebookReaderPage() {
           activePage={activePage}
           showArchived={showArchived}
           onShowArchivedChange={setShowArchived}
+          onRefreshNotebook={refetch}
         />
       }
       contentRef={mainRef}
@@ -132,7 +133,16 @@ export default function NotebookReaderPage() {
             {/* Sticky header: always full width */}
             <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-12 px-4 sm:px-6 lg:px-12 flex items-start justify-between gap-4 py-1.5 bg-surface/95 backdrop-blur-sm">
               {!isEditingPage && (
-                <h1 className="text-xl font-semibold text-text-primary">{activePage.title}</h1>
+                <h1
+                  className="text-xl font-semibold text-text-primary truncate min-w-0 cursor-pointer"
+                  title={activePage.title}
+                  onClick={() => {
+                    navigator.clipboard.writeText(activePage.title)
+                    showToast(t('notebook.titleCopied'))
+                  }}
+                >
+                  {activePage.title}
+                </h1>
               )}
               <div className={`flex items-center gap-2 shrink-0 ${isEditingPage ? '' : 'mt-0.5'}`}>
                 {!isEditingPage && (
@@ -153,6 +163,17 @@ export default function NotebookReaderPage() {
                     >
                       <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
                       Refresh
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(window.location.href)
+                        showToast(t('notebook.linkCopied'))
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                      title={t('notebook.copyLink')}
+                    >
+                      <LinkIcon className="h-3 w-3" />
+                      {t('notebook.copyLink')}
                     </button>
                   </>
                 )}
