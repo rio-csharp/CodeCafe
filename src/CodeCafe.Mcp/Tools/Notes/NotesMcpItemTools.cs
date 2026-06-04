@@ -420,7 +420,7 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(CreatePageToolResponse))]
-    [Description("Create a page in a notebook under an optional parent folder path. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger content. Put the page title in the title argument; do not include H1 headings in page body content.")]
+    [Description("Create a page in a notebook under an optional parent folder path. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger body content.")]
     public async Task<CallToolResult> CreatePageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page title.")] string title,
@@ -433,9 +433,9 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken,
         [Description("Optional parent folder path. Null creates the page at the notebook root.")] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
-        [Description("Optional TipTap JSON document for the page body. Use for smaller inline payloads. Heading level 1 nodes are rejected; the title argument is the page heading.")] JsonElement? contentJson = null,
-        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON body content. Markdown should not contain H1 headings; start body sections at H2. Server-side Markdown import demotes H1 to H2.")] string? contentUploadId = null,
-        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON and H1 headings are imported as H2. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null,
+        [Description("Optional TipTap JSON document for the page body. Use for smaller inline payloads.")] JsonElement? contentJson = null,
+        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON body content.")] string? contentUploadId = null,
+        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null,
         [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
         return await mutationExecutor.ExecuteAsync(
@@ -534,7 +534,7 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
-    [Description("Replace a page's stored body content. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger edits. Put the page title in the existing page title; do not include H1 headings in page body content.")]
+    [Description("Replace a page's stored body content. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger edits.")]
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
@@ -546,9 +546,9 @@ public sealed class NotesMcpItemTools
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
-        [Description("The full TipTap JSON document to store as page body. Use for smaller inline payloads. Heading level 1 nodes are rejected; page title is managed separately.")] JsonElement? contentJson = null,
-        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON body content. Markdown should not contain H1 headings; start body sections at H2. Server-side Markdown import demotes H1 to H2.")] string? contentUploadId = null,
-        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON and H1 headings are imported as H2. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null,
+        [Description("The full TipTap JSON document to store as page body. Use for smaller inline payloads.")] JsonElement? contentJson = null,
+        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON body content.")] string? contentUploadId = null,
+        [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null,
         [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
         return await mutationExecutor.ExecuteAsync(
@@ -632,7 +632,7 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
-    [Description("Append block content to an existing page body. Accepts small inline TipTap blocks JSON or uploaded Markdown / TipTap blocks JSON for larger additions. Do not append H1 headings; start new sections at H2.")]
+    [Description("Append block content to an existing page body. Accepts small inline TipTap blocks JSON or uploaded Markdown / TipTap blocks JSON for larger additions.")]
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path.")] string path,
@@ -644,9 +644,9 @@ public sealed class NotesMcpItemTools
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
-        [Description("The TipTap block nodes JSON array to append. Use for smaller inline payloads. Heading level 1 nodes are rejected.")] JsonElement? blocks = null,
-        [Description("Optional upload id returned by notes_create_upload for larger TipTap blocks JSON or Markdown content. Markdown should not contain H1 headings; start appended sections at H2. Server-side Markdown import demotes H1 to H2.")] string? blocksUploadId = null,
-        [Description("Format of blocksUploadId: tiptap_blocks_json or markdown. Markdown is converted server-side into TipTap blocks before append, and H1 headings are imported as H2. When omitted, the server infers it from the file name or media type.")] string? blocksFormat = null,
+        [Description("The TipTap block nodes JSON array to append. Use for smaller inline payloads.")] JsonElement? blocks = null,
+        [Description("Optional upload id returned by notes_create_upload for larger TipTap blocks JSON or Markdown content.")] string? blocksUploadId = null,
+        [Description("Format of blocksUploadId: tiptap_blocks_json or markdown. Markdown is converted server-side into TipTap blocks before append. When omitted, the server infers it from the file name or media type.")] string? blocksFormat = null,
         [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
         return await mutationExecutor.ExecuteAsync(

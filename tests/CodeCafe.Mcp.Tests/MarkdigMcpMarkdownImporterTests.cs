@@ -46,7 +46,7 @@ public sealed class MarkdigMcpMarkdownImporterTests
     }
 
     [Fact]
-    public void ConvertMarkdownToDocument_DemotesH1HeadingsForMcpImports()
+    public void ConvertMarkdownToDocument_PreservesH1HeadingsForMcpImports()
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
@@ -54,7 +54,7 @@ public sealed class MarkdigMcpMarkdownImporterTests
 
         var heading = document.GetProperty("content")[0];
         Assert.Equal("heading", heading.GetProperty("type").GetString());
-        Assert.Equal(2, heading.GetProperty("attrs").GetProperty("level").GetInt32());
+        Assert.Equal(1, heading.GetProperty("attrs").GetProperty("level").GetInt32());
     }
 
     [Fact]
