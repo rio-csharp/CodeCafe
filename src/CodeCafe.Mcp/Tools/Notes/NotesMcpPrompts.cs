@@ -34,7 +34,7 @@ public sealed class NotesMcpPrompts
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Use `{NotesMcpToolNames.GetPage}` for notebook `{notebook.Slug}` and path `{page.Path}`.",
-            "Summarize the page, preserve technical accuracy, and propose a tighter heading structure if the content suggests one.");
+            "Summarize the page, preserve technical accuracy, and propose a tighter heading structure if the content suggests one. When proposing body edits, do not create H1 headings; MCP TipTap JSON rejects heading level 1 nodes and page title is stored separately.");
     }
 
     [McpServerPrompt(Name = "notes.organize_notebook", Title = "Organize Notebook")]
@@ -79,7 +79,7 @@ public sealed class NotesMcpPrompts
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Read page `{page.Path}` in notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetPage}`.",
-            $"Expand the outline into a fuller draft while preserving the existing structure. The editor supports headings, paragraphs, lists (bullet/ordered/task), code blocks, blockquotes, tables, images, YouTube embeds, and inline formatting (bold, italic, underline, strikethrough, links, colors, highlights, subscript, superscript, font family). Use inline TipTap JSON only for smaller edits. For larger drafts or local Markdown files, call `{NotesMcpToolNames.GetLimits}`, then `{NotesMcpToolNames.CreateUpload}` and `{NotesMcpToolNames.AppendUploadChunk}`, and finally apply the result with `{NotesMcpToolNames.UpdatePageContentJson}` or `{NotesMcpToolNames.AppendBlocksToPage}` using `markdown` format.");
+            $"Expand the outline into a fuller draft while preserving the existing structure. The editor supports headings, paragraphs, lists (bullet/ordered/task), code blocks, blockquotes, tables, images, YouTube embeds, and inline formatting (bold, italic, underline, strikethrough, links, colors, highlights, subscript, superscript, font family). Do not generate H1 headings in page body content; MCP TipTap JSON rejects heading level 1 nodes, page title stores H1-level meaning, and body sections should start at H2. Use inline TipTap JSON only for smaller edits. For larger drafts or local Markdown files, call `{NotesMcpToolNames.GetLimits}`, then `{NotesMcpToolNames.CreateUpload}` and `{NotesMcpToolNames.AppendUploadChunk}`, and finally apply the result with `{NotesMcpToolNames.UpdatePageContentJson}` or `{NotesMcpToolNames.AppendBlocksToPage}` using `markdown` format.");
     }
 
     [McpServerPrompt(Name = "notes.review_for_staleness", Title = "Review For Staleness")]
@@ -98,6 +98,6 @@ public sealed class NotesMcpPrompts
 
         return NotesMcpSupport.CreatePromptMessages(
             $"Inspect notebook `{notebook.Slug}` with `{NotesMcpToolNames.GetNotebook}`, `{NotesMcpToolNames.ListItems}`, and `{NotesMcpToolNames.GetPage}` as needed.",
-            $"Identify pages that appear stale based on timestamps, structure, and content drift. Produce findings before proposing edits. If archived items matter, remember `{NotesMcpToolNames.ListItems}` with `includeArchived=true` is only available to the notebook owner.");
+            $"Identify pages that appear stale based on timestamps, structure, and content drift. Produce findings before proposing edits. If you propose body edits, do not create H1 headings; MCP TipTap JSON rejects heading level 1 nodes and page title is stored separately. If archived items matter, remember `{NotesMcpToolNames.ListItems}` with `includeArchived=true` is only available to the notebook owner.");
     }
 }

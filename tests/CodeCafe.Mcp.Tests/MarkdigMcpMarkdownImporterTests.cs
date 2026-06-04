@@ -44,4 +44,66 @@ public sealed class MarkdigMcpMarkdownImporterTests
         Assert.Equal(JsonValueKind.Array, blocks.ValueKind);
         Assert.Contains("\"type\":\"link\"", blocks.GetRawText(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ConvertMarkdownToDocument_DemotesH1HeadingsForMcpImports()
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument("# Page title");
+
+        var heading = document.GetProperty("content")[0];
+        Assert.Equal("heading", heading.GetProperty("type").GetString());
+        Assert.Equal(2, heading.GetProperty("attrs").GetProperty("level").GetInt32());
+    }
+
+    [Fact]
+    public void ConvertMarkdownToDocument_ConvertsTaskLists()
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument("""
+            - [x] Done
+            - [ ] Todo
+            """);
+
+        var taskList = document.GetProperty("content")[0];
+        Assert.Equal("taskList", taskList.GetProperty("type").GetString());
+
+        var firstItem = taskList.GetProperty("content")[0];
+        var secondItem = taskList.GetProperty("content")[1];
+        Assert.Equal("taskItem", firstItem.GetProperty("type").GetString());
+        Assert.True(firstItem.GetProperty("attrs").GetProperty("checked").GetBoolean());
+        Assert.False(secondItem.GetProperty("attrs").GetProperty("checked").GetBoolean());
+
+        var firstText = firstItem
+            .GetProperty("content")[0]
+            .GetProperty("content")[0]
+            .GetProperty("text")
+            .GetString();
+        Assert.Equal("Done", firstText);
+    }
+
+    [Fact]
+    public void ConvertMarkdownToDocument_DoesNotEmitEmptyTextNodesForEmptyCodeBlocks()
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument("""
+            ```csharp
+            ```
+            """);
+
+        Assert.DoesNotContain("\"text\":\"\"", document.GetRawText(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ConvertMarkdownToDocument_ConvertsHardLineBreaks()
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument("Line one  \nLine two");
+
+        Assert.Contains("\"type\":\"hardBreak\"", document.GetRawText(), StringComparison.Ordinal);
+    }
 }

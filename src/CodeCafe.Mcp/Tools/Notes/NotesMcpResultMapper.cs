@@ -17,15 +17,19 @@ public static class NotesMcpResultMapper
 
     public static CallToolResult Failure(NotesError error)
     {
+        var response = new McpToolErrorResponse(
+            error.Code,
+            error.Message,
+            error.Field,
+            error.Kind is NotesFailureKind.Conflict,
+            NotesMcpErrorAdvisor.GetSuggestion(error.Code),
+            error.Details);
+
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = error.Message }],
-            StructuredContent = JsonSerializer.SerializeToElement(new McpToolErrorResponse(
-                error.Code,
-                error.Message,
-                error.Kind is NotesFailureKind.Conflict,
-                NotesMcpErrorAdvisor.GetSuggestion(error.Code)), NotesMcpSupport.SerializerOptions)
+            Content = [new TextContentBlock { Text = NotesMcpContentFormatter.FormatError(response) }],
+            StructuredContent = JsonSerializer.SerializeToElement(response, NotesMcpSupport.SerializerOptions)
         };
     }
 }

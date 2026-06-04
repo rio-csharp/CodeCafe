@@ -54,7 +54,9 @@ public sealed class NotebookItemMutationService(
                 return NotesResult<NotebookItemModel>.Failure(
                     normalizedContent.Error!.Kind,
                     normalizedContent.Error.Code,
-                    normalizedContent.Error.Message);
+                    normalizedContent.Error.Message,
+                    normalizedContent.Error.Field,
+                    normalizedContent.Error.Details);
             }
         }
 
@@ -156,7 +158,9 @@ public sealed class NotebookItemMutationService(
                     return NotesResult<NotebookItemModel>.Failure(
                         normalizedContent.Error!.Kind,
                         normalizedContent.Error.Code,
-                        normalizedContent.Error.Message);
+                        normalizedContent.Error.Message,
+                        normalizedContent.Error.Field,
+                        normalizedContent.Error.Details);
                 }
 
                 item.SetPageContent(
