@@ -58,16 +58,8 @@ export default function Sidebar() {
 
   const sidebarContent = (
     <>
-      {/* Toggle + Logo */}
-      <div className={`pt-6 pb-4 flex flex-col items-center gap-3 ${isCollapsed ? 'px-2' : 'px-6'}`}>
-        <button
-          onClick={toggle}
-          className="hidden md:flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-hover transition-colors"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? <PanelLeftOpen className="h-4 w-4 text-text-secondary" /> : <PanelLeftClose className="h-4 w-4 text-text-secondary" />}
-        </button>
+      {/* Logo */}
+      <div className={`pt-6 pb-4 flex flex-col items-center gap-1 ${isCollapsed ? 'px-2' : 'px-6'}`}>
         <Link to="/dashboard" className="flex flex-col items-center gap-1">
           <img src={logoIcon} alt="CodeCafe" className="h-8 w-8" />
           {!isCollapsed && (
@@ -103,8 +95,8 @@ export default function Sidebar() {
       {/* Tools */}
       <div className={`px-3 pb-2 ${isCollapsed ? 'px-1.5' : ''}`}>
         <div className={`flex items-center gap-1 ${isCollapsed ? 'justify-center' : ''}`}>
-          <ThemeToggle />
-          <LanguageSwitcher />
+          <ThemeToggle placement="top" />
+          <LanguageSwitcher placement="top" />
         </div>
       </div>
 
@@ -172,12 +164,22 @@ export default function Sidebar() {
 
       {/* Sidebar: mobile drawer + desktop fixed */}
       <aside
-        className={`fixed left-0 top-0 h-screen bg-surface border-r border-border-subtle flex flex-col z-50 transition-all duration-200 ${
+        className={`fixed left-0 top-0 h-screen bg-surface border-r border-border-subtle flex flex-col z-50 overflow-visible transition-all duration-200 ${
           isCollapsed ? 'md:w-16' : 'md:w-[var(--sidebar-width)]'
         } ${
           mobileOpen ? 'translate-x-0 w-[var(--sidebar-width)]' : '-translate-x-full md:translate-x-0'
         }`}
       >
+        {/* Collapse toggle - top right, subtle */}
+        <button
+          onClick={toggle}
+          className="hidden md:flex absolute top-3 right-2 items-center justify-center h-7 w-7 rounded-lg hover:bg-surface-hover transition-colors z-10"
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isCollapsed ? <PanelLeftOpen className="h-4 w-4 text-text-tertiary" /> : <PanelLeftClose className="h-4 w-4 text-text-tertiary" />}
+        </button>
+
         {/* Mobile close button inside sidebar */}
         <div className="md:hidden absolute top-2 right-2">
           <button

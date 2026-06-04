@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
 import { useEditorStore } from '@/widgets/notebook-page-editor/store'
 import { useParams, Navigate } from 'react-router-dom'
-import { Edit3 } from 'lucide-react'
+import { Edit3, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
 import { useNotebook, buildTree, findFirstPage, findPageByPath, extractOutline } from '@/entities/notebook'
 import { useUpdateNotebookItem } from '@/features/manage-notebook-items'
 import { useToast } from '@/shared/ui/Toast'
@@ -22,6 +22,7 @@ export default function NotebookReaderPage() {
   const pagePath = splat ?? ''
   const { editClickedForPath, setEditClickedForPath } = useEditorStore()
   const [showArchived, setShowArchived] = useState(false)
+  const [isFullWidth, setIsFullWidth] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
   const isEditingPage = editClickedForPath === pagePath
   const { t } = useTranslation()
@@ -31,6 +32,8 @@ export default function NotebookReaderPage() {
     isPending: notebookPending,
     isError: notebookIsError,
     error: notebookError,
+    refetch,
+    isFetching,
   } = useNotebook(notebookSlug!)
 
   const visibleItems = useMemo(() => {
@@ -105,6 +108,10 @@ export default function NotebookReaderPage() {
 
   const outline = activePage ? extractOutline(activePage.contentJson) : []
 
+  const contentWrapperClass = isEditingPage
+    ? 'px-4 sm:px-6 pb-4 lg:px-12 w-full'
+    : `px-4 sm:px-6 pb-4 lg:px-12 ${isFullWidth ? 'w-full' : 'max-w-3xl mx-auto'}`
+
   return (
     <NotebookLayout
       topBar={<NotebookTopBar notebook={notebook} />}
@@ -121,25 +128,46 @@ export default function NotebookReaderPage() {
       contentRef={mainRef}
       content={
         activePage ? (
-          <div className="px-4 sm:px-6 py-8 lg:px-12 lg:py-10 max-w-3xl mx-auto">
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <svg className="h-3 w-3 text-text-tertiary" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2L22 12L12 22L2 12Z" />
-                </svg>
-                <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider">{t('notebook.page')}</span>
-              </div>
-              {notebook.canEdit && !isEditingPage && !activePage?.isArchived && (
-                <button
-                  onClick={() => setEditClickedForPath(pagePath)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
-                >
-                  <Edit3 className="h-3 w-3" />
-                  {t('notebook.editPage')}
-                </button>
+          <div className={contentWrapperClass}>
+            {/* Sticky header: always full width */}
+            <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-12 px-4 sm:px-6 lg:px-12 flex items-start justify-between gap-4 py-1.5 bg-surface/95 backdrop-blur-sm">
+              {!isEditingPage && (
+                <h1 className="text-xl font-semibold text-text-primary">{activePage.title}</h1>
               )}
+              <div className={`flex items-center gap-2 shrink-0 ${isEditingPage ? '' : 'mt-0.5'}`}>
+                {!isEditingPage && (
+                  <>
+                    <button
+                      onClick={() => setIsFullWidth(!isFullWidth)}
+                      className="inline-flex items-center gap-1 rounded-md border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary hover:bg-surface-hover transition-colors"
+                      title={isFullWidth ? 'Collapse width' : 'Expand width'}
+                    >
+                      {isFullWidth ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                      {isFullWidth ? 'Collapse' : 'Full width'}
+                    </button>
+                    <button
+                      onClick={() => refetch()}
+                      disabled={isFetching}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
+                      title="Refresh content"
+                    >
+                      <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
+                      Refresh
+                    </button>
+                  </>
+                )}
+                {!isEditingPage && notebook.canEdit && !activePage?.isArchived && (
+                  <button
+                    onClick={() => setEditClickedForPath(pagePath)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                    {t('notebook.editPage')}
+                  </button>
+                )}
+              </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-6">{activePage.title}</h1>
+
             {isEditingPage ? (
               <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-text-primary" /></div>}>
                 <NotebookPageEditor

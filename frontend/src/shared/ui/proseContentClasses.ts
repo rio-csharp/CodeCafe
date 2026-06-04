@@ -5,10 +5,11 @@
  */
 export const PROSE_CONTENT_CLASSES =
   'prose prose-sm max-w-none ' +
-  'prose-headings:font-semibold prose-headings:text-text-primary ' +
-  'prose-p:text-text-secondary ' +
+  'prose-headings:font-semibold prose-headings:text-text-primary prose-headings:leading-snug ' +
+  'prose-p:text-text-secondary prose-p:leading-normal ' +
+  'prose-li:leading-normal ' +
   'prose-a:text-brand-brown ' +
-  'prose-pre:bg-surface-active prose-pre:text-text-primary prose-pre:border prose-pre:border-border-default prose-pre:border-l-4 prose-pre:border-l-brand-brown prose-pre:rounded-r-lg prose-pre:rounded-l-none prose-pre:px-5 prose-pre:py-4 prose-pre:font-mono prose-pre:text-sm prose-pre:leading-relaxed prose-pre:overflow-x-auto prose-pre:relative ' +
+  'prose-pre:bg-surface-active prose-pre:text-text-primary prose-pre:border prose-pre:border-border-default prose-pre:rounded-lg prose-pre:px-5 prose-pre:py-4 prose-pre:font-mono prose-pre:text-sm prose-pre:leading-relaxed prose-pre:overflow-x-auto prose-pre:relative ' +
   '[&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:p-0 [&_pre_code]:rounded-none ' +
   'prose-code:font-mono prose-code:text-sm prose-code:bg-surface-active prose-code:text-text-primary prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded ' +
   "[&_ul[data-type='taskList']]:list-none [&_ul[data-type='taskList']]:pl-0 " +

@@ -133,14 +133,36 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
     }
   }, [editor, content])
 
-  // Inject heading IDs after content renders
+  // Inject heading IDs and code block line numbers after content renders
   useEffect(() => {
     if (!editor || !contentRef.current) return
     const container = contentRef.current
+
     const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
     headings.forEach((h, idx) => {
       const text = h.textContent ?? ''
       h.id = slugifyHeadingId(text, idx)
+    })
+
+    container.querySelectorAll('pre').forEach((pre) => {
+      const code = pre.querySelector('code')
+      if (!code) return
+      const lineCount = code.textContent?.split('\n').length || 1
+      let lineNumbers = pre.querySelector('.line-numbers') as HTMLElement | null
+      if (!lineNumbers) {
+        lineNumbers = document.createElement('div')
+        lineNumbers.className = 'line-numbers'
+        lineNumbers.setAttribute('aria-hidden', 'true')
+        pre.insertBefore(lineNumbers, code)
+      }
+      const existingSpans = lineNumbers.querySelectorAll('span')
+      if (existingSpans.length === lineCount) return
+      lineNumbers.innerHTML = ''
+      for (let i = 1; i <= lineCount; i++) {
+        const span = document.createElement('span')
+        span.textContent = String(i)
+        lineNumbers.appendChild(span)
+      }
     })
   }, [editor, content])
 

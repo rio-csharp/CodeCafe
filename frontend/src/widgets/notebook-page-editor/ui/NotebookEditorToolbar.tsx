@@ -115,7 +115,7 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
   const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) || ''
 
   return (
-    <div className="flex items-center gap-1 px-3 py-2 border-b border-border-subtle flex-wrap">
+    <div className="flex items-center gap-1 px-3 py-2 flex-wrap">
       <ToolbarGroup showDivider>
         <MenuButton active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1"><Heading1 className="h-4 w-4" /></MenuButton>
         <MenuButton active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading 2"><Heading2 className="h-4 w-4" /></MenuButton>
