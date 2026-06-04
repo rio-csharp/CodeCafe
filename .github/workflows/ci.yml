@@ -67,6 +67,15 @@ jobs:
       - name: Test backend
         run: dotnet test CodeCafe.slnx --configuration Release --no-build
 
+      - name: Publish API image input
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        run: >
+          dotnet publish src/CodeCafe.Server/CodeCafe.Server.csproj
+          --configuration Release
+          --output .artifacts/api
+          --no-build
+          /p:UseAppHost=false
+
       - name: Login to GHCR
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
         uses: docker/login-action@v4
@@ -126,6 +135,13 @@ jobs:
       - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+      - name: Prepare frontend image input
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        working-directory: frontend
+        run: |
+          mkdir -p ../.artifacts/frontend
+          cp -R dist/. ../.artifacts/frontend/
 
       - name: Login to GHCR
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
