@@ -59,7 +59,7 @@ export default function Sidebar() {
   const sidebarContent = (
     <>
       {/* Logo */}
-      <div className={`pt-6 pb-4 flex flex-col items-center gap-1 ${isCollapsed ? 'px-2' : 'px-6'}`}>
+      <div className={`pb-4 flex flex-col items-center gap-1 ${isCollapsed ? 'px-2 pt-10' : 'px-6 pt-6'}`}>
         <Link to="/dashboard" className="flex flex-col items-center gap-1">
           <img src={logoIcon} alt="CodeCafe" className="h-8 w-8" />
           {!isCollapsed && (
@@ -95,8 +95,8 @@ export default function Sidebar() {
       {/* Tools */}
       <div className={`px-3 pb-2 ${isCollapsed ? 'px-1.5' : ''}`}>
         <div className={`flex items-center gap-1 ${isCollapsed ? 'justify-center' : ''}`}>
-          <ThemeToggle placement="top" />
-          <LanguageSwitcher placement="top" />
+          <ThemeToggle placement="top" align="left" />
+          <LanguageSwitcher placement="top" align="left" />
         </div>
       </div>
 
