@@ -504,6 +504,11 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
     private static IEnumerable<JsonNode> ConvertBlock(Block block)
     {
+        if (IsMarkdigInfrastructureBlock(block))
+        {
+            yield break;
+        }
+
         switch (block)
         {
             case HeadingBlock heading:
@@ -1048,4 +1053,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
             _ => block.ToString() ?? string.Empty
         };
     }
+
+    private static bool IsMarkdigInfrastructureBlock(Block block)
+        => string.Equals(
+            block.GetType().FullName,
+            "Markdig.Syntax.LinkReferenceDefinitionGroup",
+            StringComparison.Ordinal);
 }

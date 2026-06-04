@@ -58,6 +58,23 @@ public sealed class MarkdigMcpMarkdownImporterTests
     }
 
     [Fact]
+    public void ConvertMarkdownToDocument_IgnoresLinkReferenceDefinitions()
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument("""
+            Reference [docs][docs-ref].
+
+            [docs-ref]: https://example.com/docs "Docs"
+            """);
+
+        var raw = document.GetRawText();
+        Assert.DoesNotContain("Markdig.Syntax.LinkReferenceDefinitionGroup", raw, StringComparison.Ordinal);
+        Assert.Contains("https://example.com/docs", raw, StringComparison.Ordinal);
+        Assert.Single(document.GetProperty("content").EnumerateArray());
+    }
+
+    [Fact]
     public void ConvertMarkdownToDocument_ConvertsTaskLists()
     {
         var importer = new MarkdigMcpMarkdownImporter();
