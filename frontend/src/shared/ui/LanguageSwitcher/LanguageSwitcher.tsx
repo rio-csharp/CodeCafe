@@ -8,11 +8,20 @@ const locales = [
   { code: 'zh', label: '中文' },
 ] as const
 
-export function LanguageSwitcher() {
+interface LanguageSwitcherProps {
+  placement?: 'top' | 'bottom'
+}
+
+export function LanguageSwitcher({ placement = 'bottom' }: LanguageSwitcherProps) {
   const { i18n } = useTranslation()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, () => setOpen(false))
+
+  const menuPositionClasses =
+    placement === 'top'
+      ? 'absolute right-0 bottom-full mb-2'
+      : 'absolute right-0 mt-2'
 
   return (
     <div className="relative" ref={ref}>
@@ -25,7 +34,7 @@ export function LanguageSwitcher() {
         <Globe className="h-4 w-4 text-text-secondary" />
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-36 rounded-xl border border-border-default bg-surface shadow-lg py-1 z-50">
+        <div className={`${menuPositionClasses} w-36 rounded-xl border border-border-default bg-surface shadow-lg py-1 z-50`}>
           {locales.map((l) => (
             <button
               key={l.code}

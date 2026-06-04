@@ -78,7 +78,7 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         var guideResult = await mcpClient.ReadResourceAsync("notes://guide");
         var guide = Assert.IsType<TextResourceContents>(Assert.Single(guideResult.Contents));
         Assert.Contains(NotesMcpToolNames.AppendUploadChunk, guide.Text, StringComparison.Ordinal);
-        Assert.Contains("Do not write H1 headings", guide.Text, StringComparison.Ordinal);
+        Assert.Contains("TipTap node and text limits", guide.Text, StringComparison.Ordinal);
 
         var listResult = await mcpClient.CallToolAsync("notes_list_public_notebooks", new Dictionary<string, object?>());
         Assert.Equal(1, listResult.StructuredContent!.Value.GetProperty("totalCount").GetInt32());

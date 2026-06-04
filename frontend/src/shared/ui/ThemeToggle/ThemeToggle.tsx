@@ -9,7 +9,11 @@ const options = [
   { value: 'system' as const, label: 'System', icon: Monitor },
 ]
 
-export function ThemeToggle() {
+interface ThemeToggleProps {
+  placement?: 'top' | 'bottom'
+}
+
+export function ThemeToggle({ placement = 'bottom' }: ThemeToggleProps) {
   const { theme, setTheme } = useThemeStore()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -17,6 +21,11 @@ export function ThemeToggle() {
 
   const active = options.find((o) => o.value === theme) ?? options[2]
   const Icon = active.icon
+
+  const menuPositionClasses =
+    placement === 'top'
+      ? 'absolute right-0 bottom-full mb-2'
+      : 'absolute right-0 mt-2'
 
   return (
     <div className="relative" ref={ref}>
@@ -29,7 +38,7 @@ export function ThemeToggle() {
         <Icon className="h-4 w-4 text-text-secondary" />
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-36 rounded-xl border border-border-default bg-surface shadow-lg py-1 z-50">
+        <div className={`${menuPositionClasses} w-36 rounded-xl border border-border-default bg-surface shadow-lg py-1 z-50`}>
           {options.map((o) => {
             const OIcon = o.icon
             return (

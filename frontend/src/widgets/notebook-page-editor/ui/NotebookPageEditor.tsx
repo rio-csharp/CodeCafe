@@ -22,10 +22,10 @@ import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
 import Youtube from '@tiptap/extension-youtube'
 import FontFamily from '@tiptap/extension-font-family'
+import { Check, X } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
-import NotebookEditorActions from './NotebookEditorActions'
 import './codeHighlight.css'
 
 const lowlight = createLowlight(common)
@@ -71,8 +71,32 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
         class: `${PROSE_CONTENT_CLASSES} outline-none min-h-[200px]`,
       },
     },
-    onTransaction: () => {
+    onTransaction: ({ editor: txEditor }) => {
       forceUpdate({})
+      requestAnimationFrame(() => {
+        const container = txEditor.view.dom
+        if (!container) return
+        container.querySelectorAll('pre').forEach((pre) => {
+          const code = pre.querySelector('code')
+          if (!code) return
+          const lineCount = code.textContent?.split('\n').length || 1
+          let lineNumbers = pre.querySelector('.line-numbers') as HTMLElement | null
+          if (!lineNumbers) {
+            lineNumbers = document.createElement('div')
+            lineNumbers.className = 'line-numbers'
+            lineNumbers.setAttribute('aria-hidden', 'true')
+            pre.insertBefore(lineNumbers, code)
+          }
+          const existingSpans = lineNumbers.querySelectorAll('span')
+          if (existingSpans.length === lineCount) return
+          lineNumbers.innerHTML = ''
+          for (let i = 1; i <= lineCount; i++) {
+            const span = document.createElement('span')
+            span.textContent = String(i)
+            lineNumbers.appendChild(span)
+          }
+        })
+      })
     },
   })
 
@@ -97,8 +121,32 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
 
   return (
     <div className="border border-border-default rounded-xl bg-surface">
-      <NotebookEditorToolbar editor={editor} />
-      <div className="px-6 py-6 lg:px-10 lg:py-8">
+      <div className="sticky top-0 z-20 flex items-center justify-between bg-surface rounded-t-xl border-b border-border-subtle">
+        <div className="flex-1 overflow-x-auto">
+          <NotebookEditorToolbar editor={editor} />
+        </div>
+        <div className="flex items-center gap-2 px-3 py-2 shrink-0 border-l border-border-subtle">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
+          >
+            <X className="h-3.5 w-3.5" />
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            <Check className="h-3.5 w-3.5" />
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+      <div className="px-6 py-4 lg:px-10 lg:py-6">
         <EditorContent editor={editor} />
       </div>
       <div className="px-6 py-2 lg:px-10 border-t border-border-subtle flex justify-end">
@@ -106,7 +154,6 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
           {editor.storage.characterCount.characters()} characters · {editor.storage.characterCount.words()} words
         </span>
       </div>
-      <NotebookEditorActions onSave={handleSave} onCancel={onCancel} isSaving={isSaving} />
     </div>
   )
 }
