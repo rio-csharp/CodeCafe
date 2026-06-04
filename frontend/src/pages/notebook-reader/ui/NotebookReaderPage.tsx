@@ -22,7 +22,7 @@ export default function NotebookReaderPage() {
   const pagePath = splat ?? ''
   const { editClickedForPath, setEditClickedForPath } = useEditorStore()
   const [showArchived, setShowArchived] = useState(false)
-  const [isFullWidth, setIsFullWidth] = useState(false)
+  const [isFullWidth, setIsFullWidth] = useState(true)
   const mainRef = useRef<HTMLElement>(null)
   const isEditingPage = editClickedForPath === pagePath
   const { t } = useTranslation()
