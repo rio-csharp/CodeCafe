@@ -19,6 +19,7 @@ export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
 
 KUBECTL_BIN="${KUBECTL_BIN:-kubectl}"
 HELM_BIN="${HELM_BIN:-helm}"
+HELM_TIMEOUT="${HELM_TIMEOUT:-180s}"
 VALUES_FILE="${VALUES_FILE:-}"
 FRONTEND_REPLICA_COUNT="${FRONTEND_REPLICA_COUNT:-}"
 API_REPLICA_COUNT="${API_REPLICA_COUNT:-}"
@@ -26,11 +27,44 @@ API_MIGRATION_ENABLED="${API_MIGRATION_ENABLED:-}"
 OAUTH_SECRET_NAME="${OAUTH_SECRET_NAME:-codecafe-oauth-secret}"
 OAUTH_SECRET_NAMESPACE="${OAUTH_SECRET_NAMESPACE:-$NAMESPACE}"
 OAUTH_ENV_FILE="${OAUTH_ENV_FILE:-}"
+tls_cert_file=""
+tls_key_file=""
+frontend_pid=""
+api_pid=""
+
+port_forward_cleanup() {
+  local pids=()
+
+  if [ -n "${frontend_pid:-}" ]; then
+    pids+=("$frontend_pid")
+  fi
+
+  if [ -n "${api_pid:-}" ]; then
+    pids+=("$api_pid")
+  fi
+
+  if [ "${#pids[@]}" -gt 0 ]; then
+    kill "${pids[@]}" 2>/dev/null || true
+    wait "${pids[@]}" 2>/dev/null || true
+  fi
+}
 
 cleanup() {
+  port_forward_cleanup
+  rm -f "${tls_cert_file:-}" "${tls_key_file:-}"
   rm -rf "$REMOTE_DIR"
 }
+
+on_signal() {
+  local signal_name="$1"
+  echo "Deployment interrupted by $signal_name; cleaning up remote deploy inputs." >&2
+  exit 130
+}
+
 trap cleanup EXIT
+trap 'on_signal INT' INT
+trap 'on_signal TERM' TERM
+trap 'on_signal HUP' HUP
 
 if [ -n "$OAUTH_ENV_FILE" ]; then
   # shellcheck disable=SC1090
@@ -91,6 +125,8 @@ $KUBECTL_BIN create secret tls "$TLS_SECRET" \
   --namespace "$NAMESPACE" \
   --dry-run=client -o yaml | $KUBECTL_BIN apply -f -
 rm -f "$tls_cert_file" "$tls_key_file"
+tls_cert_file=""
+tls_key_file=""
 
 seed_oauth_secret
 
@@ -124,6 +160,10 @@ $KUBECTL_BIN create secret generic "$api_config_secret" \
 helm_args=(
   upgrade --install "$RELEASE" "$chart_dir"
   --namespace "$NAMESPACE"
+  --atomic
+  --cleanup-on-fail
+  --wait
+  --timeout "$HELM_TIMEOUT"
   --set "frontend.image.repository=$REGISTRY/$IMAGE_NAMESPACE/frontend"
   --set "frontend.image.tag=$IMAGE_TAG"
   --set "frontend.env.apiBaseUrl=https://$API_HOST"
@@ -152,6 +192,18 @@ fi
 if [ -n "$API_MIGRATION_ENABLED" ]; then
   helm_args+=(--set "api.migration.enabled=$API_MIGRATION_ENABLED")
 fi
+
+release_status="$($HELM_BIN status "$RELEASE" --namespace "$NAMESPACE" -o json 2>/dev/null | sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' || true)"
+case "$release_status" in
+  pending-install)
+    echo "Found pending Helm install for $RELEASE; uninstalling before retry."
+    $HELM_BIN uninstall "$RELEASE" --namespace "$NAMESPACE" --wait --timeout "$HELM_TIMEOUT" || true
+    ;;
+  pending-upgrade|pending-rollback)
+    echo "Found pending Helm state '$release_status' for $RELEASE; attempting rollback before retry."
+    $HELM_BIN rollback "$RELEASE" 0 --namespace "$NAMESPACE" --wait --timeout "$HELM_TIMEOUT" || true
+    ;;
+esac
 
 $HELM_BIN "${helm_args[@]}"
 
@@ -186,12 +238,6 @@ $KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-frontend" "${f
 frontend_pid=$!
 $KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-api-port-forward.log 2>&1 &
 api_pid=$!
-
-port_forward_cleanup() {
-  kill "$frontend_pid" "$api_pid" 2>/dev/null || true
-  wait "$frontend_pid" "$api_pid" 2>/dev/null || true
-}
-trap 'port_forward_cleanup; cleanup' EXIT
 
 for _ in $(seq 1 20); do
   if ! kill -0 "$frontend_pid" 2>/dev/null || ! kill -0 "$api_pid" 2>/dev/null; then

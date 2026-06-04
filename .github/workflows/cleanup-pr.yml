@@ -2,6 +2,8 @@ name: Cleanup PR Preview
 
 on:
   pull_request:
+    branches:
+      - release/**
     types:
       - closed
   schedule:
@@ -24,6 +26,9 @@ jobs:
     environment:
       name: test
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.10.0
         with:
@@ -36,15 +41,12 @@ jobs:
           echo "SSH_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
 
       - name: Delete preview namespace
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            PR_NUMBER="${{ inputs.pr_number }}"
-          else
-            PR_NUMBER="${{ github.event.pull_request.number }}"
-          fi
-
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-            "kubectl delete namespace codecafe-pr-$PR_NUMBER --ignore-not-found=true"
+        env:
+          PR_NUMBER: ${{ github.event_name == 'workflow_dispatch' && inputs.pr_number || github.event.pull_request.number }}
+          TEST_SSH_PORT: ${{ vars.TEST_SSH_PORT }}
+          TEST_SSH_USER: ${{ vars.TEST_SSH_USER }}
+          TEST_SSH_HOST: ${{ secrets.TEST_SSH_HOST }}
+        run: bash scripts/maintenance/delete-pr-preview-namespace.sh
 
   cleanup-stale:
     name: Delete stale PR namespaces
@@ -53,6 +55,9 @@ jobs:
     environment:
       name: test
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.10.0
         with:
@@ -67,25 +72,8 @@ jobs:
       - name: Delete namespaces for closed PRs
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          namespaces="$(ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-            "kubectl get namespaces -o jsonpath='{range .items[*]}{.metadata.name}{\"\n\"}{end}' | grep '^codecafe-pr-[0-9][0-9]*$' || true")"
-
-          if [ -z "$namespaces" ]; then
-            echo "No PR preview namespaces found."
-            exit 0
-          fi
-
-          while IFS= read -r namespace; do
-            [ -n "$namespace" ] || continue
-            pr_number="${namespace#codecafe-pr-}"
-            state="$(gh pr view "$pr_number" --repo "${{ github.repository }}" --json state --jq .state 2>/dev/null || echo CLOSED)"
-
-            if [ "$state" != "OPEN" ]; then
-              echo "Deleting stale namespace $namespace for PR #$pr_number (state: $state)."
-              ssh -n -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-                "kubectl delete namespace '$namespace' --ignore-not-found=true"
-            else
-              echo "Keeping namespace $namespace for open PR #$pr_number."
-            fi
-          done <<< "$namespaces"
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TEST_SSH_PORT: ${{ vars.TEST_SSH_PORT }}
+          TEST_SSH_USER: ${{ vars.TEST_SSH_USER }}
+          TEST_SSH_HOST: ${{ secrets.TEST_SSH_HOST }}
+        run: bash scripts/maintenance/delete-stale-pr-preview-namespaces.sh

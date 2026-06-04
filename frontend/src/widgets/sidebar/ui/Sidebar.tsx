@@ -15,11 +15,12 @@ export default function Sidebar() {
   const { user } = useLayout()
   const logout = useLogout()
   const [showUserMenu, setShowUserMenu] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileOpenPathname, setMobileOpenPathname] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const isCollapsed = useSidebarStore((s) => s.isCollapsed)
   const toggle = useSidebarStore((s) => s.toggle)
   const { t } = useTranslation()
+  const mobileOpen = mobileOpenPathname === location.pathname
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
@@ -52,10 +53,8 @@ export default function Sidebar() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Close mobile sidebar on route change
-  useEffect(() => {
-    setMobileOpen(false)
-  }, [location.pathname])
+  const openMobileSidebar = () => setMobileOpenPathname(location.pathname)
+  const closeMobileSidebar = () => setMobileOpenPathname(null)
 
   const sidebarContent = (
     <>
@@ -156,7 +155,7 @@ export default function Sidebar() {
     <>
       {/* Mobile toggle */}
       <button
-        onClick={() => setMobileOpen(true)}
+        onClick={openMobileSidebar}
         className="md:hidden fixed top-3 left-3 z-50 p-2 rounded-lg bg-surface border border-border-default shadow-sm"
         aria-label="Open sidebar"
       >
@@ -167,7 +166,7 @@ export default function Sidebar() {
       {mobileOpen && (
         <div
           className="md:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-          onClick={() => setMobileOpen(false)}
+          onClick={closeMobileSidebar}
         />
       )}
 
@@ -182,7 +181,7 @@ export default function Sidebar() {
         {/* Mobile close button inside sidebar */}
         <div className="md:hidden absolute top-2 right-2">
           <button
-            onClick={() => setMobileOpen(false)}
+            onClick={closeMobileSidebar}
             className="p-2 rounded-lg hover:bg-surface-hover transition-colors"
             aria-label="Close sidebar"
           >

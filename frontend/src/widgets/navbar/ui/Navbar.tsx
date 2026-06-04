@@ -10,12 +10,13 @@ import { Menu, X } from 'lucide-react'
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileOpenPathname, setMobileOpenPathname] = useState<string | null>(null)
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useLayout()
   const logout = useLogout()
   const { t } = useTranslation()
+  const mobileOpen = mobileOpenPathname === location.pathname
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 10)
@@ -23,14 +24,13 @@ function Navbar() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileOpen(false)
-  }, [location.pathname])
-
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
     return location.pathname.startsWith(path)
+  }
+
+  const toggleMobileMenu = () => {
+    setMobileOpenPathname((pathname) => (pathname === location.pathname ? null : location.pathname))
   }
 
   const handleLogout = () => {
@@ -135,7 +135,7 @@ function Navbar() {
             {/* Mobile menu button */}
             <button
               className="md:hidden p-2 rounded-lg hover:bg-surface-hover transition-colors"
-              onClick={() => setMobileOpen(!mobileOpen)}
+              onClick={toggleMobileMenu}
               aria-label="Toggle menu"
             >
               {mobileOpen ? <X className="h-5 w-5 text-text-primary" /> : <Menu className="h-5 w-5 text-text-primary" />}

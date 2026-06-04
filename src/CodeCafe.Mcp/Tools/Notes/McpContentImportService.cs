@@ -1,6 +1,7 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Mcp.Configuration;
 using Markdig;
+using Markdig.Extensions.TaskLists;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
@@ -80,16 +81,40 @@ public sealed class McpContentImportService(
             return NotesResult<JsonElement?>.Failure(
                 NotesFailureKind.Validation,
                 errorCode,
-                "Provide either inline contentJson or contentUploadId, but not both.");
+                "Provide either inline contentJson or contentUploadId, but not both.",
+                "contentJson",
+                new Dictionary<string, object?>
+                {
+                    ["conflictingField"] = "contentUploadId"
+                });
         }
 
         var resolved = hasUpload
             ? await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken)
-            : ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage);
+            : ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage, "contentJson");
 
         if (!resolved.Succeeded)
         {
-            return NotesResult<JsonElement?>.Failure(resolved.Error!.Kind, resolved.Error.Code, resolved.Error.Message);
+            return NotesResult<JsonElement?>.Failure(
+                resolved.Error!.Kind,
+                resolved.Error.Code,
+                resolved.Error.Message,
+                resolved.Error.Field,
+                resolved.Error.Details);
+        }
+
+        var h1Validation = EnforceNoH1Headings(
+            resolved.Value,
+            errorCode,
+            hasUpload ? "contentUploadId" : "contentJson");
+        if (!h1Validation.Succeeded)
+        {
+            return NotesResult<JsonElement?>.Failure(
+                h1Validation.Error!.Kind,
+                h1Validation.Error.Code,
+                h1Validation.Error.Message,
+                h1Validation.Error.Field,
+                h1Validation.Error.Details);
         }
 
         return NotesResult<JsonElement?>.Success(resolved.Value);
@@ -113,20 +138,46 @@ public sealed class McpContentImportService(
             return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 errorCode,
-                "Provide either inline contentJson or contentUploadId, but not both.");
+                "Provide either inline contentJson or contentUploadId, but not both.",
+                "contentJson",
+                new Dictionary<string, object?>
+                {
+                    ["conflictingField"] = "contentUploadId"
+                });
         }
 
+        NotesResult<JsonElement> resolved;
+        string field;
         if (hasUpload)
         {
-            return await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken);
+            resolved = await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken);
+            field = "contentUploadId";
         }
-
-        if (!hasInlineContent)
+        else
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage);
+            field = "contentJson";
+            if (!hasInlineContent)
+            {
+                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
+            }
+
+            resolved = ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage, field);
         }
 
-        return ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage);
+        if (!resolved.Succeeded)
+        {
+            return resolved;
+        }
+
+        var h1Validation = EnforceNoH1Headings(resolved.Value, errorCode, field);
+        return h1Validation.Succeeded
+            ? resolved
+            : NotesResult<JsonElement>.Failure(
+                h1Validation.Error!.Kind,
+                h1Validation.Error.Code,
+                h1Validation.Error.Message,
+                h1Validation.Error.Field,
+                h1Validation.Error.Details);
     }
 
     public async Task<NotesResult<JsonElement>> ResolveRequiredBlocksAsync(
@@ -147,28 +198,55 @@ public sealed class McpContentImportService(
             return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 errorCode,
-                "Provide either inline blocks or blocksUploadId, but not both.");
+                "Provide either inline blocks or blocksUploadId, but not both.",
+                "blocks",
+                new Dictionary<string, object?>
+                {
+                    ["conflictingField"] = "blocksUploadId"
+                });
         }
 
+        NotesResult<JsonElement> result;
+        string field;
         if (hasUpload)
         {
-            return await ResolveUploadAsBlocksAsync(actorId, blocksUploadId!, blocksFormat, errorCode, invalidMessage, cancellationToken);
+            result = await ResolveUploadAsBlocksAsync(actorId, blocksUploadId!, blocksFormat, errorCode, invalidMessage, cancellationToken);
+            field = "blocksUploadId";
         }
-
-        if (!hasInlineBlocks)
+        else
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage);
+            field = "blocks";
+            if (!hasInlineBlocks)
+            {
+                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
+            }
+
+            result = ResolveInlineJson(inlineBlocks!.Value, errorCode, invalidMessage, field);
         }
 
-        var result = ResolveInlineJson(inlineBlocks!.Value, errorCode, invalidMessage);
         if (!result.Succeeded)
         {
             return result;
         }
 
-        return result.Value.ValueKind == JsonValueKind.Array
+        if (result.Value.ValueKind != JsonValueKind.Array)
+        {
+            return NotesResult<JsonElement>.Failure(
+                NotesFailureKind.Validation,
+                errorCode,
+                "Blocks must be a JSON array.",
+                "blocks");
+        }
+
+        var h1Validation = EnforceNoH1Headings(result.Value, errorCode, field);
+        return h1Validation.Succeeded
             ? result
-            : NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, "Blocks must be a JSON array.");
+            : NotesResult<JsonElement>.Failure(
+                h1Validation.Error!.Kind,
+                h1Validation.Error.Code,
+                h1Validation.Error.Message,
+                h1Validation.Error.Field,
+                h1Validation.Error.Details);
     }
 
     public NotesResult EnforcePageContentSize(JsonElement contentJson, string errorCode)
@@ -180,7 +258,13 @@ public sealed class McpContentImportService(
             : NotesResult.Failure(
                 NotesFailureKind.Validation,
                 errorCode,
-                $"Page content exceeds the limit of {maxBytes} bytes (received {currentBytes} bytes).");
+                $"Page content exceeds the limit of {maxBytes} bytes (received {currentBytes} bytes).",
+                "contentJson",
+                new Dictionary<string, object?>
+                {
+                    ["maxPageContentBytes"] = maxBytes,
+                    ["actualPageContentBytes"] = currentBytes
+                });
     }
 
     public async Task DeleteUploadAsync(Guid actorId, string? uploadId, CancellationToken cancellationToken)
@@ -191,6 +275,102 @@ public sealed class McpContentImportService(
         }
 
         _ = await uploadStore.DeleteAsync(actorId, uploadId, cancellationToken);
+    }
+
+    private static NotesResult EnforceNoH1Headings(JsonElement? contentJson, string errorCode, string field)
+    {
+        if (!contentJson.HasValue
+            || contentJson.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+            || !TryFindH1Heading(contentJson.Value, "$", out var nodePath))
+        {
+            return NotesResult.Success();
+        }
+
+        return NotesResult.Failure(
+            NotesFailureKind.Validation,
+            errorCode,
+            "MCP page body content cannot contain H1 headings. Put the page title in the title argument and start body sections at H2.",
+            field,
+            new Dictionary<string, object?>
+            {
+                ["disallowedNodeType"] = "heading",
+                ["disallowedHeadingLevel"] = 1,
+                ["nodePath"] = nodePath
+            });
+    }
+
+    private static bool TryFindH1Heading(JsonElement node, string path, out string nodePath)
+    {
+        nodePath = string.Empty;
+        if (node.ValueKind == JsonValueKind.Array)
+        {
+            var index = 0;
+            foreach (var child in node.EnumerateArray())
+            {
+                if (TryFindH1Heading(child, $"{path}[{index}]", out nodePath))
+                {
+                    return true;
+                }
+
+                index++;
+            }
+
+            return false;
+        }
+
+        if (node.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        if (node.TryGetProperty("type", out var typeElement)
+            && typeElement.ValueKind == JsonValueKind.String
+            && string.Equals(typeElement.GetString(), "heading", StringComparison.Ordinal)
+            && node.TryGetProperty("attrs", out var attrsElement)
+            && attrsElement.ValueKind == JsonValueKind.Object
+            && attrsElement.TryGetProperty("level", out var levelElement)
+            && TryReadInt32(levelElement, out var level)
+            && level == 1)
+        {
+            nodePath = path;
+            return true;
+        }
+
+        if (!node.TryGetProperty("content", out var contentElement)
+            || contentElement.ValueKind != JsonValueKind.Array)
+        {
+            return false;
+        }
+
+        var contentIndex = 0;
+        foreach (var child in contentElement.EnumerateArray())
+        {
+            if (TryFindH1Heading(child, $"{path}.content[{contentIndex}]", out nodePath))
+            {
+                return true;
+            }
+
+            contentIndex++;
+        }
+
+        return false;
+    }
+
+    private static bool TryReadInt32(JsonElement element, out int value)
+    {
+        if (element.ValueKind == JsonValueKind.Number)
+        {
+            return element.TryGetInt32(out value);
+        }
+
+        if (element.ValueKind == JsonValueKind.String
+            && int.TryParse(element.GetString(), out value))
+        {
+            return true;
+        }
+
+        value = 0;
+        return false;
     }
 
     private async Task<NotesResult<JsonElement>> ResolveUploadAsPageContentAsync(
@@ -204,19 +384,25 @@ public sealed class McpContentImportService(
         var uploadResult = await uploadStore.GetAsync(actorId, contentUploadId, cancellationToken);
         if (!uploadResult.Succeeded)
         {
-            return ToNotesResult(uploadResult.Error!, errorCode);
+            return ToNotesResult(uploadResult.Error!, errorCode, "contentUploadId");
         }
 
         var session = uploadResult.Value!;
         var format = NormalizePageFormat(contentFormat, session.MediaType, session.FileName);
         return format switch
         {
-            "tiptap_json" => ParseJsonText(session.ContentText, errorCode, invalidMessage, allowArray: false),
-            "markdown" => ConvertMarkdownDocument(session.ContentText, errorCode),
+            "tiptap_json" => ParseJsonText(session.ContentText, errorCode, invalidMessage, allowArray: false, field: "contentUploadId"),
+            "markdown" => ConvertMarkdownDocument(session.ContentText, errorCode, "contentUploadId"),
             _ => NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 errorCode,
-                "contentFormat must be tiptap_json or markdown.")
+                "contentFormat must be tiptap_json or markdown.",
+                "contentFormat",
+                new Dictionary<string, object?>
+                {
+                    ["supportedFormats"] = new[] { "tiptap_json", "markdown" },
+                    ["receivedFormat"] = format
+                })
         };
     }
 
@@ -231,30 +417,37 @@ public sealed class McpContentImportService(
         var uploadResult = await uploadStore.GetAsync(actorId, blocksUploadId, cancellationToken);
         if (!uploadResult.Succeeded)
         {
-            return ToNotesResult(uploadResult.Error!, errorCode);
+            return ToNotesResult(uploadResult.Error!, errorCode, "blocksUploadId");
         }
 
         var session = uploadResult.Value!;
         var format = NormalizeBlocksFormat(blocksFormat, session.MediaType, session.FileName);
         return format switch
         {
-            "tiptap_blocks_json" => ParseJsonText(session.ContentText, errorCode, invalidMessage, allowArray: true, requireArray: true),
-            "markdown" => ConvertMarkdownBlocks(session.ContentText, errorCode),
+            "tiptap_blocks_json" => ParseJsonText(session.ContentText, errorCode, invalidMessage, allowArray: true, requireArray: true, field: "blocksUploadId"),
+            "markdown" => ConvertMarkdownBlocks(session.ContentText, errorCode, "blocksUploadId"),
             _ => NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 errorCode,
-                "blocksFormat must be tiptap_blocks_json or markdown.")
+                "blocksFormat must be tiptap_blocks_json or markdown.",
+                "blocksFormat",
+                new Dictionary<string, object?>
+                {
+                    ["supportedFormats"] = new[] { "tiptap_blocks_json", "markdown" },
+                    ["receivedFormat"] = format
+                })
         };
     }
 
     private NotesResult<JsonElement> ResolveInlineJson(
         JsonElement json,
         string errorCode,
-        string invalidMessage)
+        string invalidMessage,
+        string field)
     {
         if (json.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage);
+            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
         }
 
         var rawText = json.ValueKind == JsonValueKind.String
@@ -263,7 +456,7 @@ public sealed class McpContentImportService(
 
         if (string.IsNullOrWhiteSpace(rawText))
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage);
+            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
         }
 
         var maxBytes = mcpOptionsAccessor.Value.MaxInlineContentBytes;
@@ -273,18 +466,24 @@ public sealed class McpContentImportService(
             return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 "content_too_large",
-                $"Inline content exceeds the limit of {maxBytes} bytes (received {currentBytes} bytes).");
+                $"Inline content exceeds the limit of {maxBytes} bytes (received {currentBytes} bytes).",
+                field,
+                new Dictionary<string, object?>
+                {
+                    ["maxInlineContentBytes"] = maxBytes,
+                    ["actualInlineContentBytes"] = currentBytes
+                });
         }
 
         if (json.ValueKind == JsonValueKind.String)
         {
-            return ParseJsonText(rawText, errorCode, invalidMessage, allowArray: true);
+            return ParseJsonText(rawText, errorCode, invalidMessage, allowArray: true, field: field);
         }
 
         return NotesResult<JsonElement>.Success(json);
     }
 
-    private NotesResult<JsonElement> ConvertMarkdownDocument(string markdown, string errorCode)
+    private NotesResult<JsonElement> ConvertMarkdownDocument(string markdown, string errorCode, string field)
     {
         try
         {
@@ -294,12 +493,17 @@ public sealed class McpContentImportService(
         {
             return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
-                errorCode,
-                $"Markdown could not be converted: {ex.Message}");
+                "markdown_conversion_failed",
+                $"Markdown could not be converted: {ex.Message}",
+                field,
+                new Dictionary<string, object?>
+                {
+                    ["importFormat"] = "markdown"
+                });
         }
     }
 
-    private NotesResult<JsonElement> ConvertMarkdownBlocks(string markdown, string errorCode)
+    private NotesResult<JsonElement> ConvertMarkdownBlocks(string markdown, string errorCode, string field)
     {
         try
         {
@@ -309,8 +513,13 @@ public sealed class McpContentImportService(
         {
             return NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
-                errorCode,
-                $"Markdown could not be converted: {ex.Message}");
+                "markdown_conversion_failed",
+                $"Markdown could not be converted: {ex.Message}",
+                field,
+                new Dictionary<string, object?>
+                {
+                    ["importFormat"] = "markdown"
+                });
         }
     }
 
@@ -319,7 +528,8 @@ public sealed class McpContentImportService(
         string errorCode,
         string invalidMessage,
         bool allowArray,
-        bool requireArray = false)
+        bool requireArray = false,
+        string? field = null)
     {
         try
         {
@@ -327,28 +537,29 @@ public sealed class McpContentImportService(
             var value = document.RootElement.Clone();
             if (!allowArray && value.ValueKind == JsonValueKind.Array)
             {
-                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage);
+                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
             }
 
             if (requireArray && value.ValueKind != JsonValueKind.Array)
             {
-                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, "Blocks must be a JSON array.");
+                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, "Blocks must be a JSON array.", field);
             }
 
             return NotesResult<JsonElement>.Success(value);
         }
         catch (JsonException)
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage);
+            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
         }
     }
 
-    private static NotesResult<JsonElement> ToNotesResult(NotesUploadError error, string fallbackCode)
+    private static NotesResult<JsonElement> ToNotesResult(NotesUploadError error, string fallbackCode, string field)
     {
         return NotesResult<JsonElement>.Failure(
             NotesFailureKind.Validation,
             string.IsNullOrWhiteSpace(error.Code) ? fallbackCode : error.Code,
-            error.Message);
+            error.Message,
+            field);
     }
 
     private static string NormalizePageFormat(string? requestedFormat, string mediaType, string? fileName)
@@ -441,7 +652,7 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 yield return new JsonObject
                 {
                     ["type"] = "heading",
-                    ["attrs"] = new JsonObject { ["level"] = Math.Clamp(heading.Level, 1, 4) },
+                    ["attrs"] = new JsonObject { ["level"] = Math.Clamp(heading.Level, 2, 4) },
                     ["content"] = ConvertInlineContainer(heading.Inline)
                 };
                 yield break;
@@ -498,9 +709,15 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
     private static JsonObject ConvertList(ListBlock list)
     {
+        var listItems = list.OfType<ListItemBlock>().ToList();
+        if (!list.IsOrdered && listItems.Any(IsTaskListItem))
+        {
+            return ConvertTaskList(listItems);
+        }
+
         var listType = list.IsOrdered ? "orderedList" : "bulletList";
         var items = new JsonArray();
-        foreach (var child in list.OfType<ListItemBlock>())
+        foreach (var child in listItems)
         {
             items.Add(new JsonObject
             {
@@ -517,6 +734,83 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
         return node;
     }
+
+    private static JsonObject ConvertTaskList(IEnumerable<ListItemBlock> listItems)
+    {
+        var items = new JsonArray();
+        foreach (var child in listItems)
+        {
+            var isTaskItem = TryGetTaskListItem(child, out var isChecked);
+            items.Add(new JsonObject
+            {
+                ["type"] = "taskItem",
+                ["attrs"] = new JsonObject { ["checked"] = isTaskItem && isChecked },
+                ["content"] = isTaskItem
+                    ? ConvertTaskItemBlocks(child)
+                    : ConvertBlocks(child)
+            });
+        }
+
+        return new JsonObject
+        {
+            ["type"] = "taskList",
+            ["content"] = items
+        };
+    }
+
+    private static bool IsTaskListItem(ListItemBlock item)
+        => TryGetTaskListItem(item, out _);
+
+    private static bool TryGetTaskListItem(ListItemBlock item, out bool isChecked)
+    {
+        isChecked = false;
+        if (item.FirstOrDefault() is not ParagraphBlock paragraph
+            || paragraph.Inline?.FirstChild is not TaskList taskList)
+        {
+            return false;
+        }
+
+        isChecked = taskList.Checked;
+        return true;
+    }
+
+    private static JsonArray ConvertTaskItemBlocks(ListItemBlock item)
+    {
+        var blocks = new JsonArray();
+        var removedTaskMarker = false;
+        foreach (var block in item)
+        {
+            if (!removedTaskMarker && block is ParagraphBlock paragraph && IsTaskParagraph(paragraph))
+            {
+                blocks.Add(new JsonObject
+                {
+                    ["type"] = "paragraph",
+                    ["content"] = ConvertTaskParagraphInlineContainer(paragraph.Inline)
+                });
+                removedTaskMarker = true;
+                continue;
+            }
+
+            foreach (var converted in ConvertBlock(block))
+            {
+                blocks.Add(converted);
+            }
+        }
+
+        if (blocks.Count == 0)
+        {
+            blocks.Add(new JsonObject
+            {
+                ["type"] = "paragraph",
+                ["content"] = new JsonArray()
+            });
+        }
+
+        return blocks;
+    }
+
+    private static bool IsTaskParagraph(ParagraphBlock paragraph)
+        => paragraph.Inline?.FirstChild is TaskList;
 
     private static JsonObject ConvertTable(Table table)
     {
@@ -566,17 +860,20 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
     private static JsonObject CreateCodeBlock(string? info, string text)
     {
+        var content = new JsonArray();
+        if (!string.IsNullOrEmpty(text))
+        {
+            content.Add(new JsonObject
+            {
+                ["type"] = "text",
+                ["text"] = text
+            });
+        }
+
         var node = new JsonObject
         {
             ["type"] = "codeBlock",
-            ["content"] = new JsonArray
-            {
-                new JsonObject
-                {
-                    ["type"] = "text",
-                    ["text"] = text
-                }
-            }
+            ["content"] = content
         };
 
         var language = NormalizeInfoString(info);
@@ -602,21 +899,51 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
     private static JsonObject CreateParagraphFromText(string text)
     {
+        var content = new JsonArray();
+        if (!string.IsNullOrEmpty(text))
+        {
+            content.Add(new JsonObject
+            {
+                ["type"] = "text",
+                ["text"] = text
+            });
+        }
+
         return new JsonObject
         {
             ["type"] = "paragraph",
-            ["content"] = new JsonArray
-            {
-                new JsonObject
-                {
-                    ["type"] = "text",
-                    ["text"] = text
-                }
-            }
+            ["content"] = content
         };
     }
 
     private static JsonArray ConvertInlineContainer(ContainerInline? container, IReadOnlyList<JsonObject>? marks = null)
+    {
+        var nodes = new JsonArray();
+        foreach (var node in ConvertInlineChildren(container, marks))
+        {
+            nodes.Add(node);
+        }
+
+        return nodes;
+    }
+
+    private static IEnumerable<JsonNode> ConvertInlineChildren(ContainerInline? container, IReadOnlyList<JsonObject>? marks = null)
+    {
+        if (container is null)
+        {
+            yield break;
+        }
+
+        foreach (var inline in container)
+        {
+            foreach (var node in ConvertInline(inline, marks))
+            {
+                yield return node;
+            }
+        }
+    }
+
+    private static JsonArray ConvertTaskParagraphInlineContainer(ContainerInline? container)
     {
         var nodes = new JsonArray();
         if (container is null)
@@ -624,11 +951,26 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
             return nodes;
         }
 
+        var skippedMarker = false;
+        var trimmedFirstText = false;
         foreach (var inline in container)
         {
-            foreach (var node in ConvertInline(inline, marks))
+            if (!skippedMarker && inline is TaskList)
             {
-                nodes.Add(node);
+                skippedMarker = true;
+                continue;
+            }
+
+            foreach (var node in ConvertInline(inline, activeMarks: null))
+            {
+                var convertedNode = trimmedFirstText ? node : TrimLeadingTextNode(node);
+                if (convertedNode is null)
+                {
+                    continue;
+                }
+
+                trimmedFirstText = true;
+                nodes.Add(convertedNode);
             }
         }
 
@@ -648,11 +990,26 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 yield break;
 
             case LineBreakInline breakInline:
-                yield return CreateTextNode(breakInline.IsHard ? "\n" : " ", activeMarks);
+                if (breakInline.IsHard)
+                {
+                    yield return new JsonObject { ["type"] = "hardBreak" };
+                    yield break;
+                }
+
+                yield return CreateTextNode(" ", activeMarks);
                 yield break;
 
             case CodeInline code:
+                if (string.IsNullOrEmpty(code.Content))
+                {
+                    yield break;
+                }
+
                 yield return CreateTextNode(code.Content, AddMark(activeMarks, new JsonObject { ["type"] = "code" }));
+                yield break;
+
+            case TaskList taskList:
+                yield return CreateTextNode(taskList.Checked ? "[x]" : "[ ]", activeMarks);
                 yield break;
 
             case LinkInline link when link.IsImage:
@@ -681,23 +1038,17 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                     yield break;
                 }
 
-                foreach (var child in ConvertInlineContainer(link, linkMarks))
+                foreach (var child in ConvertInlineChildren(link, linkMarks))
                 {
-                    if (child is not null)
-                    {
-                        yield return child;
-                    }
+                    yield return child;
                 }
                 yield break;
 
             case EmphasisInline emphasis:
                 var emphasisMarks = AddEmphasisMarks(activeMarks, emphasis);
-                foreach (var child in ConvertInlineContainer(emphasis, emphasisMarks))
+                foreach (var child in ConvertInlineChildren(emphasis, emphasisMarks))
                 {
-                    if (child is not null)
-                    {
-                        yield return child;
-                    }
+                    yield return child;
                 }
                 yield break;
 
@@ -716,6 +1067,46 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 }
                 yield break;
         }
+    }
+
+    private static JsonNode? TrimLeadingTextNode(JsonNode node)
+    {
+        if (node is not JsonObject obj
+            || !TryGetString(obj, "type", out var type)
+            || !string.Equals(type, "text", StringComparison.Ordinal)
+            || !TryGetString(obj, "text", out var text))
+        {
+            return node;
+        }
+
+        var trimmed = text.TrimStart();
+        if (trimmed.Length == 0)
+        {
+            return null;
+        }
+
+        if (string.Equals(trimmed, text, StringComparison.Ordinal))
+        {
+            return node;
+        }
+
+        var clone = obj.DeepClone().AsObject();
+        clone["text"] = trimmed;
+        return clone;
+    }
+
+    private static bool TryGetString(JsonObject obj, string propertyName, out string value)
+    {
+        value = string.Empty;
+        if (obj[propertyName] is not JsonValue jsonValue
+            || !jsonValue.TryGetValue<string?>(out var candidate)
+            || candidate is null)
+        {
+            return false;
+        }
+
+        value = candidate;
+        return true;
     }
 
     private static JsonObject CreateTextNode(string text, IReadOnlyList<JsonObject>? marks)
