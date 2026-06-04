@@ -6,8 +6,9 @@
 export const PROSE_CONTENT_CLASSES =
   'prose prose-sm max-w-none ' +
   'prose-headings:font-semibold prose-headings:text-text-primary prose-headings:leading-snug ' +
-  'prose-p:text-text-secondary prose-p:leading-normal ' +
-  'prose-li:leading-normal ' +
+  'prose-p:text-text-primary prose-p:leading-normal ' +
+  'prose-strong:text-text-primary ' +
+  'prose-li:text-text-primary prose-li:leading-normal ' +
   'prose-a:text-brand-brown ' +
   'prose-pre:bg-surface-active prose-pre:text-text-primary prose-pre:border prose-pre:border-border-default prose-pre:rounded-lg prose-pre:px-5 prose-pre:py-4 prose-pre:font-mono prose-pre:text-sm prose-pre:leading-relaxed prose-pre:overflow-x-auto prose-pre:relative ' +
   '[&_pre_code]:bg-transparent [&_pre_code]:text-inherit [&_pre_code]:p-0 [&_pre_code]:rounded-none ' +
