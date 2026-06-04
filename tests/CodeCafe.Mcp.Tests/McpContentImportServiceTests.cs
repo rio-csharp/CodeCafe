@@ -8,7 +8,7 @@ namespace CodeCafe.Mcp.Tests;
 public sealed class McpContentImportServiceTests
 {
     [Fact]
-    public async Task ResolveRequiredPageContentAsync_RejectsInlineH1Headings()
+    public async Task ResolveRequiredPageContentAsync_AllowsInlineHeadingNodes()
     {
         var service = CreateService();
         using var document = JsonDocument.Parse("""
@@ -33,16 +33,14 @@ public sealed class McpContentImportServiceTests
             "invalid content",
             CancellationToken.None);
 
-        Assert.False(result.Succeeded);
-        Assert.Equal("invalid_content_json", result.Error!.Code);
-        Assert.Equal("contentJson", result.Error.Field);
-        Assert.Equal("heading", result.Error.Details!["disallowedNodeType"]);
-        Assert.Equal(1, result.Error.Details["disallowedHeadingLevel"]);
-        Assert.Equal("$.content[0]", result.Error.Details["nodePath"]);
+        Assert.True(result.Succeeded);
+        var heading = result.Value.GetProperty("content")[0];
+        Assert.Equal("heading", heading.GetProperty("type").GetString());
+        Assert.Equal(1, heading.GetProperty("attrs").GetProperty("level").GetInt32());
     }
 
     [Fact]
-    public async Task ResolveRequiredBlocksAsync_RejectsInlineH1Headings()
+    public async Task ResolveRequiredBlocksAsync_AllowsInlineHeadingNodes()
     {
         var service = CreateService();
         using var blocks = JsonDocument.Parse("""
@@ -64,14 +62,14 @@ public sealed class McpContentImportServiceTests
             "invalid blocks",
             CancellationToken.None);
 
-        Assert.False(result.Succeeded);
-        Assert.Equal("invalid_blocks", result.Error!.Code);
-        Assert.Equal("blocks", result.Error.Field);
-        Assert.Equal("$[0]", result.Error.Details!["nodePath"]);
+        Assert.True(result.Succeeded);
+        var heading = result.Value[0];
+        Assert.Equal("heading", heading.GetProperty("type").GetString());
+        Assert.Equal(1, heading.GetProperty("attrs").GetProperty("level").GetInt32());
     }
 
     [Fact]
-    public async Task ResolveRequiredPageContentAsync_DemotesUploadedMarkdownH1Headings()
+    public async Task ResolveRequiredPageContentAsync_PreservesUploadedMarkdownHeadingNodes()
     {
         var actorId = Guid.NewGuid();
         var upload = new McpUploadSession(
@@ -79,8 +77,8 @@ public sealed class McpContentImportServiceTests
             actorId,
             "page.md",
             "text/markdown",
-            "# Page title",
-            12,
+            "# Page title\n\nFirst paragraph.",
+            30,
             DateTimeOffset.UtcNow,
             DateTimeOffset.UtcNow);
         var service = CreateService(new TestUploadStore(upload));
@@ -95,9 +93,17 @@ public sealed class McpContentImportServiceTests
             CancellationToken.None);
 
         Assert.True(result.Succeeded);
-        var heading = result.Value.GetProperty("content")[0];
-        Assert.Equal("heading", heading.GetProperty("type").GetString());
-        Assert.Equal(2, heading.GetProperty("attrs").GetProperty("level").GetInt32());
+        var firstNode = result.Value.GetProperty("content")[0];
+        Assert.Equal("heading", firstNode.GetProperty("type").GetString());
+        Assert.Equal(1, firstNode.GetProperty("attrs").GetProperty("level").GetInt32());
+        Assert.Equal(
+            "Page title",
+            firstNode.GetProperty("content")[0].GetProperty("text").GetString());
+        var secondNode = result.Value.GetProperty("content")[1];
+        Assert.Equal("paragraph", secondNode.GetProperty("type").GetString());
+        Assert.Equal(
+            "First paragraph.",
+            secondNode.GetProperty("content")[0].GetProperty("text").GetString());
     }
 
     private static McpContentImportService CreateService()

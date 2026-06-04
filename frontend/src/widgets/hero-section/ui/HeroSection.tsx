@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { Globe, ArrowRight } from 'lucide-react'
 import WelcomeBadge from '@/widgets/welcome-badge'
 import { useTranslation } from 'react-i18next'
+import { useLayout } from '@/shared/model/layoutContext'
 
 function BrandCard() {
   return (
@@ -23,6 +24,7 @@ function BrandCard() {
 
 function HeroSection() {
   const { t } = useTranslation()
+  const { user } = useLayout()
   return (
     <section className="pt-28 pb-16 lg:pt-32 lg:pb-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -42,7 +44,8 @@ function HeroSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
               className="mt-6 text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary tracking-tight leading-[1.15]"
-            >              {t('home.tagline').split(t('home.highlight'))[0]}
+            >
+              {t('home.tagline').split(t('home.highlight'))[0]}
               <span className="text-brand-brown">{t('home.highlight')}</span>
             </motion.h1>
 
@@ -68,12 +71,14 @@ function HeroSection() {
                 {t('home.explore')}
                 <ArrowRight className="h-4 w-4" />
               </Link>
-              <Link
-                to="/login"
-                className="inline-flex items-center justify-center rounded-lg border border-border-default px-6 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-hover transition-colors"
-              >
-                {t('home.login')}
-              </Link>
+              {!user && (
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center rounded-lg border border-border-default px-6 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-hover transition-colors"
+                >
+                  {t('home.login')}
+                </Link>
+              )}
             </motion.div>
 
             <motion.div

@@ -103,20 +103,6 @@ public sealed class McpContentImportService(
                 resolved.Error.Details);
         }
 
-        var h1Validation = EnforceNoH1Headings(
-            resolved.Value,
-            errorCode,
-            hasUpload ? "contentUploadId" : "contentJson");
-        if (!h1Validation.Succeeded)
-        {
-            return NotesResult<JsonElement?>.Failure(
-                h1Validation.Error!.Kind,
-                h1Validation.Error.Code,
-                h1Validation.Error.Message,
-                h1Validation.Error.Field,
-                h1Validation.Error.Details);
-        }
-
         return NotesResult<JsonElement?>.Success(resolved.Value);
     }
 
@@ -146,38 +132,17 @@ public sealed class McpContentImportService(
                 });
         }
 
-        NotesResult<JsonElement> resolved;
-        string field;
         if (hasUpload)
         {
-            resolved = await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken);
-            field = "contentUploadId";
+            return await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken);
         }
-        else
+
+        if (!hasInlineContent)
         {
-            field = "contentJson";
-            if (!hasInlineContent)
-            {
-                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
-            }
-
-            resolved = ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage, field);
+            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, "contentJson");
         }
 
-        if (!resolved.Succeeded)
-        {
-            return resolved;
-        }
-
-        var h1Validation = EnforceNoH1Headings(resolved.Value, errorCode, field);
-        return h1Validation.Succeeded
-            ? resolved
-            : NotesResult<JsonElement>.Failure(
-                h1Validation.Error!.Kind,
-                h1Validation.Error.Code,
-                h1Validation.Error.Message,
-                h1Validation.Error.Field,
-                h1Validation.Error.Details);
+        return ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage, "contentJson");
     }
 
     public async Task<NotesResult<JsonElement>> ResolveRequiredBlocksAsync(
@@ -207,21 +172,18 @@ public sealed class McpContentImportService(
         }
 
         NotesResult<JsonElement> result;
-        string field;
         if (hasUpload)
         {
             result = await ResolveUploadAsBlocksAsync(actorId, blocksUploadId!, blocksFormat, errorCode, invalidMessage, cancellationToken);
-            field = "blocksUploadId";
         }
         else
         {
-            field = "blocks";
             if (!hasInlineBlocks)
             {
-                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
+                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, "blocks");
             }
 
-            result = ResolveInlineJson(inlineBlocks!.Value, errorCode, invalidMessage, field);
+            result = ResolveInlineJson(inlineBlocks!.Value, errorCode, invalidMessage, "blocks");
         }
 
         if (!result.Succeeded)
@@ -238,15 +200,7 @@ public sealed class McpContentImportService(
                 "blocks");
         }
 
-        var h1Validation = EnforceNoH1Headings(result.Value, errorCode, field);
-        return h1Validation.Succeeded
-            ? result
-            : NotesResult<JsonElement>.Failure(
-                h1Validation.Error!.Kind,
-                h1Validation.Error.Code,
-                h1Validation.Error.Message,
-                h1Validation.Error.Field,
-                h1Validation.Error.Details);
+        return result;
     }
 
     public NotesResult EnforcePageContentSize(JsonElement contentJson, string errorCode)
@@ -275,102 +229,6 @@ public sealed class McpContentImportService(
         }
 
         _ = await uploadStore.DeleteAsync(actorId, uploadId, cancellationToken);
-    }
-
-    private static NotesResult EnforceNoH1Headings(JsonElement? contentJson, string errorCode, string field)
-    {
-        if (!contentJson.HasValue
-            || contentJson.Value.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
-            || !TryFindH1Heading(contentJson.Value, "$", out var nodePath))
-        {
-            return NotesResult.Success();
-        }
-
-        return NotesResult.Failure(
-            NotesFailureKind.Validation,
-            errorCode,
-            "MCP page body content cannot contain H1 headings. Put the page title in the title argument and start body sections at H2.",
-            field,
-            new Dictionary<string, object?>
-            {
-                ["disallowedNodeType"] = "heading",
-                ["disallowedHeadingLevel"] = 1,
-                ["nodePath"] = nodePath
-            });
-    }
-
-    private static bool TryFindH1Heading(JsonElement node, string path, out string nodePath)
-    {
-        nodePath = string.Empty;
-        if (node.ValueKind == JsonValueKind.Array)
-        {
-            var index = 0;
-            foreach (var child in node.EnumerateArray())
-            {
-                if (TryFindH1Heading(child, $"{path}[{index}]", out nodePath))
-                {
-                    return true;
-                }
-
-                index++;
-            }
-
-            return false;
-        }
-
-        if (node.ValueKind != JsonValueKind.Object)
-        {
-            return false;
-        }
-
-        if (node.TryGetProperty("type", out var typeElement)
-            && typeElement.ValueKind == JsonValueKind.String
-            && string.Equals(typeElement.GetString(), "heading", StringComparison.Ordinal)
-            && node.TryGetProperty("attrs", out var attrsElement)
-            && attrsElement.ValueKind == JsonValueKind.Object
-            && attrsElement.TryGetProperty("level", out var levelElement)
-            && TryReadInt32(levelElement, out var level)
-            && level == 1)
-        {
-            nodePath = path;
-            return true;
-        }
-
-        if (!node.TryGetProperty("content", out var contentElement)
-            || contentElement.ValueKind != JsonValueKind.Array)
-        {
-            return false;
-        }
-
-        var contentIndex = 0;
-        foreach (var child in contentElement.EnumerateArray())
-        {
-            if (TryFindH1Heading(child, $"{path}.content[{contentIndex}]", out nodePath))
-            {
-                return true;
-            }
-
-            contentIndex++;
-        }
-
-        return false;
-    }
-
-    private static bool TryReadInt32(JsonElement element, out int value)
-    {
-        if (element.ValueKind == JsonValueKind.Number)
-        {
-            return element.TryGetInt32(out value);
-        }
-
-        if (element.ValueKind == JsonValueKind.String
-            && int.TryParse(element.GetString(), out value))
-        {
-            return true;
-        }
-
-        value = 0;
-        return false;
     }
 
     private async Task<NotesResult<JsonElement>> ResolveUploadAsPageContentAsync(
@@ -646,13 +504,18 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
     private static IEnumerable<JsonNode> ConvertBlock(Block block)
     {
+        if (IsMarkdigInfrastructureBlock(block))
+        {
+            yield break;
+        }
+
         switch (block)
         {
             case HeadingBlock heading:
                 yield return new JsonObject
                 {
                     ["type"] = "heading",
-                    ["attrs"] = new JsonObject { ["level"] = Math.Clamp(heading.Level, 2, 4) },
+                    ["attrs"] = new JsonObject { ["level"] = Math.Clamp(heading.Level, 1, 4) },
                     ["content"] = ConvertInlineContainer(heading.Inline)
                 };
                 yield break;
@@ -1190,4 +1053,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
             _ => block.ToString() ?? string.Empty
         };
     }
+
+    private static bool IsMarkdigInfrastructureBlock(Block block)
+        => string.Equals(
+            block.GetType().FullName,
+            "Markdig.Syntax.LinkReferenceDefinitionGroup",
+            StringComparison.Ordinal);
 }

@@ -46,7 +46,7 @@ public sealed class MarkdigMcpMarkdownImporterTests
     }
 
     [Fact]
-    public void ConvertMarkdownToDocument_DemotesH1HeadingsForMcpImports()
+    public void ConvertMarkdownToDocument_PreservesHeadingLevelsForMcpImports()
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
@@ -54,7 +54,24 @@ public sealed class MarkdigMcpMarkdownImporterTests
 
         var heading = document.GetProperty("content")[0];
         Assert.Equal("heading", heading.GetProperty("type").GetString());
-        Assert.Equal(2, heading.GetProperty("attrs").GetProperty("level").GetInt32());
+        Assert.Equal(1, heading.GetProperty("attrs").GetProperty("level").GetInt32());
+    }
+
+    [Fact]
+    public void ConvertMarkdownToDocument_IgnoresLinkReferenceDefinitions()
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument("""
+            Reference [docs][docs-ref].
+
+            [docs-ref]: https://example.com/docs "Docs"
+            """);
+
+        var raw = document.GetRawText();
+        Assert.DoesNotContain("Markdig.Syntax.LinkReferenceDefinitionGroup", raw, StringComparison.Ordinal);
+        Assert.Contains("https://example.com/docs", raw, StringComparison.Ordinal);
+        Assert.Single(document.GetProperty("content").EnumerateArray());
     }
 
     [Fact]

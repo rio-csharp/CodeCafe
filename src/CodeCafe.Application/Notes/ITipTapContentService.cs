@@ -4,7 +4,7 @@ namespace CodeCafe.Application.Notes;
 
 public interface ITipTapContentService
 {
-    NotesResult<TipTapContentModel> NormalizePageContent(JsonElement? contentJson, string? pageTitle = null);
+    NotesResult<TipTapContentModel> NormalizePageContent(JsonElement? contentJson);
 }
 
 public sealed record TipTapContentModel(
