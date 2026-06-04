@@ -28,6 +28,7 @@ export function LanguageSwitcher({ placement = 'bottom', align = 'right' }: Lang
   return (
     <div className="relative" ref={ref}>
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         className="flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-hover dark:hover:bg-surface-active transition-colors"
         aria-label="Switch language"
@@ -39,6 +40,7 @@ export function LanguageSwitcher({ placement = 'bottom', align = 'right' }: Lang
         <div className={`${menuPositionClasses} w-36 rounded-xl border border-border-default bg-surface shadow-lg py-1 z-50`}>
           {locales.map((l) => (
             <button
+              type="button"
               key={l.code}
               onClick={() => {
                 i18n.changeLanguage(l.code)

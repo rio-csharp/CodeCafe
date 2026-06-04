@@ -123,6 +123,15 @@ public sealed class McpContentImportServiceTests
         public Task<McpUploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
+        public Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(
+            Guid actorId,
+            string? fileName,
+            string mediaType,
+            string contentText,
+            int maxUploadBytes,
+            CancellationToken cancellationToken)
+            => throw new NotSupportedException();
+
         public Task<NotesUploadResult<McpUploadStatus>> AppendTextAsync(
             Guid actorId,
             string uploadId,

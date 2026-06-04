@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Home, FileText, Code, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen, X, Menu } from 'lucide-react'
 import logoIcon from '@/shared/assets/codecafe-icon.png'
@@ -7,6 +7,7 @@ import { useLayout } from '@/shared/model/layoutContext'
 import { useSidebarStore } from '../model/sidebarStore'
 import { ThemeToggle } from '@/shared/ui/ThemeToggle'
 import { LanguageSwitcher } from '@/shared/ui/LanguageSwitcher'
+import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import { useTranslation } from 'react-i18next'
 
 export default function Sidebar() {
@@ -43,15 +44,8 @@ export default function Sidebar() {
   const email = user?.email || ''
   const initial = displayName.charAt(0).toUpperCase()
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowUserMenu(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  const closeUserMenu = useCallback(() => setShowUserMenu(false), [])
+  useClickOutside(menuRef, closeUserMenu)
 
   const openMobileSidebar = () => setMobileOpenPathname(location.pathname)
   const closeMobileSidebar = () => setMobileOpenPathname(null)
@@ -103,11 +97,13 @@ export default function Sidebar() {
       {/* User */}
       <div className={`p-3 border-t border-border-subtle relative ${isCollapsed ? 'px-1.5' : ''}`} ref={menuRef}>
         <button
+          type="button"
           onClick={() => setShowUserMenu(!showUserMenu)}
           aria-expanded={showUserMenu}
           className={`flex items-center w-full text-left hover:bg-surface-hover rounded-lg p-2 transition-colors ${
             isCollapsed ? 'justify-center' : 'gap-3'
           }`}
+          aria-label="User menu"
         >
           <div className="h-8 w-8 rounded-full bg-brand-brown flex items-center justify-center text-text-inverse text-sm font-medium shrink-0">
             {initial}
@@ -130,6 +126,7 @@ export default function Sidebar() {
         {showUserMenu && (
           <div className={`absolute bottom-full mb-1 bg-surface border border-border-subtle rounded-lg shadow-lg py-1 ${isCollapsed ? 'left-1.5 w-40' : 'left-3 right-3'}`}>
             <button
+              type="button"
               onClick={handleLogout}
               disabled={logout.isPending}
               className="flex items-center gap-2 w-full px-3 py-2 text-sm text-status-error hover:bg-surface-hover transition-colors"
@@ -147,6 +144,7 @@ export default function Sidebar() {
     <>
       {/* Mobile toggle */}
       <button
+        type="button"
         onClick={openMobileSidebar}
         className="md:hidden fixed top-3 left-3 z-50 p-2 rounded-lg bg-surface border border-border-default shadow-sm"
         aria-label="Open sidebar"
@@ -172,6 +170,7 @@ export default function Sidebar() {
       >
         {/* Collapse toggle - top right, subtle */}
         <button
+          type="button"
           onClick={toggle}
           className="hidden md:flex absolute top-3 right-2 items-center justify-center h-7 w-7 rounded-lg hover:bg-surface-hover transition-colors z-10"
           aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
@@ -183,6 +182,7 @@ export default function Sidebar() {
         {/* Mobile close button inside sidebar */}
         <div className="md:hidden absolute top-2 right-2">
           <button
+            type="button"
             onClick={closeMobileSidebar}
             className="p-2 rounded-lg hover:bg-surface-hover transition-colors"
             aria-label="Close sidebar"

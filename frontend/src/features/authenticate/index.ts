@@ -1,4 +1,4 @@
-export { login, register, logout, getMe } from './api/authApi'
+export { login, register, logout } from './api/authApi'
 export { useLogin } from './model/useLogin'
 export { useRegister } from './model/useRegister'
 export { useLogout } from './model/useLogout'

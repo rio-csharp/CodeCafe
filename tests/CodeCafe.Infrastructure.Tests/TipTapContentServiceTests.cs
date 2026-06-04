@@ -155,4 +155,38 @@ public sealed class TipTapContentServiceTests
         Assert.Contains("Line two", plainText, StringComparison.Ordinal);
         Assert.Contains(Environment.NewLine, plainText, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void NormalizePageContent_PreservesCurlyDoubleQuotesInStoredJsonAndPlainText()
+    {
+        var service = new TipTapContentService(new TipTapPlainTextExtractor());
+        var document = JsonSerializer.SerializeToElement(new JsonObject
+        {
+            ["type"] = "doc",
+            ["content"] = new JsonArray
+            {
+                new JsonObject
+                {
+                    ["type"] = "paragraph",
+                    ["content"] = new JsonArray
+                    {
+                        new JsonObject
+                        {
+                            ["type"] = "text",
+                            ["text"] = "Quote: \u201Cvalue\u201D"
+                        }
+                    }
+                }
+            }
+        });
+
+        var result = service.NormalizePageContent(document);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("Quote: \u201Cvalue\u201D", result.Value!.PlainTextContent);
+        Assert.Contains("\u201C", result.Value.ContentJson, StringComparison.Ordinal);
+        Assert.Contains("\u201D", result.Value.ContentJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u201C", result.Value.ContentJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\\u201D", result.Value.ContentJson, StringComparison.OrdinalIgnoreCase);
+    }
 }

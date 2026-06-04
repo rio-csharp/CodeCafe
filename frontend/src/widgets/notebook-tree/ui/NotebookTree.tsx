@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Search,
@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   Check,
   RefreshCw,
+  FileUp,
 } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
@@ -25,6 +26,7 @@ import { useDebounce } from '@/shared/hooks/useDebounce'
 import { useTreeActions } from '@/features/manage-notebook-items'
 import { useDeleteNotebook } from '@/features/delete-notebook'
 import { useToggleFavorite } from '@/features/toggle-favorite'
+import { ImportMarkdownModal } from '@/features/import-markdown'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
@@ -65,24 +67,20 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
     handleArchiveItem,
     handleRestoreItem,
     handleDeleteItem,
-    handleMoveUp,
-    handleMoveDown,
     dragState,
   } = useTreeActions(notebook, tree)
 
-  const contextValue = {
+  const contextValue = useMemo(() => ({
     notebookSlug,
     activePath: activePage?.path ?? null,
     canEdit,
     dragState,
-    onMoveUp: handleMoveUp,
-    onMoveDown: handleMoveDown,
     onCreateItem: handleCreateItem,
     onRenameItem: handleRenameItem,
     onArchiveItem: handleArchiveItem,
     onRestoreItem: handleRestoreItem,
     onDeleteItem: handleDeleteItem,
-  }
+  }), [notebookSlug, activePage?.path, canEdit, dragState, handleCreateItem, handleRenameItem, handleArchiveItem, handleRestoreItem, handleDeleteItem])
 
   // Notebook actions (moved from top bar)
   const { user } = useLayout()
@@ -90,6 +88,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
   const isAuthenticated = !!user
   const [menuOpen, setMenuOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const deleteNotebook = useDeleteNotebook()
   const toggleFavorite = useToggleFavorite()
@@ -152,6 +151,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
                 <h2 className="text-sm font-bold text-text-primary leading-tight line-clamp-2">{notebook.title}</h2>
                 <div className="flex items-center gap-1 shrink-0 mt-0.5">
                   <button
+                    type="button"
                     onClick={handleToggleFavorite}
                     disabled={toggleFavorite.isPending}
                     className={`p-1 rounded-md transition-colors ${
@@ -160,13 +160,16 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
                         : 'text-text-secondary hover:bg-surface-hover'
                     }`}
                     title={notebook.isFavoritedByMe ? t('notebook.favoriteRemove') : t('notebook.favoriteAdd')}
+                    aria-label={notebook.isFavoritedByMe ? t('notebook.favoriteRemove') : t('notebook.favoriteAdd')}
                   >
                     <Star className={`h-3.5 w-3.5 ${notebook.isFavoritedByMe ? 'fill-status-favorite' : ''}`} />
                   </button>
                   <div className="relative" ref={menuRef}>
                     <button
+                      type="button"
                       onClick={() => setMenuOpen(!menuOpen)}
                       className="p-1 text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
+                      aria-label="Notebook menu"
                     >
                       <MoreHorizontal className="h-3.5 w-3.5" />
                     </button>
@@ -202,6 +205,22 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
                           <Link2 className="h-3.5 w-3.5" />
                           Copy link
                         </button>
+                        {notebook.canEdit && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowImportModal(true)
+                                setMenuOpen(false)
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
+                            >
+                              <FileUp className="h-3.5 w-3.5" />
+                              {t('notebook.importMarkdown')}
+                            </button>
+                            <div className="my-1 border-t border-border-subtle" />
+                          </>
+                        )}
                         {notebook.canEdit && (
                           <>
                             <Link
@@ -313,6 +332,15 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
           </div>
         </div>
       </div>
+
+      <ImportMarkdownModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        notebookSlug={notebook.slug}
+        notebookId={notebook.id}
+        tree={tree}
+        onSuccess={onRefreshNotebook}
+      />
     </TreeContext.Provider>
   )
 }

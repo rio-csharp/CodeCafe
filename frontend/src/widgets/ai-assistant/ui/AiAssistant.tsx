@@ -8,6 +8,7 @@ export default function AiAssistant() {
     return (
       <div className="border-t border-border-subtle px-4 py-3">
         <button
+          type="button"
           onClick={() => setCollapsed(false)}
           className="flex items-center gap-2 w-full text-left hover:bg-surface-hover rounded-md px-2 py-1.5 transition-colors"
         >
@@ -26,8 +27,10 @@ export default function AiAssistant() {
           <span className="text-sm font-medium text-text-primary">AI Assistant</span>
         </div>
         <button
+          type="button"
           onClick={() => setCollapsed(true)}
           className="p-1 text-text-tertiary hover:text-text-primary hover:bg-surface-hover rounded transition-colors"
+          aria-label="Collapse AI Assistant"
         >
           <Minus className="h-3.5 w-3.5" />
         </button>

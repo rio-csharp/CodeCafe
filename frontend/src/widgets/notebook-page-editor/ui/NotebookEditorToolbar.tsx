@@ -30,30 +30,8 @@ import {
   Plus,
 } from 'lucide-react'
 import ToolbarGroup from './ToolbarGroup'
+import ToolbarButton from './ToolbarButton'
 import ToolbarColorControls from './ToolbarColorControls'
-
-const MenuButton = ({
-  active,
-  onClick,
-  children,
-  title,
-}: {
-  active?: boolean
-  onClick: () => void
-  children: React.ReactNode
-  title: string
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    title={title}
-    className={`p-1.5 rounded-md transition-colors ${
-      active ? 'bg-surface-active text-brand-brown' : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
-    }`}
-  >
-    {children}
-  </button>
-)
 
 const LANGUAGES = [
   { value: 'plaintext', label: 'Plain text' },
@@ -117,18 +95,18 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
   return (
     <div className="flex items-center gap-1 px-3 py-2 flex-wrap">
       <ToolbarGroup showDivider>
-        <MenuButton active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1"><Heading1 className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading 2"><Heading2 className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} title="Heading 3"><Heading3 className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('heading', { level: 4 })} onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()} title="Heading 4"><Heading4 className="h-4 w-4" /></MenuButton>
+        <ToolbarButton active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title="Heading 1"><Heading1 className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title="Heading 2"><Heading2 className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('heading', { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} title="Heading 3"><Heading3 className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('heading', { level: 4 })} onClick={() => editor.chain().focus().toggleHeading({ level: 4 }).run()} title="Heading 4"><Heading4 className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <MenuButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold"><Bold className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic"><Italic className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Underline"><UnderlineIcon className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} title="Strikethrough"><Strikethrough className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('subscript')} onClick={() => editor.chain().focus().toggleSubscript().run()} title="Subscript"><Subscript className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()} title="Superscript"><Superscript className="h-4 w-4" /></MenuButton>
+        <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} title="Bold"><Bold className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('italic')} onClick={() => editor.chain().focus().toggleItalic().run()} title="Italic"><Italic className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('underline')} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Underline"><UnderlineIcon className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('strike')} onClick={() => editor.chain().focus().toggleStrike().run()} title="Strikethrough"><Strikethrough className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('subscript')} onClick={() => editor.chain().focus().toggleSubscript().run()} title="Subscript"><Subscript className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()} title="Superscript"><Superscript className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
         <select
@@ -151,21 +129,21 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
         <ToolbarColorControls editor={editor} />
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <MenuButton active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()} title="Align left"><AlignLeft className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} title="Align center"><AlignCenter className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="Align right"><AlignRight className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="Align justify"><AlignJustify className="h-4 w-4" /></MenuButton>
+        <ToolbarButton active={editor.isActive({ textAlign: 'left' })} onClick={() => editor.chain().focus().setTextAlign('left').run()} title="Align left"><AlignLeft className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive({ textAlign: 'center' })} onClick={() => editor.chain().focus().setTextAlign('center').run()} title="Align center"><AlignCenter className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive({ textAlign: 'right' })} onClick={() => editor.chain().focus().setTextAlign('right').run()} title="Align right"><AlignRight className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive({ textAlign: 'justify' })} onClick={() => editor.chain().focus().setTextAlign('justify').run()} title="Align justify"><AlignJustify className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <MenuButton active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Bullet list"><List className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Numbered list"><ListOrdered className="h-4 w-4" /></MenuButton>
-        <MenuButton active={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()} title="Task list"><ListChecks className="h-4 w-4" /></MenuButton>
+        <ToolbarButton active={editor.isActive('bulletList')} onClick={() => editor.chain().focus().toggleBulletList().run()} title="Bullet list"><List className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()} title="Numbered list"><ListOrdered className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('taskList')} onClick={() => editor.chain().focus().toggleTaskList().run()} title="Task list"><ListChecks className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <MenuButton active={editor.isActive('link')} onClick={handleSetLink} title="Link"><LinkIcon className="h-4 w-4" /></MenuButton>
+        <ToolbarButton active={editor.isActive('link')} onClick={handleSetLink} title="Link"><LinkIcon className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <MenuButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="Code block"><Code className="h-4 w-4" /></MenuButton>
+        <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="Code block"><Code className="h-4 w-4" /></ToolbarButton>
         {editor.isActive('codeBlock') && (
           <select value={currentLang} onChange={(e) => editor.chain().focus().setCodeBlock({ language: e.target.value }).run()} className="text-xs border border-border-default rounded px-1.5 py-0.5 bg-surface text-text-secondary outline-none focus:border-border-hover cursor-pointer" title="Code language">
             {LANGUAGES.map((lang) => (
@@ -173,28 +151,28 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
             ))}
           </select>
         )}
-        <MenuButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} title="Quote"><Quote className="h-4 w-4" /></MenuButton>
-        <MenuButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal rule"><Minus className="h-4 w-4" /></MenuButton>
-        <MenuButton onClick={handleInsertImage} title="Insert image"><ImageIcon className="h-4 w-4" /></MenuButton>
-        <MenuButton onClick={handleInsertYoutube} title="Insert YouTube video"><Video className="h-4 w-4" /></MenuButton>
+        <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} title="Quote"><Quote className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title="Horizontal rule"><Minus className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton onClick={handleInsertImage} title="Insert image"><ImageIcon className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton onClick={handleInsertYoutube} title="Insert YouTube video"><Video className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <MenuButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table"><TableIcon className="h-4 w-4" /></MenuButton>
+        <ToolbarButton onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} title="Insert table"><TableIcon className="h-4 w-4" /></ToolbarButton>
         {editor.isActive('table') && (
           <>
-            <MenuButton onClick={() => editor.chain().focus().addColumnBefore().run()} title="Add column before"><Plus className="h-4 w-4" /></MenuButton>
-            <MenuButton onClick={() => editor.chain().focus().addColumnAfter().run()} title="Add column after"><Plus className="h-4 w-4" /></MenuButton>
-            <MenuButton onClick={() => editor.chain().focus().deleteColumn().run()} title="Delete column"><Minus className="h-4 w-4" /></MenuButton>
-            <MenuButton onClick={() => editor.chain().focus().addRowBefore().run()} title="Add row before"><Plus className="h-4 w-4" /></MenuButton>
-            <MenuButton onClick={() => editor.chain().focus().addRowAfter().run()} title="Add row after"><Plus className="h-4 w-4" /></MenuButton>
-            <MenuButton onClick={() => editor.chain().focus().deleteRow().run()} title="Delete row"><Minus className="h-4 w-4" /></MenuButton>
-            <MenuButton onClick={() => editor.chain().focus().deleteTable().run()} title="Delete table"><Trash2 className="h-4 w-4" /></MenuButton>
+            <ToolbarButton onClick={() => editor.chain().focus().addColumnBefore().run()} title="Add column before"><Plus className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().addColumnAfter().run()} title="Add column after"><Plus className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().deleteColumn().run()} title="Delete column"><Minus className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().addRowBefore().run()} title="Add row before"><Plus className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().addRowAfter().run()} title="Add row after"><Plus className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().deleteRow().run()} title="Delete row"><Minus className="h-4 w-4" /></ToolbarButton>
+            <ToolbarButton onClick={() => editor.chain().focus().deleteTable().run()} title="Delete table"><Trash2 className="h-4 w-4" /></ToolbarButton>
           </>
         )}
       </ToolbarGroup>
       <ToolbarGroup>
-        <MenuButton onClick={() => editor.chain().focus().undo().run()} title="Undo"><Undo className="h-4 w-4" /></MenuButton>
-        <MenuButton onClick={() => editor.chain().focus().redo().run()} title="Redo"><Redo className="h-4 w-4" /></MenuButton>
+        <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title="Undo"><Undo className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title="Redo"><Redo className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
     </div>
   )

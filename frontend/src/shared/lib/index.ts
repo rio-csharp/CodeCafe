@@ -1,3 +1,5 @@
 export { getErrorMessage } from './errorUtils'
 export { pickIcon } from './pickIcon'
 export { formatTimeAgo } from './timeAgo'
+export { lowlight } from './lowlight'
+export { applyCodeBlockLineNumbers } from './codeBlockLineNumbers'

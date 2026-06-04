@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
 import { useEditorStore } from '@/widgets/notebook-page-editor/store'
 import { useParams, Navigate } from 'react-router-dom'
 import { Edit3, Link as LinkIcon, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
-import { useNotebook, buildTree, findFirstPage, findPageByPath, extractOutline } from '@/entities/notebook'
+import { useNotebook, useNotebookItems, buildTree, findFirstPage, findPageByPath, extractOutline } from '@/entities/notebook'
 import { useUpdateNotebookItem } from '@/features/manage-notebook-items'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
@@ -36,10 +36,14 @@ export default function NotebookReaderPage() {
     isFetching,
   } = useNotebook(notebookSlug!)
 
+  const {
+    data: notebookItems,
+  } = useNotebookItems(notebook?.id ?? '', undefined, showArchived, !!notebook)
+
   const visibleItems = useMemo(() => {
-    const items = notebook?.items ?? []
+    const items = notebookItems ?? notebook?.items ?? []
     return showArchived ? items : items.filter((item) => !item.isArchived)
-  }, [notebook?.items, showArchived])
+  }, [notebookItems, notebook?.items, showArchived])
 
   const updateItem = useUpdateNotebookItem(notebook?.id ?? '')
   const { showToast } = useToast()
@@ -148,6 +152,7 @@ export default function NotebookReaderPage() {
                 {!isEditingPage && (
                   <>
                     <button
+                      type="button"
                       onClick={() => setIsFullWidth(!isFullWidth)}
                       className="inline-flex items-center gap-1 rounded-md border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary hover:bg-surface-hover transition-colors"
                       title={isFullWidth ? 'Collapse width' : 'Expand width'}
@@ -156,6 +161,7 @@ export default function NotebookReaderPage() {
                       {isFullWidth ? 'Collapse' : 'Full width'}
                     </button>
                     <button
+                      type="button"
                       onClick={() => refetch()}
                       disabled={isFetching}
                       className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
@@ -165,6 +171,7 @@ export default function NotebookReaderPage() {
                       Refresh
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(window.location.href)
                         showToast(t('notebook.linkCopied'))
@@ -179,6 +186,7 @@ export default function NotebookReaderPage() {
                 )}
                 {!isEditingPage && notebook.canEdit && !activePage?.isArchived && (
                   <button
+                    type="button"
                     onClick={() => setEditClickedForPath(pagePath)}
                     className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
                   >

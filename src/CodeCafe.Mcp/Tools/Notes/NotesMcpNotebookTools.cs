@@ -126,12 +126,15 @@ public sealed class NotesMcpNotebookTools
             options.MaxInlineContentBytes,
             options.MaxUploadChunkBytes,
             options.MaxUploadBytes,
+            options.MaxUploadBytes,
+            options.UploadIdleTimeoutSeconds,
             options.MaxPageContentBytes,
             options.MaxListItemsLimit,
             TipTapContentService.MaxDepth,
             TipTapContentService.MaxNodeCount,
             TipTapContentService.MaxTextLength,
-            ["tiptap_json", "tiptap_blocks_json", "markdown"]);
+            ["tiptap_json", "tiptap_blocks_json", "markdown"],
+            ["text/markdown", "text/plain"]);
 
         return NotesMcpResultMapper.Success(response, "MCP limits loaded.");
     }

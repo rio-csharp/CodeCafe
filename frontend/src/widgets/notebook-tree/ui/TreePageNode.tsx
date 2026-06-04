@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { memo } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
@@ -17,7 +17,7 @@ interface TreePageNodeProps {
   index: number
 }
 
-export default function TreePageNode({
+function TreePageNode({
   node,
   notebookSlug,
   activePath,
@@ -25,7 +25,7 @@ export default function TreePageNode({
   siblingCount,
   index,
 }: TreePageNodeProps) {
-  const { canEdit, dragState, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem, onMoveUp, onMoveDown } = useTreeContext()
+  const { canEdit, dragState, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
   const {
     isEditing,
     editTitle,
@@ -38,8 +38,6 @@ export default function TreePageNode({
     startEditing,
     cancelEditing,
   } = useTreeNodeActions({ node, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem })
-
-  const [isDragOver, setIsDragOver] = useState(false)
 
   const isActive = node.item.path === activePath
   const isDragging = dragState?.draggingId === node.item.id
@@ -54,36 +52,12 @@ export default function TreePageNode({
 
   const handleDragEnd = () => { dragState?.onDragEnd() }
 
-  const handleDragOver = (e: React.DragEvent) => {
-    if (!dragState || !canEdit || node.item.isArchived) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setIsDragOver(true)
-  }
-
-  const handleDragLeave = () => { setIsDragOver(false) }
-
-  const handleDrop = (e: React.DragEvent) => {
-    if (!dragState || !canEdit || node.item.isArchived) return
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragOver(false)
-    if (node.item.parentId) {
-      dragState.onDropOnFolder(node.item.parentId)
-    } else {
-      dragState.onDropOnRoot()
-    }
-  }
-
   return (
     <div
       draggable={canEdit && !node.item.isArchived}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`group flex items-center gap-2 px-3 py-1.5 text-[13px] rounded-md transition-colors ${isActive ? 'bg-status-favorite-bg/60' : ''} ${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'bg-status-favorite-bg/60' : ''} ${node.item.isArchived ? 'opacity-60 italic' : ''}`}
+      className={`group flex items-center gap-2 px-3 py-1.5 text-[13px] rounded-md transition-colors ${isActive ? 'bg-status-favorite-bg/60' : ''} ${isDragging ? 'opacity-40' : ''} ${node.item.isArchived ? 'opacity-60 italic' : ''}`}
       style={{ paddingLeft }}
     >
       <Link
@@ -111,8 +85,6 @@ export default function TreePageNode({
         siblingCount={siblingCount}
         index={index}
         isArchived={node.item.isArchived}
-        onMoveUp={(e) => { e.preventDefault(); onMoveUp?.(node.item.id) }}
-        onMoveDown={(e) => { e.preventDefault(); onMoveDown?.(node.item.id) }}
         onRename={(e) => { e.preventDefault(); startEditing() }}
         onArchive={(e) => { e.preventDefault(); handleArchive() }}
         onRestore={(e) => { e.preventDefault(); handleRestore() }}
@@ -121,3 +93,5 @@ export default function TreePageNode({
     </div>
   )
 }
+
+export default memo(TreePageNode)

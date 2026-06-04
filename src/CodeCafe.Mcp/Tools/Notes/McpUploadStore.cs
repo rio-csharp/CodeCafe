@@ -11,6 +11,14 @@ public interface IMcpUploadStore
 {
     Task<McpUploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken);
 
+    Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(
+        Guid actorId,
+        string? fileName,
+        string mediaType,
+        string contentText,
+        int maxUploadBytes,
+        CancellationToken cancellationToken);
+
     Task<NotesUploadResult<McpUploadStatus>> AppendTextAsync(
         Guid actorId,
         string uploadId,
@@ -130,6 +138,54 @@ public sealed class DatabaseMcpUploadStore(
 
         session.BytesReceived = nextBytes;
         session.ChunkCount += 1;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return NotesUploadResult<McpUploadStatus>.Success(ToStatus(session));
+    }
+
+    public async Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(
+        Guid actorId,
+        string? fileName,
+        string mediaType,
+        string contentText,
+        int maxUploadBytes,
+        CancellationToken cancellationToken)
+    {
+        await PruneExpiredUploadsAsync(cancellationToken);
+
+        var normalizedText = contentText ?? string.Empty;
+        var contentBytes = Encoding.UTF8.GetByteCount(normalizedText);
+        if (contentBytes == 0)
+        {
+            return NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload content is required.");
+        }
+
+        if (contentBytes > maxUploadBytes)
+        {
+            return NotesUploadResult<McpUploadStatus>.Failure(
+                "upload_too_large",
+                $"Upload exceeds the limit of {maxUploadBytes} bytes (received {contentBytes} bytes).");
+        }
+
+        var session = new McpUploadSessionEntry
+        {
+            UploadId = Guid.NewGuid().ToString("N"),
+            ActorUserId = actorId,
+            FileName = string.IsNullOrWhiteSpace(fileName) ? null : fileName.Trim(),
+            MediaType = string.IsNullOrWhiteSpace(mediaType) ? "text/plain" : mediaType.Trim(),
+            BytesReceived = contentBytes,
+            ChunkCount = 1
+        };
+
+        dbContext.McpUploadSessions.Add(session);
+        dbContext.McpUploadChunks.Add(new McpUploadChunkEntry
+        {
+            Id = Guid.NewGuid(),
+            UploadId = session.UploadId,
+            SequenceNumber = 1,
+            ContentText = normalizedText
+        });
 
         await dbContext.SaveChangesAsync(cancellationToken);
 

@@ -123,4 +123,24 @@ public sealed class MarkdigMcpMarkdownImporterTests
 
         Assert.Contains("\"type\":\"hardBreak\"", document.GetRawText(), StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void ConvertMarkdownToDocument_PreservesCurlyDoubleQuotes()
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument("Quote: \u201Cvalue\u201D");
+
+        var text = document
+            .GetProperty("content")[0]
+            .GetProperty("content")[0]
+            .GetProperty("text")
+            .GetString();
+        var raw = document.GetRawText();
+        Assert.Equal("Quote: \u201Cvalue\u201D", text);
+        Assert.Contains("\u201C", raw, StringComparison.Ordinal);
+        Assert.Contains("\u201D", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain("\\u201C", raw, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("\\u201D", raw, StringComparison.OrdinalIgnoreCase);
+    }
 }

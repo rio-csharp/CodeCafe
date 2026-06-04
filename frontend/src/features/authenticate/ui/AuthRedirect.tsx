@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { useMe } from '@/entities/user'
+import { useUser } from '@/entities/user'
 import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
 import { getPostAuthRedirect, resolvePostAuthRedirect } from '../lib/postAuthRedirect'
 
@@ -8,7 +8,7 @@ interface AuthRedirectProps {
 }
 
 export default function AuthRedirect({ children }: AuthRedirectProps) {
-  const { data, isPending } = useMe()
+  const { data, isPending } = useUser()
   const location = useLocation()
 
   if (isPending) {

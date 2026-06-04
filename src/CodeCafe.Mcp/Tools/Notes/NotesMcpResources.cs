@@ -26,12 +26,15 @@ public sealed class NotesMcpResources
             "- Use `notebooks://mine`, `notebooks://public`, `notes_list_notebooks`, and `notes_get_notebook` to discover notebooks.",
             $"- Use `{NotesMcpToolNames.ListItems}` to inspect a notebook tree. It supports `parentPath`, `type`, `offset`, `limit`, and `includeArchived` filters. Archived items are owner-only.",
             $"- Use `{NotesMcpToolNames.GetPage}` to inspect a page before editing. It returns `contentJson` as a TipTap JSON string plus `plainTextContent` for quick reading.",
+            "- Path parameters accept the path returned by MCP responses. Resource-style `page/<path>` and `folder/<path>` values are also accepted when a client derives paths from item resource URIs.",
             $"- Use `{NotesMcpToolNames.Search}` to search visible notebooks and page plain-text content.",
             "- Page titles are stored separately from page body content.",
             "- For small edits, send inline TipTap JSON directly to page tools.",
-            $"- For local files or larger payloads, call `{NotesMcpToolNames.GetLimits}` first, then `{NotesMcpToolNames.CreateUpload}`, append one or more chunks with `{NotesMcpToolNames.AppendUploadChunk}`, and finally import with `{NotesMcpToolNames.CreatePage}`, `{NotesMcpToolNames.UpdatePageContentJson}`, or `{NotesMcpToolNames.AppendBlocksToPage}`.",
+            $"- For local files or larger payloads, prefer HTTP upload to `/api/mcp/uploads/markdown` with the same bearer token, then pass the returned upload id into `{NotesMcpToolNames.CreatePage}`, `{NotesMcpToolNames.UpdatePageContentJson}`, or `{NotesMcpToolNames.AppendBlocksToPage}`.",
+            $"- Clients that cannot use HTTP upload can still call `{NotesMcpToolNames.GetLimits}`, then `{NotesMcpToolNames.CreateUpload}`, append one or more chunks with `{NotesMcpToolNames.AppendUploadChunk}`, and finally import with the same page tools.",
             "- Supported uploaded formats are `markdown`, `tiptap_json`, and `tiptap_blocks_json`.",
             "- Uploaded Markdown is converted server-side into TipTap JSON before validation and persistence.",
+            "- Default content limits are `maxInlineContentBytes=131072`, `maxHttpUploadBytes=4194304`, `maxPageContentBytes=1048576`, `maxTipTapDepth=64`, `maxTipTapNodeCount=5000`, and `maxTipTapTextLength=200000`. Runtime values are returned by `notes_get_limits`.",
             "- MCP page content has total TipTap node and text limits in addition to byte limits. Page write responses include `tipTapNodeCount`, `contentJsonBytes`, and `plainTextLength`; use them to decide when to split content across pages.",
             $"- Upload sessions are temporary, database-backed, and can be discarded with `{NotesMcpToolNames.DiscardUpload}` when no longer needed."
         });
@@ -175,11 +178,13 @@ public sealed class NotesMcpResources
         var notebook = NotesMcpSupport.EnsureMcpSuccess(
             await NotesMcpSupport.RequireNotebookAsync(slug, user, notebookReadService, cancellationToken));
         var page = NotesMcpSupport.EnsureMcpSuccess(NotesMcpSupport.RequirePage(
-            NotesMcpSupport.EnsureMcpSuccess(await notebookReadService.GetNotebookItemByPathAsync(
+            NotesMcpSupport.EnsureMcpSuccess(await NotesMcpSupport.GetNotebookItemByMcpPathAsync(
                 notebook.Slug,
                 path,
                 NotesMcpSupport.GetCurrentUserId(user),
-                cancellationToken))));
+                notebookReadService,
+                cancellationToken,
+                itemType: "page"))));
         var payload = NotesMcpSupport.ToGetPageToolResponse(notebook, page);
         return new TextResourceContents
         {

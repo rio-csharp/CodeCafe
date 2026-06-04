@@ -18,3 +18,17 @@ export function findSiblings(
   if (!result) return { siblings: [], index: -1 }
   return result
 }
+
+export function findNodeAndSiblings(
+  tree: TreeNode[],
+  id: string,
+): { node: TreeNode; siblings: TreeNode[]; index: number } | null {
+  for (let i = 0; i < tree.length; i++) {
+    if (tree[i].item.id === id) {
+      return { node: tree[i], siblings: tree, index: i }
+    }
+    const found = findNodeAndSiblings(tree[i].children, id)
+    if (found) return found
+  }
+  return null
+}

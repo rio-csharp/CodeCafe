@@ -6,6 +6,7 @@ export interface TreeDragState {
   onDragEnd: () => void
   onDropOnFolder: (folderId: string) => void
   onDropOnRoot: () => void
+  onDropReorder: (targetId: string, position: 'before' | 'after' | 'inside') => void
 }
 
 export interface TreeContextValue {
@@ -13,8 +14,8 @@ export interface TreeContextValue {
   activePath: string | null
   canEdit: boolean
   dragState?: TreeDragState
-  onMoveUp: (itemId: string) => void
-  onMoveDown: (itemId: string) => void
+  onMoveUp?: (itemId: string) => void
+  onMoveDown?: (itemId: string) => void
   onCreateItem: (parentId: string | null, type: 'folder' | 'page') => Promise<void>
   onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>
   onArchiveItem: (itemId: string) => Promise<void>

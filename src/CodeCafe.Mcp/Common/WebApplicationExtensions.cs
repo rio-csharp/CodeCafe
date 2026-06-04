@@ -11,6 +11,7 @@ public static class WebApplicationExtensions
         var options = endpoints.ServiceProvider.GetRequiredService<IOptions<McpOptions>>().Value;
 
         endpoints.MapDiagnosticsToolEndpoints();
+        endpoints.MapMcpHttpUploadEndpoints();
 
         if (options.Enabled)
         {

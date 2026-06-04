@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import { createLowlight, common } from 'lowlight'
 import Color from '@tiptap/extension-color'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Highlight from '@tiptap/extension-highlight'
@@ -25,11 +24,11 @@ import FontFamily from '@tiptap/extension-font-family'
 import { Copy, Check } from 'lucide-react'
 import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
+import { lowlight } from '@/shared/lib/lowlight'
+import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
-import '@/widgets/notebook-page-editor/ui/codeHighlight.css'
-
-const lowlight = createLowlight(common)
+import '@/shared/styles/codeHighlight.css'
 
 interface NotebookPageContentProps {
   page: NotebookItem
@@ -66,13 +65,23 @@ function sanitizeTipTapContent(content: Record<string, unknown>): Record<string,
 
 function CopyOverlay({ pre }: { pre: HTMLElement }) {
   const [copied, setCopied] = useState(false)
+  const timeoutRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current)
+      }
+    }
+  }, [])
 
   const handleCopy = useCallback(() => {
     const code = pre.querySelector('code')
     if (!code) return
     navigator.clipboard.writeText(code.textContent ?? '').then(() => {
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
+      timeoutRef.current = window.setTimeout(() => setCopied(false), 2000)
     })
   }, [pre])
 
@@ -144,26 +153,7 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
       h.id = slugifyHeadingId(text, idx)
     })
 
-    container.querySelectorAll('pre').forEach((pre) => {
-      const code = pre.querySelector('code')
-      if (!code) return
-      const lineCount = code.textContent?.split('\n').length || 1
-      let lineNumbers = pre.querySelector('.line-numbers') as HTMLElement | null
-      if (!lineNumbers) {
-        lineNumbers = document.createElement('div')
-        lineNumbers.className = 'line-numbers'
-        lineNumbers.setAttribute('aria-hidden', 'true')
-        pre.insertBefore(lineNumbers, code)
-      }
-      const existingSpans = lineNumbers.querySelectorAll('span')
-      if (existingSpans.length === lineCount) return
-      lineNumbers.innerHTML = ''
-      for (let i = 1; i <= lineCount; i++) {
-        const span = document.createElement('span')
-        span.textContent = String(i)
-        lineNumbers.appendChild(span)
-      }
-    })
+    applyCodeBlockLineNumbers(container)
   }, [editor, content])
 
   // Track hovered code blocks via event delegation
@@ -215,7 +205,10 @@ function PlainTextViewer({ text }: { text: string }) {
 }
 
 export default function NotebookPageContent({ page }: NotebookPageContentProps) {
-  const safeContent = page.contentJson ? sanitizeTipTapContent(page.contentJson) : null
+  const safeContent = useMemo(
+    () => (page.contentJson ? sanitizeTipTapContent(page.contentJson) : null),
+    [page.contentJson],
+  )
   const hasPlainText = !!page.plainTextContent
 
   // Nothing to show at all

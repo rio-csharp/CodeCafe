@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
+import { findNodeAndSiblings } from '@/entities/notebook'
 import { useCreateNotebookItem } from './useCreateNotebookItem'
 import { useUpdateNotebookItem } from './useUpdateNotebookItem'
 import { useArchiveNotebookItem } from './useArchiveNotebookItem'
@@ -9,7 +10,6 @@ import { useDeleteNotebookItem } from './useDeleteNotebookItem'
 import { useReorderNotebookItems } from './useReorderNotebookItems'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
-import { findSiblings } from '@/entities/notebook'
 
 function findNode(nodes: TreeNode[], id: string): TreeNode | null {
   for (const node of nodes) {
@@ -18,6 +18,18 @@ function findNode(nodes: TreeNode[], id: string): TreeNode | null {
     if (found) return found
   }
   return null
+}
+
+function isDescendantOf(nodes: TreeNode[], ancestorId: string): boolean {
+  for (const node of nodes) {
+    if (node.item.id === ancestorId) return true
+    if (isDescendantOf(node.children, ancestorId)) return true
+  }
+  return false
+}
+
+function cloneSiblings(siblings: TreeNode[]): TreeNode[] {
+  return siblings.map((n) => ({ item: n.item, children: n.children }))
 }
 
 export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
@@ -97,42 +109,101 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     [deleteItem, showTreeToast],
   )
 
-  const computeReorderPayload = useCallback(
-    (siblings: TreeNode[]): { itemId: string; parentId: string | null; sortOrder: number }[] => {
-      const REORDER_STEP = 10
-      return siblings.map((node, idx) => ({
-        itemId: node.item.id,
-        parentId: node.item.parentId,
-        sortOrder: idx * REORDER_STEP,
-      }))
-    },
-    [],
-  )
+  const handleDropReorder = useCallback(
+    (targetId: string, position: 'before' | 'after' | 'inside') => {
+      if (!draggingId || draggingId === targetId) {
+        setDraggingId(null)
+        return
+      }
 
-  const handleMoveUp = useCallback(
-    (itemId: string) => {
-      const { siblings, index } = findSiblings(tree, itemId)
-      if (index <= 0 || siblings.length < 2) return
-      const newSiblings = [...siblings]
-      const temp = newSiblings[index - 1]
-      newSiblings[index - 1] = newSiblings[index]
-      newSiblings[index] = temp
-      reorderItems.mutate({ items: computeReorderPayload(newSiblings) })
-    },
-    [tree, reorderItems, computeReorderPayload],
-  )
+      const draggedNode = findNode(tree, draggingId)
+      const targetNode = findNode(tree, targetId)
+      if (!draggedNode || !targetNode) {
+        setDraggingId(null)
+        return
+      }
 
-  const handleMoveDown = useCallback(
-    (itemId: string) => {
-      const { siblings, index } = findSiblings(tree, itemId)
-      if (index < 0 || index >= siblings.length - 1 || siblings.length < 2) return
-      const newSiblings = [...siblings]
-      const temp = newSiblings[index + 1]
-      newSiblings[index + 1] = newSiblings[index]
-      newSiblings[index] = temp
-      reorderItems.mutate({ items: computeReorderPayload(newSiblings) })
+      if (position === 'inside') {
+        if (targetNode.item.type !== 'folder') {
+          setDraggingId(null)
+          return
+        }
+        if (isDescendantOf(draggedNode.children, targetId)) {
+          setDraggingId(null)
+          return
+        }
+      }
+
+      const draggedLoc = findNodeAndSiblings(tree, draggingId)
+      const targetLoc = findNodeAndSiblings(tree, targetId)
+      if (!draggedLoc || !targetLoc) {
+        setDraggingId(null)
+        return
+      }
+
+      // Clone sibling arrays so we never mutate the original tree prop
+      const oldSiblings = cloneSiblings(draggedLoc.siblings)
+      let newSiblings: TreeNode[]
+      let newIndex: number
+      let newParentId: string | null
+
+      if (position === 'inside') {
+        newSiblings = cloneSiblings(targetNode.children)
+        newIndex = newSiblings.length
+        newParentId = targetId
+      } else {
+        newSiblings = cloneSiblings(targetLoc.siblings)
+        newIndex = targetLoc.index
+        if (draggedLoc.siblings === targetLoc.siblings && draggedLoc.index < targetLoc.index) {
+          newIndex--
+        }
+        if (position === 'after') {
+          newIndex++
+        }
+        newParentId = targetNode.item.parentId
+      }
+
+      if (newParentId && (newParentId === draggingId || isDescendantOf(draggedNode.children, newParentId))) {
+        setDraggingId(null)
+        return
+      }
+
+      // Remove from old cloned list and insert into new cloned list
+      const draggedIndexInOld = oldSiblings.findIndex((n) => n.item.id === draggingId)
+      if (draggedIndexInOld >= 0) {
+        oldSiblings.splice(draggedIndexInOld, 1)
+      }
+      newSiblings.splice(newIndex, 0, draggedNode)
+
+      const updates: { itemId: string; parentId: string | null; sortOrder: number }[] = []
+
+      const recompute = (siblings: TreeNode[]) => {
+        siblings.forEach((node, idx) => {
+          updates.push({
+            itemId: node.item.id,
+            parentId: node.item.parentId,
+            sortOrder: idx * 10,
+          })
+        })
+      }
+
+      recompute(oldSiblings)
+      if (newSiblings !== oldSiblings) {
+        recompute(newSiblings)
+      }
+
+      // Update dragged item's parentId
+      const draggedUpdate = updates.find((u) => u.itemId === draggingId)
+      if (draggedUpdate) {
+        draggedUpdate.parentId = newParentId
+      }
+
+      reorderItems.mutate(
+        { items: updates },
+        { onSettled: () => setDraggingId(null) },
+      )
     },
-    [tree, reorderItems, computeReorderPayload],
+    [draggingId, reorderItems, tree],
   )
 
   const handleDropOnFolder = useCallback(
@@ -141,17 +212,9 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         setDraggingId(null)
         return
       }
-      const targetNode = findNode(tree, folderId)
-      const children = targetNode?.children ?? []
-      const minSortOrder = children.length > 0
-        ? Math.min(...children.map((n) => n.item.sortOrder))
-        : 0
-      reorderItems.mutate(
-        { items: [{ itemId: draggingId, parentId: folderId, sortOrder: minSortOrder - 10 }] },
-        { onSettled: () => setDraggingId(null) },
-      )
+      handleDropReorder(folderId, 'inside')
     },
-    [draggingId, reorderItems, tree],
+    [draggingId, handleDropReorder],
   )
 
   const handleDropOnRoot = useCallback(() => {
@@ -159,14 +222,15 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
       setDraggingId(null)
       return
     }
-    const minSortOrder = tree.length > 0
-      ? Math.min(...tree.map((n) => n.item.sortOrder))
-      : 0
-    reorderItems.mutate(
-      { items: [{ itemId: draggingId, parentId: null, sortOrder: minSortOrder - 10 }] },
-      { onSettled: () => setDraggingId(null) },
-    )
-  }, [draggingId, tree, reorderItems])
+    if (tree.length > 0) {
+      handleDropReorder(tree[0].item.id, 'before')
+    } else {
+      reorderItems.mutate(
+        { items: [{ itemId: draggingId, parentId: null, sortOrder: 0 }] },
+        { onSettled: () => setDraggingId(null) },
+      )
+    }
+  }, [draggingId, tree, handleDropReorder, reorderItems])
 
   const dragState = notebook.canEdit
     ? {
@@ -175,6 +239,7 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         onDragEnd: () => setDraggingId(null),
         onDropOnFolder: handleDropOnFolder,
         onDropOnRoot: handleDropOnRoot,
+        onDropReorder: handleDropReorder,
       }
     : undefined
 
@@ -185,8 +250,6 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     handleArchiveItem,
     handleRestoreItem,
     handleDeleteItem,
-    handleMoveUp,
-    handleMoveDown,
     dragState,
   }
 }

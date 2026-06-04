@@ -32,6 +32,7 @@ export function ThemeToggle({ placement = 'bottom', align = 'right' }: ThemeTogg
   return (
     <div className="relative" ref={ref}>
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         className="flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-hover dark:hover:bg-surface-active transition-colors"
         aria-label="Toggle theme"
@@ -45,6 +46,7 @@ export function ThemeToggle({ placement = 'bottom', align = 'right' }: ThemeTogg
             const OIcon = o.icon
             return (
               <button
+                type="button"
                 key={o.value}
                 onClick={() => {
                   setTheme(o.value)

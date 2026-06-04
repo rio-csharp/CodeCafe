@@ -5,6 +5,7 @@ import type { NotebookItem } from '@/entities/notebook-item'
 import { useTreeContext } from '../model/TreeContext'
 import TreeItem from './TreeItem'
 import SearchResultItem from './SearchResultItem'
+import DropZone from './DropZone'
 import { useTranslation } from 'react-i18next'
 
 interface TreeContentProps {
@@ -88,6 +89,9 @@ export default function TreeContent({
           index={idx}
         />
       ))}
+      {tree.length > 0 && (
+        <DropZone onDrop={() => dragState?.onDropReorder(tree[tree.length - 1].item.id, 'after')} />
+      )}
       {tree.length === 0 && (
         <div className="px-4 py-6 text-center">
           <p className="text-xs text-text-tertiary">{t('notebook.noPages')}</p>

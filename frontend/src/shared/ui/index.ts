@@ -1,5 +1,4 @@
 export { ToastContainer } from './Toast'
-export { useToast } from '@/shared/model/toastStore'
 export { default as ErrorBoundary } from './ErrorBoundary'
 export { default as RouteGuardSpinner } from './RouteGuardSpinner'
 export { Button } from './Button'

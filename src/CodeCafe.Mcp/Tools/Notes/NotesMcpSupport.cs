@@ -3,8 +3,10 @@ using Microsoft.Extensions.AI;
 using ModelContextProtocol;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Unicode;
 
 namespace CodeCafe.Mcp.Tools.Notes;
 
@@ -15,7 +17,10 @@ internal static class NotesMcpSupport
     internal readonly record struct NotebookSummaryContext(Guid ActorId, NotebookSummaryModel Notebook);
     internal readonly record struct ItemSummaryContext(Guid ActorId, NotebookSummaryModel Notebook, NotebookItemModel Item);
 
-    internal static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+    internal static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+    };
     private const string AuthenticatedActorRequiredCode = "authenticated_actor_required";
     private const string AuthenticatedActorRequiredMessage = "The MCP endpoint requires an authenticated CodeCafe user.";
 
@@ -69,6 +74,96 @@ internal static class NotesMcpSupport
     }
 
     public static string NormalizePath(string path) => path?.Trim().Trim('/') ?? string.Empty;
+
+    private static IReadOnlyList<string> BuildPathLookupCandidates(string path, string? itemType = null)
+    {
+        var normalized = NormalizePath(path);
+        var candidates = new List<string>();
+        AddCandidate(candidates, normalized);
+
+        var pathWithoutMcpType = StripKnownMcpItemTypePrefix(normalized, itemType);
+        AddCandidate(candidates, pathWithoutMcpType);
+
+        if (!string.IsNullOrWhiteSpace(itemType))
+        {
+            AddCandidate(candidates, $"{itemType.Trim().ToLowerInvariant()}/{pathWithoutMcpType}");
+        }
+        else if (string.Equals(pathWithoutMcpType, normalized, StringComparison.Ordinal))
+        {
+            AddCandidate(candidates, $"page/{pathWithoutMcpType}");
+            AddCandidate(candidates, $"folder/{pathWithoutMcpType}");
+        }
+
+        return candidates;
+    }
+
+    private static void AddCandidate(List<string> candidates, string candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate)
+            || candidates.Contains(candidate, StringComparer.Ordinal))
+        {
+            return;
+        }
+
+        candidates.Add(candidate);
+    }
+
+    private static string StripKnownMcpItemTypePrefix(string path, string? itemType)
+    {
+        string[] prefixes = string.IsNullOrWhiteSpace(itemType)
+            ? ["page/", "folder/"]
+            : [$"{itemType.Trim().ToLowerInvariant()}/"];
+        foreach (var prefix in prefixes)
+        {
+            if (path.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                return path[prefix.Length..];
+            }
+        }
+
+        return path;
+    }
+
+    public static async Task<NotesResult<NotebookItemModel>> GetNotebookItemByMcpPathAsync(
+        string notebookSlug,
+        string path,
+        Guid actorId,
+        INotebookReadService notebookReadService,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        string? itemType = null)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Validation,
+                "invalid_path",
+                "The notebook item path is required.");
+        }
+
+        NotesError? firstError = null;
+        foreach (var candidate in BuildPathLookupCandidates(path, itemType))
+        {
+            var itemResult = await notebookReadService.GetNotebookItemByPathAsync(
+                notebookSlug,
+                candidate,
+                actorId,
+                cancellationToken,
+                includeArchived);
+
+            if (itemResult.Succeeded)
+            {
+                return itemResult;
+            }
+
+            firstError ??= itemResult.Error;
+        }
+
+        return NotesResult<NotebookItemModel>.Failure(
+            firstError?.Kind ?? NotesFailureKind.NotFound,
+            firstError?.Code ?? "notebook_item_not_found",
+            firstError?.Message ?? "Notebook item was not found.");
+    }
 
     public static async Task<NotesResult<NotebookSummaryModel>> RequireNotebookAsync(
         string notebookSlug,
@@ -174,7 +269,8 @@ internal static class NotesMcpSupport
 
     public static NotesResult<NotebookItemModel> RequireItem(
         NotebookDetailModel notebook,
-        string path)
+        string path,
+        string? itemType = null)
     {
         if (string.IsNullOrWhiteSpace(path))
         {
@@ -184,9 +280,16 @@ internal static class NotesMcpSupport
                 "The notebook item path is required.");
         }
 
-        var normalizedPath = NormalizePath(path);
-        var item = notebook.Items.SingleOrDefault(existingItem =>
-            string.Equals(existingItem.Path, normalizedPath, StringComparison.Ordinal));
+        NotebookItemModel? item = null;
+        foreach (var candidate in BuildPathLookupCandidates(path, itemType))
+        {
+            item = notebook.Items.SingleOrDefault(existingItem =>
+                string.Equals(existingItem.Path, candidate, StringComparison.Ordinal));
+            if (item is not null)
+            {
+                break;
+            }
+        }
 
         return item is null
             ? NotesResult<NotebookItemModel>.Failure(
@@ -200,7 +303,7 @@ internal static class NotesMcpSupport
         NotebookDetailModel notebook,
         string path)
     {
-        var itemResult = RequireItem(notebook, path);
+        var itemResult = RequireItem(notebook, path, "page");
         if (!itemResult.Succeeded)
         {
             return itemResult;
@@ -221,7 +324,8 @@ internal static class NotesMcpSupport
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         string[] requiredScopes,
-        bool includeArchived = false)
+        bool includeArchived = false,
+        string? itemType = null)
     {
         var notebookContextResult = await RequireNotebookContextAsync(
             notebookSlug,
@@ -239,7 +343,7 @@ internal static class NotesMcpSupport
         }
 
         var notebookContext = notebookContextResult.Value;
-        var itemResult = RequireItem(notebookContext.Notebook, path);
+        var itemResult = RequireItem(notebookContext.Notebook, path, itemType);
         if (!itemResult.Succeeded)
         {
             return NotesResult<ItemContext>.Failure(
@@ -293,7 +397,8 @@ internal static class NotesMcpSupport
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         string[] requiredScopes,
-        bool includeArchived = false)
+        bool includeArchived = false,
+        string? itemType = null)
     {
         var notebookContextResult = await RequireNotebookSummaryContextAsync(
             notebookSlug,
@@ -319,12 +424,14 @@ internal static class NotesMcpSupport
         }
 
         var notebookContext = notebookContextResult.Value;
-        var itemResult = await notebookReadService.GetNotebookItemByPathAsync(
+        var itemResult = await GetNotebookItemByMcpPathAsync(
             notebookContext.Notebook.Slug,
             path,
             notebookContext.ActorId,
+            notebookReadService,
             cancellationToken,
-            includeArchived);
+            includeArchived,
+            itemType);
         if (!itemResult.Succeeded)
         {
             return NotesResult<ItemSummaryContext>.Failure(
@@ -350,7 +457,8 @@ internal static class NotesMcpSupport
             user,
             notebookReadService,
             cancellationToken,
-            requiredScopes);
+            requiredScopes,
+            itemType: "page");
         if (!itemContextResult.Succeeded)
         {
             return itemContextResult;
@@ -387,12 +495,14 @@ internal static class NotesMcpSupport
             return NotesResult<NotebookItemModel?>.Success(null);
         }
 
-        var parentResult = await notebookReadService.GetNotebookItemByPathAsync(
+        var parentResult = await GetNotebookItemByMcpPathAsync(
             notebook.Slug,
             parentPath,
             actorId,
+            notebookReadService,
             cancellationToken,
-            includeArchived);
+            includeArchived,
+            itemType: "folder");
         if (!parentResult.Succeeded)
         {
             return NotesResult<NotebookItemModel?>.Failure(
@@ -418,7 +528,7 @@ internal static class NotesMcpSupport
             return NotesResult<NotebookItemModel?>.Success(null);
         }
 
-        var parentResult = RequireItem(notebook, parentPath);
+        var parentResult = RequireItem(notebook, parentPath, "folder");
         if (!parentResult.Succeeded)
         {
             return NotesResult<NotebookItemModel?>.Failure(

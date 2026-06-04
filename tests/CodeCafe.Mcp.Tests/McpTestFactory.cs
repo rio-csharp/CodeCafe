@@ -8,11 +8,13 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ModelContextProtocol.Protocol;
 using OpenIddict.Validation.AspNetCore;
 using System.Collections.Concurrent;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 
 namespace CodeCafe.Mcp.Tests;
 
@@ -48,6 +50,8 @@ public sealed class McpTestFactory : WebApplicationFactory<ServerAssemblyMarker>
             });
 
             services.AddSingleton<INotebookReadService, TestNotebookQueryService>();
+            services.AddSingleton<INotebookItemMutationService, TestNotebookMutationService>();
+            services.AddSingleton<IMcpMutationExecutor, TestMcpMutationExecutor>();
             services.AddSingleton<TestMcpUploadStore>();
             services.AddScoped<IMcpUploadStore>(serviceProvider => serviceProvider.GetRequiredService<TestMcpUploadStore>());
             services.AddScoped<IMcpAuditService, NoopMcpAuditService>();
@@ -108,8 +112,47 @@ internal sealed class TestNotebookQueryService : INotebookReadService
             null,
             null,
             DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00")),
+        new(
+            Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            NotebookId,
+            null,
+            "page",
+            "Legacy Overview",
+            "legacy-overview",
+            "page/legacy-overview",
+            2,
+            "tiptap_json",
+            null,
+            "Legacy content",
+            false,
+            null,
+            null,
+            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
             DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"))
     ];
+
+    private static NotebookDetailModel CreateNotebookDetail(Guid currentUserId)
+        => new(
+            NotebookId,
+            OwnerId,
+            "Architecture Notes",
+            "architecture-notes",
+            "Refactor plan",
+            "public",
+            true,
+            "Yao",
+            currentUserId == OwnerId,
+            Items.Length,
+            0,
+            Items.Length,
+            0,
+            false,
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
+            Items);
 
     public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null)
         => Task.FromResult<IReadOnlyList<NotebookSummaryModel>>(
@@ -124,9 +167,9 @@ internal sealed class TestNotebookQueryService : INotebookReadService
                 true,
                 "Yao",
                 false,
-                1,
+                Items.Length,
                 0,
-                1,
+                Items.Length,
                 0,
                 false,
                 DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
@@ -145,42 +188,148 @@ internal sealed class TestNotebookQueryService : INotebookReadService
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
                 ? NotesResult<NotebookDetailModel>.Success(
-                    new NotebookDetailModel(
-                        NotebookId,
-                        OwnerId,
-                        "Architecture Notes",
-                        "architecture-notes",
-                        "Refactor plan",
-                        "public",
-                        true,
-                        "Yao",
-                        false,
-                        1,
-                        0,
-                        1,
-                        0,
-                        false,
-                        DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-                        DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
-                        DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-                        DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-                        Items))
+                    CreateNotebookDetail(currentUserId))
                 : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Success(Items));
+        => Task.FromResult(
+            string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
+                ? NotesResult<IReadOnlyList<NotebookItemModel>>.Success(Items)
+                : NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<NotebookItemModel>> GetPublicNotebookItemAsync(string slug, string path, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<NotebookItemModel>.Success(Items[0]));
+        => Task.FromResult(
+            string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
+            && Items.SingleOrDefault(item => string.Equals(item.Path, NotebookInput.NormalizePath(path), StringComparison.Ordinal)) is { } item
+                ? NotesResult<NotebookItemModel>.Success(item)
+                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found."));
 
     public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
         => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
-        => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
+        => Task.FromResult(
+            string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
+                ? NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail(currentUserId))
+                : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, int? limit = null)
-        => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
+        => Task.FromResult(
+            notebookId == NotebookId
+                ? NotesResult<IReadOnlyList<NotebookItemModel>>.Success(Items)
+                : NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
+
+    public Task<NotesResult<NotebookItemsPageModel>> GetNotebookItemsPageAsync(
+        Guid notebookId,
+        Guid currentUserId,
+        string? search,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        Guid? parentId = null,
+        string? type = null,
+        int? offset = null,
+        int? limit = null)
+        => Task.FromResult(
+            notebookId == NotebookId
+                ? NotesResult<NotebookItemsPageModel>.Success(new NotebookItemsPageModel(Items.Length, Items))
+                : NotesResult<NotebookItemsPageModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
+
+    public Task<NotesResult<NotebookItemModel>> GetNotebookItemByPathAsync(
+        string notebookSlug,
+        string path,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
+        => Task.FromResult(
+            string.Equals(notebookSlug, "architecture-notes", StringComparison.Ordinal)
+            && Items.SingleOrDefault(item => string.Equals(item.Path, NotebookInput.NormalizePath(path), StringComparison.Ordinal)) is { } item
+                ? NotesResult<NotebookItemModel>.Success(item)
+                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found."));
+}
+
+internal sealed class TestNotebookMutationService : INotebookItemMutationService
+{
+    public Task<NotesResult<NotebookItemModel>> CreateNotebookItemAsync(
+        Guid notebookId,
+        Guid currentUserId,
+        Guid? parentId,
+        string type,
+        string title,
+        int sortOrder,
+        JsonElement? contentJson,
+        CancellationToken cancellationToken)
+        => Task.FromResult(NotesResult<NotebookItemModel>.Success(CreateItem(
+            Guid.Parse("55555555-5555-5555-5555-555555555555"),
+            notebookId,
+            parentId,
+            type,
+            title,
+            sortOrder,
+            contentJson)));
+
+    public Task<NotesResult<NotebookItemModel>> UpdateNotebookItemAsync(
+        Guid notebookId,
+        Guid itemId,
+        Guid currentUserId,
+        string title,
+        JsonElement parentId,
+        int? sortOrder,
+        JsonElement contentJson,
+        CancellationToken cancellationToken,
+        DateTimeOffset? expectedUpdatedAtUtc = null)
+        => Task.FromResult(NotesResult<NotebookItemModel>.Success(CreateItem(
+            itemId,
+            notebookId,
+            null,
+            "page",
+            title,
+            sortOrder ?? 1,
+            contentJson.ValueKind is JsonValueKind.Undefined ? null : contentJson)));
+
+    public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> ReorderNotebookItemsAsync(
+        Guid notebookId,
+        Guid currentUserId,
+        IReadOnlyList<ReorderNotebookItemModel> items,
+        CancellationToken cancellationToken)
+        => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Success([]));
+
+    public Task<NotesResult> DeleteNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken)
+        => Task.FromResult(NotesResult.Success());
+
+    public Task<NotesResult<NotebookItemModel>> ArchiveNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken)
+        => Task.FromResult(NotesResult<NotebookItemModel>.Success(CreateItem(itemId, notebookId, null, "page", "Archived", 1, null)));
+
+    public Task<NotesResult<NotebookItemModel>> RestoreNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken)
+        => Task.FromResult(NotesResult<NotebookItemModel>.Success(CreateItem(itemId, notebookId, null, "page", "Restored", 1, null)));
+
+    private static NotebookItemModel CreateItem(
+        Guid itemId,
+        Guid notebookId,
+        Guid? parentId,
+        string type,
+        string title,
+        int sortOrder,
+        JsonElement? contentJson)
+    {
+        var slug = NotebookSlugGenerator.FromTitle(title, type);
+        return new NotebookItemModel(
+            itemId,
+            notebookId,
+            parentId,
+            type,
+            title,
+            slug,
+            slug,
+            sortOrder,
+            string.Equals(type, "page", StringComparison.Ordinal) ? "tiptap_json" : null,
+            contentJson,
+            string.Equals(type, "page", StringComparison.Ordinal) ? "Updated content" : null,
+            false,
+            null,
+            null,
+            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"));
+    }
 }
 
 internal sealed class TestMcpUploadStore : IMcpUploadStore
@@ -249,6 +398,45 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
         }
     }
 
+    public Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(
+        Guid actorId,
+        string? fileName,
+        string mediaType,
+        string contentText,
+        int maxUploadBytes,
+        CancellationToken cancellationToken)
+    {
+        var contentBytes = Encoding.UTF8.GetByteCount(contentText ?? string.Empty);
+        if (contentBytes == 0)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload content is required."));
+        }
+
+        if (contentBytes > maxUploadBytes)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+                "upload_too_large",
+                $"Upload exceeds the limit of {maxUploadBytes} bytes (received {contentBytes} bytes)."));
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var uploadId = Guid.NewGuid().ToString("N");
+        var status = new McpUploadStatus(
+            uploadId,
+            actorId,
+            string.IsNullOrWhiteSpace(fileName) ? null : fileName.Trim(),
+            string.IsNullOrWhiteSpace(mediaType) ? "text/plain" : mediaType.Trim(),
+            contentBytes,
+            now,
+            now);
+
+        var state = new UploadState(status);
+        state.Content.Append(contentText);
+        uploads[uploadId] = state;
+
+        return Task.FromResult(NotesUploadResult<McpUploadStatus>.Success(status));
+    }
+
     public Task<NotesUploadResult<McpUploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
     {
         if (!uploads.TryGetValue(uploadId, out var state) || state.Status.ActorId != actorId)
@@ -285,6 +473,22 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
         public StringBuilder Content { get; } = new();
 
         public McpUploadStatus Status { get; set; } = status;
+    }
+}
+
+internal sealed class TestMcpMutationExecutor : IMcpMutationExecutor
+{
+    public async Task<CallToolResult> ExecuteAsync<T>(
+        ClaimsPrincipal user,
+        string toolName,
+        Func<CancellationToken, Task<McpMutationResult<T>>> operation,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        var result = await operation(cancellationToken);
+        return result.Succeeded
+            ? NotesMcpResultMapper.Success(result.Value!, result.SuccessText!)
+            : NotesMcpResultMapper.Failure(result.Error!);
     }
 }
 
