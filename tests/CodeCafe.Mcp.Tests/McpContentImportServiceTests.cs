@@ -8,7 +8,7 @@ namespace CodeCafe.Mcp.Tests;
 public sealed class McpContentImportServiceTests
 {
     [Fact]
-    public async Task ResolveRequiredPageContentAsync_AllowsInlineH1Headings()
+    public async Task ResolveRequiredPageContentAsync_AllowsInlineHeadingNodes()
     {
         var service = CreateService();
         using var document = JsonDocument.Parse("""
@@ -40,7 +40,7 @@ public sealed class McpContentImportServiceTests
     }
 
     [Fact]
-    public async Task ResolveRequiredBlocksAsync_AllowsInlineH1Headings()
+    public async Task ResolveRequiredBlocksAsync_AllowsInlineHeadingNodes()
     {
         var service = CreateService();
         using var blocks = JsonDocument.Parse("""
@@ -69,7 +69,7 @@ public sealed class McpContentImportServiceTests
     }
 
     [Fact]
-    public async Task ResolveRequiredPageContentAsync_PreservesUploadedMarkdownH1Headings()
+    public async Task ResolveRequiredPageContentAsync_PreservesUploadedMarkdownHeadingNodes()
     {
         var actorId = Guid.NewGuid();
         var upload = new McpUploadSession(

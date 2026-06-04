@@ -46,7 +46,7 @@ public sealed class MarkdigMcpMarkdownImporterTests
     }
 
     [Fact]
-    public void ConvertMarkdownToDocument_PreservesH1HeadingsForMcpImports()
+    public void ConvertMarkdownToDocument_PreservesHeadingLevelsForMcpImports()
     {
         var importer = new MarkdigMcpMarkdownImporter();
 

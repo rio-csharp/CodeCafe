@@ -7,7 +7,7 @@ namespace CodeCafe.Infrastructure.Tests;
 public sealed class TipTapContentServiceTests
 {
     [Fact]
-    public void NormalizePageContent_PreservesLeadingH1Headings()
+    public void NormalizePageContent_PreservesLeadingHeadingNodes()
     {
         var service = new TipTapContentService(new TipTapPlainTextExtractor());
         using var document = JsonDocument.Parse("""
