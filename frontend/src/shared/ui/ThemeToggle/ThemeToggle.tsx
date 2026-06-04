@@ -11,9 +11,10 @@ const options = [
 
 interface ThemeToggleProps {
   placement?: 'top' | 'bottom'
+  align?: 'left' | 'right'
 }
 
-export function ThemeToggle({ placement = 'bottom' }: ThemeToggleProps) {
+export function ThemeToggle({ placement = 'bottom', align = 'right' }: ThemeToggleProps) {
   const { theme, setTheme } = useThemeStore()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -22,10 +23,11 @@ export function ThemeToggle({ placement = 'bottom' }: ThemeToggleProps) {
   const active = options.find((o) => o.value === theme) ?? options[2]
   const Icon = active.icon
 
+  const horizontalAlign = align === 'left' ? 'left-0' : 'right-0'
   const menuPositionClasses =
     placement === 'top'
-      ? 'absolute right-0 bottom-full mb-2'
-      : 'absolute right-0 mt-2'
+      ? `absolute ${horizontalAlign} bottom-full mb-2`
+      : `absolute ${horizontalAlign} mt-2`
 
   return (
     <div className="relative" ref={ref}>
