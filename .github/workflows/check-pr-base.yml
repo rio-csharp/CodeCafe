@@ -3,6 +3,7 @@ name: Check PR base branch freshness
 on:
   pull_request:
     branches:
+      - main
       - 'release/**'
     types:
       - opened
@@ -24,27 +25,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check if PR branch is based on latest target
-        run: |
-          target="${{ github.base_ref }}"
-          pr_head="${{ github.event.pull_request.head.sha }}"
-
-          git fetch origin "$target"
-          merge_base=$(git merge-base origin/"$target" "$pr_head")
-          target_head=$(git rev-parse origin/"$target")
-
-          if [ "$merge_base" != "$target_head" ]; then
-            echo ""
-            echo "❌ ERROR: This PR is not based on the latest origin/$target."
-            echo ""
-            echo "   Your feature branch was created from an older commit."
-            echo "   Please rebase before merging:"
-            echo ""
-            echo "      git fetch origin"
-            echo "      git checkout <your-feature-branch>"
-            echo "      git rebase origin/$target"
-            echo "      git push --force-with-lease"
-            echo ""
-            exit 1
-          fi
-
-          echo "✅ PR branch is based on latest origin/$target."
+        env:
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/github/check-pr-base-freshness.sh

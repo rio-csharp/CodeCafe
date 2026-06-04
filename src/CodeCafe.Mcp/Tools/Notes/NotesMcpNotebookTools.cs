@@ -2,6 +2,7 @@ using CodeCafe.Application.Notes;
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
 using CodeCafe.Application.Notes.Commands.DeleteNotebook;
 using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Mcp.Configuration;
 using MediatR;
 using Microsoft.Extensions.Options;
@@ -127,6 +128,9 @@ public sealed class NotesMcpNotebookTools
             options.MaxUploadBytes,
             options.MaxPageContentBytes,
             options.MaxListItemsLimit,
+            TipTapContentService.MaxDepth,
+            TipTapContentService.MaxNodeCount,
+            TipTapContentService.MaxTextLength,
             ["tiptap_json", "tiptap_blocks_json", "markdown"]);
 
         return NotesMcpResultMapper.Success(response, "MCP limits loaded.");

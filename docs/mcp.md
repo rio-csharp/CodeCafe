@@ -21,46 +21,44 @@ Choose the base URL for the environment you want to target:
 The MCP endpoint is always `{baseUrl}/mcp`.
 
 For browser users, CodeCafe uses the normal web sign-in flow.
-For MCP clients, sign in through the CodeCafe OAuth flow first, then call `/mcp` with the bearer access token returned by that flow.
+For MCP clients, connect to `{baseUrl}/mcp` and complete the CodeCafe OAuth flow in the browser when the client prompts for authentication.
+
+CodeCafe does not currently expose a separate personal access token or manual bearer-token generation screen for MCP users.
+The intended user-scoped flow is browser-based OAuth, with access tokens issued by the built-in authorization server during that flow.
 
 ### Claude Code
 
-```bash
-claude mcp add codecafe --transport http {baseUrl}/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
-```
-
-Example:
+Recommended user-level install:
 
 ```bash
-claude mcp add codecafe --transport http https://api.codes.cafe/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
+claude mcp add --transport http --scope user codecafe https://api.codes.cafe/mcp
 ```
 
-### Codex CLI
+Project-level install:
 
 ```bash
-codex mcp add codecafe --transport http {baseUrl}/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
+claude mcp add --transport http --scope project codecafe https://api.codes.cafe/mcp
 ```
 
-Example:
+If you omit `--scope`, Claude Code defaults to a local install for the current project only.
 
-```bash
-codex mcp add codecafe --transport http https://api.codes.cafe/mcp --header "Authorization: Bearer <ACCESS_TOKEN>"
-```
+After installation:
 
-### Generic JSON Config
+1. Open Claude Code.
+2. Run `/mcp`.
+3. Start authentication for the `codecafe` server if prompted.
+4. Complete the browser sign-in flow with your CodeCafe account.
 
-```json
-{
-  "mcpServers": {
-    "codecafe": {
-      "url": "https://api.codes.cafe/mcp",
-      "headers": {
-        "Authorization": "Bearer <ACCESS_TOKEN>"
-      }
-    }
-  }
-}
-```
+After sign-in completes, Claude Code uses the OAuth-issued token for that authenticated CodeCafe user automatically.
+
+### User-Scoped Access
+
+User-scoped MCP access requires OAuth scopes granted to the signed-in CodeCafe account:
+
+- `notes.read` for authenticated notebook reads and search
+- `notes.write` for notebook and page mutations
+
+After OAuth login completes, the resulting token is tied to the authenticated CodeCafe user and those granted scopes.
 
 ## Auth And Scopes
 
@@ -191,7 +189,24 @@ Supported uploaded formats:
 - `tiptap_json`
 - `tiptap_blocks_json`
 
-Markdown uploads are converted server-side into TipTap JSON before validation and persistence.
+Markdown uploads are converted server-side into TipTap JSON before validation and persistence. Markdown H1 headings are imported as H2 body headings for MCP writes.
+
+Upload sessions are consumed and deleted after a successful page create, content replace, or block append. `notes_discard_upload` is idempotent, so clients may still call it during cleanup; already-consumed or already-absent sessions return a successful `already_absent` result.
+
+## Content Mutation Semantics
+
+Use the content mutation tools this way:
+
+| Tool | Use when | Content argument |
+| --- | --- | --- |
+| `notes_create_page` | Creating a new page, optionally with initial body content | `contentJson` or `contentUploadId` |
+| `notes_update_page_content_json` | Replacing the entire stored TipTap document | `contentJson` or `contentUploadId` |
+| `notes_append_blocks_to_page` | Appending block nodes to the end of an existing page | `blocks` or `blocksUploadId` |
+
+Write tools default to lightweight responses: `contentJson` and `plainTextContent` are omitted, while `contentJsonBytes`, `plainTextLength`, `tipTapNodeCount`, and page identifiers are still returned. Pass `includeContent: true` only when the client explicitly needs the full updated document in the mutation response. Use `notes_get_page` for normal full-content reads.
+
+When TipTap JSON submitted through non-MCP notebook paths starts with an H1 whose text matches the page title, CodeCafe treats that heading as a duplicate title and strips it during normalization. H1 headings with different text are preserved there.
+MCP clients should not generate H1 headings in page body content. MCP TipTap JSON inputs reject heading level 1 nodes; uploaded Markdown H1 headings are demoted to H2 during MCP import. Put the page title in the `title` argument and start body sections at H2 or with paragraphs.
 
 ## Default Limits
 
@@ -202,6 +217,9 @@ From `src/CodeCafe.Server/appsettings.json`:
 - Max upload size: `4194304` bytes
 - Max page content: `1048576` bytes
 - Max paged list size: `500`
+- Max TipTap depth per page: `64`
+- Max TipTap nodes per page: `5000`
+- Max TipTap text characters per page: `200000`
 - Upload idle timeout: `900` seconds
 
 Clients should treat these values as runtime configuration, not hard-coded constants.

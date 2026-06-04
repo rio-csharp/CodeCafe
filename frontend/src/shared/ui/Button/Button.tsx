@@ -19,7 +19,7 @@ export function Button({
 
   const variants = {
     primary: 'bg-brand-brown text-white hover:opacity-90',
-    secondary: 'border border-border-default bg-white text-text-secondary hover:bg-surface-hover',
+    secondary: 'border border-border-default bg-surface text-text-secondary hover:bg-surface-hover',
     danger: 'bg-status-error text-white hover:bg-status-error-hover',
     ghost: 'text-text-tertiary hover:text-text-primary hover:bg-surface-hover',
   }

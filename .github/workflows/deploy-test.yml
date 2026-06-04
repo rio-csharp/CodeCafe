@@ -6,6 +6,8 @@ on:
       - CI
     types:
       - completed
+    branches:
+      - 'release/**'
   workflow_dispatch:
     inputs:
       ci_run_id:
@@ -15,6 +17,11 @@ on:
 permissions:
   actions: read
   contents: read
+
+concurrency:
+  group: deploy-test
+  # Keep the current Helm deployment intact; GitHub keeps only the latest pending run.
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
@@ -30,51 +37,42 @@ jobs:
     environment:
       name: test
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Resolve CI run
         id: ci
         uses: actions/github-script@v9
+        env:
+          DEPLOY_NAME: test
+          DEPLOY_CI_RUN_ID: ${{ inputs.ci_run_id }}
+          DEPLOY_REQUIRED_WORKFLOW_NAME: CI
+          DEPLOY_ALLOWED_BRANCHES: 'release/**'
         with:
           script: |
-            const isDispatch = context.eventName === 'workflow_dispatch';
-            const run = context.payload.workflow_run;
-
-            if (!isDispatch) {
-              if (run.conclusion !== 'success' || run.event !== 'push' || !run.head_branch?.startsWith('release/')) {
-                core.setOutput('skip', 'true');
-                return;
-              }
-            }
-
-            core.setOutput('skip', 'false');
-            core.setOutput('ci_run_id', isDispatch ? '${{ inputs.ci_run_id }}' : String(run.id));
+            const resolveDeployCiRun = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/resolve-deploy-ci-run.js`);
+            await resolveDeployCiRun({ github, context, core });
 
       - name: Download CI artifacts
         if: steps.ci.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p .artifacts/helm .artifacts/deployment
-          gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-ci-scripts --dir .artifacts/scripts
+          mkdir -p .artifacts/helm .artifacts/deployment .artifacts/scripts
+          gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-cd-scripts --dir .artifacts/scripts
           gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-helm-chart --dir .artifacts/helm
           gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-deployment --dir .artifacts/deployment
 
       - name: Set image tag
         if: steps.ci.outputs.skip != 'true'
-        run: |
-          . .artifacts/deployment/deployment.env
-          echo "IMAGE_TAG=$IMAGE_TAG" >> "$GITHUB_ENV"
+        run: bash .artifacts/scripts/set-image-tag-env.sh
 
       - name: Prepare OAuth secret payload
         if: steps.ci.outputs.skip != 'true'
         env:
           OAUTH_CERT_BASE64: ${{ secrets.OAUTH_CERT_BASE64 }}
           OAUTH_CERT_PASSWORD: ${{ secrets.OAUTH_CERT_PASSWORD }}
-        run: |
-          umask 077
-          {
-            printf 'OAUTH_CERT_BASE64=%q\n' "$OAUTH_CERT_BASE64"
-            printf 'OAUTH_CERT_PASSWORD=%q\n' "$OAUTH_CERT_PASSWORD"
-          } > .artifacts/deployment/oauth.env
+        run: bash .artifacts/scripts/write-oauth-env.sh
 
       - name: Configure SSH
         if: steps.ci.outputs.skip != 'true'
@@ -91,13 +89,12 @@ jobs:
 
       - name: Deploy test environment
         if: steps.ci.outputs.skip != 'true'
-        run: |
-          CHART_ARCHIVE="codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.tgz"
-          REMOTE_DIR="/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          tar -czf "$CHART_ARCHIVE" -C .artifacts/helm .
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" "mkdir -p '$REMOTE_DIR/codecafe'"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "$CHART_ARCHIVE" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/codecafe-chart.tgz"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/scripts/deploy-helm.sh" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/deploy-helm.sh"
-          scp -P "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes ".artifacts/deployment/oauth.env" "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}:$REMOTE_DIR/oauth.env"
-          ssh -p "${{ vars.TEST_SSH_PORT }}" -o UserKnownHostsFile="$SSH_KNOWN_HOSTS_FILE" -o StrictHostKeyChecking=yes "${{ vars.TEST_SSH_USER }}@${{ secrets.TEST_SSH_HOST }}" \
-            "REMOTE_DIR='$REMOTE_DIR' NAMESPACE='$NAMESPACE' RELEASE='$RELEASE' TLS_SECRET='$TLS_SECRET' IMAGE_TAG='$IMAGE_TAG' FRONTEND_HOST='${{ vars.TEST_FRONTEND_HOST }}' API_HOST='${{ vars.TEST_API_HOST }}' REGISTRY='${{ env.REGISTRY }}' IMAGE_NAMESPACE='${{ env.IMAGE_NAMESPACE }}' DB_SECRET_NAMESPACE='$NAMESPACE' VALUES_FILE='values-test.yaml' OAUTH_ENV_FILE='$REMOTE_DIR/oauth.env' bash '$REMOTE_DIR/deploy-helm.sh'"
+        env:
+          DEPLOY_SSH_PORT: ${{ vars.TEST_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.TEST_SSH_USER }}
+          DEPLOY_SSH_HOST: ${{ secrets.TEST_SSH_HOST }}
+          FRONTEND_HOST: ${{ vars.TEST_FRONTEND_HOST }}
+          API_HOST: ${{ vars.TEST_API_HOST }}
+          DB_SECRET_NAMESPACE: ${{ env.NAMESPACE }}
+          VALUES_FILE: values-test.yaml
+        run: bash .artifacts/scripts/deploy-environment.sh

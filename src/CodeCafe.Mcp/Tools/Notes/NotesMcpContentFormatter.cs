@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 
 namespace CodeCafe.Mcp.Tools.Notes;
 
@@ -26,6 +27,33 @@ internal static class NotesMcpContentFormatter
             DeleteNotebookToolResponse response => FormatDeleteNotebook(response),
             _ => fallbackSummary
         };
+    }
+
+    public static string FormatError(McpToolErrorResponse response)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine(response.Message);
+        builder.AppendLine($"code: {response.Code}");
+
+        if (!string.IsNullOrWhiteSpace(response.Field))
+        {
+            builder.AppendLine($"field: {response.Field}");
+        }
+
+        builder.AppendLine($"retryable: {response.Retryable}");
+
+        if (!string.IsNullOrWhiteSpace(response.Suggestion))
+        {
+            builder.AppendLine($"suggestion: {response.Suggestion}");
+        }
+
+        if (response.Details is not null && response.Details.Count > 0)
+        {
+            builder.AppendLine("details:");
+            builder.AppendLine(JsonSerializer.Serialize(response.Details, NotesMcpSupport.SerializerOptions));
+        }
+
+        return builder.ToString().TrimEnd();
     }
 
     private static string FormatListNotebooks(ListNotebooksToolResponse response, string fallbackSummary)
@@ -106,6 +134,9 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"maxUploadBytes: {response.MaxUploadBytes}");
         builder.AppendLine($"maxPageContentBytes: {response.MaxPageContentBytes}");
         builder.AppendLine($"maxListItemsLimit: {response.MaxListItemsLimit}");
+        builder.AppendLine($"maxTipTapDepth: {response.MaxTipTapDepth}");
+        builder.AppendLine($"maxTipTapNodeCount: {response.MaxTipTapNodeCount}");
+        builder.AppendLine($"maxTipTapTextLength: {response.MaxTipTapTextLength}");
         builder.AppendLine($"supportedImportFormats: {string.Join(", ", response.SupportedImportFormats)}");
         return builder.ToString().TrimEnd();
     }
@@ -131,7 +162,9 @@ internal static class NotesMcpContentFormatter
 
     private static string FormatDiscardUpload(DiscardUploadToolResponse response)
     {
-        return $"Upload '{response.UploadId}' discarded.";
+        return response.Result == "already_absent"
+            ? $"Upload '{response.UploadId}' was already absent."
+            : $"Upload '{response.UploadId}' discarded.";
     }
 
     private static string FormatGetPage(GetPageToolResponse response, string fallbackSummary)
@@ -143,6 +176,9 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"canEdit: {response.CanEdit}");
         builder.AppendLine($"notebookUri: {response.NotebookUri}");
         builder.AppendLine($"pageUri: {response.PageUri}");
+        builder.AppendLine($"contentJsonBytes: {response.ContentJsonBytes}");
+        builder.AppendLine($"plainTextLength: {response.PlainTextLength}");
+        builder.AppendLine($"tipTapNodeCount: {response.TipTapNodeCount}");
 
         if (!string.IsNullOrWhiteSpace(response.PlainTextContent))
         {
@@ -216,10 +252,10 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"path: {response.Path}");
         builder.AppendLine($"notebookUri: {response.NotebookUri}");
         builder.AppendLine($"pageUri: {response.PageUri}");
-        if (!string.IsNullOrWhiteSpace(response.PlainTextContent))
-        {
-            builder.AppendLine($"plainTextContent: {response.PlainTextContent}");
-        }
+        builder.AppendLine($"contentJsonBytes: {response.ContentJsonBytes}");
+        builder.AppendLine($"plainTextLength: {response.PlainTextLength}");
+        builder.AppendLine($"tipTapNodeCount: {response.TipTapNodeCount}");
+        builder.AppendLine($"contentIncluded: {response.ContentIncluded}");
 
         return builder.ToString().TrimEnd();
     }
@@ -232,12 +268,10 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"path: {response.Path}");
         builder.AppendLine($"notebookUri: {response.NotebookUri}");
         builder.AppendLine($"pageUri: {response.PageUri}");
-        if (!string.IsNullOrWhiteSpace(response.PlainTextContent))
-        {
-            builder.AppendLine();
-            builder.AppendLine("Updated plain text content:");
-            builder.AppendLine(response.PlainTextContent);
-        }
+        builder.AppendLine($"contentJsonBytes: {response.ContentJsonBytes}");
+        builder.AppendLine($"plainTextLength: {response.PlainTextLength}");
+        builder.AppendLine($"tipTapNodeCount: {response.TipTapNodeCount}");
+        builder.AppendLine($"contentIncluded: {response.ContentIncluded}");
 
         return builder.ToString().TrimEnd();
     }

@@ -11,7 +11,9 @@ public enum NotesFailureKind
 public sealed record NotesError(
     NotesFailureKind Kind,
     string Code,
-    string Message);
+    string Message,
+    string? Field = null,
+    IReadOnlyDictionary<string, object?>? Details = null);
 
 public sealed class NotesResult
 {
@@ -21,10 +23,15 @@ public sealed class NotesResult
 
     public static NotesResult Success() => new();
 
-    public static NotesResult Failure(NotesFailureKind kind, string code, string message) =>
+    public static NotesResult Failure(
+        NotesFailureKind kind,
+        string code,
+        string message,
+        string? field = null,
+        IReadOnlyDictionary<string, object?>? details = null) =>
         new()
         {
-            Error = new NotesError(kind, code, message)
+            Error = new NotesError(kind, code, message, field, details)
         };
 }
 
@@ -42,9 +49,14 @@ public sealed class NotesResult<T>
             Value = value
         };
 
-    public static NotesResult<T> Failure(NotesFailureKind kind, string code, string message) =>
+    public static NotesResult<T> Failure(
+        NotesFailureKind kind,
+        string code,
+        string message,
+        string? field = null,
+        IReadOnlyDictionary<string, object?>? details = null) =>
         new()
         {
-            Error = new NotesError(kind, code, message)
+            Error = new NotesError(kind, code, message, field, details)
         };
 }

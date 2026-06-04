@@ -11,6 +11,7 @@ import { useTreeActions } from '@/features/manage-notebook-items'
 import { TreeContext } from '../model/TreeContext'
 import TreeRootActions from './TreeRootActions'
 import TreeContent from './TreeContent'
+import { useTranslation } from 'react-i18next'
 
 interface NotebookTreeProps {
   notebook: Notebook
@@ -25,6 +26,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
   const canEdit = !!notebook.canEdit
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
+  const { t } = useTranslation()
 
   const isSearching = debouncedSearch.length > 0
 
@@ -79,11 +81,11 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
         {/* Search */}
         <div className="px-4 pb-3">
           <label className="relative block">
-            <span className="sr-only">Search in this notebook</span>
+            <span className="sr-only">{t('notebook.search')}</span>
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-tertiary" />
             <input
               type="text"
-              placeholder="Search in this notebook..."
+              placeholder={t('notebook.search')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-8 pr-3 py-2 rounded-lg border border-border-subtle bg-surface-hover text-xs outline-none focus:bg-surface focus:border-border-default transition-colors placeholder:text-text-tertiary"
@@ -103,7 +105,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
                 className="h-3 w-3 rounded border-border-hover text-brand-brown focus:ring-brand-brown"
               />
               <Archive className="h-3 w-3" />
-              <span>Show archived</span>
+              <span>{t('notebook.showArchived')}</span>
             </label>
           </div>
         )}

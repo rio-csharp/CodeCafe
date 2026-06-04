@@ -1,0 +1,150 @@
+{
+  "app": {
+    "name": "CodeCafe",
+    "domain": "codes.cafe"
+  },
+  "nav": {
+    "notes": "Notes",
+    "codes": "Codes",
+    "about": "About",
+    "github": "GitHub",
+    "dashboard": "Dashboard",
+    "login": "Login",
+    "logout": "Logout",
+    "loggingOut": "Logging out...",
+    "workspace": "Workspace",
+    "exploreNotebooks": "Explore notebooks"
+  },
+  "home": {
+    "tagline": "Structured notebooks for engineering work.",
+    "highlight": "engineering work.",
+    "description": "Write in the browser, share the right notebooks publicly or by link, and connect the same knowledge base to MCP clients when you need automation.",
+    "login": "Login",
+    "explore": "Explore notebooks"
+  },
+  "footer": {
+    "copyright": "CodeCafe. All rights reserved."
+  },
+  "notes": {
+    "title": "Notebooks",
+    "searchPlaceholder": "Search notebooks...",
+    "publicTitle": "Public notebooks",
+    "publicDesc": "Explore notebooks the community has chosen to publish.",
+    "viewAll": "View all",
+    "myTitle": "My notebooks",
+    "myDesc": "Your private, unlisted, and published notebooks.",
+    "newNotebook": "New Notebook",
+    "noPublic": "No public notebooks yet.",
+    "noMine": "You haven't created any notebooks yet.",
+    "loadPublicError": "Failed to load public notebooks.",
+    "loadMyError": "Failed to load your notebooks.",
+    "signInBanner": "Sign in to build your own notebook library",
+    "signInBannerDesc": "Create private notes, share by link, or publish the notebooks you want others to discover.",
+    "signIn": "Sign in",
+    "visibilityTip": "Tip: Notebook visibility lives in settings, so you can switch between private, unlisted, and public later."
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to continue to your workspace",
+    "registerTitle": "Create your account",
+    "registerSubtitle": "Start your journey with CodeCafe",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "Enter your name",
+    "forgotPassword": "Forgot password? Coming soon",
+    "loginSubmit": "Login",
+    "loginLoading": "Signing in...",
+    "registerSubmit": "Create account",
+    "registerLoading": "Creating account...",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "createAccount": "Create an account",
+    "loginLink": "Login",
+    "or": "or",
+    "githubLogin": "Continue with GitHub",
+    "githubComingSoon": "(Coming soon)",
+    "passwordHint": "At least 8 characters, including uppercase, lowercase, number, and special character",
+    "loginError": "Login failed",
+    "registerError": "Registration failed"
+  },
+  "dashboard": {
+    "greeting": "Welcome back",
+    "title": "Your knowledge workspace",
+    "subtitle": "Pick up a notebook, or check what is shipping next.",
+    "notesLive": "Notes are live today.",
+    "notesLiveDesc": "MCP workflows are available now, and the Codes workspace is still taking shape.",
+    "openNotes": "Open notebooks",
+    "seeRoadmap": "See roadmap"
+  },
+  "notebook": {
+    "page": "Page",
+    "editPage": "Edit page",
+    "save": "Save",
+    "cancel": "Cancel",
+    "noPages": "This notebook does not have any pages yet.",
+    "addPageHint": "Use the left panel to add a page or folder.",
+    "editNotebook": "Edit notebook",
+    "signInToEdit": "Sign in to edit",
+    "copyLink": "Copy link",
+    "linkCopied": "Link copied to clipboard",
+    "copyFailed": "Failed to copy link",
+    "delete": "Delete",
+    "deleteConfirm": "Delete \"{title}\"? This cannot be undone.",
+    "deleted": "Notebook deleted",
+    "deleteFailed": "Failed to delete",
+    "favoriteAdd": "Add to favorites",
+    "favoriteRemove": "Remove from favorites",
+    "favoriteFailed": "Failed to update favorite",
+    "saved": "Page saved",
+    "saveFailed": "Failed to save page",
+    "search": "Search...",
+    "showArchived": "Show archived",
+    "hideArchived": "Hide archived",
+    "newFolder": "New folder",
+    "newPage": "New page",
+    "rootActions": "Root actions",
+    "noDescription": "No description yet.",
+    "noItems": "No pages or folders yet",
+    "pages": "page",
+    "pages_plural": "pages",
+    "folders": "folder",
+    "folders_plural": "folders"
+  },
+  "outline": {
+    "onThisPage": "On this page",
+    "noHeadings": "No headings on this page."
+  },
+  "search": {
+    "error": "Search failed. Please try again.",
+    "noResults": "No results found."
+  },
+  "features": {
+    "title": "What is live today",
+    "subtitle": "Notes are ready now, and deeper code workflows are still taking shape.",
+    "notebooksTitle": "Notebooks",
+    "notebooksDesc": "Create structured notebooks with folders, pages, rich text, search, favorites, and visibility controls.",
+    "codesTitle": "Codes",
+    "codesDesc": "A dedicated code-reading workspace is planned next. Today CodeCafe focuses on notebooks and MCP-ready note workflows.",
+    "tryIt": "Try it",
+    "comingSoon": "Coming Soon"
+  },
+  "cta": {
+    "title": "Ready to structure your engineering notes?",
+    "subtitle": "Start writing today. Share what matters. Connect your knowledge base to MCP when you need it.",
+    "getStarted": "Get started"
+  },
+  "about": {
+    "title": "About",
+    "comingSoon": "Coming soon"
+  },
+  "codes": {
+    "title": "Codes",
+    "comingSoon": "Coming soon"
+  },
+  "errors": {
+    "generic": "Something went wrong"
+  }
+}

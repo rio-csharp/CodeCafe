@@ -2,6 +2,7 @@ using CodeCafe.Application.Notes;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -500,6 +501,8 @@ internal static class NotesMcpSupport
 
     public static GetPageToolResponse ToGetPageToolResponse(NotebookSummaryModel notebook, NotebookItemModel page)
     {
+        var contentJson = SerializeJsonElement(page.ContentJson);
+        var plainText = page.PlainTextContent;
         return new GetPageToolResponse(
             page.Id,
             notebook.Id,
@@ -509,18 +512,23 @@ internal static class NotesMcpSupport
             BuildNotebookUri(notebook.Slug),
             BuildPageUri(notebook.Slug, page.Path),
             page.ContentFormat ?? "tiptap_json",
-            SerializeJsonElement(page.ContentJson),
-            page.PlainTextContent,
+            contentJson,
+            plainText,
+            GetUtf8ByteCount(contentJson),
+            plainText?.Length ?? 0,
+            CountTipTapNodes(page.ContentJson),
             notebook.CanEdit,
             page.CreatedAtUtc,
             page.UpdatedAtUtc);
     }
 
-    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookDetailModel notebook, NotebookItemModel page)
-        => ToCreatePageToolResponse(ToSummaryModel(notebook), page);
+    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookDetailModel notebook, NotebookItemModel page, bool includeContent = false)
+        => ToCreatePageToolResponse(ToSummaryModel(notebook), page, includeContent);
 
-    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookSummaryModel notebook, NotebookItemModel page)
+    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookSummaryModel notebook, NotebookItemModel page, bool includeContent = false)
     {
+        var contentJson = SerializeJsonElement(page.ContentJson);
+        var plainText = page.PlainTextContent;
         return new CreatePageToolResponse(
             page.Id,
             notebook.Id,
@@ -532,8 +540,12 @@ internal static class NotesMcpSupport
             page.ParentId,
             page.SortOrder,
             page.ContentFormat,
-            SerializeJsonElement(page.ContentJson),
-            page.PlainTextContent,
+            includeContent ? contentJson : null,
+            includeContent ? plainText : null,
+            includeContent,
+            GetUtf8ByteCount(contentJson),
+            plainText?.Length ?? 0,
+            CountTipTapNodes(page.ContentJson),
             page.CreatedAtUtc,
             page.UpdatedAtUtc);
     }
@@ -559,11 +571,13 @@ internal static class NotesMcpSupport
             item.UpdatedAtUtc);
     }
 
-    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookDetailModel notebook, NotebookItemModel page)
-        => ToUpdatePageContentToolResponse(ToSummaryModel(notebook), page);
+    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookDetailModel notebook, NotebookItemModel page, bool includeContent = false)
+        => ToUpdatePageContentToolResponse(ToSummaryModel(notebook), page, includeContent);
 
-    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookSummaryModel notebook, NotebookItemModel page)
+    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookSummaryModel notebook, NotebookItemModel page, bool includeContent = false)
     {
+        var contentJson = SerializeJsonElement(page.ContentJson);
+        var plainText = page.PlainTextContent;
         return new UpdatePageContentToolResponse(
             page.Id,
             notebook.Id,
@@ -573,8 +587,12 @@ internal static class NotesMcpSupport
             BuildNotebookUri(notebook.Slug),
             BuildPageUri(notebook.Slug, page.Path),
             page.ContentFormat,
-            SerializeJsonElement(page.ContentJson),
-            page.PlainTextContent,
+            includeContent ? contentJson : null,
+            includeContent ? plainText : null,
+            includeContent,
+            GetUtf8ByteCount(contentJson),
+            plainText?.Length ?? 0,
+            CountTipTapNodes(page.ContentJson),
             page.UpdatedAtUtc);
     }
 
@@ -586,6 +604,39 @@ internal static class NotesMcpSupport
         }
 
         return value.Value.GetRawText();
+    }
+
+    private static int GetUtf8ByteCount(string? value)
+        => string.IsNullOrEmpty(value) ? 0 : Encoding.UTF8.GetByteCount(value);
+
+    private static int CountTipTapNodes(JsonElement? contentJson)
+    {
+        if (!contentJson.HasValue || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return 0;
+        }
+
+        return CountTipTapNodes(contentJson.Value);
+    }
+
+    private static int CountTipTapNodes(JsonElement node)
+    {
+        if (node.ValueKind != JsonValueKind.Object)
+        {
+            return 0;
+        }
+
+        var count = 1;
+        if (node.TryGetProperty("content", out var contentElement)
+            && contentElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var child in contentElement.EnumerateArray())
+            {
+                count += CountTipTapNodes(child);
+            }
+        }
+
+        return count;
     }
 
     public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)

@@ -27,10 +27,12 @@ public sealed class NotesMcpResources
             $"- Use `{NotesMcpToolNames.ListItems}` to inspect a notebook tree. It supports `parentPath`, `type`, `offset`, `limit`, and `includeArchived` filters. Archived items are owner-only.",
             $"- Use `{NotesMcpToolNames.GetPage}` to inspect a page before editing. It returns `contentJson` as a TipTap JSON string plus `plainTextContent` for quick reading.",
             $"- Use `{NotesMcpToolNames.Search}` to search visible notebooks and page plain-text content.",
+            "- Page titles are stored separately. Do not write H1 headings in page body content; start body sections at H2 or with paragraphs. MCP TipTap JSON inputs reject heading level 1 nodes.",
             "- For small edits, send inline TipTap JSON directly to page tools.",
             $"- For local files or larger payloads, call `{NotesMcpToolNames.GetLimits}` first, then `{NotesMcpToolNames.CreateUpload}`, append one or more chunks with `{NotesMcpToolNames.AppendUploadChunk}`, and finally import with `{NotesMcpToolNames.CreatePage}`, `{NotesMcpToolNames.UpdatePageContentJson}`, or `{NotesMcpToolNames.AppendBlocksToPage}`.",
             "- Supported uploaded formats are `markdown`, `tiptap_json`, and `tiptap_blocks_json`.",
-            "- Uploaded Markdown is converted server-side into TipTap JSON before validation and persistence.",
+            "- Uploaded Markdown is converted server-side into TipTap JSON before validation and persistence. Markdown H1 headings are imported as H2 body headings.",
+            "- MCP page content has total TipTap node and text limits in addition to byte limits. Page write responses include `tipTapNodeCount`, `contentJsonBytes`, and `plainTextLength`; use them to decide when to split content across pages.",
             $"- Upload sessions are temporary, database-backed, and can be discarded with `{NotesMcpToolNames.DiscardUpload}` when no longer needed."
         });
 

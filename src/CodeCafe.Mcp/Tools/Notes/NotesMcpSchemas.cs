@@ -85,6 +85,9 @@ public sealed record GetPageToolResponse(
     string ContentFormat,
     string? ContentJson,
     string? PlainTextContent,
+    int ContentJsonBytes,
+    int PlainTextLength,
+    int TipTapNodeCount,
     bool CanEdit,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
@@ -102,6 +105,10 @@ public sealed record CreatePageToolResponse(
     string? ContentFormat,
     string? ContentJson,
     string? PlainTextContent,
+    bool ContentIncluded,
+    int ContentJsonBytes,
+    int PlainTextLength,
+    int TipTapNodeCount,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
 
@@ -131,6 +138,10 @@ public sealed record UpdatePageContentToolResponse(
     string? ContentFormat,
     string? ContentJson,
     string? PlainTextContent,
+    bool ContentIncluded,
+    int ContentJsonBytes,
+    int PlainTextLength,
+    int TipTapNodeCount,
     DateTimeOffset? UpdatedAtUtc);
 
 public sealed record MoveItemToolResponse(
@@ -170,6 +181,9 @@ public sealed record GetNotesLimitsToolResponse(
     int MaxUploadBytes,
     int MaxPageContentBytes,
     int MaxListItemsLimit,
+    int MaxTipTapDepth,
+    int MaxTipTapNodeCount,
+    int MaxTipTapTextLength,
     IReadOnlyList<string> SupportedImportFormats);
 
 public sealed record CreateUploadToolResponse(
@@ -197,5 +211,7 @@ public sealed record ReorderNotesItemRequest(
 public sealed record McpToolErrorResponse(
     string Code,
     string Message,
+    string? Field,
     bool Retryable,
-    string? Suggestion);
+    string? Suggestion,
+    IReadOnlyDictionary<string, object?>? Details);

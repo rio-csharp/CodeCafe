@@ -4,6 +4,9 @@ import type { ReactNode } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { ToastContainer } from '@/shared/ui/Toast'
 import { ApiError } from '@/shared/api/client'
+import '@/shared/lib/i18n'
+import { useThemeStore } from '@/shared/model/themeStore'
+import { useEffect } from 'react'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,6 +23,14 @@ const queryClient = new QueryClient({
   },
 })
 
+function ThemeInit() {
+  const init = useThemeStore((s) => s.init)
+  useEffect(() => {
+    return init()
+  }, [init])
+  return null
+}
+
 interface AppProvidersProps {
   children: ReactNode
 }
@@ -28,6 +39,7 @@ export function AppProviders({ children }: AppProvidersProps) {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
+        <ThemeInit />
         {children}
         <ToastContainer />
         {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}

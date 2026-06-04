@@ -1,12 +1,14 @@
 import GitHubIcon from '@/shared/ui/icons/GitHubIcon'
+import { useTranslation } from 'react-i18next'
 
 function Footer() {
+  const { t } = useTranslation()
   return (
     <footer className="border-t border-border-subtle">
       <div className="py-6">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8 flex items-center justify-between text-sm">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between text-sm">
           <span className="text-text-tertiary">
-            © {new Date().getFullYear()} CodeCafe
+            © {new Date().getFullYear()} {t('footer.copyright')}
           </span>
 
           <a

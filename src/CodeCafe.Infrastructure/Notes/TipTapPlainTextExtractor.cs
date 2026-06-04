@@ -45,6 +45,10 @@ public sealed class TipTapPlainTextExtractor : ITipTapPlainTextExtractor
             {
                 builder.Append("[Video]");
             }
+            else if (string.Equals(type, "hardBreak", StringComparison.Ordinal))
+            {
+                builder.AppendLine();
+            }
         }
 
         if (node.TryGetProperty("content", out var contentElement)

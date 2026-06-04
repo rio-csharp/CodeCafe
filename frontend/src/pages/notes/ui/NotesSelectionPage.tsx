@@ -6,6 +6,7 @@ import { useDebounce } from '@/shared/hooks/useDebounce'
 import { usePublicNotes, useMyNotes } from '@/features/search-notebooks'
 import NotebookCard, { SkeletonGrid } from '@/widgets/notebook-card'
 import SectionHeader from '@/widgets/section-header'
+import { useTranslation } from 'react-i18next'
 
 
 export default function NotesSelectionPage() {
@@ -13,6 +14,7 @@ export default function NotesSelectionPage() {
   const isAuthenticated = !!user
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
+  const { t } = useTranslation()
 
   const {
     data: publicNotes,
@@ -28,19 +30,19 @@ export default function NotesSelectionPage() {
 
   return (
     <div className="pt-24 pb-20 lg:pt-32 lg:pb-24">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-10">
-          <h1 className="text-3xl font-bold text-text-primary">Notebooks</h1>
-          <div className="hidden sm:flex items-center gap-3">
-            <label className="relative block">
-              <span className="sr-only">Search notebooks</span>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-10">
+          <h1 className="text-3xl font-bold text-text-primary">{t('notes.title')}</h1>
+          <div className="flex items-center gap-3">
+            <label className="relative block flex-1 sm:flex-none">
+              <span className="sr-only">{t('notes.searchPlaceholder')}</span>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-tertiary" />
               <input
                 type="text"
-                placeholder="Search notebooks..."
+                placeholder={t('notes.searchPlaceholder')}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-9 pr-4 py-2 rounded-lg border border-border-default text-sm outline-none focus:border-border-hover w-64"
+                className="pl-9 pr-4 py-2 rounded-lg border border-border-default text-sm outline-none focus:border-border-hover w-full sm:w-64 bg-surface"
               />
             </label>
           </div>
@@ -48,25 +50,25 @@ export default function NotesSelectionPage() {
 
         <section>
           <SectionHeader
-            title="Public notebooks"
-            description="Explore notebooks the community has chosen to publish."
+            title={t('notes.publicTitle')}
+            description={t('notes.publicDesc')}
             action={
               <Link
                 to="/notes"
                 className="hidden sm:inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors"
               >
-                View all <ArrowRight className="h-3.5 w-3.5" />
+                {t('notes.viewAll')} <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             }
           />
           {publicPending ? (
             <SkeletonGrid />
           ) : publicError ? (
-            <p className="text-sm text-status-error">Failed to load public notebooks.</p>
+            <p className="text-sm text-status-error">{t('notes.loadPublicError')}</p>
           ) : !publicNotes?.length ? (
-            <p className="text-sm text-text-tertiary">No public notebooks yet.</p>
+            <p className="text-sm text-text-tertiary">{t('notes.noPublic')}</p>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {publicNotes.map((nb) => (
                 <NotebookCard key={nb.id} notebook={nb} />
               ))}
@@ -75,19 +77,19 @@ export default function NotesSelectionPage() {
         </section>
 
         {!isAuthenticated && (
-          <div className="mt-10 flex items-center justify-between rounded-xl border border-border-default bg-surface-elevated px-6 py-5">
+          <div className="mt-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-border-default bg-surface-elevated px-5 sm:px-6 py-5">
             <div className="flex items-center gap-4">
               <Coffee className="h-8 w-8 text-brand-brown shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-text-primary">Sign in to build your own notebook library</p>
-                <p className="text-sm text-text-secondary">Create private notes, share by link, or publish the notebooks you want others to discover.</p>
+                <p className="text-sm font-semibold text-text-primary">{t('notes.signInBanner')}</p>
+                <p className="text-sm text-text-secondary">{t('notes.signInBannerDesc')}</p>
               </div>
             </div>
             <Link
               to="/login"
               className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-5 py-2 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity shrink-0"
             >
-              Sign in <ArrowRight className="h-4 w-4" />
+              {t('notes.signIn')} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         )}
@@ -95,8 +97,8 @@ export default function NotesSelectionPage() {
         {isAuthenticated && (
           <section className="mt-14">
             <SectionHeader
-              title="My notebooks"
-              description="Your private, unlisted, and published notebooks."
+              title={t('notes.myTitle')}
+              description={t('notes.myDesc')}
               action={
                 <Link
                   to="/notes/new"
@@ -104,18 +106,18 @@ export default function NotesSelectionPage() {
                   className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-4 py-2 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity"
                 >
                   <Plus className="h-4 w-4" />
-                  New Notebook
+                  {t('notes.newNotebook')}
                 </Link>
               }
             />
             {myPending ? (
               <SkeletonGrid />
             ) : myError ? (
-              <p className="text-sm text-status-error">Failed to load your notebooks.</p>
+              <p className="text-sm text-status-error">{t('notes.loadMyError')}</p>
             ) : !myNotes?.length ? (
-              <p className="text-sm text-text-tertiary">You haven't created any notebooks yet.</p>
+              <p className="text-sm text-text-tertiary">{t('notes.noMine')}</p>
             ) : (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {myNotes.map((nb) => (
                   <NotebookCard key={nb.id} notebook={nb} showVisibility />
                 ))}
@@ -124,7 +126,7 @@ export default function NotesSelectionPage() {
 
             <div className="mt-8 flex items-center justify-center gap-2 text-xs text-text-tertiary">
               <span className="inline-block h-4 w-4 rounded-full border border-border-hover text-center leading-4">i</span>
-              Tip: Notebook visibility lives in settings, so you can switch between private, unlisted, and public later.
+              {t('notes.visibilityTip')}
             </div>
           </section>
         )}

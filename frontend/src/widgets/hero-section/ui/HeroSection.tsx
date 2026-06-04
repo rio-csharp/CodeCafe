@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Globe, ArrowRight } from 'lucide-react'
 import WelcomeBadge from '@/widgets/welcome-badge'
+import { useTranslation } from 'react-i18next'
 
 function BrandCard() {
   return (
@@ -21,10 +22,11 @@ function BrandCard() {
 }
 
 function HeroSection() {
+  const { t } = useTranslation()
   return (
     <section className="pt-28 pb-16 lg:pt-32 lg:pb-20">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left: Text */}
           <div className="max-w-lg">
             <motion.div
@@ -39,10 +41,9 @@ function HeroSection() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="mt-6 text-4xl lg:text-5xl font-bold text-text-primary tracking-tight leading-[1.15]"
-            >
-              Structured notebooks for{' '}
-              <span className="text-brand-brown">engineering work.</span>
+              className="mt-6 text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary tracking-tight leading-[1.15]"
+            >              {t('home.tagline').split(t('home.highlight'))[0]}
+              <span className="text-brand-brown">{t('home.highlight')}</span>
             </motion.h1>
 
             <motion.p
@@ -51,28 +52,27 @@ function HeroSection() {
               transition={{ duration: 0.4, delay: 0.2 }}
               className="mt-4 text-base text-text-secondary leading-relaxed"
             >
-              Write in the browser, share the right notebooks publicly or by link,
-              and connect the same knowledge base to MCP clients when you need automation.
+              {t('home.description')}
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.3 }}
-              className="mt-8 flex items-center gap-3"
+              className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3"
             >
               <Link
                 to="/notes"
-                className="inline-flex items-center gap-2 rounded-lg bg-text-primary px-6 py-2.5 text-sm font-medium text-text-inverse hover:bg-surface-inverse-hover transition-colors"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-text-primary px-6 py-2.5 text-sm font-medium text-text-inverse hover:bg-surface-inverse-hover transition-colors"
               >
-                Explore notebooks
+                {t('home.explore')}
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 to="/login"
-                className="inline-flex items-center rounded-lg border border-border-default px-6 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-hover transition-colors"
+                className="inline-flex items-center justify-center rounded-lg border border-border-default px-6 py-2.5 text-sm font-medium text-text-primary hover:bg-surface-hover transition-colors"
               >
-                Login
+                {t('home.login')}
               </Link>
             </motion.div>
 
@@ -83,7 +83,7 @@ function HeroSection() {
               className="mt-6 flex items-center gap-1.5 text-sm text-text-tertiary"
             >
               <Globe className="h-4 w-4" />
-              codes.cafe
+              {t('app.domain')}
             </motion.div>
           </div>
 

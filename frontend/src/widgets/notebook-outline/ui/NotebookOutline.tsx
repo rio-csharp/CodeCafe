@@ -1,5 +1,6 @@
 import { useState, useEffect, type RefObject } from 'react'
 import type { OutlineHeading } from '@/entities/notebook'
+import { useTranslation } from 'react-i18next'
 
 interface NotebookOutlineProps {
   headings: OutlineHeading[]
@@ -8,6 +9,7 @@ interface NotebookOutlineProps {
 
 export default function NotebookOutline({ headings, scrollContainerRef }: NotebookOutlineProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const { t } = useTranslation()
 
   useEffect(() => {
     const container = scrollContainerRef?.current
@@ -49,9 +51,9 @@ export default function NotebookOutline({ headings, scrollContainerRef }: Notebo
     return (
       <div className="px-5 py-6">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary mb-3">
-          On this page
+          {t('outline.onThisPage')}
         </h3>
-        <p className="text-xs text-text-tertiary">No headings on this page.</p>
+        <p className="text-xs text-text-tertiary">{t('outline.noHeadings')}</p>
       </div>
     )
   }
@@ -59,7 +61,7 @@ export default function NotebookOutline({ headings, scrollContainerRef }: Notebo
   return (
     <div className="px-5 py-6">
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-text-tertiary mb-3">
-        On this page
+        {t('outline.onThisPage')}
       </h3>
       <ul className="space-y-2">
         {headings.map((h) => {

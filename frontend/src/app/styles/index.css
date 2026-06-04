@@ -1,13 +1,15 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* Brand Colors */
   --color-brand-brown: #9C7C5C;
   --color-brand-brown-light: #B8A08A;
   --color-brand-brown-dark: #7A6146;
 
-  /* Semantic Colors */
+  /* Semantic Colors (light default) */
   --color-surface: #ffffff;
   --color-surface-elevated: #fafafa;
   --color-border-default: #e5e7eb;
@@ -62,6 +64,40 @@
   /* Typography */
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
+}
+
+/* Dark mode overrides */
+.dark {
+  --color-surface: #0f0f11;
+  --color-surface-elevated: #18181b;
+  --color-border-default: #27272a;
+  --color-border-subtle: #1f1f23;
+  --color-text-primary: #f4f4f5;
+  --color-text-secondary: #a1a1aa;
+  --color-text-tertiary: #71717a;
+  --color-text-inverse: #09090b;
+
+  --color-surface-hover: #1c1c1f;
+  --color-surface-active: #27272a;
+
+  --color-border-hover: #3f3f46;
+  --color-border-focus: #f4f4f5;
+
+  --color-surface-inverse-hover: #e4e4e7;
+
+  --color-status-success: #22c55e;
+  --color-status-success-bg: #14532d;
+  --color-status-success-border: #166534;
+  --color-status-success-ping: #4ade80;
+  --color-status-error: #ef4444;
+  --color-status-error-bg: #7f1d1d;
+  --color-status-error-border: #991b1b;
+  --color-status-error-hover: #f87171;
+  --color-status-warning: #eab308;
+  --color-status-warning-bg: #713f12;
+  --color-status-favorite: #fbbf24;
+  --color-status-favorite-bg: #78350f;
+  --color-status-favorite-border: #92400e;
 }
 
 /* TipTap placeholder */
@@ -157,4 +193,37 @@
   width: 100%;
   height: 100%;
   border: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-hover);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Selection color */
+::selection {
+  background-color: rgba(156, 124, 92, 0.25);
+  color: var(--color-text-primary);
+}
+
+/* Focus visible ring */
+:focus-visible {
+  outline: 2px solid var(--color-brand-brown);
+  outline-offset: 2px;
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
 }

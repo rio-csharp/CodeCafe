@@ -2,33 +2,38 @@ import { Link } from 'react-router-dom'
 import { FileText, Code, ArrowRight } from 'lucide-react'
 import { NotesIllustration } from '@/widgets/dashboard'
 import { CodesIllustration } from '@/widgets/dashboard'
+import { useTranslation } from 'react-i18next'
 
-const CARDS = [
-  {
-    to: '/notes',
-    label: 'Notes',
-    desc: 'Write, organize, and revisit structured notebooks with folders, pages, search, and sharing controls.',
-    icon: FileText,
-    illustration: NotesIllustration,
-    btnText: 'Open notebooks',
-  },
-  {
-    to: '/codes',
-    label: 'Codes',
-    desc: 'A dedicated code-reading workspace is planned next. The current product focus is notebooks and MCP-ready note workflows.',
-    icon: Code,
-    illustration: CodesIllustration,
-    btnText: 'See roadmap',
-  },
-] as const
+const useCards = () => {
+  const { t } = useTranslation()
+  return [
+    {
+      to: '/notes',
+      label: t('nav.notes'),
+      desc: t('features.notebooksDesc'),
+      icon: FileText,
+      illustration: NotesIllustration,
+      btnText: t('dashboard.openNotes'),
+    },
+    {
+      to: '/codes',
+      label: t('nav.codes'),
+      desc: t('features.codesDesc'),
+      icon: Code,
+      illustration: CodesIllustration,
+      btnText: t('dashboard.seeRoadmap'),
+    },
+  ] as const
+}
 
 export default function DashboardCards() {
+  const cards = useCards()
   return (
-    <div className="mt-10 grid gap-6 lg:grid-cols-2">
-      {CARDS.map(({ to, label, desc, icon: Icon, illustration: Illustration, btnText }) => (
+    <div className="mt-10 grid gap-6 grid-cols-1 lg:grid-cols-2">
+      {cards.map(({ to, label, desc, icon: Icon, illustration: Illustration, btnText }) => (
         <div
           key={to}
-          className="group relative flex flex-col rounded-2xl border border-border-default bg-surface p-8 transition-all hover:border-border-hover hover:shadow-sm"
+          className="group relative flex flex-col rounded-2xl border border-border-default bg-surface p-6 sm:p-8 transition-all hover:border-border-hover hover:shadow-sm"
         >
           <div className="flex items-start justify-between gap-6">
             <div className="flex-1 min-w-0">
