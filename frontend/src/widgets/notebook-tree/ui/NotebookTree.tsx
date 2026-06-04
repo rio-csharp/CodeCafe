@@ -13,6 +13,7 @@ import {
   Loader2,
   ArrowLeft,
   Check,
+  RefreshCw,
 } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
@@ -40,9 +41,10 @@ interface NotebookTreeProps {
   activePage: import('@/entities/notebook-item').NotebookItem | null
   showArchived: boolean
   onShowArchivedChange: (value: boolean) => void
+  onRefreshNotebook?: () => void
 }
 
-export default function NotebookTree({ notebook, notebookSlug, tree, activePage, showArchived, onShowArchivedChange }: NotebookTreeProps) {
+export default function NotebookTree({ notebook, notebookSlug, tree, activePage, showArchived, onShowArchivedChange, onRefreshNotebook }: NotebookTreeProps) {
   const canEdit = !!notebook.canEdit
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
@@ -170,6 +172,19 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
                     </button>
                     {menuOpen && (
                       <div className="absolute right-0 mt-1 w-44 rounded-lg border border-border-subtle bg-surface shadow-lg z-50 py-1">
+                        {onRefreshNotebook && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onRefreshNotebook()
+                              setMenuOpen(false)
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Refresh
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => onShowArchivedChange(!showArchived)}
