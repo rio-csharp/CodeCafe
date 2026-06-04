@@ -111,7 +111,8 @@
     "pages": "页面",
     "pages_plural": "页面",
     "folders": "文件夹",
-    "folders_plural": "文件夹"
+    "folders_plural": "文件夹",
+    "titleCopied": "标题已复制到剪贴板"
   },
   "outline": {
     "onThisPage": "本页目录",
