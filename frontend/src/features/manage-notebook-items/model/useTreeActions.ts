@@ -33,6 +33,34 @@ function cloneSiblings(siblings: TreeNode[]): TreeNode[] {
   return siblings.map((n) => ({ item: n.item, children: n.children }))
 }
 
+/**
+ * If the URL currently points at `oldPath` (or a descendant of it, for the
+ * folder-rename/move case), rewrite it to the corresponding tail under
+ * `newPath` and `replace` the history entry. No-op when the path didn't
+ * actually change or the URL isn't under the notebook's prefix.
+ *
+ * The descendant case: e.g. URL tail is `folder/oldName/sub/page` and
+ * `oldPath` is `folder/oldName`, then `newPath` is `folder/oldName-renamed`
+ * and we want the new tail to be `folder/oldName-renamed/sub/page`. The
+ * `currentTail.slice(oldPath.length)` swap preserves the descendant suffix.
+ */
+function syncUrlToPathChange(
+  oldPath: string,
+  newPath: string,
+  notebookSlug: string,
+  locationPathname: string,
+  navigate: (path: string, opts?: { replace?: boolean }) => void,
+): void {
+  if (!oldPath || oldPath === newPath) return
+  const prefix = `/notes/${notebookSlug}/`
+  if (!locationPathname.startsWith(prefix)) return
+  const currentTail = locationPathname.slice(prefix.length)
+  if (currentTail === oldPath || currentTail.startsWith(`${oldPath}/`)) {
+    const newTail = newPath + currentTail.slice(oldPath.length)
+    navigate(`${prefix}${newTail}`, { replace: true })
+  }
+}
+
 export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const location = useLocation()
@@ -85,27 +113,13 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
       // Capture the pre-rename path so we can detect whether the current URL points
       // at the renamed item (or one of its descendants in the folder-rename case)
       // and rewrite it to the new path the server just generated.
-      const oldNode = findNode(tree, itemId)
-      const oldPath = oldNode?.item.path
+      const oldPath = findNode(tree, itemId)?.item.path
 
       const updated = await updateItem.mutateAsync({ itemId, data: { title, sortOrder } })
       showTreeToast('Renamed')
 
       if (oldPath) {
-        // URL looks like /notes/<notebook-slug>/<page-path...>.
-        // Compare the trailing segment so unrelated notebooks with the same path
-        // don't get clobbered.
-        const prefix = `/notes/${notebook.slug}/`
-        const currentTail = location.pathname.startsWith(prefix)
-          ? location.pathname.slice(prefix.length)
-          : null
-        if (
-          currentTail !== null &&
-          (currentTail === oldPath || currentTail.startsWith(`${oldPath}/`))
-        ) {
-          const newTail = updated.path + currentTail.slice(oldPath.length)
-          navigate(`${prefix}${newTail}`, { replace: true })
-        }
+        syncUrlToPathChange(oldPath, updated.path, notebook.slug, location.pathname, navigate)
       }
     },
     [updateItem, showTreeToast, tree, location.pathname, navigate, notebook.slug],
@@ -136,7 +150,7 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   )
 
   const handleDropReorder = useCallback(
-    (targetId: string, position: 'before' | 'after' | 'inside') => {
+    async (targetId: string, position: 'before' | 'after' | 'inside') => {
       if (!draggingId || draggingId === targetId) {
         setDraggingId(null)
         return
@@ -166,6 +180,12 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         setDraggingId(null)
         return
       }
+
+      // Backend regenerates the dragged item's path on reorder (and rewrites
+      // all descendants' paths when the dragged item is a folder). Capture
+      // the pre-mutation path so we can rewrite the URL if the user is
+      // currently viewing the dragged item or one of its descendants.
+      const oldPath = draggedNode.item.path
 
       // Clone sibling arrays so we never mutate the original tree prop
       const oldSiblings = cloneSiblings(draggedLoc.siblings)
@@ -224,12 +244,17 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         draggedUpdate.parentId = newParentId
       }
 
-      reorderItems.mutate(
-        { items: updates },
-        { onSettled: () => setDraggingId(null) },
-      )
+      try {
+        const result = await reorderItems.mutateAsync({ items: updates })
+        const updatedDragged = result.items.find((it) => it.id === draggingId)
+        if (oldPath && updatedDragged) {
+          syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
+        }
+      } finally {
+        setDraggingId(null)
+      }
     },
-    [draggingId, reorderItems, tree],
+    [draggingId, reorderItems, tree, location.pathname, navigate, notebook.slug],
   )
 
   const handleDropOnFolder = useCallback(
