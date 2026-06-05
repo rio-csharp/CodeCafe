@@ -50,6 +50,15 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
   const handleDragOver = (e: React.DragEvent) => {
     const draggingId = dragState?.draggingId
     if (!dragState || !draggingId) return
+    // Always stop propagation when a drag is in progress, regardless of
+    // whether THIS item is a valid drop target. The dragged item itself
+    // (cursor sitting on it without moving) and any of its descendants
+    // (cursor on a child while dragging a folder) must not let the
+    // dragover bubble to the root container in TreeContent — otherwise
+    // its `onDragOver` paints the entire tree sidebar with the
+    // `rootDragOver` background. The early-returns below handle "is
+    // this a valid target"; the bubble control is independent.
+    e.stopPropagation()
     // The dragged item itself can't drop on itself. (This is also caught
     // downstream by handleDropReorder, but rejecting here keeps the
     // indicator off in the first place.)
@@ -65,7 +74,6 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
     if (targetItemId && dragState.draggedSubtreeIds.has(targetItemId)) return
 
     e.preventDefault()
-    e.stopPropagation()
 
     // The drop intent is the cursor's Y position relative to the row's
     // bounding box. The empty-folder case (drop = "as only child") is
