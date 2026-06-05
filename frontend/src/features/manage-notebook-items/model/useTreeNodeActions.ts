@@ -68,7 +68,10 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
     }
   }, [handleRename, node.item.title])
 
-  const startEditing = useCallback(() => setIsEditing(true), [])
+  const startEditing = useCallback(() => {
+    setEditTitle(node.item.title)
+    setIsEditing(true)
+  }, [node.item.title])
   const cancelEditing = useCallback(() => {
     setIsEditing(false)
     setEditTitle(node.item.title)

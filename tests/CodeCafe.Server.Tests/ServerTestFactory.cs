@@ -2,6 +2,7 @@ using CodeCafe.Api.Endpoints.Auth;
 using CodeCafe.Application.Auth;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
+using CodeCafe.Mcp.Tools.Notes;
 using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -10,7 +11,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenIddict.Validation.AspNetCore;
+using System.Collections.Concurrent;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
@@ -53,6 +56,8 @@ public sealed class ServerTestFactory : WebApplicationFactory<ServerAssemblyMark
             services.AddSingleton<INotebookItemMutationService, ServerTestNotebookCommandService>();
             services.AddSingleton<IAuthUserGateway, ServerTestAuthUserGateway>();
             services.AddSingleton<IAuthSessionService, ServerTestAuthSessionService>();
+            services.AddSingleton<ServerTestMcpUploadStore>();
+            services.AddScoped<IMcpUploadStore>(serviceProvider => serviceProvider.GetRequiredService<ServerTestMcpUploadStore>());
         });
     }
 }
@@ -284,10 +289,24 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
 internal sealed class ServerTestNotebookCommandService : INotebookItemMutationService
 {
     public Task<NotesResult<NotebookItemModel>> CreateNotebookItemAsync(Guid notebookId, Guid currentUserId, Guid? parentId, string type, string title, int sortOrder, JsonElement? contentJson, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "not_implemented", "Not implemented in server tests."));
+        => Task.FromResult(NotesResult<NotebookItemModel>.Success(CreateItem(
+            Guid.Parse("66666666-6666-6666-6666-666666666666"),
+            notebookId,
+            parentId,
+            type,
+            title,
+            sortOrder,
+            contentJson)));
 
     public Task<NotesResult<NotebookItemModel>> UpdateNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, string title, JsonElement parentId, int? sortOrder, JsonElement contentJson, CancellationToken cancellationToken, DateTimeOffset? expectedUpdatedAtUtc = null)
-        => Task.FromResult(NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "not_implemented", "Not implemented in server tests."));
+        => Task.FromResult(NotesResult<NotebookItemModel>.Success(CreateItem(
+            itemId,
+            notebookId,
+            null,
+            "page",
+            title,
+            sortOrder ?? 1,
+            contentJson.ValueKind is JsonValueKind.Undefined ? null : contentJson)));
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> ReorderNotebookItemsAsync(Guid notebookId, Guid currentUserId, IReadOnlyList<ReorderNotebookItemModel> items, CancellationToken cancellationToken)
         => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "not_implemented", "Not implemented in server tests."));
@@ -300,12 +319,96 @@ internal sealed class ServerTestNotebookCommandService : INotebookItemMutationSe
 
     public Task<NotesResult<NotebookItemModel>> RestoreNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken)
         => Task.FromResult(NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "not_implemented", "Not implemented in server tests."));
+
+    private static NotebookItemModel CreateItem(
+        Guid itemId,
+        Guid notebookId,
+        Guid? parentId,
+        string type,
+        string title,
+        int sortOrder,
+        JsonElement? contentJson)
+    {
+        var slug = NotebookSlugGenerator.FromTitle(title, type);
+        var path = parentId == Guid.Parse("33333333-3333-3333-3333-333333333333")
+            ? $"guides/{slug}"
+            : slug;
+
+        return new NotebookItemModel(
+            itemId,
+            notebookId,
+            parentId,
+            type,
+            title,
+            slug,
+            path,
+            sortOrder,
+            string.Equals(type, "page", StringComparison.OrdinalIgnoreCase) ? "tiptap_json" : null,
+            contentJson,
+            string.Equals(type, "page", StringComparison.OrdinalIgnoreCase) ? "Updated content" : null,
+            false,
+            null,
+            null,
+            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"));
+    }
 }
 
 internal sealed class ServerTestNotebookMutationStore : INotebookMutationStore
 {
     private static readonly Guid DefaultNotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid DefaultOwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static readonly IReadOnlyList<NotebookItemModel> DefaultItems =
+    [
+        new(
+            Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            DefaultNotebookId,
+            null,
+            "folder",
+            "Guides",
+            "guides",
+            "guides",
+            1,
+            null,
+            null,
+            null,
+            false,
+            null,
+            null,
+            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00")),
+        new(
+            Guid.Parse("44444444-4444-4444-4444-444444444444"),
+            DefaultNotebookId,
+            Guid.Parse("33333333-3333-3333-3333-333333333333"),
+            "page",
+            "Overview",
+            "overview",
+            "guides/overview",
+            2,
+            "tiptap_json",
+            JsonSerializer.SerializeToElement(new
+            {
+                type = "doc",
+                content = new object[]
+                {
+                    new
+                    {
+                        type = "paragraph",
+                        content = new object[]
+                        {
+                            new { type = "text", text = "Overview content" }
+                        }
+                    }
+                }
+            }),
+            "Overview content",
+            false,
+            null,
+            null,
+            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
+            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"))
+    ];
     private readonly Dictionary<Guid, Notebook> _notebooks;
 
     public ServerTestNotebookMutationStore()
@@ -380,16 +483,16 @@ internal sealed class ServerTestNotebookMutationStore : INotebookMutationStore
                 notebook.IsPublished,
                 "Yao",
                 notebook.OwnerId == currentUserId,
-                0,
-                0,
-                0,
+                DefaultItems.Count,
+                1,
+                1,
                 0,
                 false,
                 notebook.UpdatedAtUtc ?? notebook.CreatedAtUtc,
                 notebook.CreatedAtUtc,
                 notebook.UpdatedAtUtc,
                 notebook.PublishedAtUtc,
-                []);
+                DefaultItems);
             return true;
         }
 
@@ -464,4 +567,149 @@ internal sealed class ServerTestAuthSessionService : IAuthSessionService
     public Task SignInAsync(Guid userId, bool isPersistent) => Task.CompletedTask;
 
     public Task SignOutAsync() => Task.CompletedTask;
+}
+
+internal sealed class ServerTestMcpUploadStore : IMcpUploadStore
+{
+    private readonly ConcurrentDictionary<string, UploadState> uploads = new(StringComparer.Ordinal);
+
+    public Task<McpUploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var uploadId = Guid.NewGuid().ToString("N");
+        var status = new McpUploadStatus(
+            uploadId,
+            actorId,
+            string.IsNullOrWhiteSpace(fileName) ? null : fileName.Trim(),
+            string.IsNullOrWhiteSpace(mediaType) ? "text/plain" : mediaType.Trim(),
+            0,
+            now,
+            now);
+        uploads[uploadId] = new UploadState(status);
+        return Task.FromResult(status);
+    }
+
+    public Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(
+        Guid actorId,
+        string? fileName,
+        string mediaType,
+        string contentText,
+        int maxUploadBytes,
+        CancellationToken cancellationToken)
+    {
+        var contentBytes = Encoding.UTF8.GetByteCount(contentText ?? string.Empty);
+        if (contentBytes == 0)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload content is required."));
+        }
+
+        if (contentBytes > maxUploadBytes)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+                "upload_too_large",
+                $"Upload exceeds the limit of {maxUploadBytes} bytes (received {contentBytes} bytes)."));
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var uploadId = Guid.NewGuid().ToString("N");
+        var status = new McpUploadStatus(
+            uploadId,
+            actorId,
+            string.IsNullOrWhiteSpace(fileName) ? null : fileName.Trim(),
+            string.IsNullOrWhiteSpace(mediaType) ? "text/plain" : mediaType.Trim(),
+            contentBytes,
+            now,
+            now);
+
+        var state = new UploadState(status);
+        state.Content.Append(contentText);
+        uploads[uploadId] = state;
+
+        return Task.FromResult(NotesUploadResult<McpUploadStatus>.Success(status));
+    }
+
+    public Task<NotesUploadResult<McpUploadStatus>> AppendTextAsync(
+        Guid actorId,
+        string uploadId,
+        string chunkText,
+        int maxChunkBytes,
+        int maxUploadBytes,
+        CancellationToken cancellationToken)
+    {
+        if (!uploads.TryGetValue(uploadId, out var state) || state.Status.ActorId != actorId)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("upload_not_found", "Upload session was not found."));
+        }
+
+        var chunkBytes = Encoding.UTF8.GetByteCount(chunkText);
+        if (chunkBytes == 0)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload chunk text is required."));
+        }
+
+        if (chunkBytes > maxChunkBytes)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+                "upload_chunk_too_large",
+                $"Upload chunk exceeds the limit of {maxChunkBytes} bytes (received {chunkBytes} bytes)."));
+        }
+
+        lock (state.SyncRoot)
+        {
+            var nextBytes = state.Status.BytesReceived + chunkBytes;
+            if (nextBytes > maxUploadBytes)
+            {
+                return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+                    "upload_too_large",
+                    $"Upload exceeds the limit of {maxUploadBytes} bytes (received {nextBytes} bytes)."));
+            }
+
+            state.Content.Append(chunkText);
+            state.Status = state.Status with
+            {
+                BytesReceived = nextBytes,
+                UpdatedAtUtc = DateTimeOffset.UtcNow
+            };
+
+            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Success(state.Status));
+        }
+    }
+
+    public Task<NotesUploadResult<McpUploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
+    {
+        if (!uploads.TryGetValue(uploadId, out var state) || state.Status.ActorId != actorId)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadSession>.Failure("upload_not_found", "Upload session was not found."));
+        }
+
+        lock (state.SyncRoot)
+        {
+            return Task.FromResult(NotesUploadResult<McpUploadSession>.Success(new McpUploadSession(
+                state.Status.UploadId,
+                state.Status.ActorId,
+                state.Status.FileName,
+                state.Status.MediaType,
+                state.Content.ToString(),
+                state.Status.BytesReceived,
+                state.Status.CreatedAtUtc,
+                state.Status.UpdatedAtUtc)));
+        }
+    }
+
+    public Task<bool> DeleteAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
+    {
+        return Task.FromResult(
+            uploads.TryGetValue(uploadId, out var state)
+            && state.Status.ActorId == actorId
+            && uploads.TryRemove(uploadId, out _));
+    }
+
+    private sealed class UploadState(McpUploadStatus status)
+    {
+        public object SyncRoot { get; } = new();
+
+        public StringBuilder Content { get; } = new();
+
+        public McpUploadStatus Status { get; set; } = status;
+    }
 }

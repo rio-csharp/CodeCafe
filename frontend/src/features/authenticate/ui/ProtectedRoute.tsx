@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom'
-import { useMe } from '@/entities/user'
+import { useUser } from '@/entities/user'
 import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
 import { setPostAuthRedirect } from '../lib/postAuthRedirect'
 
@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { data, isPending } = useMe()
+  const { data, isPending } = useUser()
   const location = useLocation()
 
   if (isPending) {

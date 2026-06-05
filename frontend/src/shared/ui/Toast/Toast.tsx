@@ -27,8 +27,10 @@ export function ToastContainer() {
           )}
           <span>{toast.message}</span>
           <button
+            type="button"
             onClick={() => removeToast(toast.id)}
             className="ml-1 p-0.5 hover:bg-white/10 rounded transition-colors"
+            aria-label="Dismiss notification"
           >
             <X className="h-3.5 w-3.5" />
           </button>

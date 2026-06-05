@@ -20,6 +20,7 @@ export function ErrorFallback({
           <p className="mt-1 text-xs text-status-error">{description}</p>
           {onRetry ? (
             <button
+              type="button"
               onClick={onRetry}
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-status-error-bg px-3 py-1.5 text-xs font-medium text-status-error hover:bg-status-error-border transition-colors"
             >
@@ -28,6 +29,7 @@ export function ErrorFallback({
             </button>
           ) : (
             <button
+              type="button"
               onClick={() => window.location.reload()}
               className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-status-error-bg px-3 py-1.5 text-xs font-medium text-status-error hover:bg-status-error-border transition-colors"
             >

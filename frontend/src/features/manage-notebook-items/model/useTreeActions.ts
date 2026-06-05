@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
+import { findNodeAndSiblings } from '@/entities/notebook'
 import { useCreateNotebookItem } from './useCreateNotebookItem'
 import { useUpdateNotebookItem } from './useUpdateNotebookItem'
 import { useArchiveNotebookItem } from './useArchiveNotebookItem'
@@ -9,7 +11,6 @@ import { useDeleteNotebookItem } from './useDeleteNotebookItem'
 import { useReorderNotebookItems } from './useReorderNotebookItems'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
-import { findSiblings } from '@/entities/notebook'
 
 function findNode(nodes: TreeNode[], id: string): TreeNode | null {
   for (const node of nodes) {
@@ -20,8 +21,49 @@ function findNode(nodes: TreeNode[], id: string): TreeNode | null {
   return null
 }
 
+function cloneSiblings(siblings: TreeNode[]): TreeNode[] {
+  return siblings.map((n) => ({ item: n.item, children: n.children }))
+}
+
+/**
+ * If the URL currently points at `oldPath` (or a descendant of it, for the
+ * folder-rename/move case), rewrite it to the corresponding tail under
+ * `newPath` and `replace` the history entry. No-op when the path didn't
+ * actually change or the URL isn't under the notebook's prefix.
+ *
+ * The descendant case: e.g. URL tail is `folder/oldName/sub/page` and
+ * `oldPath` is `folder/oldName`, then `newPath` is `folder/oldName-renamed`
+ * and we want the new tail to be `folder/oldName-renamed/sub/page`. The
+ * `currentTail.slice(oldPath.length)` swap preserves the descendant suffix.
+ */
+function syncUrlToPathChange(
+  oldPath: string,
+  newPath: string,
+  notebookSlug: string,
+  locationPathname: string,
+  navigate: (path: string, opts?: { replace?: boolean }) => void,
+): void {
+  if (!oldPath || oldPath === newPath) return
+  const prefix = `/notes/${notebookSlug}/`
+  if (!locationPathname.startsWith(prefix)) return
+  const currentTail = locationPathname.slice(prefix.length)
+  if (currentTail === oldPath || currentTail.startsWith(`${oldPath}/`)) {
+    const newTail = newPath + currentTail.slice(oldPath.length)
+    navigate(`${prefix}${newTail}`, { replace: true })
+  }
+}
+
 export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Set of every item id inside the currently-dragged item's subtree
+  // (the dragged item itself included). Used by TreeItem.handleDragOver to
+  // skip showing an indicator when the cursor is on the dragged item or
+  // any of its descendants — those drops are either no-ops or rejected
+  // by the server-side descendant check, so the line would be a lie.
+  const [draggedSubtreeIds, setDraggedSubtreeIds] = useState<Set<string>>(new Set())
 
   const createItem = useCreateNotebookItem(notebook.id)
   const updateItem = useUpdateNotebookItem(notebook.id)
@@ -53,24 +95,37 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const handleCreateItem = useCallback(
     async (parentId: string | null, type: 'folder' | 'page') => {
       const title = type === 'folder' ? 'New Folder' : 'New Page'
-      await createItem.mutateAsync({
-        parentId,
-        type,
-        title,
-        sortOrder: 0,
-        contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
-      })
-      showTreeToast('Item created')
+      try {
+        await createItem.mutateAsync({
+          parentId,
+          type,
+          title,
+          sortOrder: 0,
+          contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
+        })
+        showTreeToast('Item created')
+      } catch (err) {
+        showTreeToast(getErrorMessage(err, 'Failed to create'), 'error')
+      }
     },
     [createItem, showTreeToast],
   )
 
   const handleRenameItem = useCallback(
     async (itemId: string, title: string, sortOrder: number) => {
-      await updateItem.mutateAsync({ itemId, data: { title, sortOrder } })
+      // Capture the pre-rename path so we can detect whether the current URL points
+      // at the renamed item (or one of its descendants in the folder-rename case)
+      // and rewrite it to the new path the server just generated.
+      const oldPath = findNode(tree, itemId)?.item.path
+
+      const updated = await updateItem.mutateAsync({ itemId, data: { title, sortOrder } })
       showTreeToast('Renamed')
+
+      if (oldPath) {
+        syncUrlToPathChange(oldPath, updated.path, notebook.slug, location.pathname, navigate)
+      }
     },
-    [updateItem, showTreeToast],
+    [updateItem, showTreeToast, tree, location.pathname, navigate, notebook.slug],
   )
 
   const handleArchiveItem = useCallback(
@@ -97,84 +152,183 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     [deleteItem, showTreeToast],
   )
 
-  const computeReorderPayload = useCallback(
-    (siblings: TreeNode[]): { itemId: string; parentId: string | null; sortOrder: number }[] => {
-      const REORDER_STEP = 10
-      return siblings.map((node, idx) => ({
-        itemId: node.item.id,
-        parentId: node.item.parentId,
-        sortOrder: idx * REORDER_STEP,
-      }))
-    },
-    [],
-  )
-
-  const handleMoveUp = useCallback(
-    (itemId: string) => {
-      const { siblings, index } = findSiblings(tree, itemId)
-      if (index <= 0 || siblings.length < 2) return
-      const newSiblings = [...siblings]
-      const temp = newSiblings[index - 1]
-      newSiblings[index - 1] = newSiblings[index]
-      newSiblings[index] = temp
-      reorderItems.mutate({ items: computeReorderPayload(newSiblings) })
-    },
-    [tree, reorderItems, computeReorderPayload],
-  )
-
-  const handleMoveDown = useCallback(
-    (itemId: string) => {
-      const { siblings, index } = findSiblings(tree, itemId)
-      if (index < 0 || index >= siblings.length - 1 || siblings.length < 2) return
-      const newSiblings = [...siblings]
-      const temp = newSiblings[index + 1]
-      newSiblings[index + 1] = newSiblings[index]
-      newSiblings[index] = temp
-      reorderItems.mutate({ items: computeReorderPayload(newSiblings) })
-    },
-    [tree, reorderItems, computeReorderPayload],
-  )
-
-  const handleDropOnFolder = useCallback(
-    (folderId: string) => {
-      if (!draggingId || draggingId === folderId) {
+  const handleDropReorder = useCallback(
+    async (targetId: string, position: 'before' | 'after' | 'inside') => {
+      if (!draggingId || draggingId === targetId) {
         setDraggingId(null)
         return
       }
-      const targetNode = findNode(tree, folderId)
-      const children = targetNode?.children ?? []
-      const minSortOrder = children.length > 0
-        ? Math.min(...children.map((n) => n.item.sortOrder))
-        : 0
-      reorderItems.mutate(
-        { items: [{ itemId: draggingId, parentId: folderId, sortOrder: minSortOrder - 10 }] },
-        { onSettled: () => setDraggingId(null) },
-      )
+
+      const draggedLoc = findNodeAndSiblings(tree, draggingId)
+      const targetLoc = findNodeAndSiblings(tree, targetId)
+      if (!draggedLoc || !targetLoc) {
+        setDraggingId(null)
+        return
+      }
+      const draggedNode = draggedLoc.node
+      const targetNode = targetLoc.node
+
+      // Backend regenerates the dragged item's path on reorder (and rewrites
+      // all descendants' paths when the dragged item is a folder). Capture
+      // the pre-mutation path so we can rewrite the URL if the user is
+      // currently viewing the dragged item or one of its descendants.
+      const oldPath = draggedNode.item.path
+
+      const isSameSiblings = draggedLoc.siblings === targetLoc.siblings
+
+      // Clone sibling arrays so we never mutate the original tree prop
+      const oldSiblings = cloneSiblings(draggedLoc.siblings)
+      let newSiblings: TreeNode[]
+      let newIndex: number
+      let newParentId: string | null
+
+      if (position === 'inside') {
+        newSiblings = cloneSiblings(targetNode.children)
+        newIndex = newSiblings.length
+        newParentId = targetId
+      } else if (targetNode.item.type === 'folder' && targetNode.children.length === 0) {
+        // Empty folder with a 'before'/'after' Y-position intent. The
+        // visual is the same thin line as any other item, but the drop
+        // means "put me in this folder as the only child" — same parent
+        // rewrite as the 'inside' branch above.
+        newSiblings = cloneSiblings(targetNode.children)
+        newIndex = 0
+        newParentId = targetId
+      } else {
+        newSiblings = cloneSiblings(targetLoc.siblings)
+        newIndex = targetLoc.index
+        if (isSameSiblings && draggedLoc.index < targetLoc.index) {
+          newIndex--
+        }
+        if (position === 'after') {
+          newIndex++
+        }
+        newParentId = targetNode.item.parentId
+      }
+
+      if (newParentId && (newParentId === draggingId || findNode(draggedNode.children, newParentId) !== null)) {
+        setDraggingId(null)
+        return
+      }
+
+      // Remove dragged from its current slot in the source list.
+      const draggedIndexInOld = oldSiblings.findIndex((n) => n.item.id === draggingId)
+      if (draggedIndexInOld >= 0) {
+        oldSiblings.splice(draggedIndexInOld, 1)
+      }
+
+      // If the destination IS the same list (i.e. reordering within the
+      // same parent), the cloned newSiblings still contains the dragged
+      // item and the splice below would duplicate it. The newIndex above
+      // was already adjusted for the removal, so strip the dragged item
+      // out of newSiblings first and the splice produces the final order.
+      if (isSameSiblings && position !== 'inside') {
+        const draggedIndexInNew = newSiblings.findIndex((n) => n.item.id === draggingId)
+        if (draggedIndexInNew >= 0) {
+          newSiblings.splice(draggedIndexInNew, 1)
+        }
+      }
+
+      newSiblings.splice(newIndex, 0, draggedNode)
+
+      const updates: { itemId: string; parentId: string | null; sortOrder: number }[] = []
+
+      const recompute = (siblings: TreeNode[]) => {
+        siblings.forEach((node, idx) => {
+          updates.push({
+            itemId: node.item.id,
+            parentId: node.item.parentId,
+            sortOrder: idx * 10,
+          })
+        })
+      }
+
+      recompute(oldSiblings)
+      if (newSiblings !== oldSiblings) {
+        recompute(newSiblings)
+      }
+
+      // Update dragged item's parentId
+      const draggedUpdate = updates.find((u) => u.itemId === draggingId)
+      if (draggedUpdate) {
+        draggedUpdate.parentId = newParentId
+      }
+
+      try {
+        const result = await reorderItems.mutateAsync({ items: updates })
+        const updatedDragged = result.items.find((it) => it.id === draggingId)
+        if (oldPath && updatedDragged) {
+          syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
+        }
+      } catch (err) {
+        showTreeToast(getErrorMessage(err, 'Failed to reorder'), 'error')
+      } finally {
+        setDraggingId(null)
+      }
     },
-    [draggingId, reorderItems, tree],
+    [draggingId, reorderItems, tree, location.pathname, navigate, notebook.slug, showTreeToast],
   )
 
-  const handleDropOnRoot = useCallback(() => {
+  const handleDropOnRoot = useCallback(async () => {
     if (!draggingId) {
       setDraggingId(null)
       return
     }
-    const minSortOrder = tree.length > 0
-      ? Math.min(...tree.map((n) => n.item.sortOrder))
-      : 0
-    reorderItems.mutate(
-      { items: [{ itemId: draggingId, parentId: null, sortOrder: minSortOrder - 10 }] },
-      { onSettled: () => setDraggingId(null) },
-    )
-  }, [draggingId, tree, reorderItems])
+    if (tree.length > 0) {
+      handleDropReorder(tree[0].item.id, 'before')
+      return
+    }
+    // Empty root: the dragged item has to come from a sub-folder, so its
+    // path changes from `parent/slug` to just `slug`. Run the same
+    // path-aware URL sync the rename/move paths use, otherwise the URL
+    // goes stale and a refresh 404s (same class of bug as the rename
+    // and drag-reorder URL-sync fixes earlier in this PR).
+    const oldPath = findNode(tree, draggingId)?.item.path
+    try {
+      const result = await reorderItems.mutateAsync({
+        items: [{ itemId: draggingId, parentId: null, sortOrder: 0 }],
+      })
+      const updatedDragged = result.items.find((it) => it.id === draggingId)
+      if (oldPath && updatedDragged) {
+        syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
+      }
+    } catch (err) {
+      showTreeToast(getErrorMessage(err, 'Failed to reorder'), 'error')
+    } finally {
+      setDraggingId(null)
+    }
+  }, [draggingId, tree, handleDropReorder, reorderItems, location.pathname, navigate, notebook.slug, showTreeToast])
+
+  const handleDragStart = useCallback(
+    (id: string) => {
+      const node = findNode(tree, id)
+      const subtree = new Set<string>()
+      if (node) {
+        const collect = (n: TreeNode) => {
+          subtree.add(n.item.id)
+          n.children.forEach(collect)
+        }
+        collect(node)
+      }
+      setDraggedSubtreeIds(subtree)
+      setDraggingId(id)
+    },
+    [tree],
+  )
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedSubtreeIds(new Set())
+    setDraggingId(null)
+  }, [])
 
   const dragState = notebook.canEdit
     ? {
         draggingId,
-        onDragStart: setDraggingId,
-        onDragEnd: () => setDraggingId(null),
-        onDropOnFolder: handleDropOnFolder,
+        draggedSubtreeIds,
+        onDragStart: handleDragStart,
+        onDragEnd: handleDragEnd,
         onDropOnRoot: handleDropOnRoot,
+        onDropReorder: handleDropReorder,
       }
     : undefined
 
@@ -185,8 +339,6 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     handleArchiveItem,
     handleRestoreItem,
     handleDeleteItem,
-    handleMoveUp,
-    handleMoveDown,
     dragState,
   }
 }

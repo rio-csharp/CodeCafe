@@ -69,6 +69,7 @@ export default function NotebookOutline({ headings, scrollContainerRef }: Notebo
           return (
             <li key={h.id}>
               <button
+                type="button"
                 onClick={() => handleClick(h.id)}
                 className={`text-left text-[13px] transition-colors w-full truncate ${
                   isActive

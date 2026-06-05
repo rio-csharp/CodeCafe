@@ -1,8 +1,10 @@
 using CodeCafe.Api.Common;
 using CodeCafe.Api.Configuration;
 using CodeCafe.Api.Errors;
+using CodeCafe.Mcp.Common;
 using CodeCafe.Mcp.Configuration;
 using CodeCafe.Mcp.Tools.Diagnostics;
+using CodeCafe.Server.Endpoints.Notes;
 using CodeCafe.Server.Configuration;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
@@ -24,6 +26,7 @@ public static class WebApplicationExtensions
         app.UseAuthorization();
         app.UseCodeCafeMcpOriginValidation();
         app.MapCodeCafeApi();
+        app.MapNotesMarkdownImportEndpoints();
         app.MapDiagnosticsToolEndpoints();
         app.MapControllers();
         app.MapCodeCafeMcpProtectedResourceMetadata();
@@ -104,6 +107,7 @@ public static class WebApplicationExtensions
             return endpoints;
         }
 
+        endpoints.MapMcpHttpUploadEndpoints();
         var endpoint = endpoints.MapMcp(options.EndpointPath);
         endpoint.RequireRateLimiting("mcp");
         if (options.RequireAuthorization)
@@ -140,7 +144,7 @@ public static class WebApplicationExtensions
     {
         return app.Use(async (httpContext, next) =>
         {
-            if (RequiresCsrfValidation(httpContext.Request))
+            if (RequiresCsrfValidation(httpContext))
             {
                 var antiforgery = httpContext.RequestServices.GetRequiredService<IAntiforgery>();
                 await antiforgery.ValidateRequestAsync(httpContext);
@@ -150,9 +154,21 @@ public static class WebApplicationExtensions
         });
     }
 
-    private static bool RequiresCsrfValidation(HttpRequest request)
+    private static bool RequiresCsrfValidation(HttpContext httpContext)
     {
+        var request = httpContext.Request;
         if (!request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (request.Path.StartsWithSegments("/api/mcp", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var antiforgeryMetadata = httpContext.GetEndpoint()?.Metadata.GetMetadata<IAntiforgeryMetadata>();
+        if (antiforgeryMetadata is not null && !antiforgeryMetadata.RequiresValidation)
         {
             return false;
         }

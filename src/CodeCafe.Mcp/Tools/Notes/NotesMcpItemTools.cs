@@ -13,6 +13,9 @@ namespace CodeCafe.Mcp.Tools.Notes;
 [McpServerToolType]
 public sealed class NotesMcpItemTools
 {
+    private const string PathCompatibilityDescription = "Use the path returned by MCP responses. Resource-style page/<path> and folder/<path> inputs are also accepted for clients that derive paths from item resource URIs.";
+    private const string PageContentLimitDescription = "Default limits: maxInlineContentBytes=131072, maxPageContentBytes=1048576, maxTipTapDepth=64, maxTipTapNodeCount=5000, maxTipTapTextLength=200000. Runtime values are returned by notes_get_limits.";
+
     [McpServerTool(
         Name = NotesMcpToolNames.ListItems,
         Title = "List Notebook Items",
@@ -29,7 +32,7 @@ public sealed class NotesMcpItemTools
         CancellationToken cancellationToken,
         IOptions<McpOptions> mcpOptionsAccessor,
         [Description("Optional search term to filter notebook items.")] string? search = null,
-        [Description("Optional parent folder path. When provided, only direct children of that folder are returned.")] string? parentPath = null,
+        [Description("Optional parent folder path. When provided, only direct children of that folder are returned. " + PathCompatibilityDescription)] string? parentPath = null,
         [Description("Filter item type: all, page, or folder.")] string? type = null,
         [Description("Include archived items in the result set. Only the notebook owner can use this.")] bool includeArchived = false,
         [Description("Zero-based offset for pagination.")] int? offset = null,
@@ -127,10 +130,10 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(GetPageToolResponse))]
-    [Description("Read one page by notebook slug and page path, including the stored TipTap JSON string and derived plain text.")]
+    [Description("Read one page by notebook slug and page path, including the stored TipTap JSON string and derived plain text. " + PathCompatibilityDescription)]
     public async Task<CallToolResult> GetPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
-        [Description("The page path within the notebook.")] string path,
+        [Description("The page path within the notebook. " + PathCompatibilityDescription)] string path,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
@@ -334,7 +337,7 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(CreateItemToolResponse))]
-    [Description("Create a folder in a notebook under an optional parent folder path.")]
+    [Description("Create a folder in a notebook under an optional parent folder path. " + PathCompatibilityDescription)]
     public async Task<CallToolResult> CreateFolderAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The folder title.")] string title,
@@ -344,7 +347,7 @@ public sealed class NotesMcpItemTools
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
-        [Description("Optional parent folder path. Null creates the folder at the notebook root.")] string? parentPath = null,
+        [Description("Optional parent folder path. Null creates the folder at the notebook root. " + PathCompatibilityDescription)] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null)
     {
         return await mutationExecutor.ExecuteAsync(
@@ -420,7 +423,7 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(CreatePageToolResponse))]
-    [Description("Create a page in a notebook under an optional parent folder path. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger body content.")]
+    [Description("Create a page in a notebook under an optional parent folder path. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger body content. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
     public async Task<CallToolResult> CreatePageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page title.")] string title,
@@ -431,10 +434,10 @@ public sealed class NotesMcpItemTools
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
-        [Description("Optional parent folder path. Null creates the page at the notebook root.")] string? parentPath = null,
+        [Description("Optional parent folder path. Null creates the page at the notebook root. " + PathCompatibilityDescription)] string? parentPath = null,
         [Description("Sort order within the parent folder.")] int? sortOrder = null,
-        [Description("Optional TipTap JSON document for the page body. Use for smaller inline payloads.")] JsonElement? contentJson = null,
-        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON body content.")] string? contentUploadId = null,
+        [Description("Optional TipTap JSON document for the page body. Use for smaller inline payloads. " + PageContentLimitDescription)] JsonElement? contentJson = null,
+        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON body content. " + PageContentLimitDescription)] string? contentUploadId = null,
         [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null,
         [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
@@ -534,10 +537,10 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
-    [Description("Replace a page's stored body content. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger edits.")]
+    [Description("Replace a page's stored body content. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger edits. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
     public async Task<CallToolResult> UpdatePageContentJsonAsync(
         [Description("The notebook slug.")] string notebookSlug,
-        [Description("The page path.")] string path,
+        [Description("The page path. " + PathCompatibilityDescription)] string path,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         INotebookItemMutationService notebookItemMutationService,
@@ -546,8 +549,8 @@ public sealed class NotesMcpItemTools
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
-        [Description("The full TipTap JSON document to store as page body. Use for smaller inline payloads.")] JsonElement? contentJson = null,
-        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON body content.")] string? contentUploadId = null,
+        [Description("The full TipTap JSON document to store as page body. Use for smaller inline payloads. " + PageContentLimitDescription)] JsonElement? contentJson = null,
+        [Description("Optional upload id returned by notes_create_upload for larger Markdown or JSON body content. " + PageContentLimitDescription)] string? contentUploadId = null,
         [Description("Format of contentUploadId: tiptap_json or markdown. Markdown is converted server-side into TipTap JSON. When omitted, the server infers it from the file name or media type.")] string? contentFormat = null,
         [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
@@ -632,10 +635,10 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
-    [Description("Append block content to an existing page body. Accepts small inline TipTap blocks JSON or uploaded Markdown / TipTap blocks JSON for larger additions.")]
+    [Description("Append block content to an existing page body. Accepts small inline TipTap blocks JSON or uploaded Markdown / TipTap blocks JSON for larger additions. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
-        [Description("The page path.")] string path,
+        [Description("The page path. " + PathCompatibilityDescription)] string path,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         INotebookItemMutationService notebookItemMutationService,
@@ -644,8 +647,8 @@ public sealed class NotesMcpItemTools
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
-        [Description("The TipTap block nodes JSON array to append. Use for smaller inline payloads.")] JsonElement? blocks = null,
-        [Description("Optional upload id returned by notes_create_upload for larger TipTap blocks JSON or Markdown content.")] string? blocksUploadId = null,
+        [Description("The TipTap block nodes JSON array to append. Use for smaller inline payloads. " + PageContentLimitDescription)] JsonElement? blocks = null,
+        [Description("Optional upload id returned by notes_create_upload for larger TipTap blocks JSON or Markdown content. " + PageContentLimitDescription)] string? blocksUploadId = null,
         [Description("Format of blocksUploadId: tiptap_blocks_json or markdown. Markdown is converted server-side into TipTap blocks before append. When omitted, the server infers it from the file name or media type.")] string? blocksFormat = null,
         [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
     {
@@ -774,10 +777,10 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(MoveItemToolResponse))]
-    [Description("Rename a page or folder while keeping its current parent and content.")]
+    [Description("Rename a page or folder while keeping its current parent and content. " + PathCompatibilityDescription)]
     public async Task<CallToolResult> RenameItemAsync(
         [Description("The notebook slug.")] string notebookSlug,
-        [Description("The current item path.")] string path,
+        [Description("The current item path. " + PathCompatibilityDescription)] string path,
         [Description("The new title for the page or folder.")] string title,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
@@ -853,17 +856,17 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(MoveItemToolResponse))]
-    [Description("Move a page or folder to a new parent folder path or to the notebook root.")]
+    [Description("Move a page or folder to a new parent folder path or to the notebook root. " + PathCompatibilityDescription)]
     public async Task<CallToolResult> MoveItemAsync(
         [Description("The notebook slug.")] string notebookSlug,
-        [Description("The current item path.")] string path,
+        [Description("The current item path. " + PathCompatibilityDescription)] string path,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         INotebookItemMutationService notebookItemMutationService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
-        [Description("The target parent folder path. Null moves the item to the notebook root.")] string? targetParentPath = null,
+        [Description("The target parent folder path. Null moves the item to the notebook root. " + PathCompatibilityDescription)] string? targetParentPath = null,
         [Description("Optional new sort order.")] int? sortOrder = null)
     {
         return await mutationExecutor.ExecuteAsync(
@@ -973,15 +976,11 @@ public sealed class NotesMcpItemTools
                 }
 
                 var notebookContext = notebookContextResult.Value;
-                var itemsByPath = notebookContext.Notebook.Items.ToDictionary(
-                    i => i.Path,
-                    i => i,
-                    StringComparer.Ordinal);
                 var reorderModels = new List<ReorderNotebookItemModel>();
                 foreach (var item in items)
                 {
-                    var normalizedPath = NotesMcpSupport.NormalizePath(item.Path);
-                    if (!itemsByPath.TryGetValue(normalizedPath, out var resolvedItem))
+                    var itemResult = NotesMcpSupport.RequireItem(notebookContext.Notebook, item.Path);
+                    if (!itemResult.Succeeded)
                     {
                         return McpMutationResult<ReorderItemsToolResponse>.Failure(new NotesError(
                             NotesFailureKind.NotFound,
@@ -990,6 +989,7 @@ public sealed class NotesMcpItemTools
                             notebookContext.Notebook.Id);
                     }
 
+                    var resolvedItem = itemResult.Value!;
                     var resolvedParent = NotesMcpSupport.ResolveParent(notebookContext.Notebook, item.ParentPath);
                     if (!resolvedParent.Succeeded)
                     {
@@ -1038,10 +1038,10 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(DeleteItemToolResponse))]
-    [Description("Delete a page or folder and its descendants from a notebook.")]
+    [Description("Delete a page or folder and its descendants from a notebook. " + PathCompatibilityDescription)]
     public async Task<CallToolResult> DeleteItemAsync(
         [Description("The notebook slug.")] string notebookSlug,
-        [Description("The item path.")] string path,
+        [Description("The item path. " + PathCompatibilityDescription)] string path,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         INotebookItemMutationService notebookItemMutationService,
@@ -1106,10 +1106,10 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(MoveItemToolResponse))]
-    [Description("Archive a page or folder and its descendants.")]
+    [Description("Archive a page or folder and its descendants. " + PathCompatibilityDescription)]
     public async Task<CallToolResult> ArchiveItemAsync(
         [Description("The notebook slug.")] string notebookSlug,
-        [Description("The item path.")] string path,
+        [Description("The item path. " + PathCompatibilityDescription)] string path,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         INotebookItemMutationService notebookItemMutationService,
@@ -1168,10 +1168,10 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(MoveItemToolResponse))]
-    [Description("Restore an archived page or folder and its descendants.")]
+    [Description("Restore an archived page or folder and its descendants. " + PathCompatibilityDescription)]
     public async Task<CallToolResult> RestoreItemAsync(
         [Description("The notebook slug.")] string notebookSlug,
-        [Description("The archived item path.")] string path,
+        [Description("The archived item path. " + PathCompatibilityDescription)] string path,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         INotebookItemMutationService notebookItemMutationService,

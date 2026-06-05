@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import { createLowlight, common } from 'lowlight'
 import Color from '@tiptap/extension-color'
 import { TextStyle } from '@tiptap/extension-text-style'
 import Highlight from '@tiptap/extension-highlight'
@@ -24,11 +23,11 @@ import Youtube from '@tiptap/extension-youtube'
 import FontFamily from '@tiptap/extension-font-family'
 import { Check, X } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
+import { lowlight } from '@/shared/lib/lowlight'
+import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
-import './codeHighlight.css'
-
-const lowlight = createLowlight(common)
+import '@/shared/styles/codeHighlight.css'
 
 interface NotebookPageEditorProps {
   page: NotebookItem
@@ -38,7 +37,10 @@ interface NotebookPageEditorProps {
 }
 
 export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }: NotebookPageEditorProps) {
-  const [, forceUpdate] = useState({})
+  // Bump on every editor transaction so toolbar `isActive` checks (and any
+  // other view-state reads) stay in sync. Replaces the previous `forceUpdate({})`.
+  const [tick, setTick] = useState(0)
+  const bumpTick = useCallback(() => setTick((t) => t + 1), [])
 
   const editor = useEditor({
     extensions: [
@@ -71,34 +73,23 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
         class: `${PROSE_CONTENT_CLASSES} outline-none min-h-[200px]`,
       },
     },
-    onTransaction: ({ editor: txEditor }) => {
-      forceUpdate({})
-      requestAnimationFrame(() => {
-        const container = txEditor.view.dom
-        if (!container) return
-        container.querySelectorAll('pre').forEach((pre) => {
-          const code = pre.querySelector('code')
-          if (!code) return
-          const lineCount = code.textContent?.split('\n').length || 1
-          let lineNumbers = pre.querySelector('.line-numbers') as HTMLElement | null
-          if (!lineNumbers) {
-            lineNumbers = document.createElement('div')
-            lineNumbers.className = 'line-numbers'
-            lineNumbers.setAttribute('aria-hidden', 'true')
-            pre.insertBefore(lineNumbers, code)
-          }
-          const existingSpans = lineNumbers.querySelectorAll('span')
-          if (existingSpans.length === lineCount) return
-          lineNumbers.innerHTML = ''
-          for (let i = 1; i <= lineCount; i++) {
-            const span = document.createElement('span')
-            span.textContent = String(i)
-            lineNumbers.appendChild(span)
-          }
-        })
-      })
-    },
   })
+
+  // Keep React in sync with editor transactions (selection moves, typing, etc.)
+  useEffect(() => {
+    if (!editor) return
+    editor.on('transaction', bumpTick)
+    return () => {
+      editor.off('transaction', bumpTick)
+    }
+  }, [editor, bumpTick])
+
+  // Sync code block line numbers. The function is idempotent — it short-circuits
+  // when the line count hasn't changed — so running on every tick is cheap.
+  useEffect(() => {
+    if (!editor) return
+    applyCodeBlockLineNumbers(editor.view.dom as HTMLElement)
+  }, [editor, tick])
 
   const handleSave = useCallback(() => {
     if (!editor) return

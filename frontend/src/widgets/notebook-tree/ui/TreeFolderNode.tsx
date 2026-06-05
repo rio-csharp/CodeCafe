@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, memo } from 'react'
 import { ChevronRight, Folder, FolderOpen } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
 import { useTreeNodeActions } from '@/features/manage-notebook-items'
@@ -6,26 +6,22 @@ import { useTreeContext } from '../model/TreeContext'
 import TreeRenameField from './TreeRenameField'
 import TreeNodeActions from './TreeNodeActions'
 import TreeCreateMenu from './TreeCreateMenu'
+import DropZone from './DropZone'
 import { TREE_INDENT_PER_LEVEL, TREE_INDENT_BASE } from '../lib/treeConstants'
 
 interface TreeFolderNodeProps {
   node: TreeNode
   level: number
-  siblingCount: number
-  index: number
   children: React.ReactNode
 }
 
-export default function TreeFolderNode({
+function TreeFolderNode({
   node,
   level,
-  siblingCount,
-  index,
   children,
 }: TreeFolderNodeProps) {
-  const { canEdit, dragState, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem, onMoveUp, onMoveDown } = useTreeContext()
+  const { canEdit, dragState, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
   const [expanded, setExpanded] = useState(true)
-  const [isDragOver, setIsDragOver] = useState(false)
   const {
     isEditing,
     editTitle,
@@ -60,34 +56,13 @@ export default function TreeFolderNode({
 
   const handleDragEnd = () => { dragState?.onDragEnd() }
 
-  const handleDragOver = (e: React.DragEvent) => {
-    if (!dragState || !canEdit || node.item.isArchived) return
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'move'
-    setIsDragOver(true)
-  }
-
-  const handleDragLeave = () => { setIsDragOver(false) }
-
-  const handleDrop = (e: React.DragEvent) => {
-    if (!dragState || !canEdit || node.item.isArchived) return
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragOver(false)
-    dragState.onDropOnFolder(node.item.id)
-  }
-
   return (
-    <div
-      draggable={canEdit && !node.item.isArchived}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className={`${isDragging ? 'opacity-40' : ''} ${isDragOver ? 'bg-status-favorite-bg/60 rounded-md' : ''}`}
-    >
+    <div className={`${isDragging ? 'opacity-40' : ''}`}>
       <div
+        draggable={canEdit && !node.item.isArchived}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        data-tree-item-id={node.item.id}
         className={`group flex items-center gap-1 w-full text-left px-3 py-1.5 text-[13px] rounded-md transition-colors ${node.item.isArchived ? 'text-text-tertiary opacity-60 italic hover:bg-surface-hover' : 'text-text-secondary hover:bg-surface-hover'}`}
         style={{ paddingLeft }}
       >
@@ -117,11 +92,7 @@ export default function TreeFolderNode({
             <TreeNodeActions
               canEdit={canEdit}
               isEditing={isEditing}
-              siblingCount={siblingCount}
-              index={index}
               isArchived={node.item.isArchived}
-              onMoveUp={(e) => { e.stopPropagation(); onMoveUp?.(node.item.id) }}
-              onMoveDown={(e) => { e.stopPropagation(); onMoveDown?.(node.item.id) }}
               onRename={(e) => { e.stopPropagation(); startEditing() }}
               onArchive={(e) => { e.stopPropagation(); handleArchive() }}
               onRestore={(e) => { e.stopPropagation(); handleRestore() }}
@@ -130,7 +101,21 @@ export default function TreeFolderNode({
           </div>
         )}
       </div>
-      {expanded && <div>{children}</div>}
+      {expanded && (
+        <>
+          {children}
+          {node.children.length > 0 && (
+            // Empty folders rely on the parent TreeItem wrapper to expose an
+            // 'inside' drop target. For non-empty folders we still need a
+            // slot for "drop after the last child" — the parent TreeItem
+            // can't help here because the gap below the last child is
+            // outside its box.
+            <DropZone onDrop={() => dragState?.onDropReorder(node.children[node.children.length - 1].item.id, 'after')} />
+          )}
+        </>
+      )}
     </div>
   )
 }
+
+export default memo(TreeFolderNode)

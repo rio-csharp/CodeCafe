@@ -1,6 +1,8 @@
 using CodeCafe.Application.Notes;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Unicode;
 
 namespace CodeCafe.Infrastructure.Notes;
 
@@ -9,6 +11,10 @@ public sealed class TipTapContentService(ITipTapPlainTextExtractor plainTextExtr
     public const int MaxDepth = 64;
     public const int MaxNodeCount = 5000;
     public const int MaxTextLength = 200_000;
+    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+    };
 
     public NotesResult<TipTapContentModel> NormalizePageContent(JsonElement? contentJson)
     {
@@ -38,7 +44,7 @@ public sealed class TipTapContentService(ITipTapPlainTextExtractor plainTextExtr
 
         root["content"] ??= new JsonArray();
         RemoveEmptyTextNodes(root);
-        var normalizedJson = root.ToJsonString();
+        var normalizedJson = root.ToJsonString(SerializerOptions);
 
         using var normalizedDocument = JsonDocument.Parse(normalizedJson);
         var validation = ValidateDocument(normalizedDocument.RootElement);

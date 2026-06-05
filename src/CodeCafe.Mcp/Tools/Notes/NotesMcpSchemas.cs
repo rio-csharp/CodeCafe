@@ -179,12 +179,15 @@ public sealed record GetNotesLimitsToolResponse(
     int MaxInlineContentBytes,
     int MaxUploadChunkBytes,
     int MaxUploadBytes,
+    int MaxHttpUploadBytes,
+    int HttpUploadIdleTimeoutSeconds,
     int MaxPageContentBytes,
     int MaxListItemsLimit,
     int MaxTipTapDepth,
     int MaxTipTapNodeCount,
     int MaxTipTapTextLength,
-    IReadOnlyList<string> SupportedImportFormats);
+    IReadOnlyList<string> SupportedImportFormats,
+    IReadOnlyList<string> SupportedHttpUploadMediaTypes);
 
 public sealed record CreateUploadToolResponse(
     string UploadId,

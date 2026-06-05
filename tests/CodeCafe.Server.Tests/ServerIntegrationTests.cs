@@ -5,7 +5,9 @@ using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using Xunit;
 
@@ -138,6 +140,126 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
     }
 
     [Fact]
+    public async Task CombinedHost_HttpMarkdownUpload_CanBeDiscardedThroughMcp()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var form = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes("# Uploaded title\n\nBody"));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        form.Add(fileContent, "file", "uploaded-note.md");
+
+        var csrf = await GetCsrfTokenAsync(client);
+        var uploadRequest = new HttpRequestMessage(HttpMethod.Post, "/api/notes/uploads/markdown")
+        {
+            Content = form
+        };
+        uploadRequest.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var uploadResponse = await client.SendAsync(uploadRequest);
+        var uploadBody = await uploadResponse.Content.ReadAsStringAsync();
+        Assert.True(uploadResponse.IsSuccessStatusCode, uploadBody);
+        using var uploadDocument = JsonDocument.Parse(uploadBody);
+        var uploadId = uploadDocument.RootElement.GetProperty("uploadId").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(uploadId));
+        Assert.Equal("text/markdown", uploadDocument.RootElement.GetProperty("mediaType").GetString());
+
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(client.BaseAddress!, "/mcp"),
+                TransportMode = HttpTransportMode.StreamableHttp
+            },
+            client);
+
+        await using var mcpClient = await McpClient.CreateAsync(transport);
+        var discardResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.DiscardUpload,
+            new Dictionary<string, object?> { ["uploadId"] = uploadId });
+
+        Assert.False(discardResult.IsError ?? false);
+        Assert.Equal("discarded", discardResult.StructuredContent!.Value.GetProperty("result").GetString());
+
+        using var deleteRequest = new HttpRequestMessage(HttpMethod.Delete, $"/api/notes/uploads/{uploadId}");
+        deleteRequest.Headers.Add("X-CSRF-TOKEN", csrf);
+        using var secondDelete = await client.SendAsync(deleteRequest);
+        secondDelete.EnsureSuccessStatusCode();
+        using var deleteDocument = JsonDocument.Parse(await secondDelete.Content.ReadAsStringAsync());
+        Assert.Equal("already_absent", deleteDocument.RootElement.GetProperty("result").GetString());
+    }
+
+    [Fact]
+    public async Task CombinedHost_CanCreatePageFromUploadedMarkdown()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        var csrf = await GetCsrfTokenAsync(client);
+        var uploadId = await UploadMarkdownAsync(client, csrf, "# Imported title\n\nImported body");
+
+        using var createResponse = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/notes/notebooks/architecture-notes/pages/import-markdown",
+            new
+            {
+                title = "Imported Overview",
+                uploadId,
+                includeContent = true
+            });
+
+        var responseBody = await createResponse.Content.ReadAsStringAsync();
+        Assert.True(createResponse.StatusCode == HttpStatusCode.Created, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("Imported Overview", document.RootElement.GetProperty("title").GetString());
+        Assert.Equal("tiptap_json", document.RootElement.GetProperty("contentFormat").GetString());
+        Assert.True(document.RootElement.GetProperty("contentIncluded").GetBoolean());
+        Assert.True(document.RootElement.GetProperty("contentJsonBytes").GetInt32() > 0);
+        Assert.True(document.RootElement.GetProperty("tipTapNodeCount").GetInt32() > 0);
+        var firstNode = document.RootElement.GetProperty("contentJson").GetProperty("content").EnumerateArray().First();
+        Assert.Equal("heading", firstNode.GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task CombinedHost_CanAppendUploadedMarkdownToExistingPage()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        var csrf = await GetCsrfTokenAsync(client);
+        var uploadId = await UploadMarkdownAsync(client, csrf, "## Extra section\n\nMore body");
+
+        using var appendResponse = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/notes/notebooks/architecture-notes/pages/guides/overview/append-markdown",
+            new
+            {
+                uploadId,
+                includeContent = true
+            });
+
+        var responseBody = await appendResponse.Content.ReadAsStringAsync();
+        Assert.True(appendResponse.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("Overview", document.RootElement.GetProperty("title").GetString());
+        Assert.True(document.RootElement.GetProperty("contentIncluded").GetBoolean());
+        var content = document.RootElement.GetProperty("contentJson").GetProperty("content").EnumerateArray().ToList();
+        Assert.True(content.Count >= 2);
+        Assert.Equal("heading", content[1].GetProperty("type").GetString());
+    }
+
+    [Fact]
     public async Task CombinedHost_ReadinessFails_WhenServerIsDraining()
     {
         using var factory = new ServerTestFactory();
@@ -167,6 +289,26 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         };
         request.Headers.Add("X-CSRF-TOKEN", csrf);
         return await client.SendAsync(request);
+    }
+
+    private static async Task<string> UploadMarkdownAsync(HttpClient client, string csrf, string markdown)
+    {
+        using var form = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes(markdown));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/markdown");
+        form.Add(fileContent, "file", "upload.md");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/notes/uploads/markdown")
+        {
+            Content = form
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("uploadId").GetString()
+            ?? throw new InvalidOperationException("Missing uploadId.");
     }
 
     private static async Task<string> GetCsrfTokenAsync(HttpClient client)

@@ -162,6 +162,8 @@ Available notebook resources:
 
 `notes://guide` describes the recommended notebook workflow for discovery, page reads, uploads, and imports.
 
+Path parameters on item/page tools accept the path returned by MCP responses. Resource-style `page/<path>` and `folder/<path>` inputs are also accepted for clients that derive paths from item resource URIs.
+
 ## Prompts
 
 Notebook prompts currently exposed through MCP:
@@ -178,10 +180,16 @@ These prompts are helpers layered on top of notebook reads and writes; they do n
 For larger content, the recommended flow is:
 
 1. Call `notes_get_limits`.
-2. Start a session with `notes_create_upload`.
-3. Send one or more UTF-8 chunks with `notes_append_upload_chunk`.
-4. Apply the uploaded content with page-creation or page-update tools.
-5. Optionally discard abandoned sessions with `notes_discard_upload`.
+2. Prefer `POST /api/mcp/uploads/markdown` with the same bearer token used for MCP.
+3. Pass the returned `uploadId` into `notes_create_page`, `notes_update_page_content_json`, or `notes_append_blocks_to_page`.
+4. Optionally clean up abandoned uploads with `DELETE /api/mcp/uploads/{uploadId}` or `notes_discard_upload`.
+
+Chunked MCP upload remains available for clients that cannot use HTTP:
+
+1. Start a session with `notes_create_upload`.
+2. Send one or more UTF-8 chunks with `notes_append_upload_chunk`.
+3. Apply the uploaded content with page-creation or page-update tools.
+4. Optionally discard abandoned sessions with `notes_discard_upload`.
 
 Supported uploaded formats:
 
@@ -190,6 +198,8 @@ Supported uploaded formats:
 - `tiptap_blocks_json`
 
 Markdown uploads are converted server-side into TipTap JSON before validation and persistence.
+
+The create/update/append tool descriptions expose the default page-content limits by field name: `maxInlineContentBytes`, `maxPageContentBytes`, `maxTipTapDepth`, `maxTipTapNodeCount`, and `maxTipTapTextLength`. Treat `notes_get_limits` as the runtime source of truth when configuration differs from defaults.
 
 Upload sessions are consumed and deleted after a successful page create, content replace, or block append. `notes_discard_upload` is idempotent, so clients may still call it during cleanup; already-consumed or already-absent sessions return a successful `already_absent` result.
 
@@ -212,6 +222,7 @@ From `src/CodeCafe.Server/appsettings.json`:
 - Max inline content: `131072` bytes
 - Max upload chunk: `262144` bytes
 - Max upload size: `4194304` bytes
+- Max HTTP upload size: `4194304` bytes
 - Max page content: `1048576` bytes
 - Max paged list size: `500`
 - Max TipTap depth per page: `64`
