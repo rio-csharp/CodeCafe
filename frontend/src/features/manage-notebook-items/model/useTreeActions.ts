@@ -66,6 +66,13 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const location = useLocation()
   const navigate = useNavigate()
 
+  // Set of every item id inside the currently-dragged item's subtree
+  // (the dragged item itself included). Used by TreeItem.handleDragOver to
+  // skip showing an indicator when the cursor is on the dragged item or
+  // any of its descendants — those drops are either no-ops or rejected
+  // by the server-side descendant check, so the line would be a lie.
+  const [draggedSubtreeIds, setDraggedSubtreeIds] = useState<Set<string>>(new Set())
+
   const createItem = useCreateNotebookItem(notebook.id)
   const updateItem = useUpdateNotebookItem(notebook.id)
   const archiveItem = useArchiveNotebookItem(notebook.id)
@@ -300,11 +307,34 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     }
   }, [draggingId, tree, handleDropReorder, reorderItems, location.pathname, navigate, notebook.slug])
 
+  const handleDragStart = useCallback(
+    (id: string) => {
+      const node = findNode(tree, id)
+      const subtree = new Set<string>()
+      if (node) {
+        const collect = (n: TreeNode) => {
+          subtree.add(n.item.id)
+          n.children.forEach(collect)
+        }
+        collect(node)
+      }
+      setDraggedSubtreeIds(subtree)
+      setDraggingId(id)
+    },
+    [tree],
+  )
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedSubtreeIds(new Set())
+    setDraggingId(null)
+  }, [])
+
   const dragState = notebook.canEdit
     ? {
         draggingId,
-        onDragStart: setDraggingId,
-        onDragEnd: () => setDraggingId(null),
+        draggedSubtreeIds,
+        onDragStart: handleDragStart,
+        onDragEnd: handleDragEnd,
         onDropOnRoot: handleDropOnRoot,
         onDropReorder: handleDropReorder,
       }

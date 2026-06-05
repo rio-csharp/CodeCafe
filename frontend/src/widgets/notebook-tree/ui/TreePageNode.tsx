@@ -57,6 +57,7 @@ function TreePageNode({
       draggable={canEdit && !node.item.isArchived}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      data-tree-item-id={node.item.id}
       className={`group flex items-center gap-2 px-3 py-1.5 text-[13px] rounded-md transition-colors ${isActive ? 'bg-status-favorite-bg/60' : ''} ${isDragging ? 'opacity-40' : ''} ${node.item.isArchived ? 'opacity-60 italic' : ''}`}
       style={{ paddingLeft }}
     >

@@ -50,7 +50,21 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
 
   const handleDragOver = (e: React.DragEvent) => {
     const draggingId = dragState?.draggingId
-    if (!dragState || !draggingId || draggingId === node.item.id) return
+    if (!dragState || !draggingId) return
+    // The dragged item itself can't drop on itself. (This is also caught
+    // downstream by handleDropReorder, but rejecting here keeps the
+    // indicator off in the first place.)
+    if (draggingId === node.item.id) return
+    // If the cursor is on the dragged item or any of its descendants,
+    // don't show an indicator — those drops are either no-ops or
+    // rejected by the server-side descendant check, so the line would
+    // be a lie. The draggable row carries `data-tree-item-id`; we walk
+    // up via closest() so the check still works when the cursor is on
+    // a button/icon inside the row.
+    const targetEl = e.target as HTMLElement | null
+    const targetItemId = targetEl?.closest('[data-tree-item-id]')?.getAttribute('data-tree-item-id')
+    if (targetItemId && dragState.draggedSubtreeIds.has(targetItemId)) return
+
     e.preventDefault()
     e.stopPropagation()
 

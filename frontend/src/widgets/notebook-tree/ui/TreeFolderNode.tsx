@@ -66,6 +66,7 @@ function TreeFolderNode({
         draggable={canEdit && !node.item.isArchived}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
+        data-tree-item-id={node.item.id}
         className={`group flex items-center gap-1 w-full text-left px-3 py-1.5 text-[13px] rounded-md transition-colors ${node.item.isArchived ? 'text-text-tertiary opacity-60 italic hover:bg-surface-hover' : 'text-text-secondary hover:bg-surface-hover'}`}
         style={{ paddingLeft }}
       >

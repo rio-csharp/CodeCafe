@@ -2,6 +2,15 @@ import { createContext, useContext } from 'react'
 
 export interface TreeDragState {
   draggingId: string | null
+  /**
+   * Set of item ids inside the currently-dragged item's subtree (the
+   * dragged item itself included). TreeItem uses it to skip showing an
+   * indicator when the cursor is on the dragged item or one of its
+   * descendants — those drops are either no-ops (draggingId === targetId)
+   * or rejected by the server-side descendant check, so an indicator
+   * would be a lie.
+   */
+  draggedSubtreeIds: Set<string>
   onDragStart: (id: string) => void
   onDragEnd: () => void
   onDropOnRoot: () => void
