@@ -1,4 +1,4 @@
-import { useState, memo } from 'react'
+import { useState, useRef, memo } from 'react'
 import type { TreeNode } from '@/entities/notebook'
 import { useTreeContext } from '../model/TreeContext'
 import TreeFolderNode from './TreeFolderNode'
@@ -23,49 +23,62 @@ interface TreeItemProps {
  * The visual is a single thin line at the top or bottom edge of the row
  * (or a soft background highlight for the empty-folder "inside" case), so
  * the user always sees one indicator, never two competing ones.
+ *
+ * The intent is mirrored into a ref because `setDropIntent` only schedules
+ * a re-render; the subsequent `drop` event fires before React commits, so
+ * the closure would otherwise see a stale `null` and silently skip the
+ * reorder. The state drives the visual, the ref drives the drop dispatch.
  */
 function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
   const { notebookSlug, activePath, dragState } = useTreeContext()
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null)
+  const dropIntentRef = useRef<DropIntent | null>(null)
   const isFolder = node.item.type === 'folder'
   const isFolderEmpty = isFolder && node.children.length === 0
+
+  const updateIntent = (next: DropIntent | null) => {
+    dropIntentRef.current = next
+    setDropIntent(next)
+  }
 
   const handleDragOver = (e: React.DragEvent) => {
     const draggingId = dragState?.draggingId
     if (!dragState || !draggingId || draggingId === node.item.id) return
-    // Don't accept a drop onto a node that's already inside the dragged subtree
-    // (the reorder handler also checks this server-side; the client just
-    // suppresses the indicator to keep the UX honest).
     e.preventDefault()
     e.stopPropagation()
 
+    let next: DropIntent
     if (isFolderEmpty) {
-      setDropIntent('inside')
-      return
+      next = 'inside'
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect()
+      const midpoint = rect.top + rect.height / 2
+      next = e.clientY < midpoint ? 'before' : 'after'
     }
-
-    const rect = e.currentTarget.getBoundingClientRect()
-    const midpoint = rect.top + rect.height / 2
-    setDropIntent(e.clientY < midpoint ? 'before' : 'after')
+    if (dropIntentRef.current !== next) {
+      updateIntent(next)
+    }
   }
 
   // dragLeave fires when the cursor leaves the row OR moves to a child
-  // element (because React bubbles the event). Only clear the intent when
-  // the cursor actually leaves the subtree of this row.
+  // element. Only clear the intent when the cursor actually leaves the
+  // subtree of this row (so a child TreeItem can take over without the
+  // parent blanking out first).
   const handleDragLeave = (e: React.DragEvent) => {
     const related = e.relatedTarget as Node | null
     if (related && e.currentTarget.contains(related)) return
-    setDropIntent(null)
+    updateIntent(null)
   }
 
   const handleDrop = (e: React.DragEvent) => {
     if (!dragState) return
     e.preventDefault()
     e.stopPropagation()
-    if (dropIntent) {
-      dragState.onDropReorder(node.item.id, dropIntent)
+    const intent = dropIntentRef.current
+    updateIntent(null)
+    if (intent) {
+      dragState.onDropReorder(node.item.id, intent)
     }
-    setDropIntent(null)
   }
 
   return (
