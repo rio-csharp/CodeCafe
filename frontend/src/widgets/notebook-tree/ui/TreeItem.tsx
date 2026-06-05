@@ -67,13 +67,16 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
     }
   }
 
-  // dragLeave fires when the cursor leaves the row OR moves to a child
-  // element. Only clear the intent when the cursor actually leaves the
-  // subtree of this row (so a child TreeItem can take over without the
-  // parent blanking out first).
-  const handleDragLeave = (e: React.DragEvent) => {
-    const related = e.relatedTarget as Node | null
-    if (related && e.currentTarget.contains(related)) return
+  // dragLeave always clears. We deliberately do NOT keep the intent when
+  // the cursor moves to a descendant, because the descendants that have
+  // their own drop targets (child TreeItems) call e.stopPropagation() in
+  // their own handleDragOver, so this wrapper's dragOver never re-fires
+  // to re-set the intent — the indicator would stick on the parent even
+  // though the child is now the real target. Non-drop-target descendants
+  // (buttons, icons inside the row) re-fire dragOver via bubbling and
+  // the intent comes back the same tick, so the visible state is the
+  // same as the previous contains() short-circuit at no real cost.
+  const handleDragLeave = () => {
     updateIntent(null)
   }
 

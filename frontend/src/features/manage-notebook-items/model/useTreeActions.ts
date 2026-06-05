@@ -272,20 +272,33 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     [draggingId, reorderItems, tree, location.pathname, navigate, notebook.slug],
   )
 
-  const handleDropOnRoot = useCallback(() => {
+  const handleDropOnRoot = useCallback(async () => {
     if (!draggingId) {
       setDraggingId(null)
       return
     }
     if (tree.length > 0) {
       handleDropReorder(tree[0].item.id, 'before')
-    } else {
-      reorderItems.mutate(
-        { items: [{ itemId: draggingId, parentId: null, sortOrder: 0 }] },
-        { onSettled: () => setDraggingId(null) },
-      )
+      return
     }
-  }, [draggingId, tree, handleDropReorder, reorderItems])
+    // Empty root: the dragged item has to come from a sub-folder, so its
+    // path changes from `parent/slug` to just `slug`. Run the same
+    // path-aware URL sync the rename/move paths use, otherwise the URL
+    // goes stale and a refresh 404s (same class of bug as the rename
+    // and drag-reorder URL-sync fixes earlier in this PR).
+    const oldPath = findNode(tree, draggingId)?.item.path
+    try {
+      const result = await reorderItems.mutateAsync({
+        items: [{ itemId: draggingId, parentId: null, sortOrder: 0 }],
+      })
+      const updatedDragged = result.items.find((it) => it.id === draggingId)
+      if (oldPath && updatedDragged) {
+        syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
+      }
+    } finally {
+      setDraggingId(null)
+    }
+  }, [draggingId, tree, handleDropReorder, reorderItems, location.pathname, navigate, notebook.slug])
 
   const dragState = notebook.canEdit
     ? {
