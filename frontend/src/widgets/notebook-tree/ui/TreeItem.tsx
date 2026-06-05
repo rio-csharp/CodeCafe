@@ -9,8 +9,6 @@ type DropIntent = 'before' | 'after' | 'inside'
 interface TreeItemProps {
   node: TreeNode
   level: number
-  siblingCount: number
-  index: number
 }
 
 /**
@@ -38,7 +36,7 @@ interface TreeItemProps {
  * element) — the cases where no `drop` event lands on a TreeItem and the
  * indicator line would otherwise stick on the last-hovered item.
  */
-function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
+function TreeItem({ node, level }: TreeItemProps) {
   const { notebookSlug, activePath, dragState } = useTreeContext()
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null)
   const dropIntentRef = useRef<DropIntent | null>(null)
@@ -130,16 +128,12 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
         <TreeFolderNode
           node={node}
           level={level}
-          siblingCount={siblingCount}
-          index={index}
         >
-          {node.children.map((child, childIndex) => (
+          {node.children.map((child) => (
             <TreeItem
               key={child.item.id}
               node={child}
               level={level + 1}
-              siblingCount={node.children.length}
-              index={childIndex}
             />
           ))}
         </TreeFolderNode>
@@ -149,8 +143,6 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
           notebookSlug={notebookSlug}
           activePath={activePath}
           level={level}
-          siblingCount={siblingCount}
-          index={index}
         />
       )}
     </div>

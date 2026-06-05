@@ -28,8 +28,6 @@ export interface TreeContextValue {
   activePath: string | null
   canEdit: boolean
   dragState?: TreeDragState
-  onMoveUp?: (itemId: string) => void
-  onMoveDown?: (itemId: string) => void
   onCreateItem: (parentId: string | null, type: 'folder' | 'page') => Promise<void>
   onRenameItem: (itemId: string, title: string, sortOrder: number) => Promise<void>
   onArchiveItem: (itemId: string) => Promise<void>

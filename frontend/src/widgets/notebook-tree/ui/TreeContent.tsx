@@ -80,13 +80,11 @@ export default function TreeContent({
       onDragLeave={handleRootDragLeave}
       onDrop={handleRootDrop}
     >
-      {tree.map((node, idx) => (
+      {tree.map((node) => (
         <TreeItem
           key={node.item.id}
           node={node}
           level={0}
-          siblingCount={tree.length}
-          index={idx}
         />
       ))}
       {tree.length > 0 && (

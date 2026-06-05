@@ -13,8 +13,6 @@ interface TreePageNodeProps {
   notebookSlug: string
   activePath: string | null
   level: number
-  siblingCount: number
-  index: number
 }
 
 function TreePageNode({
@@ -22,8 +20,6 @@ function TreePageNode({
   notebookSlug,
   activePath,
   level,
-  siblingCount,
-  index,
 }: TreePageNodeProps) {
   const { canEdit, dragState, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
   const {
@@ -83,8 +79,6 @@ function TreePageNode({
       <TreeNodeActions
         canEdit={canEdit}
         isEditing={isEditing}
-        siblingCount={siblingCount}
-        index={index}
         isArchived={node.item.isArchived}
         onRename={(e) => { e.preventDefault(); startEditing() }}
         onArchive={(e) => { e.preventDefault(); handleArchive() }}

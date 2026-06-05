@@ -12,16 +12,12 @@ import { TREE_INDENT_PER_LEVEL, TREE_INDENT_BASE } from '../lib/treeConstants'
 interface TreeFolderNodeProps {
   node: TreeNode
   level: number
-  siblingCount: number
-  index: number
   children: React.ReactNode
 }
 
 function TreeFolderNode({
   node,
   level,
-  siblingCount,
-  index,
   children,
 }: TreeFolderNodeProps) {
   const { canEdit, dragState, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
@@ -96,8 +92,6 @@ function TreeFolderNode({
             <TreeNodeActions
               canEdit={canEdit}
               isEditing={isEditing}
-              siblingCount={siblingCount}
-              index={index}
               isArchived={node.item.isArchived}
               onRename={(e) => { e.stopPropagation(); startEditing() }}
               onArchive={(e) => { e.stopPropagation(); handleArchive() }}

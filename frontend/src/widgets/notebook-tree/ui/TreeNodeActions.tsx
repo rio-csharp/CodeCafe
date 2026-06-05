@@ -3,11 +3,7 @@ import { Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 interface TreeNodeActionsProps {
   canEdit: boolean
   isEditing: boolean
-  siblingCount: number
-  index: number
   isArchived?: boolean
-  onMoveUp?: (e: React.MouseEvent) => void
-  onMoveDown?: (e: React.MouseEvent) => void
   onRename: (e: React.MouseEvent) => void
   onArchive?: (e: React.MouseEvent) => void
   onRestore?: (e: React.MouseEvent) => void
