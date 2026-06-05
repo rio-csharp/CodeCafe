@@ -106,37 +106,11 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
   }
 
   useEffect(() => {
-    const clearIntent = () => {
+    const handleDragEnd = () => {
       updateIntent(null)
     }
-    // dragend is the canonical "drag finished" signal — fires on the
-    // source element and bubbles to the document. Covers the normal
-    // drop-on-a-TreeItem path as well as release-outside / Esc / etc.
-    document.addEventListener('dragend', clearIntent)
-    // dragstart safety net: if a previous drag ended without firing
-    // dragend (some browser bugs, drag cancelled by the OS), the
-    // leftover intent would otherwise stay armed under the cursor
-    // until the next drop. Clearing on the next dragstart makes that
-    // impossible regardless of what the previous drag did.
-    document.addEventListener('dragstart', clearIntent)
-    // mouseup on window is a defensive fallback: there are edge cases
-    // (e.g. dropping on a non-DOM scrollbar, very fast release, certain
-    // browser bugs) where dragend doesn't reach the document. The handler
-    // is a no-op when the intent is already null, so it doesn't
-    // interfere with the normal flow — the worst case is the indicator
-    // clears one tick earlier on a non-drag mouseup, which is invisible
-    // because the indicator was already null.
-    window.addEventListener('mouseup', clearIntent)
-    // If the tab loses visibility mid-drag (alt-tab, browser losing
-    // focus), the drag is effectively over from the user's POV; the
-    // dragend often doesn't fire in that path either.
-    document.addEventListener('visibilitychange', clearIntent)
-    return () => {
-      document.removeEventListener('dragend', clearIntent)
-      document.removeEventListener('dragstart', clearIntent)
-      window.removeEventListener('mouseup', clearIntent)
-      document.removeEventListener('visibilitychange', clearIntent)
-    }
+    document.addEventListener('dragend', handleDragEnd)
+    return () => document.removeEventListener('dragend', handleDragEnd)
   }, [])
 
   return (
