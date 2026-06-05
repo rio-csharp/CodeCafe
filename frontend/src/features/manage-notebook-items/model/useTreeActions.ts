@@ -95,14 +95,18 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const handleCreateItem = useCallback(
     async (parentId: string | null, type: 'folder' | 'page') => {
       const title = type === 'folder' ? 'New Folder' : 'New Page'
-      await createItem.mutateAsync({
-        parentId,
-        type,
-        title,
-        sortOrder: 0,
-        contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
-      })
-      showTreeToast('Item created')
+      try {
+        await createItem.mutateAsync({
+          parentId,
+          type,
+          title,
+          sortOrder: 0,
+          contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
+        })
+        showTreeToast('Item created')
+      } catch (err) {
+        showTreeToast(getErrorMessage(err, 'Failed to create'), 'error')
+      }
     },
     [createItem, showTreeToast],
   )
@@ -256,11 +260,13 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         if (oldPath && updatedDragged) {
           syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
         }
+      } catch (err) {
+        showTreeToast(getErrorMessage(err, 'Failed to reorder'), 'error')
       } finally {
         setDraggingId(null)
       }
     },
-    [draggingId, reorderItems, tree, location.pathname, navigate, notebook.slug],
+    [draggingId, reorderItems, tree, location.pathname, navigate, notebook.slug, showTreeToast],
   )
 
   const handleDropOnRoot = useCallback(async () => {
@@ -286,10 +292,12 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
       if (oldPath && updatedDragged) {
         syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
       }
+    } catch (err) {
+      showTreeToast(getErrorMessage(err, 'Failed to reorder'), 'error')
     } finally {
       setDraggingId(null)
     }
-  }, [draggingId, tree, handleDropReorder, reorderItems, location.pathname, navigate, notebook.slug])
+  }, [draggingId, tree, handleDropReorder, reorderItems, location.pathname, navigate, notebook.slug, showTreeToast])
 
   const handleDragStart = useCallback(
     (id: string) => {
