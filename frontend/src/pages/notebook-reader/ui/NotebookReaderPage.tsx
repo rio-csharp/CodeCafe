@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef, lazy, Suspense } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect, lazy, Suspense } from 'react'
 import { useEditorStore } from '@/widgets/notebook-page-editor/store'
 import { useParams, Navigate } from 'react-router-dom'
 import { Edit3, Link as LinkIcon, Maximize2, Minimize2, RefreshCw } from 'lucide-react'
@@ -61,6 +61,27 @@ export default function NotebookReaderPage() {
     }
     return page
   }, [notebook, tree, pagePath])
+
+  // Keep the editor store pinned to the active page across path-rewriting
+  // actions. When a rename (or rename of an ancestor folder) navigates the
+  // URL, `editClickedForPath` still holds the pre-rewrite path and would
+  // cause `isEditingPage` to flip to false, silently closing the editor
+  // mid-edit. Detect the "same item, new path" case and re-pin the store.
+  const lastActivePageIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    const currentId = activePage?.id ?? null
+    const previousId = lastActivePageIdRef.current
+    lastActivePageIdRef.current = currentId
+    if (
+      editClickedForPath !== null &&
+      activePage !== null &&
+      currentId !== null &&
+      currentId === previousId &&
+      activePage.path !== editClickedForPath
+    ) {
+      setEditClickedForPath(activePage.path)
+    }
+  }, [activePage, editClickedForPath, setEditClickedForPath])
 
   const handleSavePage = useCallback(
     (contentJson: Record<string, unknown>) => {
