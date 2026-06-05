@@ -206,6 +206,14 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         newSiblings = cloneSiblings(targetNode.children)
         newIndex = newSiblings.length
         newParentId = targetId
+      } else if (targetNode.item.type === 'folder' && targetNode.children.length === 0) {
+        // Empty folder with a 'before'/'after' Y-position intent. The
+        // visual is the same thin line as any other item, but the drop
+        // means "put me in this folder as the only child" — same parent
+        // rewrite as the 'inside' branch above.
+        newSiblings = cloneSiblings(targetNode.children)
+        newIndex = 0
+        newParentId = targetId
       } else {
         newSiblings = cloneSiblings(targetLoc.siblings)
         newIndex = targetLoc.index

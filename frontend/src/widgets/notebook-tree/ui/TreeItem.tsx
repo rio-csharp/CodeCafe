@@ -41,7 +41,6 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
   const [dropIntent, setDropIntent] = useState<DropIntent | null>(null)
   const dropIntentRef = useRef<DropIntent | null>(null)
   const isFolder = node.item.type === 'folder'
-  const isFolderEmpty = isFolder && node.children.length === 0
 
   const updateIntent = (next: DropIntent | null) => {
     dropIntentRef.current = next
@@ -68,14 +67,15 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
     e.preventDefault()
     e.stopPropagation()
 
-    let next: DropIntent
-    if (isFolderEmpty) {
-      next = 'inside'
-    } else {
-      const rect = e.currentTarget.getBoundingClientRect()
-      const midpoint = rect.top + rect.height / 2
-      next = e.clientY < midpoint ? 'before' : 'after'
-    }
+    // The drop intent is the cursor's Y position relative to the row's
+    // bounding box. The empty-folder case (drop = "as only child") is
+    // handled downstream in handleDropReorder — it just rewrites the
+    // newParentId when the target is an empty folder, so the visual can
+    // stay the same thin line at the top/bottom edge regardless of
+    // whether the target is a folder, a page, or an empty folder.
+    const rect = e.currentTarget.getBoundingClientRect()
+    const midpoint = rect.top + rect.height / 2
+    const next: DropIntent = e.clientY < midpoint ? 'before' : 'after'
     if (dropIntentRef.current !== next) {
       updateIntent(next)
     }
@@ -125,12 +125,6 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-0.5 bg-brand-brown"
-        />
-      )}
-      {dropIntent === 'inside' && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 rounded-md bg-status-favorite-bg/60"
         />
       )}
 
