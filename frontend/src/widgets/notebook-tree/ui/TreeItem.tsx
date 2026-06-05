@@ -1,4 +1,4 @@
-import { useState, useRef, memo } from 'react'
+import { useState, useRef, useEffect, memo } from 'react'
 import type { TreeNode } from '@/entities/notebook'
 import { useTreeContext } from '../model/TreeContext'
 import TreeFolderNode from './TreeFolderNode'
@@ -28,6 +28,13 @@ interface TreeItemProps {
  * a re-render; the subsequent `drop` event fires before React commits, so
  * the closure would otherwise see a stale `null` and silently skip the
  * reorder. The state drives the visual, the ref drives the drop dispatch.
+ *
+ * `dragend` listener below clears any leftover intent when any drag in the
+ * document ends. The native `dragend` fires on the source element and
+ * bubbles to the document for every drag termination path (drop on a
+ * target, release outside the tree, Escape cancel, drop on a non-tree
+ * element) — the cases where no `drop` event lands on a TreeItem and the
+ * indicator line would otherwise stick on the last-hovered item.
  */
 function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
   const { notebookSlug, activePath, dragState } = useTreeContext()
@@ -80,6 +87,14 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
       dragState.onDropReorder(node.item.id, intent)
     }
   }
+
+  useEffect(() => {
+    const handleDragEnd = () => {
+      updateIntent(null)
+    }
+    document.addEventListener('dragend', handleDragEnd)
+    return () => document.removeEventListener('dragend', handleDragEnd)
+  }, [])
 
   return (
     <div className="relative" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
