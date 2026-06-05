@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
 import { findNodeAndSiblings } from '@/entities/notebook'
@@ -34,6 +35,8 @@ function cloneSiblings(siblings: TreeNode[]): TreeNode[] {
 
 export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const createItem = useCreateNotebookItem(notebook.id)
   const updateItem = useUpdateNotebookItem(notebook.id)
@@ -79,10 +82,33 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
 
   const handleRenameItem = useCallback(
     async (itemId: string, title: string, sortOrder: number) => {
-      await updateItem.mutateAsync({ itemId, data: { title, sortOrder } })
+      // Capture the pre-rename path so we can detect whether the current URL points
+      // at the renamed item (or one of its descendants in the folder-rename case)
+      // and rewrite it to the new path the server just generated.
+      const oldNode = findNode(tree, itemId)
+      const oldPath = oldNode?.item.path
+
+      const updated = await updateItem.mutateAsync({ itemId, data: { title, sortOrder } })
       showTreeToast('Renamed')
+
+      if (oldPath) {
+        // URL looks like /notes/<notebook-slug>/<page-path...>.
+        // Compare the trailing segment so unrelated notebooks with the same path
+        // don't get clobbered.
+        const prefix = `/notes/${notebook.slug}/`
+        const currentTail = location.pathname.startsWith(prefix)
+          ? location.pathname.slice(prefix.length)
+          : null
+        if (
+          currentTail !== null &&
+          (currentTail === oldPath || currentTail.startsWith(`${oldPath}/`))
+        ) {
+          const newTail = updated.path + currentTail.slice(oldPath.length)
+          navigate(`${prefix}${newTail}`, { replace: true })
+        }
+      }
     },
-    [updateItem, showTreeToast],
+    [updateItem, showTreeToast, tree, location.pathname, navigate, notebook.slug],
   )
 
   const handleArchiveItem = useCallback(
