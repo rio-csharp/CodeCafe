@@ -18,11 +18,13 @@ interface TreeItemProps {
  * the cursor's Y position relative to the row's bounding box:
  *   - top half    -> 'before'  (insert above this item)
  *   - bottom half -> 'after'   (insert below this item)
- *   - empty folder -> 'inside' (the dragged item becomes the folder's only child)
  *
- * The visual is a single thin line at the top or bottom edge of the row
- * (or a soft background highlight for the empty-folder "inside" case), so
- * the user always sees one indicator, never two competing ones.
+ * The visual is a single thin line at the top or bottom edge of the row,
+ * so the user always sees one indicator, never two competing ones. The
+ * empty-folder case (drop = "as only child") is handled downstream in
+ * handleDropReorder — it rewrites the newParentId when the target is an
+ * empty folder, so the visual stays the same thin line regardless of
+ * whether the target is a page, a folder, or an empty folder.
  *
  * The intent is mirrored into a ref because `setDropIntent` only schedules
  * a re-render; the subsequent `drop` event fires before React commits, so
@@ -56,19 +58,16 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
     // (cursor on a child while dragging a folder) must not let the
     // dragover bubble to the root container in TreeContent — otherwise
     // its `onDragOver` paints the entire tree sidebar with the
-    // `rootDragOver` background. The early-returns below handle "is
+    // `rootDragOver` background. The early-return below handles "is
     // this a valid target"; the bubble control is independent.
     e.stopPropagation()
-    // The dragged item itself can't drop on itself. (This is also caught
-    // downstream by handleDropReorder, but rejecting here keeps the
-    // indicator off in the first place.)
-    if (draggingId === node.item.id) return
-    // If the cursor is on the dragged item or any of its descendants,
-    // don't show an indicator — those drops are either no-ops or
-    // rejected by the server-side descendant check, so the line would
-    // be a lie. The draggable row carries `data-tree-item-id`; we walk
-    // up via closest() so the check still works when the cursor is on
-    // a button/icon inside the row.
+    // The dragged item's own subtree (itself included, since
+    // draggedSubtreeIds is built by walking from the dragged node
+    // downward) is not a valid drop target — those drops are either
+    // no-ops (self-drop) or rejected by the server-side descendant
+    // check. The draggable row carries `data-tree-item-id`; we walk
+    // up via closest() so the check still works when the cursor is
+    // on a button/icon inside the row.
     const targetEl = e.target as HTMLElement | null
     const targetItemId = targetEl?.closest('[data-tree-item-id]')?.getAttribute('data-tree-item-id')
     if (targetItemId && dragState.draggedSubtreeIds.has(targetItemId)) return
@@ -89,15 +88,12 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
     }
   }
 
-  // dragLeave always clears. We deliberately do NOT keep the intent when
-  // the cursor moves to a descendant, because the descendants that have
-  // their own drop targets (child TreeItems) call e.stopPropagation() in
-  // their own handleDragOver, so this wrapper's dragOver never re-fires
-  // to re-set the intent — the indicator would stick on the parent even
-  // though the child is now the real target. Non-drop-target descendants
-  // (buttons, icons inside the row) re-fire dragOver via bubbling and
-  // the intent comes back the same tick, so the visible state is the
-  // same as the previous contains() short-circuit at no real cost.
+  // dragLeave always clears. Children with their own drop targets
+  // stopPropagation in their handleDragOver, so this wrapper's dragOver
+  // never re-fires to re-set the intent when the cursor moves to a
+  // child — the indicator would stick on the parent even though the
+  // child is now the real target. Clearing here is the simpler
+  // invariant: "cursor not on this row → no line".
   const handleDragLeave = () => {
     updateIntent(null)
   }
@@ -123,16 +119,10 @@ function TreeItem({ node, level, siblingCount, index }: TreeItemProps) {
 
   return (
     <div className="relative" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
-      {dropIntent === 'before' && (
+      {dropIntent && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 bg-brand-brown"
-        />
-      )}
-      {dropIntent === 'after' && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-0.5 bg-brand-brown"
+          className={`pointer-events-none absolute inset-x-0 z-10 h-0.5 bg-brand-brown ${dropIntent === 'before' ? 'top-0' : 'bottom-0'}`}
         />
       )}
 

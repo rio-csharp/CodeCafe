@@ -21,14 +21,6 @@ function findNode(nodes: TreeNode[], id: string): TreeNode | null {
   return null
 }
 
-function isDescendantOf(nodes: TreeNode[], ancestorId: string): boolean {
-  for (const node of nodes) {
-    if (node.item.id === ancestorId) return true
-    if (isDescendantOf(node.children, ancestorId)) return true
-  }
-  return false
-}
-
 function cloneSiblings(siblings: TreeNode[]): TreeNode[] {
   return siblings.map((n) => ({ item: n.item, children: n.children }))
 }
@@ -163,30 +155,14 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         return
       }
 
-      const draggedNode = findNode(tree, draggingId)
-      const targetNode = findNode(tree, targetId)
-      if (!draggedNode || !targetNode) {
-        setDraggingId(null)
-        return
-      }
-
-      if (position === 'inside') {
-        if (targetNode.item.type !== 'folder') {
-          setDraggingId(null)
-          return
-        }
-        if (isDescendantOf(draggedNode.children, targetId)) {
-          setDraggingId(null)
-          return
-        }
-      }
-
       const draggedLoc = findNodeAndSiblings(tree, draggingId)
       const targetLoc = findNodeAndSiblings(tree, targetId)
       if (!draggedLoc || !targetLoc) {
         setDraggingId(null)
         return
       }
+      const draggedNode = draggedLoc.node
+      const targetNode = targetLoc.node
 
       // Backend regenerates the dragged item's path on reorder (and rewrites
       // all descendants' paths when the dragged item is a folder). Capture
@@ -226,7 +202,7 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         newParentId = targetNode.item.parentId
       }
 
-      if (newParentId && (newParentId === draggingId || isDescendantOf(draggedNode.children, newParentId))) {
+      if (newParentId && (newParentId === draggingId || findNode(draggedNode.children, newParentId) !== null)) {
         setDraggingId(null)
         return
       }
