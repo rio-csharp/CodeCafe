@@ -459,8 +459,14 @@ public sealed class McpContentImportService(
             return true;
         }
 
-        return !string.IsNullOrWhiteSpace(fileName)
-            && fileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return false;
+        }
+
+        var extension = Path.GetExtension(fileName);
+        return extension.Equals(".md", StringComparison.OrdinalIgnoreCase)
+            || extension.Equals(".markdown", StringComparison.OrdinalIgnoreCase);
     }
 }
 
