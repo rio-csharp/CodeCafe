@@ -257,17 +257,6 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     [draggingId, reorderItems, tree, location.pathname, navigate, notebook.slug],
   )
 
-  const handleDropOnFolder = useCallback(
-    (folderId: string) => {
-      if (!draggingId || draggingId === folderId) {
-        setDraggingId(null)
-        return
-      }
-      handleDropReorder(folderId, 'inside')
-    },
-    [draggingId, handleDropReorder],
-  )
-
   const handleDropOnRoot = useCallback(() => {
     if (!draggingId) {
       setDraggingId(null)
@@ -288,7 +277,6 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         draggingId,
         onDragStart: setDraggingId,
         onDragEnd: () => setDraggingId(null),
-        onDropOnFolder: handleDropOnFolder,
         onDropOnRoot: handleDropOnRoot,
         onDropReorder: handleDropReorder,
       }

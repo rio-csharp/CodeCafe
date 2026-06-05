@@ -26,7 +26,6 @@ function TreeFolderNode({
 }: TreeFolderNodeProps) {
   const { canEdit, dragState, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
   const [expanded, setExpanded] = useState(true)
-  const [isDragOverInside, setIsDragOverInside] = useState(false)
   const {
     isEditing,
     editTitle,
@@ -61,33 +60,13 @@ function TreeFolderNode({
 
   const handleDragEnd = () => { dragState?.onDragEnd() }
 
-  const handleHeaderDragOver = (e: React.DragEvent) => {
-    if (!dragState || !canEdit || node.item.isArchived) return
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragOverInside(true)
-  }
-
-  const handleHeaderDragLeave = () => { setIsDragOverInside(false) }
-
-  const handleHeaderDrop = (e: React.DragEvent) => {
-    if (!dragState || !canEdit || node.item.isArchived) return
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDragOverInside(false)
-    dragState.onDropReorder(node.item.id, 'inside')
-  }
-
   return (
     <div className={`${isDragging ? 'opacity-40' : ''}`}>
       <div
         draggable={canEdit && !node.item.isArchived}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDragOver={handleHeaderDragOver}
-        onDragLeave={handleHeaderDragLeave}
-        onDrop={handleHeaderDrop}
-        className={`group flex items-center gap-1 w-full text-left px-3 py-1.5 text-[13px] rounded-md transition-colors ${node.item.isArchived ? 'text-text-tertiary opacity-60 italic hover:bg-surface-hover' : 'text-text-secondary hover:bg-surface-hover'} ${isDragOverInside ? 'bg-status-favorite-bg/60' : ''}`}
+        className={`group flex items-center gap-1 w-full text-left px-3 py-1.5 text-[13px] rounded-md transition-colors ${node.item.isArchived ? 'text-text-tertiary opacity-60 italic hover:bg-surface-hover' : 'text-text-secondary hover:bg-surface-hover'}`}
         style={{ paddingLeft }}
       >
         <button type="button" onClick={() => setExpanded(!expanded)} className="shrink-0 p-0.5">
@@ -128,14 +107,17 @@ function TreeFolderNode({
         )}
       </div>
       {expanded && (
-        <div>
+        <>
           {children}
-          {node.children.length > 0 ? (
+          {node.children.length > 0 && (
+            // Empty folders rely on the parent TreeItem wrapper to expose an
+            // 'inside' drop target. For non-empty folders we still need a
+            // slot for "drop after the last child" — the parent TreeItem
+            // can't help here because the gap below the last child is
+            // outside its box.
             <DropZone onDrop={() => dragState?.onDropReorder(node.children[node.children.length - 1].item.id, 'after')} />
-          ) : (
-            <DropZone onDrop={() => dragState?.onDropReorder(node.item.id, 'inside')} className="py-1" />
           )}
-        </div>
+        </>
       )}
     </div>
   )

@@ -4,8 +4,13 @@ export interface TreeDragState {
   draggingId: string | null
   onDragStart: (id: string) => void
   onDragEnd: () => void
-  onDropOnFolder: (folderId: string) => void
   onDropOnRoot: () => void
+  /**
+   * The single drop semantic. Position is computed from the cursor's Y
+   * position in the item (top half = 'before', bottom half = 'after').
+   * 'inside' is only used for the empty-folder case (the dropped item
+   * becomes the folder's only child).
+   */
   onDropReorder: (targetId: string, position: 'before' | 'after' | 'inside') => void
 }
 
