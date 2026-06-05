@@ -187,6 +187,8 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
       // currently viewing the dragged item or one of its descendants.
       const oldPath = draggedNode.item.path
 
+      const isSameSiblings = draggedLoc.siblings === targetLoc.siblings
+
       // Clone sibling arrays so we never mutate the original tree prop
       const oldSiblings = cloneSiblings(draggedLoc.siblings)
       let newSiblings: TreeNode[]
@@ -200,7 +202,7 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
       } else {
         newSiblings = cloneSiblings(targetLoc.siblings)
         newIndex = targetLoc.index
-        if (draggedLoc.siblings === targetLoc.siblings && draggedLoc.index < targetLoc.index) {
+        if (isSameSiblings && draggedLoc.index < targetLoc.index) {
           newIndex--
         }
         if (position === 'after') {
@@ -214,11 +216,24 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         return
       }
 
-      // Remove from old cloned list and insert into new cloned list
+      // Remove dragged from its current slot in the source list.
       const draggedIndexInOld = oldSiblings.findIndex((n) => n.item.id === draggingId)
       if (draggedIndexInOld >= 0) {
         oldSiblings.splice(draggedIndexInOld, 1)
       }
+
+      // If the destination IS the same list (i.e. reordering within the
+      // same parent), the cloned newSiblings still contains the dragged
+      // item and the splice below would duplicate it. The newIndex above
+      // was already adjusted for the removal, so strip the dragged item
+      // out of newSiblings first and the splice produces the final order.
+      if (isSameSiblings && position !== 'inside') {
+        const draggedIndexInNew = newSiblings.findIndex((n) => n.item.id === draggingId)
+        if (draggedIndexInNew >= 0) {
+          newSiblings.splice(draggedIndexInNew, 1)
+        }
+      }
+
       newSiblings.splice(newIndex, 0, draggedNode)
 
       const updates: { itemId: string; parentId: string | null; sortOrder: number }[] = []
