@@ -10,7 +10,7 @@ namespace CodeCafe.Mcp.Common;
 
 public static class McpHttpUploadEndpoints
 {
-    private static readonly string[] SupportedMarkdownMediaTypes = ["text/markdown", "text/plain"];
+    private static readonly string[] SupportedMarkdownMediaTypes = ["text/markdown"];
     private static readonly string[] SupportedMarkdownExtensions = [".md", ".markdown"];
 
     public static IEndpointRouteBuilder MapMcpHttpUploadEndpoints(this IEndpointRouteBuilder endpoints)

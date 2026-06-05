@@ -12,7 +12,7 @@ namespace CodeCafe.Server.Endpoints.Notes;
 
 public static class NotesMarkdownImportEndpoints
 {
-    private static readonly string[] SupportedMarkdownMediaTypes = ["text/markdown", "text/plain"];
+    private static readonly string[] SupportedMarkdownMediaTypes = ["text/markdown"];
     private static readonly string[] SupportedMarkdownExtensions = [".md", ".markdown"];
 
     public static IEndpointRouteBuilder MapNotesMarkdownImportEndpoints(this IEndpointRouteBuilder endpoints)
