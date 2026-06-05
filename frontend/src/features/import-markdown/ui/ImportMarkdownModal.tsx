@@ -25,7 +25,7 @@ interface FolderOption {
 
 const MAX_TITLE = 200
 const MAX_BYTES = 4 * 1024 * 1024 // 4 MB — matches backend default MaxUploadBytes
-const ACCEPT = '.md,.markdown,text/markdown,text/plain'
+const ACCEPT = '.md,.markdown,text/markdown'
 
 export function ImportMarkdownModal({
   isOpen,
@@ -87,10 +87,7 @@ export function ImportMarkdownModal({
     }
 
     const isMarkdown =
-      /\.(md|markdown)$/i.test(next.name) ||
-      next.type === 'text/markdown' ||
-      next.type === 'text/plain' ||
-      next.type === '' // some browsers report empty type for .md
+      /\.(md|markdown)$/i.test(next.name) || next.type === 'text/markdown'
     if (!isMarkdown) {
       setFile(null)
       showToast(t('notebook.importMarkdownFileUnsupported'), 'error')
