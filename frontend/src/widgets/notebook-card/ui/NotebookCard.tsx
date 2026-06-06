@@ -31,7 +31,7 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
   const deleteNotebook = useDeleteNotebook()
   const toggleFavorite = useToggleFavorite()
   const { showToast } = useToast()
-  const { t } = useTranslation()
+  const { i18n, t } = useTranslation()
 
   useClickOutside(menuRef, () => setMenuOpen(false))
 
@@ -94,7 +94,7 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
             <div className="h-5 w-5 rounded-full bg-brand-brown flex items-center justify-center text-text-inverse text-[10px] font-medium">{initial}</div>
             <span className="text-xs text-text-secondary">{authorName}</span>
           </div>
-          <span className="text-xs text-text-tertiary">{formatTimeAgo(lastActivity)}</span>
+          <span className="text-xs text-text-tertiary">{formatTimeAgo(lastActivity, i18n.language)}</span>
         </div>
       </Link>
       <div className="absolute top-3 right-3 flex items-center gap-1">

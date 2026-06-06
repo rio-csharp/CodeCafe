@@ -9,6 +9,7 @@ import { getErrorMessage } from '@/shared/lib/errorUtils'
 import VisibilityField from './VisibilityField'
 import SettingsFormActions from './SettingsFormActions'
 import type { Notebook } from '@/entities/notebook'
+import { useTranslation } from 'react-i18next'
 
 const schema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -34,6 +35,7 @@ export default function NotebookSettingsForm({
   const update = useUpdateNotebook(notebook.id)
   const deleteNotebook = useDeleteNotebook()
   const { showToast } = useToast()
+  const { t } = useTranslation()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const {
@@ -60,11 +62,11 @@ export default function NotebookSettingsForm({
       { title: data.title.trim(), description: data.description.trim() || null, visibility: data.visibility },
       {
         onSuccess: (responseData) => {
-          showToast('Notebook updated')
+          showToast(t('notebook.updated'))
           if (responseData.slug !== notebook.slug && onSlugChange) onSlugChange(responseData.slug)
         },
         onError: (err: unknown) => {
-          showToast(getErrorMessage(err, 'Failed to update notebook'), 'error')
+          showToast(getErrorMessage(err, t('notebook.updateFailed')), 'error')
         },
       },
     )
@@ -73,11 +75,11 @@ export default function NotebookSettingsForm({
   const handleDelete = () => {
     deleteNotebook.mutate(notebook.id, {
       onSuccess: () => {
-        showToast('Notebook deleted')
+        showToast(t('notebook.deleted'))
         onDeleteSuccess?.()
       },
       onError: (err: unknown) => {
-        showToast(getErrorMessage(err, 'Failed to delete notebook'), 'error')
+        showToast(getErrorMessage(err, t('notebook.deleteFailed')), 'error')
       },
     })
   }
@@ -85,12 +87,12 @@ export default function NotebookSettingsForm({
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
       <div>
-        <label htmlFor="notebook-title" className="block text-sm font-medium text-text-primary mb-1">Title</label>
+        <label htmlFor="notebook-title" className="block text-sm font-medium text-text-primary mb-1">{t('notebook.title')}</label>
         <input
           id="notebook-title"
           type="text"
           {...register('title')}
-          placeholder="e.g., System Design Notes"
+          placeholder={t('notebook.titlePlaceholder')}
           className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover"
           autoFocus
         />
@@ -98,11 +100,11 @@ export default function NotebookSettingsForm({
       </div>
 
       <div>
-        <label htmlFor="notebook-description" className="block text-sm font-medium text-text-primary mb-1">Description</label>
+        <label htmlFor="notebook-description" className="block text-sm font-medium text-text-primary mb-1">{t('notebook.description')}</label>
         <textarea
           id="notebook-description"
           {...register('description')}
-          placeholder="What will this notebook help you capture?"
+          placeholder={t('notebook.descriptionPlaceholder')}
           rows={3}
           className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
         />

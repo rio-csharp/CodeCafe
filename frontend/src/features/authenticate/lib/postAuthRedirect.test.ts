@@ -10,14 +10,10 @@ describe('postAuthRedirect', () => {
   beforeEach(() => {
     sessionStorage.clear()
     window.history.replaceState({}, '', '/')
-    window.__CODECAFE_CONFIG__ = {
-      apiBaseUrl: `${window.location.origin}/api-proxy`,
-    }
   })
 
   afterEach(() => {
     sessionStorage.clear()
-    delete window.__CODECAFE_CONFIG__
     vi.restoreAllMocks()
   })
 
@@ -25,12 +21,49 @@ describe('postAuthRedirect', () => {
     expect(resolvePostAuthRedirect('?returnUrl=%2Fdashboard%3Ftab%3Dnotes')).toBe('/dashboard?tab=notes')
   })
 
-  it('allows MCP auth callbacks back to the API connect endpoints', () => {
+  it('allows same-origin proxied MCP auth callbacks back to the API authorize endpoint', () => {
     const callbackUrl = `${window.location.origin}/connect/authorize?client_id=mcp`
 
     expect(
-      resolvePostAuthRedirect(`?returnUrl=${encodeURIComponent(callbackUrl)}`),
+      resolvePostAuthRedirect(`?returnUrl=${encodeURIComponent(callbackUrl)}`, { apiBaseUrl: '' }),
     ).toBe(callbackUrl)
+    expect(
+      resolvePostAuthRedirect('?returnUrl=%2Fconnect%2Fauthorize%3Fclient_id%3Dmcp', { apiBaseUrl: '' }),
+    ).toBe(callbackUrl)
+  })
+
+  it('allows absolute MCP auth callbacks to an explicit API origin', () => {
+    const callbackUrl = 'https://api.example.test/connect/authorize?client_id=mcp'
+
+    expect(
+      resolvePostAuthRedirect(`?returnUrl=${encodeURIComponent(callbackUrl)}`, {
+        apiBaseUrl: 'https://api.example.test',
+      }),
+    ).toBe(callbackUrl)
+  })
+
+  it('rejects frontend-origin connect callbacks when the API origin is explicit', () => {
+    const callbackUrl = `${window.location.origin}/connect/authorize?client_id=mcp`
+
+    expect(
+      resolvePostAuthRedirect(`?returnUrl=${encodeURIComponent(callbackUrl)}`, {
+        apiBaseUrl: 'https://api.example.test',
+      }),
+    ).toBeNull()
+  })
+
+  it('rejects non-authorize API connect endpoints', () => {
+    const tokenUrl = `${window.location.origin}/connect/token`
+
+    expect(
+      resolvePostAuthRedirect(`?returnUrl=${encodeURIComponent(tokenUrl)}`),
+    ).toBeNull()
+    expect(resolvePostAuthRedirect('?returnUrl=%2Fconnect%2Ftoken')).toBeNull()
+  })
+
+  it('rejects backslash-prefixed external URL smuggling', () => {
+    expect(resolvePostAuthRedirect('?returnUrl=%2F%5C%5Cevil.example')).toBeNull()
+    expect(resolvePostAuthRedirect(`?returnUrl=${encodeURIComponent('/\\\\evil.example')}`)).toBeNull()
   })
 
   it('rejects cross-origin redirects outside the API connect endpoints', () => {

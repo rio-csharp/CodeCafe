@@ -20,15 +20,30 @@ public interface INotebookReadService
         CancellationToken cancellationToken,
         int? limit = null);
 
-    Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false);
+    Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
+        string slug,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true);
 
     Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken);
 
     Task<NotesResult<NotebookItemModel>> GetPublicNotebookItemAsync(string slug, string path, CancellationToken cancellationToken);
 
-    Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false);
+    Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
+        Guid notebookId,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true);
 
-    Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false);
+    Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
+        string slug,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true);
 
     Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(
         Guid notebookId,
@@ -44,7 +59,12 @@ public interface INotebookReadService
         CancellationToken cancellationToken,
         bool includeArchived = false)
     {
-        var notebookResult = await GetNotebookBySlugAsync(slug, currentUserId, cancellationToken, includeArchived);
+        var notebookResult = await GetNotebookBySlugAsync(
+            slug,
+            currentUserId,
+            cancellationToken,
+            includeArchived,
+            includeItems: false);
         if (!notebookResult.Succeeded)
         {
             return NotesResult<NotebookSummaryModel>.Failure(
@@ -82,7 +102,12 @@ public interface INotebookReadService
         CancellationToken cancellationToken,
         bool includeArchived = false)
     {
-        var notebookResult = await GetNotebookBySlugAsync(notebookSlug, currentUserId, cancellationToken, includeArchived);
+        var notebookResult = await GetNotebookBySlugAsync(
+            notebookSlug,
+            currentUserId,
+            cancellationToken,
+            includeArchived,
+            includeItems: true);
         if (!notebookResult.Succeeded)
         {
             return NotesResult<NotebookItemModel>.Failure(

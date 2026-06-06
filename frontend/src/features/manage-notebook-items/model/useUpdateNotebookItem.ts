@@ -12,7 +12,7 @@ export function useUpdateNotebookItem(notebookId: string) {
         if (!old) return old
         return old.map((item) => (item.id === data.id ? data : item))
       })
-      queryClient.invalidateQueries({ queryKey: notesKeys.items(notebookId) })
+      queryClient.invalidateQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
       queryClient.invalidateQueries({ queryKey: notesKeys.all })
     },
   })

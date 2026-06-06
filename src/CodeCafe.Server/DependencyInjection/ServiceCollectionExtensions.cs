@@ -58,6 +58,9 @@ public static class ServiceCollectionExtensions
                     && client.RedirectUris.Length > 0
                     && client.RedirectUris.All(uri => Uri.TryCreate(uri, UriKind.Absolute, out _))),
                 "AuthorizationServer:PublicClients entries must have a client id and absolute redirect URIs.")
+            .Validate(options => options.PublicClients.All(client =>
+                    OpenIddictClientRegistration.AreAllowedScopesValid(client.AllowedScopes, GetMcpOptions(configuration))),
+                "AuthorizationServer:PublicClients entries must allow at least one configured MCP read/write scope and cannot include unsupported scopes.")
             .Validate(options => !environment.IsProduction() || HasProductionCertificates(options),
                 "Production AuthorizationServer configuration requires signing and encryption certificates via path or base64 value.")
             .ValidateOnStart();
@@ -369,6 +372,11 @@ public static class ServiceCollectionExtensions
 
         options.ApplyEnvironmentDefaults(environment);
         return options;
+    }
+
+    private static McpOptions GetMcpOptions(IConfiguration configuration)
+    {
+        return configuration.GetSection(McpOptions.SectionName).Get<McpOptions>() ?? new McpOptions();
     }
 
     private static bool HasProductionCertificates(AuthorizationServerOptions options)

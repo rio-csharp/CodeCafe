@@ -14,6 +14,7 @@ public sealed class GetNotebookBySlugQueryHandler(
             request.Slug,
             request.CurrentUserId,
             cancellationToken,
-            request.IncludeArchived);
+            request.IncludeArchived,
+            request.IncludeItems);
     }
 }

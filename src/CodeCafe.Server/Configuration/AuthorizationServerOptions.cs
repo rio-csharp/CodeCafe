@@ -17,6 +17,7 @@ public sealed class AuthorizationServerOptions
         {
             ClientId = "codecafe-claude",
             DisplayName = "Claude Code",
+            AllowedScopes = ["notes.read", "notes.write"],
             RedirectUris =
             [
                 "http://localhost/callback",
@@ -68,4 +69,6 @@ public sealed class OAuthClientOptions
     public string DisplayName { get; set; } = string.Empty;
 
     public string[] RedirectUris { get; set; } = [];
+
+    public string[] AllowedScopes { get; set; } = ["notes.read"];
 }

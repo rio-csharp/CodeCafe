@@ -1,5 +1,6 @@
 import { Loader2, Trash2 } from 'lucide-react'
 import DeleteConfirmSection from './DeleteConfirmSection'
+import { useTranslation } from 'react-i18next'
 
 interface SettingsFormActionsProps {
   isPending: boolean
@@ -20,6 +21,8 @@ export default function SettingsFormActions({
   onCancelDelete,
   isDeleting,
 }: SettingsFormActionsProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center justify-between pt-2">
       <div className="flex items-center gap-3">
@@ -29,7 +32,7 @@ export default function SettingsFormActions({
           className="inline-flex items-center gap-2 rounded-lg bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          Save Changes
+          {t('notebook.saveChanges')}
         </button>
         {onCancel && (
           <button
@@ -37,7 +40,7 @@ export default function SettingsFormActions({
             onClick={onCancel}
             className="rounded-lg border border-border-default px-6 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface-hover transition-colors"
           >
-            Cancel
+            {t('notebook.cancel')}
           </button>
         )}
       </div>
@@ -49,7 +52,7 @@ export default function SettingsFormActions({
           className="inline-flex items-center gap-1.5 text-sm text-status-error hover:text-status-error-hover transition-colors"
         >
           <Trash2 className="h-4 w-4" />
-          Delete
+          {t('notebook.delete')}
         </button>
       ) : (
         <DeleteConfirmSection

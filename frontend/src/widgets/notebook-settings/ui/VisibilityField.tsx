@@ -1,36 +1,38 @@
 import { useWatch, useController } from 'react-hook-form'
 import type { Control, FieldValues, Path } from 'react-hook-form'
-import {
-  NOTEBOOK_VISIBILITY_HELP_TEXT,
-  NOTEBOOK_VISIBILITY_LABELS,
-  type NotebookVisibility,
-} from '@/entities/notebook'
+import type { NotebookVisibility } from '@/entities/notebook'
+import { useTranslation } from 'react-i18next'
 
 interface VisibilityFieldProps<T extends FieldValues> {
   control: Control<T>
   name?: Path<T>
 }
 
-const VISIBILITY_OPTIONS: { value: NotebookVisibility; label: string }[] = [
-  { value: 'private', label: NOTEBOOK_VISIBILITY_LABELS.private },
-  { value: 'unlisted', label: NOTEBOOK_VISIBILITY_LABELS.unlisted },
-  { value: 'public', label: NOTEBOOK_VISIBILITY_LABELS.public },
-]
-
 export default function VisibilityField<T extends FieldValues>({
   control,
   name = 'visibility' as Path<T>,
 }: VisibilityFieldProps<T>) {
+  const { t } = useTranslation()
   const visibility = useWatch({ control, name })
   const {
     field: { onChange, value },
   } = useController({ control, name })
+  const visibilityOptions: { value: NotebookVisibility; label: string }[] = [
+    { value: 'private', label: t('notebook.visibilityPrivate') },
+    { value: 'unlisted', label: t('notebook.visibilityUnlisted') },
+    { value: 'public', label: t('notebook.visibilityPublic') },
+  ]
+  const helpText = {
+    private: t('notebook.visibilityPrivateHelp'),
+    unlisted: t('notebook.visibilityUnlistedHelp'),
+    public: t('notebook.visibilityPublicHelp'),
+  } satisfies Record<NotebookVisibility, string>
 
   return (
     <div>
-      <span className="block text-sm font-medium text-text-primary mb-1">Visibility</span>
+      <span className="block text-sm font-medium text-text-primary mb-1">{t('notebook.visibility')}</span>
       <div className="flex items-center gap-3 flex-wrap">
-        {VISIBILITY_OPTIONS.map((opt) => (
+        {visibilityOptions.map((opt) => (
           <label
             key={opt.value}
             htmlFor={`visibility-${opt.value}`}
@@ -52,7 +54,7 @@ export default function VisibilityField<T extends FieldValues>({
           </label>
         ))}
       </div>
-      <p className="mt-2 text-xs text-text-tertiary">{NOTEBOOK_VISIBILITY_HELP_TEXT[(visibility as NotebookVisibility) ?? 'private']}</p>
+      <p className="mt-2 text-xs text-text-tertiary">{helpText[(visibility as NotebookVisibility) ?? 'private']}</p>
     </div>
   )
 }

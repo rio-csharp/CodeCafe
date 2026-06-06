@@ -242,7 +242,12 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
             ]
             : []);
 
-    public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+    public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
+        string slug,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
                 ? NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail(currentUserId))
@@ -260,13 +265,23 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
                 ? NotesResult<NotebookItemModel>.Success(Items[1])
                 : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found."));
 
-    public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+    public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
+        Guid notebookId,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true)
         => Task.FromResult(
             notebookMutationStore.TryGetNotebookDetail(notebookId, currentUserId, out var notebookDetail)
                 ? NotesResult<NotebookDetailModel>.Success(notebookDetail)
                 : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
-    public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+    public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
+        string slug,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true)
         => Task.FromResult(
             notebookMutationStore.TryGetNotebookDetailBySlug(slug, currentUserId, out var notebookDetail)
                 ? NotesResult<NotebookDetailModel>.Success(notebookDetail)

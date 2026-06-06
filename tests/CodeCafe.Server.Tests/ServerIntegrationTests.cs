@@ -219,12 +219,46 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         Assert.True(createResponse.StatusCode == HttpStatusCode.Created, responseBody);
         using var document = JsonDocument.Parse(responseBody);
         Assert.Equal("Imported Overview", document.RootElement.GetProperty("title").GetString());
+        Assert.Equal("architecture-notes", document.RootElement.GetProperty("notebookSlug").GetString());
         Assert.Equal("tiptap_json", document.RootElement.GetProperty("contentFormat").GetString());
         Assert.True(document.RootElement.GetProperty("contentIncluded").GetBoolean());
         Assert.True(document.RootElement.GetProperty("contentJsonBytes").GetInt32() > 0);
         Assert.True(document.RootElement.GetProperty("tipTapNodeCount").GetInt32() > 0);
+        Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("updatedAtUtc").GetString()));
         var firstNode = document.RootElement.GetProperty("contentJson").GetProperty("content").EnumerateArray().First();
         Assert.Equal("heading", firstNode.GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task CombinedHost_MarkdownUploadErrors_ReturnProblemDetails()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        var csrf = await GetCsrfTokenAsync(client);
+        using var form = new MultipartFormDataContent();
+        using var fileContent = new ByteArrayContent(Encoding.UTF8.GetBytes("not markdown"));
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
+        form.Add(fileContent, "file", "notes.txt");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/notes/uploads/markdown")
+        {
+            Content = form
+        };
+        request.Headers.Add("X-CSRF-TOKEN", csrf);
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("unsupported_upload_media_type", document.RootElement.GetProperty("code").GetString());
+        Assert.Equal("file", document.RootElement.GetProperty("field").GetString());
+        Assert.False(document.RootElement.GetProperty("retryable").GetBoolean());
+        Assert.True(document.RootElement.TryGetProperty("details", out _));
     }
 
     [Fact]

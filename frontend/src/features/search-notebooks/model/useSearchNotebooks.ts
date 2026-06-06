@@ -12,9 +12,10 @@ export function usePublicNotes(search?: string) {
   })
 }
 
-export function useMyNotes(search?: string) {
+export function useMyNotes(search?: string, enabled = true) {
   return useQuery({
     queryKey: notesKeys.mine(search),
     queryFn: () => getMyNotes(search),
+    enabled,
   })
 }

@@ -14,6 +14,7 @@ public sealed class GetNotebookByIdQueryHandler(
             request.NotebookId,
             request.CurrentUserId,
             cancellationToken,
-            request.IncludeArchived);
+            request.IncludeArchived,
+            request.IncludeItems);
     }
 }

@@ -44,7 +44,7 @@ public sealed class OpenIddictSeedHostedService(
             var existingDescriptor = new OpenIddictApplicationDescriptor();
             await applicationManager.PopulateAsync(existingDescriptor, existingApplication, cancellationToken);
             var desiredDescriptor = CreateApplicationDescriptor(client, mcpOptions, authorizationServerOptions);
-            var changed = ReconcileDescriptor(existingDescriptor, desiredDescriptor);
+            var changed = OpenIddictClientRegistration.ReconcileDescriptor(existingDescriptor, desiredDescriptor);
 
             if (changed)
             {
@@ -59,60 +59,6 @@ public sealed class OpenIddictSeedHostedService(
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-
-    private static bool ReconcileDescriptor(
-        OpenIddictApplicationDescriptor existingDescriptor,
-        OpenIddictApplicationDescriptor desiredDescriptor)
-    {
-        var changed = false;
-
-        if (!string.Equals(existingDescriptor.DisplayName, desiredDescriptor.DisplayName, StringComparison.Ordinal))
-        {
-            existingDescriptor.DisplayName = desiredDescriptor.DisplayName;
-            changed = true;
-        }
-
-        if (!string.Equals(existingDescriptor.ApplicationType, desiredDescriptor.ApplicationType, StringComparison.Ordinal))
-        {
-            existingDescriptor.ApplicationType = desiredDescriptor.ApplicationType;
-            changed = true;
-        }
-
-        if (!string.Equals(existingDescriptor.ClientType, desiredDescriptor.ClientType, StringComparison.Ordinal))
-        {
-            existingDescriptor.ClientType = desiredDescriptor.ClientType;
-            changed = true;
-        }
-
-        if (!string.Equals(existingDescriptor.ConsentType, desiredDescriptor.ConsentType, StringComparison.Ordinal))
-        {
-            existingDescriptor.ConsentType = desiredDescriptor.ConsentType;
-            changed = true;
-        }
-
-        changed |= ReplaceUris(existingDescriptor.RedirectUris, desiredDescriptor.RedirectUris);
-        changed |= ReplaceStrings(existingDescriptor.Permissions, desiredDescriptor.Permissions);
-        return changed;
-    }
-
-    private static bool ReplaceUris(ICollection<Uri> existingValues, IEnumerable<Uri> desiredValues)
-    {
-        var desiredArray = desiredValues.ToArray();
-        var existing = existingValues.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
-        var desired = desiredArray.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
-        if (existing.SequenceEqual(desired, StringComparer.Ordinal))
-        {
-            return false;
-        }
-
-        existingValues.Clear();
-        foreach (var value in desiredArray)
-        {
-            existingValues.Add(value);
-        }
-
-        return true;
-    }
 
     private static bool ReplaceStrings(ICollection<string> existingValues, IEnumerable<string> desiredValues)
     {
@@ -176,6 +122,7 @@ public sealed class OpenIddictSeedHostedService(
             client.ClientId,
             client.DisplayName,
             client.RedirectUris,
+            client.AllowedScopes,
             mcpOptions,
             authorizationServerOptions);
     }

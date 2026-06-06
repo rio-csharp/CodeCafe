@@ -6,8 +6,9 @@ import type { MarkdownImportErrorCode } from './types'
 /**
  * Map a Markdown import failure to a translated user-facing message.
  *
- * The server returns `{ code, message, field?, retryable, details? }` and
- * `apiFetch` lifts `code` onto `ApiError.code`. The server's `message` is
+ * The server returns ProblemDetails with `{ code, field?, retryable, details? }`
+ * extensions and
+ * `apiFetch` lifts `code` onto `ApiError.code`. The server's `detail` is a
  * developer-sentence, so we deliberately key off `code` for the user string
  * and fall back to `getErrorMessage` only when the code is unknown.
  */

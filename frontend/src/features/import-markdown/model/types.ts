@@ -46,10 +46,12 @@ export interface MarkdownImportResponse {
   updatedAtUtc: string
 }
 
-/** Server error body shape (unified across the Markdown import endpoints). */
+/** Server ProblemDetails shape, with Markdown import details in extensions. */
 export interface MarkdownImportErrorBody {
   code: string
-  message: string
+  detail: string
+  title?: string
+  status?: number
   field?: string | null
   retryable?: boolean
   details?: Record<string, unknown> | null

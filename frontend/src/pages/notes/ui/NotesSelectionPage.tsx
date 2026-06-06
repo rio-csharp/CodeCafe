@@ -49,7 +49,7 @@ export default function NotesSelectionPage() {
     data: myNotes,
     isPending: myPending,
     isError: myError,
-  } = useMyNotes(debouncedSearch)
+  } = useMyNotes(debouncedSearch, isAuthenticated)
 
   return (
     <div className="pt-24 pb-20 lg:pt-32 lg:pb-24">

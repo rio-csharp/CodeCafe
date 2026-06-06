@@ -1,14 +1,31 @@
-export function formatTimeAgo(iso: string): string {
+type RelativeUnit = Intl.RelativeTimeFormatUnit
+
+const DIVISIONS: Array<{ amount: number; unit: RelativeUnit }> = [
+  { amount: 60, unit: 'second' },
+  { amount: 60, unit: 'minute' },
+  { amount: 24, unit: 'hour' },
+  { amount: 30, unit: 'day' },
+  { amount: 12, unit: 'month' },
+  { amount: Number.POSITIVE_INFINITY, unit: 'year' },
+]
+
+export function formatTimeAgo(iso: string, locale = 'en'): string {
   const ts = new Date(iso).getTime()
-  if (isNaN(ts)) return 'recently'
-  const diff = Date.now() - ts
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  return `${months}mo ago`
+  const formatter = new Intl.RelativeTimeFormat(locale, {
+    numeric: 'auto',
+    style: 'short',
+  })
+
+  if (Number.isNaN(ts)) return formatter.format(0, 'second')
+
+  let value = Math.round((ts - Date.now()) / 1000)
+  let unit: RelativeUnit = 'second'
+
+  for (const division of DIVISIONS) {
+    unit = division.unit
+    if (Math.abs(value) < division.amount) break
+    value = Math.round(value / division.amount)
+  }
+
+  return formatter.format(value, unit)
 }

@@ -1,4 +1,5 @@
 using CodeCafe.Infrastructure.Identity;
+using CodeCafe.Mcp.Configuration;
 using CodeCafe.Server.Configuration;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
@@ -17,6 +18,7 @@ namespace CodeCafe.Server.Auth;
 public sealed class AuthorizationController(
     UserManager<ApplicationUser> userManager,
     IOptions<AuthorizationServerOptions> authorizationServerOptionsAccessor,
+    IOptions<McpOptions> mcpOptionsAccessor,
     IOpenIddictApplicationManager applicationManager,
     IOpenIddictScopeManager scopeManager)
     : ControllerBase
@@ -59,7 +61,18 @@ public sealed class AuthorizationController(
             return BadRequest(new OAuthErrorResponse("invalid_client", "The OAuth client application is not registered."));
         }
 
-        var principal = await CreatePrincipalAsync(user, request.GetScopes(), cancellationToken);
+        var requestedScopes = request.GetScopes().ToArray();
+        var unauthorizedScopes = await GetUnauthorizedScopesAsync(application, requestedScopes, cancellationToken);
+        if (unauthorizedScopes.Length > 0)
+        {
+            return Forbid(
+                properties: CreateServerErrorProperties(
+                    "invalid_scope",
+                    $"The OAuth client is not allowed to request: {string.Join(", ", unauthorizedScopes)}."),
+                authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
+        }
+
+        var principal = await CreatePrincipalAsync(user, requestedScopes, cancellationToken);
         return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
@@ -127,6 +140,24 @@ public sealed class AuthorizationController(
 
         principal.SetResources(resources.Distinct(StringComparer.Ordinal));
         return principal;
+    }
+
+    private async Task<string[]> GetUnauthorizedScopesAsync(
+        object application,
+        IEnumerable<string> requestedScopes,
+        CancellationToken cancellationToken)
+    {
+        var permissions = await applicationManager.GetPermissionsAsync(application, cancellationToken);
+        var grantedPermissions = permissions.ToHashSet(StringComparer.Ordinal);
+        var protectedScopes = mcpOptionsAccessor.Value.RequiredReadScopes
+            .Concat(mcpOptionsAccessor.Value.RequiredWriteScopes)
+            .ToHashSet(StringComparer.Ordinal);
+
+        return requestedScopes
+            .Where(protectedScopes.Contains)
+            .Where(scope => !grantedPermissions.Contains(Permissions.Prefixes.Scope + scope))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
     private string BuildFrontendLoginUrl()

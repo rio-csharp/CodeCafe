@@ -7,7 +7,6 @@ import { useUpdateNotebookItem } from '@/features/manage-notebook-items'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import NotebookLayout from '@/widgets/notebook-layout'
-import NotebookTopBar from '@/widgets/notebook-top-bar'
 import NotebookTree from '@/widgets/notebook-tree'
 import NotebookPageContent from '@/widgets/notebook-page-content'
 import NotebookOutline from '@/widgets/notebook-outline'
@@ -38,6 +37,7 @@ export default function NotebookReaderPage() {
 
   const {
     data: notebookItems,
+    isPending: notebookItemsPending,
   } = useNotebookItems(notebook?.id ?? '', undefined, showArchived, !!notebook)
 
   const visibleItems = useMemo(() => {
@@ -126,6 +126,14 @@ export default function NotebookReaderPage() {
     )
   }
 
+  if (notebookItemsPending && notebookItems === undefined) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-surface">
+        <RouteGuardSpinner />
+      </div>
+    )
+  }
+
   // Redirect to first page when no path is specified
   if (!pagePath && activePage) {
     return <Navigate to={`/notes/${notebookSlug}/${activePage.path}`} replace />
@@ -139,7 +147,6 @@ export default function NotebookReaderPage() {
 
   return (
     <NotebookLayout
-      topBar={<NotebookTopBar notebook={notebook} />}
       tree={
         <NotebookTree
           notebook={notebook}

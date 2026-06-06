@@ -8,6 +8,7 @@ import TreeNodeActions from './TreeNodeActions'
 import TreeCreateMenu from './TreeCreateMenu'
 import DropZone from './DropZone'
 import { TREE_INDENT_PER_LEVEL, TREE_INDENT_BASE } from '../lib/treeConstants'
+import { useTranslation } from 'react-i18next'
 
 interface TreeFolderNodeProps {
   node: TreeNode
@@ -22,6 +23,7 @@ function TreeFolderNode({
 }: TreeFolderNodeProps) {
   const { canEdit, dragState, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
   const [expanded, setExpanded] = useState(true)
+  const { t } = useTranslation()
   const {
     isEditing,
     editTitle,
@@ -78,7 +80,7 @@ function TreeFolderNode({
             onConfirm={handleRename}
             onCancel={cancelEditing}
             onKeyDown={handleKeyDown}
-            ariaLabel="Rename folder"
+            ariaLabel={t('notebook.renameFolder')}
           />
         ) : (
           <span className="truncate font-medium flex-1 min-w-0">{node.item.title}</span>

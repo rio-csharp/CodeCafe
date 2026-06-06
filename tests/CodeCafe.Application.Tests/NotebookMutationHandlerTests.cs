@@ -169,7 +169,12 @@ public sealed class NotebookMutationHandlerTests
         public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(Guid currentUserId, string search, CancellationToken cancellationToken, int? limit = null)
             => throw new NotSupportedException();
 
-        public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+        public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
+            string slug,
+            Guid currentUserId,
+            CancellationToken cancellationToken,
+            bool includeArchived = false,
+            bool includeItems = true)
             => throw new NotSupportedException();
 
         public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken)
@@ -178,7 +183,12 @@ public sealed class NotebookMutationHandlerTests
         public Task<NotesResult<NotebookItemModel>> GetPublicNotebookItemAsync(string slug, string path, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+        public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
+            Guid notebookId,
+            Guid currentUserId,
+            CancellationToken cancellationToken,
+            bool includeArchived = false,
+            bool includeItems = true)
         {
             LastNotebookId = notebookId;
             return Task.FromResult(NotesResult<NotebookDetailModel>.Success(
@@ -204,7 +214,12 @@ public sealed class NotebookMutationHandlerTests
                     [])));
         }
 
-        public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+        public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
+            string slug,
+            Guid currentUserId,
+            CancellationToken cancellationToken,
+            bool includeArchived = false,
+            bool includeItems = true)
             => throw new NotSupportedException();
 
         public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, int? limit = null)

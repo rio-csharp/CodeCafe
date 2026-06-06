@@ -38,11 +38,15 @@ public static partial class NotesEndpoints
     private static async Task<IResult> GetPublicNotebookAsync(
         [FromServices] ISender sender,
         string slug,
+        [FromQuery] bool? includeItems,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new GetPublicNotebookQuery(slug, GetCurrentUserId(httpContext.User)),
+            new GetPublicNotebookQuery(
+                slug,
+                GetCurrentUserId(httpContext.User),
+                IncludeItems: includeItems ?? true),
             cancellationToken);
 
         return ToDetailResult(result);

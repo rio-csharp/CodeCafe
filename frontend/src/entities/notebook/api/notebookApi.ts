@@ -34,7 +34,7 @@ export async function getMyNotes(search?: string): Promise<Notebook[]> {
 }
 
 export async function getNotebookBySlug(slug: string): Promise<Notebook> {
-  return apiFetch<Notebook>(`/api/notes/${slug}`)
+  return apiFetch<Notebook>(`/api/notes/${slug}?includeItems=false`)
 }
 
 export async function getNotebookItems(
