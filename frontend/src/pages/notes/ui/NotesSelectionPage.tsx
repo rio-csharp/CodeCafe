@@ -42,7 +42,7 @@ export default function NotesSelectionPage() {
                 placeholder={t('notes.searchPlaceholder')}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-9 pr-4 py-2 rounded-lg border border-border-default text-sm outline-none focus:border-border-hover w-full sm:w-64 bg-surface"
+                className="pl-9 pr-4 py-2 rounded-lg border border-border-default text-sm outline-none focus:border-border-hover w-full sm:w-64 bg-surface text-text-primary placeholder:text-text-tertiary"
               />
             </label>
           </div>

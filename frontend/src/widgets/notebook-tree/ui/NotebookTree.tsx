@@ -294,7 +294,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
               placeholder={t('notebook.search')}
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 rounded-lg border border-border-subtle bg-surface-hover text-xs outline-none focus:bg-surface focus:border-border-default transition-colors placeholder:text-text-tertiary"
+              className="w-full pl-8 pr-3 py-2 rounded-lg border border-border-subtle bg-surface-hover text-xs outline-none focus:bg-surface focus:border-border-default transition-colors placeholder:text-text-tertiary text-text-primary"
             />
           </label>
         </div>
