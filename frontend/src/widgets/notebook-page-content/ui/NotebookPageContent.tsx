@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { useEditor, EditorContent } from '@tiptap/react'
+import { generateHTML } from '@tiptap/html'
+import type { JSONContent } from '@tiptap/core'
 import { Copy, Check } from 'lucide-react'
 import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
@@ -79,43 +80,33 @@ function CopyOverlay({ pre }: { pre: HTMLElement }) {
 }
 
 /**
- * Inner component that actually uses TipTap hooks.
- * Wrapped by ErrorBoundary so crashes don't blow up the whole page.
+ * Read-only TipTap renderer using generateHTML for static output.
+ * No full Editor instance is mounted — only raw HTML + DOM injections
+ * for heading IDs, code-block line numbers, and copy buttons.
  */
 function TipTapViewer({ content }: { content: Record<string, unknown> }) {
-  const contentRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [hoveredPre, setHoveredPre] = useState<HTMLElement | null>(null)
   const hoveredPreRef = useRef(hoveredPre)
   useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
 
-  // TODO(#1-optimize): For read-only rendering we currently mount a full TipTap
-  // Editor instance because we need DOM-level features (code-block line-number
-  // gutters, copy buttons, link clicks). A lighter alternative is to use
-  // @tiptap/html generateHTML() for static rendering and re-implement the
-  // interactive bits on top of the raw HTML. This would remove the prosemirror
-  // state-management overhead for the viewer path.
-  const editor = useEditor({
-    editable: false,
-    content,
-    extensions: createTipTapExtensions({ editable: false }),
-  })
+  const extensions = useMemo(() => createTipTapExtensions({ editable: false }), [])
 
-  const contentKey = JSON.stringify(content)
-
-  // Sync content when the editor instance changes.
-  // contentKey is used instead of content to avoid re-running on every render
-  // when the parent passes a new object reference with identical data.
-  useEffect(() => {
-    if (editor) {
-      editor.commands.setContent(content)
+  const html = useMemo(() => {
+    try {
+      return generateHTML(content as JSONContent, extensions)
+    } catch {
+      throw new Error('Failed to generate HTML from TipTap content')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor, contentKey])
+  }, [content, extensions])
 
-  // Inject heading IDs and code block line numbers after content renders
-  useEffect(() => {
-    if (!editor || !contentRef.current) return
-    const container = contentRef.current
+  // Inject heading IDs and code block line numbers after HTML renders.
+  // Also reset hoveredPre because the previous DOM nodes are replaced.
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    setHoveredPre(null)
 
     const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
     headings.forEach((h, idx) => {
@@ -124,11 +115,11 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
     })
 
     applyCodeBlockLineNumbers(container)
-  }, [editor, content])
+  }, [html])
 
   // Track hovered code blocks via event delegation
   useEffect(() => {
-    const container = contentRef.current
+    const container = containerRef.current
     if (!container) return
 
     const handleMouseOver = (e: MouseEvent) => {
@@ -152,11 +143,11 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
       container.removeEventListener('mouseover', handleMouseOver)
       container.removeEventListener('mouseout', handleMouseOut)
     }
-  }, [content])
+  }, [])
 
   return (
-    <div ref={contentRef} className={PROSE_CONTENT_CLASSES}>
-      <EditorContent editor={editor} />
+    <div ref={containerRef} className={PROSE_CONTENT_CLASSES}>
+      <div dangerouslySetInnerHTML={{ __html: html }} />
       {hoveredPre && <CopyOverlay pre={hoveredPre} />}
     </div>
   )
