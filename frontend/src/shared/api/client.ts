@@ -86,7 +86,7 @@ async function performFetch<T>(
   }
 
   const text = await response.text()
-  return (text ? JSON.parse(text) : undefined) as T
+  return (text.trim() ? JSON.parse(text) : undefined) as T
 }
 
 export async function apiFetch<T>(

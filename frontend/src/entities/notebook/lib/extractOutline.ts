@@ -4,18 +4,23 @@ export interface OutlineHeading {
   text: string
 }
 
-function getTextFromNode(node: unknown): string {
-  if (typeof node !== 'object' || node === null) return ''
-  const n = node as Record<string, unknown>
-  if (n.type === 'text' && typeof n.text === 'string') {
-    const text = n.text
-    if (Array.isArray(n.marks)) {
-      // marks don't affect plain text extraction for outline
-    }
-    return text
+interface TipTapNode {
+  type?: string
+  text?: string
+  attrs?: Record<string, unknown>
+  content?: TipTapNode[]
+}
+
+function isTipTapNode(node: unknown): node is TipTapNode {
+  return typeof node === 'object' && node !== null
+}
+
+function getTextFromNode(node: TipTapNode): string {
+  if (node.type === 'text' && typeof node.text === 'string') {
+    return node.text
   }
-  if (Array.isArray(n.content)) {
-    return n.content.map(getTextFromNode).join('')
+  if (Array.isArray(node.content)) {
+    return node.content.map(getTextFromNode).join('')
   }
   return ''
 }
@@ -31,26 +36,24 @@ export function slugifyHeadingId(text: string, index: number): string {
 }
 
 export function extractOutline(contentJson: Record<string, unknown> | null): OutlineHeading[] {
-  if (!contentJson) return []
+  if (!contentJson || !isTipTapNode(contentJson)) return []
   const headings: OutlineHeading[] = []
-  const doc = contentJson
 
-  function walk(node: unknown) {
-    if (typeof node !== 'object' || node === null) return
-    const n = node as Record<string, unknown>
-    if (n.type === 'heading' && typeof (n.attrs as Record<string, unknown>)?.level === 'number') {
-      const level = (n.attrs as Record<string, unknown>).level as number
+  function walk(node: TipTapNode) {
+    if (node.type === 'heading' && typeof node.attrs?.level === 'number') {
       const text = getTextFromNode(node)
       if (text) {
         const id = slugifyHeadingId(text, headings.length)
-        headings.push({ id, level, text })
+        headings.push({ id, level: node.attrs.level, text })
       }
     }
-    if (Array.isArray(n.content)) {
-      n.content.forEach(walk)
+    if (Array.isArray(node.content)) {
+      node.content.forEach((child) => {
+        if (isTipTapNode(child)) walk(child)
+      })
     }
   }
 
-  walk(doc)
+  walk(contentJson)
   return headings
 }

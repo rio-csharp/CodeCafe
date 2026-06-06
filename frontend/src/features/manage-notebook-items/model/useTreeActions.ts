@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
-import { findNodeAndSiblings } from '@/entities/notebook'
+import { findNodeAndSiblings, findNode } from '@/entities/notebook'
 import { useCreateNotebookItem } from './useCreateNotebookItem'
 import { useUpdateNotebookItem } from './useUpdateNotebookItem'
 import { useArchiveNotebookItem } from './useArchiveNotebookItem'
@@ -11,15 +11,6 @@ import { useDeleteNotebookItem } from './useDeleteNotebookItem'
 import { useReorderNotebookItems } from './useReorderNotebookItems'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
-
-function findNode(nodes: TreeNode[], id: string): TreeNode | null {
-  for (const node of nodes) {
-    if (node.item.id === id) return node
-    const found = findNode(node.children, id)
-    if (found) return found
-  }
-  return null
-}
 
 function cloneSiblings(siblings: TreeNode[]): TreeNode[] {
   return siblings.map((n) => ({ item: n.item, children: n.children }))

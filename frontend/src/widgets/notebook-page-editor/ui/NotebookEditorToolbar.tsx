@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import type { Editor } from '@tiptap/react'
 import {
   Bold,
@@ -64,7 +65,7 @@ interface NotebookEditorToolbarProps {
 }
 
 export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarProps) {
-  const handleSetLink = () => {
+  const handleSetLink = useCallback(() => {
     const previousUrl = editor.getAttributes('link').href as string | undefined
     const url = window.prompt('URL', previousUrl)
     if (url === null) return
@@ -73,21 +74,21 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
     } else {
       editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
     }
-  }
+  }, [editor])
 
-  const handleInsertImage = () => {
+  const handleInsertImage = useCallback(() => {
     const url = window.prompt('Image URL')
     if (url) {
       editor.chain().focus().setImage({ src: url }).run()
     }
-  }
+  }, [editor])
 
-  const handleInsertYoutube = () => {
+  const handleInsertYoutube = useCallback(() => {
     const url = window.prompt('YouTube URL')
     if (url) {
       editor.chain().focus().setYoutubeVideo({ src: url }).run()
     }
-  }
+  }, [editor])
 
   const currentLang = (editor.getAttributes('codeBlock').language as string | undefined) || 'plaintext'
   const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) || ''
