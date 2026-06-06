@@ -143,7 +143,7 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
         <ToolbarButton active={editor.isActive('link')} onClick={handleSetLink} title="Link"><LinkIcon className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="Code block"><Code className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().toggleCodeBlock().run()} title="Code block"><Code className="h-4 w-4" /></ToolbarButton>
         {editor.isActive('codeBlock') && (
           <select value={currentLang} onChange={(e) => editor.chain().focus().setCodeBlock({ language: e.target.value }).run()} className="text-xs border border-border-default rounded px-1.5 py-0.5 bg-surface text-text-secondary outline-none focus:border-border-hover cursor-pointer" title="Code language">
             {LANGUAGES.map((lang) => (
