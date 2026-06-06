@@ -4,18 +4,20 @@ import { useCreateNotebookForm } from '@/features/create-notebook'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { VisibilityField } from '@/widgets/notebook-settings'
+import { useTranslation } from 'react-i18next'
 
 export default function CreateNotebookPage() {
   const navigate = useNavigate()
   const { showToast } = useToast()
+  const { t } = useTranslation()
 
   const handleSuccess = (slug: string) => {
-    showToast('Notebook created')
+    showToast(t('notebook.created'))
     navigate(`/notes/${slug}`)
   }
 
   const handleError = (message: string) => {
-    showToast(getErrorMessage(message, 'Failed to create notebook'), 'error')
+    showToast(getErrorMessage(message, t('notebook.createFailed')), 'error')
   }
 
   const {
@@ -35,25 +37,25 @@ export default function CreateNotebookPage() {
           className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Notes
+          {t('notebook.backToNotes')}
         </button>
 
-        <h1 className="text-2xl font-bold text-text-primary">Create Notebook</h1>
+        <h1 className="text-2xl font-bold text-text-primary">{t('notebook.createTitle')}</h1>
         <p className="mt-2 text-sm text-text-secondary">
-          Start a new notebook, then organize it with folders, pages, and the visibility that fits your audience.
+          {t('notebook.createDescription')}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
           <div>
             <label htmlFor="notebook-title" className="block text-sm font-medium text-text-primary mb-1">
-              Title
+              {t('notebook.title')}
             </label>
             <input
               id="notebook-title"
               type="text"
               data-testid="create-notebook-title"
               {...register('title')}
-              placeholder="e.g., System Design Notes"
+              placeholder={t('notebook.titlePlaceholder')}
               className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover"
               autoFocus
             />
@@ -62,13 +64,13 @@ export default function CreateNotebookPage() {
 
           <div>
             <label htmlFor="notebook-description" className="block text-sm font-medium text-text-primary mb-1">
-              Description
+              {t('notebook.description')}
             </label>
             <textarea
               id="notebook-description"
               data-testid="create-notebook-description"
               {...register('description')}
-              placeholder="What will this notebook help you capture?"
+              placeholder={t('notebook.descriptionPlaceholder')}
               rows={3}
               className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
             />
@@ -84,14 +86,14 @@ export default function CreateNotebookPage() {
               className="inline-flex items-center gap-2 rounded-lg bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Create Notebook
+              {t('notebook.createSubmit')}
             </button>
             <button
               type="button"
               onClick={() => navigate('/notes')}
               className="rounded-lg border border-border-default px-6 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface-hover transition-colors"
             >
-              Cancel
+              {t('notebook.cancel')}
             </button>
           </div>
         </form>

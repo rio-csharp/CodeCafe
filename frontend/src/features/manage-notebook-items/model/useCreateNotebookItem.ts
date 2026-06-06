@@ -7,7 +7,7 @@ export function useCreateNotebookItem(notebookId: string) {
   return useMutation({
     mutationFn: (data: CreateNotebookItemRequest) => createNotebookItem(notebookId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notesKeys.items(notebookId) })
+      queryClient.invalidateQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
       queryClient.invalidateQueries({ queryKey: notesKeys.all })
     },
   })

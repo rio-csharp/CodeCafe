@@ -45,11 +45,15 @@ public static partial class NotesEndpoints
     private static async Task<IResult> GetNotebookByIdAsync(
         [FromServices] ISender sender,
         Guid notebookId,
+        [FromQuery] bool? includeItems,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new GetNotebookByIdQuery(notebookId, GetCurrentUserId(httpContext.User)),
+            new GetNotebookByIdQuery(
+                notebookId,
+                GetCurrentUserId(httpContext.User),
+                IncludeItems: includeItems ?? true),
             cancellationToken);
 
         return ToDetailResult(result);
@@ -58,11 +62,15 @@ public static partial class NotesEndpoints
     private static async Task<IResult> GetNotebookBySlugAsync(
         [FromServices] ISender sender,
         string slug,
+        [FromQuery] bool? includeItems,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new GetNotebookBySlugQuery(slug, GetCurrentUserId(httpContext.User)),
+            new GetNotebookBySlugQuery(
+                slug,
+                GetCurrentUserId(httpContext.User),
+                IncludeItems: includeItems ?? true),
             cancellationToken);
 
         return ToDetailResult(result);

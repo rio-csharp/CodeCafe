@@ -7,6 +7,7 @@ import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
 import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
+import { sanitizeTipTapHtml } from '@/shared/lib/sanitizeTipTapHtml'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
 import '@/shared/styles/codeHighlight.css'
@@ -94,7 +95,7 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
 
   const html = useMemo(() => {
     try {
-      return generateHTML(content as JSONContent, extensions)
+      return sanitizeTipTapHtml(generateHTML(content as JSONContent, extensions))
     } catch {
       throw new Error('Failed to generate HTML from TipTap content')
     }

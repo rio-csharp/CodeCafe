@@ -1,4 +1,5 @@
 import { Pencil, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface TreeNodeActionsProps {
   canEdit: boolean
@@ -19,6 +20,8 @@ export default function TreeNodeActions({
   onRestore,
   onDelete,
 }: TreeNodeActionsProps) {
+  const { t } = useTranslation()
+
   if (!canEdit || isEditing) return null
 
   return (
@@ -28,7 +31,7 @@ export default function TreeNodeActions({
           type="button"
           onClick={onRename}
           className="p-0.5 text-text-tertiary hover:text-brand-brown rounded transition-colors"
-          title="Rename"
+          title={t('notebook.rename')}
         >
           <Pencil className="h-3 w-3" />
         </button>
@@ -39,7 +42,7 @@ export default function TreeNodeActions({
             type="button"
             onClick={onRestore}
             className="p-0.5 text-text-tertiary hover:text-brand-brown rounded transition-colors"
-            title="Restore"
+            title={t('notebook.restore')}
           >
             <ArchiveRestore className="h-3 w-3" />
           </button>
@@ -47,7 +50,7 @@ export default function TreeNodeActions({
             type="button"
             onClick={onDelete}
             className="p-0.5 text-text-tertiary hover:text-status-error rounded transition-colors"
-            title="Delete permanently"
+            title={t('notebook.deletePermanently')}
           >
             <Trash2 className="h-3 w-3" />
           </button>
@@ -58,7 +61,7 @@ export default function TreeNodeActions({
             type="button"
             onClick={onArchive}
             className="p-0.5 text-text-tertiary hover:text-status-favorite rounded transition-colors"
-            title="Archive"
+            title={t('notebook.archive')}
           >
             <Archive className="h-3 w-3" />
           </button>
@@ -66,7 +69,7 @@ export default function TreeNodeActions({
             type="button"
             onClick={onDelete}
             className="p-0.5 text-text-tertiary hover:text-status-error rounded transition-colors"
-            title="Delete"
+            title={t('notebook.deleteAfterArchiveTitle')}
           >
             <Trash2 className="h-3 w-3" />
           </button>

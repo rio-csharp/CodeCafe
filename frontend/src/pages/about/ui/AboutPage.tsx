@@ -33,33 +33,33 @@ function AboutPage() {
         </p>
 
         <div className="mt-10">
-          <h2 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-4">Features</h2>
+          <h2 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-4">{t('about.features')}</h2>
           <div className="space-y-4">
             <FeatureItem
               icon={<FileText className="h-4 w-4 text-text-secondary" />}
-              title="Notebooks"
-              status="Available"
+              title={t('about.featureNotebooks')}
+              status={t('about.statusAvailable')}
             />
             <FeatureItem
               icon={<Globe className="h-4 w-4 text-text-secondary" />}
-              title="Sharing"
-              status="Available"
+              title={t('about.featureSharing')}
+              status={t('about.statusAvailable')}
             />
             <FeatureItem
               icon={<Sparkles className="h-4 w-4 text-text-secondary" />}
-              title="MCP"
-              status="Available"
+              title={t('about.featureMcp')}
+              status={t('about.statusAvailable')}
             />
             <FeatureItem
               icon={<Code2 className="h-4 w-4 text-text-secondary" />}
-              title="Codes"
-              status="Planned"
+              title={t('about.featureCodes')}
+              status={t('about.statusPlanned')}
             />
           </div>
         </div>
 
         <div className="mt-10">
-          <h2 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-4">Tech Stack</h2>
+          <h2 className="text-sm font-semibold text-text-tertiary uppercase tracking-wider mb-4">{t('about.techStack')}</h2>
           <div className="flex flex-wrap gap-2">
             {['React 19', 'Vite', 'Tailwind CSS', 'TipTap', 'TanStack Query', 'ASP.NET Core 10', 'OpenIddict', 'PostgreSQL', 'MCP'].map(
               (tech) => (

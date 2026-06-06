@@ -5,4 +5,5 @@ namespace CodeCafe.Application.Notes.Queries.GetPublicNotebook;
 public sealed record GetPublicNotebookQuery(
     string Slug,
     Guid CurrentUserId,
-    bool IncludeArchived = false) : IQuery<NotesResult<NotebookDetailModel>>;
+    bool IncludeArchived = false,
+    bool IncludeItems = true) : IQuery<NotesResult<NotebookDetailModel>>;

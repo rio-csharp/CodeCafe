@@ -33,6 +33,11 @@ import {
 import ToolbarGroup from './ToolbarGroup'
 import ToolbarButton from './ToolbarButton'
 import ToolbarColorControls from './ToolbarColorControls'
+import {
+  normalizeEditorImageUrl,
+  normalizeEditorLinkUrl,
+  normalizeEditorYoutubeUrl,
+} from '@/shared/lib/safeUrls'
 
 const LANGUAGES = [
   { value: 'plaintext', label: 'Plain text' },
@@ -72,21 +77,30 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
     if (url === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
     } else {
-      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+      const safeUrl = normalizeEditorLinkUrl(url)
+      if (safeUrl) {
+        editor.chain().focus().extendMarkRange('link').setLink({ href: safeUrl }).run()
+      }
     }
   }, [editor])
 
   const handleInsertImage = useCallback(() => {
     const url = window.prompt('Image URL')
     if (url) {
-      editor.chain().focus().setImage({ src: url }).run()
+      const safeUrl = normalizeEditorImageUrl(url)
+      if (safeUrl) {
+        editor.chain().focus().setImage({ src: safeUrl }).run()
+      }
     }
   }, [editor])
 
   const handleInsertYoutube = useCallback(() => {
     const url = window.prompt('YouTube URL')
     if (url) {
-      editor.chain().focus().setYoutubeVideo({ src: url }).run()
+      const safeUrl = normalizeEditorYoutubeUrl(url)
+      if (safeUrl) {
+        editor.chain().focus().setYoutubeVideo({ src: safeUrl }).run()
+      }
     }
   }, [editor])
 

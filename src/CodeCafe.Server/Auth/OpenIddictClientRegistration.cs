@@ -7,10 +7,28 @@ namespace CodeCafe.Server.Auth;
 
 internal static class OpenIddictClientRegistration
 {
+    private const string DynamicClientIdPrefix = "codecafe-";
+    private const string InvalidAllowedScopesMessage = "Allowed scopes must contain at least one configured MCP read/write scope and no unsupported scopes.";
+
+    public static string CreateDynamicClientId() => $"{DynamicClientIdPrefix}{Guid.NewGuid():N}";
+
+    public static bool IsDynamicallyRegisteredClientId(string? clientId)
+    {
+        if (string.IsNullOrWhiteSpace(clientId)
+            || !clientId.StartsWith(DynamicClientIdPrefix, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var suffix = clientId[DynamicClientIdPrefix.Length..];
+        return suffix.Length == 32 && Guid.TryParseExact(suffix, "N", out _);
+    }
+
     public static OpenIddictApplicationDescriptor CreatePublicNativeDescriptor(
         string clientId,
         string? displayName,
         IEnumerable<string> redirectUris,
+        IEnumerable<string> allowedScopes,
         McpOptions mcpOptions,
         AuthorizationServerOptions authorizationServerOptions)
     {
@@ -40,7 +58,7 @@ internal static class OpenIddictClientRegistration
             Permissions.ResponseTypes.Code
         ]);
 
-        foreach (var scopeName in mcpOptions.RequiredReadScopes.Concat(mcpOptions.RequiredWriteScopes).Distinct(StringComparer.Ordinal))
+        foreach (var scopeName in NormalizeAllowedScopes(allowedScopes, mcpOptions))
         {
             descriptor.Permissions.Add(Permissions.Prefixes.Scope + scopeName);
         }
@@ -82,11 +100,111 @@ internal static class OpenIddictClientRegistration
             return redirectUri;
         }
 
-        var builder = new UriBuilder(redirectUri)
-        {
-            Port = -1
-        };
+        return redirectUri;
+    }
 
-        return builder.Uri;
+    internal static bool ReconcileDescriptor(
+        OpenIddictApplicationDescriptor existingDescriptor,
+        OpenIddictApplicationDescriptor desiredDescriptor)
+    {
+        var changed = false;
+
+        if (!string.Equals(existingDescriptor.DisplayName, desiredDescriptor.DisplayName, StringComparison.Ordinal))
+        {
+            existingDescriptor.DisplayName = desiredDescriptor.DisplayName;
+            changed = true;
+        }
+
+        if (!string.Equals(existingDescriptor.ApplicationType, desiredDescriptor.ApplicationType, StringComparison.Ordinal))
+        {
+            existingDescriptor.ApplicationType = desiredDescriptor.ApplicationType;
+            changed = true;
+        }
+
+        if (!string.Equals(existingDescriptor.ClientType, desiredDescriptor.ClientType, StringComparison.Ordinal))
+        {
+            existingDescriptor.ClientType = desiredDescriptor.ClientType;
+            changed = true;
+        }
+
+        if (!string.Equals(existingDescriptor.ConsentType, desiredDescriptor.ConsentType, StringComparison.Ordinal))
+        {
+            existingDescriptor.ConsentType = desiredDescriptor.ConsentType;
+            changed = true;
+        }
+
+        changed |= ReplaceUris(existingDescriptor.RedirectUris, desiredDescriptor.RedirectUris);
+        changed |= ReplaceStrings(existingDescriptor.Permissions, desiredDescriptor.Permissions);
+        return changed;
+    }
+
+    internal static bool AreAllowedScopesValid(IEnumerable<string> allowedScopes, McpOptions mcpOptions)
+    {
+        return TryNormalizeAllowedScopes(allowedScopes, mcpOptions, out _);
+    }
+
+    internal static IReadOnlyList<string> NormalizeAllowedScopes(IEnumerable<string> allowedScopes, McpOptions mcpOptions)
+    {
+        return TryNormalizeAllowedScopes(allowedScopes, mcpOptions, out var normalizedScopes)
+            ? normalizedScopes
+            : throw new InvalidOperationException(InvalidAllowedScopesMessage);
+    }
+
+    private static bool TryNormalizeAllowedScopes(
+        IEnumerable<string> allowedScopes,
+        McpOptions mcpOptions,
+        out IReadOnlyList<string> normalizedScopes)
+    {
+        var supportedScopes = mcpOptions.RequiredReadScopes
+            .Concat(mcpOptions.RequiredWriteScopes)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var requestedScopes = allowedScopes
+            .Select(scope => scope?.Trim())
+            .Where(scope => !string.IsNullOrWhiteSpace(scope))
+            .Select(scope => scope!)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        normalizedScopes = requestedScopes;
+        return requestedScopes.Length > 0 && requestedScopes.All(supportedScopes.Contains);
+    }
+
+    private static bool ReplaceUris(ICollection<Uri> existingValues, IEnumerable<Uri> desiredValues)
+    {
+        var desiredArray = desiredValues.ToArray();
+        var existing = existingValues.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var desired = desiredArray.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        if (existing.SequenceEqual(desired, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        existingValues.Clear();
+        foreach (var value in desiredArray)
+        {
+            existingValues.Add(value);
+        }
+
+        return true;
+    }
+
+    private static bool ReplaceStrings(ICollection<string> existingValues, IEnumerable<string> desiredValues)
+    {
+        var desiredArray = desiredValues.Distinct(StringComparer.Ordinal).ToArray();
+        var existing = existingValues.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var desired = desiredArray.OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        if (existing.SequenceEqual(desired, StringComparer.Ordinal))
+        {
+            return false;
+        }
+
+        existingValues.Clear();
+        foreach (var value in desiredArray)
+        {
+            existingValues.Add(value);
+        }
+
+        return true;
     }
 }

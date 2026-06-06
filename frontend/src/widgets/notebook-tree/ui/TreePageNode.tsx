@@ -7,6 +7,7 @@ import { useTreeContext } from '../model/TreeContext'
 import TreeRenameField from './TreeRenameField'
 import TreeNodeActions from './TreeNodeActions'
 import { TREE_INDENT_PER_LEVEL, TREE_INDENT_BASE } from '../lib/treeConstants'
+import { useTranslation } from 'react-i18next'
 
 interface TreePageNodeProps {
   node: TreeNode
@@ -22,6 +23,7 @@ function TreePageNode({
   level,
 }: TreePageNodeProps) {
   const { canEdit, dragState, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
+  const { t } = useTranslation()
   const {
     isEditing,
     editTitle,
@@ -76,7 +78,7 @@ function TreePageNode({
             onConfirm={handleRename}
             onCancel={(e) => { e?.preventDefault(); cancelEditing() }}
             onKeyDown={handleKeyDown}
-            ariaLabel="Rename page"
+            ariaLabel={t('notebook.renamePage')}
           />
         </div>
       ) : (

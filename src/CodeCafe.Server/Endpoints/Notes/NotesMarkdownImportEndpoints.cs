@@ -1,3 +1,4 @@
+using CodeCafe.Api.Errors;
 using CodeCafe.Application.Notes;
 using CodeCafe.Mcp.Configuration;
 using CodeCafe.Mcp.Tools.Notes;
@@ -215,7 +216,7 @@ public static class NotesMarkdownImportEndpoints
 
         await contentImportService.DeleteUploadAsync(actorId, request.UploadId, cancellationToken);
 
-        var response = ToPageResponse(createResult.Value!, request.IncludeContent);
+        var response = ToPageResponse(createResult.Value!, notebookSlug, request.IncludeContent);
         return TypedResults.Created($"/api/notes/notebooks/{notebookSlug}/pages/{response.Path}", response);
     }
 
@@ -286,7 +287,7 @@ public static class NotesMarkdownImportEndpoints
 
         await contentImportService.DeleteUploadAsync(actorId, request.UploadId, cancellationToken);
 
-        return TypedResults.Ok(ToPageResponse(updateResult.Value!, request.IncludeContent));
+        return TypedResults.Ok(ToPageResponse(updateResult.Value!, notebookSlug, request.IncludeContent));
     }
 
     private static async Task<IResult> AppendMarkdownToPageAsync(
@@ -366,7 +367,7 @@ public static class NotesMarkdownImportEndpoints
 
         await contentImportService.DeleteUploadAsync(actorId, request.UploadId, cancellationToken);
 
-        return TypedResults.Ok(ToPageResponse(updateResult.Value!, request.IncludeContent));
+        return TypedResults.Ok(ToPageResponse(updateResult.Value!, notebookSlug, request.IncludeContent));
     }
 
     private static async Task<NotesResult<NotebookItemModel?>> ResolveParentAsync(
@@ -431,7 +432,7 @@ public static class NotesMarkdownImportEndpoints
                 "path");
     }
 
-    private static NotesImportedPageResponse ToPageResponse(NotebookItemModel page, bool includeContent)
+    private static NotesImportedPageResponse ToPageResponse(NotebookItemModel page, string notebookSlug, bool includeContent)
     {
         var contentJsonBytes = GetUtf8ByteCount(page.ContentJson);
         var plainTextLength = page.PlainTextContent?.Length ?? 0;
@@ -440,6 +441,7 @@ public static class NotesMarkdownImportEndpoints
         return new NotesImportedPageResponse(
             page.Id,
             page.NotebookId,
+            notebookSlug,
             page.ParentId,
             page.Type,
             page.Title,
@@ -452,7 +454,7 @@ public static class NotesMarkdownImportEndpoints
             plainTextLength,
             tipTapNodeCount,
             page.CreatedAtUtc,
-            page.UpdatedAtUtc);
+            page.UpdatedAtUtc ?? page.CreatedAtUtc);
     }
 
     private static JsonElement AppendBlocks(JsonElement? existingContentJson, JsonElement blocks)
@@ -590,9 +592,19 @@ public static class NotesMarkdownImportEndpoints
         string? field = null,
         IReadOnlyDictionary<string, object?>? details = null)
     {
-        return TypedResults.Json(
-            new NotesImportErrorResponse(code, message, field, Retryable: false, details),
-            statusCode: statusCode);
+        var problem = ApiProblems.Create(code, message, statusCode);
+        if (!string.IsNullOrWhiteSpace(field))
+        {
+            problem.Extensions["field"] = field;
+        }
+
+        problem.Extensions["retryable"] = false;
+        if (details is not null)
+        {
+            problem.Extensions["details"] = details;
+        }
+
+        return TypedResults.Problem(problem);
     }
 
     private static int ToStatusCode(NotesFailureKind kind)
@@ -629,6 +641,7 @@ public static class NotesMarkdownImportEndpoints
     public sealed record NotesImportedPageResponse(
         Guid PageId,
         Guid NotebookId,
+        string NotebookSlug,
         Guid? ParentId,
         string Type,
         string Title,
@@ -641,12 +654,5 @@ public static class NotesMarkdownImportEndpoints
         int PlainTextLength,
         int TipTapNodeCount,
         DateTimeOffset CreatedAtUtc,
-        DateTimeOffset? UpdatedAtUtc);
-
-    public sealed record NotesImportErrorResponse(
-        string Code,
-        string Message,
-        string? Field,
-        bool Retryable,
-        IReadOnlyDictionary<string, object?>? Details);
+        DateTimeOffset UpdatedAtUtc);
 }
