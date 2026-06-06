@@ -75,6 +75,12 @@ public sealed class DynamicClientRegistrationController(
         var existingClient = await FindExistingClientAsync(normalizedRedirectUris, request.ClientName, cancellationToken);
         if (existingClient is not null)
         {
+            existingClient = await ReconcileExistingClientAsync(
+                existingClient,
+                normalizedRedirectUris,
+                request.ClientName,
+                cancellationToken);
+
             return Ok(new DynamicClientRegistrationResponse
             {
                 ApplicationType = "native",
@@ -88,11 +94,12 @@ public sealed class DynamicClientRegistrationController(
             });
         }
 
-        var clientId = $"codecafe-{Guid.NewGuid():N}";
+        var clientId = OpenIddictClientRegistration.CreateDynamicClientId();
         var descriptor = OpenIddictClientRegistration.CreatePublicNativeDescriptor(
             clientId,
             request.ClientName,
             normalizedRedirectUris,
+            mcpOptionsAccessor.Value.RequiredReadScopes,
             mcpOptionsAccessor.Value,
             authorizationServerOptionsAccessor.Value);
 
@@ -127,6 +134,11 @@ public sealed class DynamicClientRegistrationController(
 
         foreach (var application in applications)
         {
+            if (!OpenIddictClientRegistration.IsDynamicallyRegisteredClientId(application.ClientId))
+            {
+                continue;
+            }
+
             if (!string.IsNullOrWhiteSpace(clientName)
                 && !string.Equals(application.DisplayName, clientName, StringComparison.Ordinal))
             {
@@ -147,6 +159,37 @@ public sealed class DynamicClientRegistrationController(
         }
 
         return null;
+    }
+
+    private async Task<ExistingDynamicClient> ReconcileExistingClientAsync(
+        ExistingDynamicClient existingClient,
+        IReadOnlyCollection<string> normalizedRedirectUris,
+        string? requestedClientName,
+        CancellationToken cancellationToken)
+    {
+        var application = await applicationManager.FindByClientIdAsync(existingClient.ClientId, cancellationToken)
+            ?? throw new InvalidOperationException($"Registered OAuth client '{existingClient.ClientId}' could not be loaded.");
+
+        var existingDescriptor = new OpenIddictApplicationDescriptor();
+        await applicationManager.PopulateAsync(existingDescriptor, application, cancellationToken);
+
+        var desiredDisplayName = string.IsNullOrWhiteSpace(requestedClientName)
+            ? existingClient.DisplayName
+            : requestedClientName;
+        var desiredDescriptor = OpenIddictClientRegistration.CreatePublicNativeDescriptor(
+            existingClient.ClientId,
+            desiredDisplayName,
+            normalizedRedirectUris,
+            mcpOptionsAccessor.Value.RequiredReadScopes,
+            mcpOptionsAccessor.Value,
+            authorizationServerOptionsAccessor.Value);
+
+        if (OpenIddictClientRegistration.ReconcileDescriptor(existingDescriptor, desiredDescriptor))
+        {
+            await applicationManager.UpdateAsync(application, existingDescriptor, cancellationToken);
+        }
+
+        return new ExistingDynamicClient(existingClient.ClientId, existingDescriptor.DisplayName);
     }
 
     private static bool TryParseRedirectUris(string? redirectUrisJson, out HashSet<string> redirectUris)

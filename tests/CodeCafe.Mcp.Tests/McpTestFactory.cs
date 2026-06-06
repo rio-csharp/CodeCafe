@@ -184,7 +184,12 @@ internal sealed class TestNotebookQueryService : INotebookReadService
     public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(Guid currentUserId, string search, CancellationToken cancellationToken, int? limit = null)
         => Task.FromResult<IReadOnlyList<NotebookItemSearchModel>>([]);
 
-    public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+    public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
+        string slug,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
                 ? NotesResult<NotebookDetailModel>.Success(
@@ -204,10 +209,20 @@ internal sealed class TestNotebookQueryService : INotebookReadService
                 ? NotesResult<NotebookItemModel>.Success(item)
                 : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found."));
 
-    public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+    public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
+        Guid notebookId,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true)
         => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
-    public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(string slug, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+    public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
+        string slug,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false,
+        bool includeItems = true)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
                 ? NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail(currentUserId))

@@ -32,3 +32,12 @@ export function findNodeAndSiblings(
   }
   return null
 }
+
+export function findNode(tree: TreeNode[], id: string): TreeNode | null {
+  for (const node of tree) {
+    if (node.item.id === id) return node
+    const found = findNode(node.children, id)
+    if (found) return found
+  }
+  return null
+}

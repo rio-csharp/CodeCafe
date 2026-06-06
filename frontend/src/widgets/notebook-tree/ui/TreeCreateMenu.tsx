@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { Plus, Folder, FileText } from 'lucide-react'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
+import { useTranslation } from 'react-i18next'
 
 interface TreeCreateMenuProps {
   onCreateFolder: () => void
@@ -10,6 +11,7 @@ interface TreeCreateMenuProps {
 export default function TreeCreateMenu({ onCreateFolder, onCreatePage }: TreeCreateMenuProps) {
   const [show, setShow] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
   useClickOutside(menuRef, () => setShow(false))
 
   return (
@@ -18,7 +20,7 @@ export default function TreeCreateMenu({ onCreateFolder, onCreatePage }: TreeCre
         type="button"
         onClick={(e) => { e.stopPropagation(); setShow(!show) }}
         className="p-0.5 text-text-tertiary hover:text-brand-brown rounded transition-colors"
-        title="Add item"
+        title={t('notebook.addItem')}
       >
         <Plus className="h-3.5 w-3.5" />
       </button>
@@ -30,7 +32,7 @@ export default function TreeCreateMenu({ onCreateFolder, onCreatePage }: TreeCre
             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
           >
             <Folder className="h-3.5 w-3.5 text-brand-brown" />
-            New folder
+            {t('notebook.newFolder')}
           </button>
           <button
             type="button"
@@ -38,7 +40,7 @@ export default function TreeCreateMenu({ onCreateFolder, onCreatePage }: TreeCre
             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
           >
             <FileText className="h-3.5 w-3.5 text-text-tertiary" />
-            New page
+            {t('notebook.newPage')}
           </button>
         </div>
       )}

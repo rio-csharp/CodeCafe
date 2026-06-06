@@ -12,18 +12,29 @@ import type {
   ReorderItemsPayload,
 } from '@/entities/notebook-item'
 
+function buildQueryString(params: Record<string, string | undefined>): string {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') {
+      query.set(key, value)
+    }
+  })
+  const qs = query.toString()
+  return qs ? `?${qs}` : ''
+}
+
 export async function getPublicNotes(search?: string): Promise<Notebook[]> {
-  const params = search ? `?search=${encodeURIComponent(search)}` : ''
+  const params = buildQueryString({ search })
   return apiFetch<Notebook[]>(`/api/notes/public${params}`)
 }
 
 export async function getMyNotes(search?: string): Promise<Notebook[]> {
-  const params = search ? `?search=${encodeURIComponent(search)}` : ''
+  const params = buildQueryString({ search })
   return apiFetch<Notebook[]>(`/api/notes/mine${params}`)
 }
 
 export async function getNotebookBySlug(slug: string): Promise<Notebook> {
-  return apiFetch<Notebook>(`/api/notes/${slug}`)
+  return apiFetch<Notebook>(`/api/notes/${slug}?includeItems=false`)
 }
 
 export async function getNotebookItems(
@@ -31,10 +42,10 @@ export async function getNotebookItems(
   search?: string,
   includeArchived?: boolean,
 ): Promise<NotebookItem[]> {
-  const query = new URLSearchParams()
-  if (search) query.set('search', search)
-  if (includeArchived) query.set('includeArchived', 'true')
-  const params = query.toString() ? `?${query.toString()}` : ''
+  const params = buildQueryString({
+    search,
+    includeArchived: includeArchived ? 'true' : undefined,
+  })
   return apiFetch<NotebookItem[]>(`/api/notes/${notebookId}/items${params}`)
 }
 

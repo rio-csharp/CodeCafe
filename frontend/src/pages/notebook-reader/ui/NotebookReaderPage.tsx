@@ -7,7 +7,6 @@ import { useUpdateNotebookItem } from '@/features/manage-notebook-items'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import NotebookLayout from '@/widgets/notebook-layout'
-import NotebookTopBar from '@/widgets/notebook-top-bar'
 import NotebookTree from '@/widgets/notebook-tree'
 import NotebookPageContent from '@/widgets/notebook-page-content'
 import NotebookOutline from '@/widgets/notebook-outline'
@@ -38,6 +37,7 @@ export default function NotebookReaderPage() {
 
   const {
     data: notebookItems,
+    isPending: notebookItemsPending,
   } = useNotebookItems(notebook?.id ?? '', undefined, showArchived, !!notebook)
 
   const visibleItems = useMemo(() => {
@@ -50,7 +50,7 @@ export default function NotebookReaderPage() {
 
   const tree = useMemo(() => buildTree(visibleItems), [visibleItems])
 
-  const activePage = useMemo(() => {
+  const activePage = (() => {
     if (!notebook) return null
     let page = pagePath ? findPageByPath(tree, pagePath) : null
     if (!page) {
@@ -60,7 +60,7 @@ export default function NotebookReaderPage() {
       }
     }
     return page
-  }, [notebook, tree, pagePath])
+  })()
 
   // Keep the editor store pinned to the active page across path-rewriting
   // actions. When a rename (or rename of an ancestor folder) navigates the
@@ -126,6 +126,14 @@ export default function NotebookReaderPage() {
     )
   }
 
+  if (notebookItemsPending && notebookItems === undefined) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-surface">
+        <RouteGuardSpinner />
+      </div>
+    )
+  }
+
   // Redirect to first page when no path is specified
   if (!pagePath && activePage) {
     return <Navigate to={`/notes/${notebookSlug}/${activePage.path}`} replace />
@@ -139,7 +147,6 @@ export default function NotebookReaderPage() {
 
   return (
     <NotebookLayout
-      topBar={<NotebookTopBar notebook={notebook} />}
       tree={
         <NotebookTree
           notebook={notebook}
@@ -163,7 +170,8 @@ export default function NotebookReaderPage() {
                   title={activePage.title}
                   onClick={() => {
                     navigator.clipboard.writeText(activePage.title)
-                    showToast(t('notebook.titleCopied'))
+                      .then(() => showToast(t('notebook.titleCopied')))
+                      .catch(() => showToast(t('notebook.copyFailed'), 'error'))
                   }}
                 >
                   {activePage.title}
@@ -195,7 +203,8 @@ export default function NotebookReaderPage() {
                       type="button"
                       onClick={() => {
                         navigator.clipboard.writeText(window.location.href)
-                        showToast(t('notebook.linkCopied'))
+                          .then(() => showToast(t('notebook.linkCopied')))
+                          .catch(() => showToast(t('notebook.copyFailed'), 'error'))
                       }}
                       className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
                       title={t('notebook.copyLink')}

@@ -70,7 +70,7 @@ export function useImportMarkdown(
       }
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: notesKeys.items(notebookId) })
+      queryClient.invalidateQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
       queryClient.invalidateQueries({ queryKey: notesKeys.all })
       options.onSuccess?.(data)
     },

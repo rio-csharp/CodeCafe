@@ -149,6 +149,20 @@ public sealed class NotebookReadServiceTests
     }
 
     [Fact]
+    public async Task GetNotebookItems_DeniesArchivedReadsForNonOwner()
+    {
+        using var harness = CreateSeededHarness();
+        await using var context = harness.CreateContext();
+        var service = harness.CreateReadService(context);
+
+        var result = await service.GetNotebookItemsAsync(PublicNotebookId, OtherUserId, null, CancellationToken.None, includeArchived: true);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal(NotesFailureKind.Forbidden, result.Error!.Kind);
+        Assert.Equal("notebook_forbidden", result.Error.Code);
+    }
+
+    [Fact]
     public async Task GetPublicNotebookItem_ReturnsItemBySlugAndPath()
     {
         using var harness = CreateSeededHarness();
@@ -176,6 +190,23 @@ public sealed class NotebookReadServiceTests
         Assert.Equal("architecture-notes", result.Value!.Slug);
         Assert.Equal(2, result.Value.ItemCount);
         Assert.False(result.Value.CanEdit);
+    }
+
+    [Fact]
+    public async Task GetNotebookSummaryBySlug_IncludesArchivedCountsForOwnerOnly()
+    {
+        using var harness = CreateSeededHarness();
+        await using var context = harness.CreateContext();
+        var service = harness.CreateReadService(context);
+
+        var ownerResult = await service.GetNotebookSummaryBySlugAsync("architecture-notes", OwnerId, CancellationToken.None, includeArchived: true);
+        var otherUserResult = await service.GetNotebookSummaryBySlugAsync("architecture-notes", OtherUserId, CancellationToken.None, includeArchived: true);
+
+        Assert.True(ownerResult.Succeeded);
+        Assert.Equal(3, ownerResult.Value!.ItemCount);
+        Assert.Equal(2, ownerResult.Value.PageCount);
+        Assert.False(otherUserResult.Succeeded);
+        Assert.Equal(NotesFailureKind.Forbidden, otherUserResult.Error!.Kind);
     }
 
     [Fact]

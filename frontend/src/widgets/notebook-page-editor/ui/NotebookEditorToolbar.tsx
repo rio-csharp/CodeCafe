@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import type { Editor } from '@tiptap/react'
 import {
   Bold,
@@ -32,6 +33,11 @@ import {
 import ToolbarGroup from './ToolbarGroup'
 import ToolbarButton from './ToolbarButton'
 import ToolbarColorControls from './ToolbarColorControls'
+import {
+  normalizeEditorImageUrl,
+  normalizeEditorLinkUrl,
+  normalizeEditorYoutubeUrl,
+} from '@/shared/lib/safeUrls'
 
 const LANGUAGES = [
   { value: 'plaintext', label: 'Plain text' },
@@ -64,30 +70,39 @@ interface NotebookEditorToolbarProps {
 }
 
 export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarProps) {
-  const handleSetLink = () => {
+  const handleSetLink = useCallback(() => {
     const previousUrl = editor.getAttributes('link').href as string | undefined
     const url = window.prompt('URL', previousUrl)
     if (url === null) return
     if (url === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
     } else {
-      editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+      const safeUrl = normalizeEditorLinkUrl(url)
+      if (safeUrl) {
+        editor.chain().focus().extendMarkRange('link').setLink({ href: safeUrl }).run()
+      }
     }
-  }
+  }, [editor])
 
-  const handleInsertImage = () => {
+  const handleInsertImage = useCallback(() => {
     const url = window.prompt('Image URL')
     if (url) {
-      editor.chain().focus().setImage({ src: url }).run()
+      const safeUrl = normalizeEditorImageUrl(url)
+      if (safeUrl) {
+        editor.chain().focus().setImage({ src: safeUrl }).run()
+      }
     }
-  }
+  }, [editor])
 
-  const handleInsertYoutube = () => {
+  const handleInsertYoutube = useCallback(() => {
     const url = window.prompt('YouTube URL')
     if (url) {
-      editor.chain().focus().setYoutubeVideo({ src: url }).run()
+      const safeUrl = normalizeEditorYoutubeUrl(url)
+      if (safeUrl) {
+        editor.chain().focus().setYoutubeVideo({ src: safeUrl }).run()
+      }
     }
-  }
+  }, [editor])
 
   const currentLang = (editor.getAttributes('codeBlock').language as string | undefined) || 'plaintext'
   const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) || ''
@@ -143,7 +158,7 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
         <ToolbarButton active={editor.isActive('link')} onClick={handleSetLink} title="Link"><LinkIcon className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().focus().toggleCodeBlock().run()} title="Code block"><Code className="h-4 w-4" /></ToolbarButton>
+        <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().toggleCodeBlock().run()} title="Code block"><Code className="h-4 w-4" /></ToolbarButton>
         {editor.isActive('codeBlock') && (
           <select value={currentLang} onChange={(e) => editor.chain().focus().setCodeBlock({ language: e.target.value }).run()} className="text-xs border border-border-default rounded px-1.5 py-0.5 bg-surface text-text-secondary outline-none focus:border-border-hover cursor-pointer" title="Code language">
             {LANGUAGES.map((lang) => (

@@ -49,16 +49,17 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
 
   const handleDelete = useCallback(async () => {
     const isArchived = node.item.isArchived
-    if (!confirm(`${isArchived ? 'Delete' : 'Archive and delete'} "${node.item.title}"? This cannot be undone.`)) return
+    if (!isArchived) {
+      showToast('Archive this item before deleting it permanently.', 'error')
+      return
+    }
+    if (!confirm(`Delete "${node.item.title}" permanently? This cannot be undone.`)) return
     try {
-      if (!isArchived) {
-        await onArchiveItem(node.item.id)
-      }
       await onDeleteItem(node.item.id)
     } catch (err) {
       showToast(getErrorMessage(err, 'Failed to delete'), 'error')
     }
-  }, [node.item.id, node.item.title, node.item.isArchived, onArchiveItem, onDeleteItem, showToast])
+  }, [node.item.id, node.item.title, node.item.isArchived, onDeleteItem, showToast])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleRename()

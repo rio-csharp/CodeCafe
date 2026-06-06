@@ -1,4 +1,5 @@
 import { AlertTriangle, Loader2 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 interface DeleteConfirmSectionProps {
   onDelete: () => void
@@ -7,11 +8,13 @@ interface DeleteConfirmSectionProps {
 }
 
 export default function DeleteConfirmSection({ onDelete, onCancel, isDeleting }: DeleteConfirmSectionProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-status-error flex items-center gap-1">
         <AlertTriangle className="h-3.5 w-3.5" />
-        Sure?
+        {t('notebook.sure')}
       </span>
       <button
         type="button"
@@ -22,10 +25,10 @@ export default function DeleteConfirmSection({ onDelete, onCancel, isDeleting }:
         {isDeleting ? (
           <span className="flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
-            Deleting...
+            {t('notebook.deleting')}
           </span>
         ) : (
-          'Yes, delete'
+          t('notebook.yesDelete')
         )}
       </button>
       <button
@@ -33,7 +36,7 @@ export default function DeleteConfirmSection({ onDelete, onCancel, isDeleting }:
         onClick={onCancel}
         className="rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
       >
-        Cancel
+        {t('notebook.cancel')}
       </button>
     </div>
   )

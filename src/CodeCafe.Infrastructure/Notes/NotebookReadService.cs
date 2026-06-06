@@ -90,20 +90,38 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         string slug,
         Guid currentUserId,
         CancellationToken cancellationToken,
-        bool includeArchived = false)
+        bool includeArchived = false,
+        bool includeItems = true)
     {
-        var notebook = await dbContext.Notebooks
-            .AsNoTracking()
-            .Where(existingNotebook =>
-                existingNotebook.Slug == slug
-                && existingNotebook.Visibility == NotebookVisibility.Public
-                && existingNotebook.IsPublished)
-            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
-            .SingleOrDefaultAsync(cancellationToken);
+        var notebookAccessResult = await GetPublicReadableNotebookAccessAsync(slug, currentUserId, cancellationToken);
+        if (!notebookAccessResult.Succeeded)
+        {
+            return NotesResult<NotebookDetailModel>.Failure(
+                notebookAccessResult.Error!.Kind,
+                notebookAccessResult.Error.Code,
+                notebookAccessResult.Error.Message);
+        }
 
-        return notebook is null
-            ? NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.")
-            : NotesResult<NotebookDetailModel>.Success(await ToDetailModelAsync(notebook, currentUserId, cancellationToken));
+        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        {
+            return NotesResult<NotebookDetailModel>.Failure(
+                archiveError.Kind,
+                archiveError.Code,
+                archiveError.Message);
+        }
+
+        var query = dbContext.Notebooks
+            .AsNoTracking()
+            .Where(existingNotebook => existingNotebook.Id == notebookAccessResult.Value!.Id);
+
+        if (includeItems)
+        {
+            query = query.Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived));
+        }
+
+        var notebook = await query.SingleAsync(cancellationToken);
+
+        return NotesResult<NotebookDetailModel>.Success(await ToDetailModelAsync(notebook, currentUserId, cancellationToken, includeArchived, includeItems));
     }
 
     public async Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(
@@ -161,7 +179,8 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         Guid notebookId,
         Guid currentUserId,
         CancellationToken cancellationToken,
-        bool includeArchived = false)
+        bool includeArchived = false,
+        bool includeItems = true)
     {
         var notebookAccessResult = await GetReadableNotebookAccessAsync(notebookId, currentUserId, cancellationToken);
         if (!notebookAccessResult.Succeeded)
@@ -172,20 +191,34 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 notebookAccessResult.Error.Message);
         }
 
-        var notebook = await dbContext.Notebooks
-            .AsNoTracking()
-            .Where(existingNotebook => existingNotebook.Id == notebookId)
-            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
-            .SingleAsync(cancellationToken);
+        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        {
+            return NotesResult<NotebookDetailModel>.Failure(
+                archiveError.Kind,
+                archiveError.Code,
+                archiveError.Message);
+        }
 
-        return NotesResult<NotebookDetailModel>.Success(await ToDetailModelAsync(notebook, currentUserId, cancellationToken));
+        var query = dbContext.Notebooks
+            .AsNoTracking()
+            .Where(existingNotebook => existingNotebook.Id == notebookId);
+
+        if (includeItems)
+        {
+            query = query.Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived));
+        }
+
+        var notebook = await query.SingleAsync(cancellationToken);
+
+        return NotesResult<NotebookDetailModel>.Success(await ToDetailModelAsync(notebook, currentUserId, cancellationToken, includeArchived, includeItems));
     }
 
     public async Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
         string slug,
         Guid currentUserId,
         CancellationToken cancellationToken,
-        bool includeArchived = false)
+        bool includeArchived = false,
+        bool includeItems = true)
     {
         var notebookAccessResult = await GetReadableNotebookAccessAsync(slug, currentUserId, cancellationToken);
         if (!notebookAccessResult.Succeeded)
@@ -196,13 +229,26 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 notebookAccessResult.Error.Message);
         }
 
-        var notebook = await dbContext.Notebooks
-            .AsNoTracking()
-            .Where(existingNotebook => existingNotebook.Id == notebookAccessResult.Value!.Id)
-            .Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived))
-            .SingleAsync(cancellationToken);
+        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        {
+            return NotesResult<NotebookDetailModel>.Failure(
+                archiveError.Kind,
+                archiveError.Code,
+                archiveError.Message);
+        }
 
-        return NotesResult<NotebookDetailModel>.Success(await ToDetailModelAsync(notebook, currentUserId, cancellationToken));
+        var query = dbContext.Notebooks
+            .AsNoTracking()
+            .Where(existingNotebook => existingNotebook.Id == notebookAccessResult.Value!.Id);
+
+        if (includeItems)
+        {
+            query = query.Include(existingNotebook => existingNotebook.Items.Where(item => includeArchived || !item.IsArchived));
+        }
+
+        var notebook = await query.SingleAsync(cancellationToken);
+
+        return NotesResult<NotebookDetailModel>.Success(await ToDetailModelAsync(notebook, currentUserId, cancellationToken, includeArchived, includeItems));
     }
 
     public async Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(
@@ -220,6 +266,14 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 notebookAccessResult.Error!.Kind,
                 notebookAccessResult.Error.Code,
                 notebookAccessResult.Error.Message);
+        }
+
+        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        {
+            return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
+                archiveError.Kind,
+                archiveError.Code,
+                archiveError.Message);
         }
 
         var items = await ApplyLimit(
@@ -246,12 +300,20 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 notebookAccessResult.Error.Message);
         }
 
+        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        {
+            return NotesResult<NotebookSummaryModel>.Failure(
+                archiveError.Kind,
+                archiveError.Code,
+                archiveError.Message);
+        }
+
         if (!UsesPostgresProvider())
         {
             var notebook = await dbContext.Notebooks
                 .AsNoTracking()
                 .SingleAsync(existingNotebook => existingNotebook.Id == notebookAccessResult.Value!.Id, cancellationToken);
-            var summaries = await ToSummaryModelsAsync([notebook], currentUserId, cancellationToken);
+            var summaries = await ToSummaryModelsAsync([notebook], currentUserId, cancellationToken, includeArchived);
             return NotesResult<NotebookSummaryModel>.Success(summaries.Single());
         }
 
@@ -259,7 +321,8 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 dbContext.Notebooks
                     .AsNoTracking()
                     .Where(notebook => notebook.Id == notebookAccessResult.Value!.Id),
-                currentUserId)
+                currentUserId,
+                includeArchived)
             .SingleAsync(cancellationToken);
 
         return NotesResult<NotebookSummaryModel>.Success(ToSummaryModel(summary));
@@ -279,6 +342,14 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 notebookAccessResult.Error!.Kind,
                 notebookAccessResult.Error.Code,
                 notebookAccessResult.Error.Message);
+        }
+
+        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                archiveError.Kind,
+                archiveError.Code,
+                archiveError.Message);
         }
 
         var normalizedPath = NotebookInput.NormalizePath(path);
@@ -313,6 +384,14 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 notebookAccessResult.Error!.Kind,
                 notebookAccessResult.Error.Code,
                 notebookAccessResult.Error.Message);
+        }
+
+        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        {
+            return NotesResult<NotebookItemsPageModel>.Failure(
+                archiveError.Kind,
+                archiveError.Code,
+                archiveError.Message);
         }
 
         var query = BuildNotebookItemsQuery(notebookId, search, includeArchived);
@@ -363,7 +442,10 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
             .ToList();
     }
 
-    private IQueryable<NotebookSummaryRow> BuildNotebookSummaryRows(IQueryable<Notebook> query, Guid currentUserId)
+    private IQueryable<NotebookSummaryRow> BuildNotebookSummaryRows(
+        IQueryable<Notebook> query,
+        Guid currentUserId,
+        bool includeArchived = false)
     {
         return query.Select(notebook => new NotebookSummaryRow
         {
@@ -379,14 +461,14 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
                 .Select(user => user.DisplayName)
                 .FirstOrDefault(),
             CanEdit = notebook.OwnerId == currentUserId,
-            ItemCount = dbContext.NotebookItems.Count(item => item.NotebookId == notebook.Id && !item.IsArchived),
-            FolderCount = dbContext.NotebookItems.Count(item => item.NotebookId == notebook.Id && !item.IsArchived && item.Type == NotebookItemType.Folder),
-            PageCount = dbContext.NotebookItems.Count(item => item.NotebookId == notebook.Id && !item.IsArchived && item.Type == NotebookItemType.Page),
+            ItemCount = dbContext.NotebookItems.Count(item => item.NotebookId == notebook.Id && (includeArchived || !item.IsArchived)),
+            FolderCount = dbContext.NotebookItems.Count(item => item.NotebookId == notebook.Id && (includeArchived || !item.IsArchived) && item.Type == NotebookItemType.Folder),
+            PageCount = dbContext.NotebookItems.Count(item => item.NotebookId == notebook.Id && (includeArchived || !item.IsArchived) && item.Type == NotebookItemType.Page),
             FavoriteCount = dbContext.NotebookFavorites.Count(favorite => favorite.NotebookId == notebook.Id),
             IsFavoritedByMe = currentUserId != Guid.Empty
                 && dbContext.NotebookFavorites.Any(favorite => favorite.NotebookId == notebook.Id && favorite.UserId == currentUserId),
             LastItemActivityAtUtc = dbContext.NotebookItems
-                .Where(item => item.NotebookId == notebook.Id && !item.IsArchived)
+                .Where(item => item.NotebookId == notebook.Id && (includeArchived || !item.IsArchived))
                 .OrderByDescending(item => item.UpdatedAtUtc ?? item.CreatedAtUtc)
                 .Select(item => (DateTimeOffset?)(item.UpdatedAtUtc ?? item.CreatedAtUtc))
                 .FirstOrDefault(),
@@ -443,6 +525,23 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
             cancellationToken);
     }
 
+    private async Task<NotesResult<NotebookAccessRow>> GetPublicReadableNotebookAccessAsync(
+        string slug,
+        Guid currentUserId,
+        CancellationToken cancellationToken)
+    {
+        var notebook = await dbContext.Notebooks
+            .AsNoTracking()
+            .Where(existingNotebook =>
+                existingNotebook.Slug == slug
+                && existingNotebook.Visibility == NotebookVisibility.Public
+                && existingNotebook.IsPublished)
+            .Select(existingNotebook => new NotebookAccessRow(existingNotebook.Id, existingNotebook.OwnerId, existingNotebook.Visibility, existingNotebook.IsPublished))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return ToReadableNotebookAccessResult(notebook, currentUserId);
+    }
+
     private async Task<NotesResult<NotebookAccessRow>> GetReadableNotebookAccessAsync(
         Guid notebookId,
         Guid currentUserId,
@@ -481,6 +580,19 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         return NotebookAccessPolicy.CanReadNotebook(notebook.OwnerId, notebook.Visibility, notebook.IsPublished, currentUserId)
             ? NotesResult<NotebookAccessRow>.Success(notebook)
             : NotesResult<NotebookAccessRow>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "You do not have access to this notebook.");
+    }
+
+    private static NotesError? GetArchivedReadError(
+        NotebookAccessRow notebook,
+        Guid currentUserId,
+        bool includeArchived)
+    {
+        return includeArchived && notebook.OwnerId != currentUserId
+            ? new NotesError(
+                NotesFailureKind.Forbidden,
+                "notebook_forbidden",
+                "Only the notebook owner can view archived items.")
+            : null;
     }
 
     private bool UsesPostgresProvider()
@@ -548,10 +660,11 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
     private async Task<IReadOnlyList<NotebookSummaryModel>> ToSummaryModelsAsync(
         IReadOnlyList<Notebook> notebooks,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var ownerIds = notebooks.Select(notebook => notebook.OwnerId).Distinct().ToList();
-        var metadataByNotebookId = await GetNotebookMetadataAsync(notebooks, currentUserId, cancellationToken);
+        var metadataByNotebookId = await GetNotebookMetadataAsync(notebooks, currentUserId, cancellationToken, includeArchived);
         var displayNames = await dbContext.Users
             .AsNoTracking()
             .Where(user => ownerIds.Contains(user.Id))
@@ -571,7 +684,8 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
     private async Task<IReadOnlyDictionary<Guid, NotebookMetadata>> GetNotebookMetadataAsync(
         IReadOnlyList<Notebook> notebooks,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         if (notebooks.Count == 0)
         {
@@ -580,8 +694,8 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
 
         var notebookIds = notebooks.Select(notebook => notebook.Id).ToList();
         var itemAggregates = UsesPostgresProvider()
-            ? await GetNotebookItemAggregatesFromDatabaseAsync(notebookIds, cancellationToken)
-            : await GetNotebookItemAggregatesInMemoryAsync(notebookIds, cancellationToken);
+            ? await GetNotebookItemAggregatesFromDatabaseAsync(notebookIds, cancellationToken, includeArchived)
+            : await GetNotebookItemAggregatesInMemoryAsync(notebookIds, cancellationToken, includeArchived);
 
         var favoriteCounts = await dbContext.NotebookFavorites
             .AsNoTracking()
@@ -628,7 +742,9 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
     private async Task<NotebookDetailModel> ToDetailModelAsync(
         Notebook notebook,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived,
+        bool includeItems)
     {
         var authorDisplayName = await dbContext.Users
             .AsNoTracking()
@@ -637,6 +753,18 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
             .SingleOrDefaultAsync(cancellationToken)
             ?? "Unknown";
 
+        var metadata = includeItems
+            ? await BuildLoadedDetailMetadataAsync(notebook, currentUserId, cancellationToken)
+            : (await GetNotebookMetadataAsync([notebook], currentUserId, cancellationToken, includeArchived)).GetValueOrDefault(notebook.Id) ?? NotebookMetadata.Empty;
+
+        return NotesSupport.ToDetailModel(notebook, authorDisplayName, metadata, currentUserId);
+    }
+
+    private async Task<NotebookMetadata> BuildLoadedDetailMetadataAsync(
+        Notebook notebook,
+        Guid currentUserId,
+        CancellationToken cancellationToken)
+    {
         var favoriteModel = await BuildFavoriteModelAsync(notebook.Id, currentUserId, cancellationToken);
         var lastActivityAtUtc = new[]
         {
@@ -646,15 +774,13 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         .Concat(notebook.Items.Select(item => item.UpdatedAtUtc ?? item.CreatedAtUtc))
         .Max();
 
-        var metadata = new NotebookMetadata(
+        return new NotebookMetadata(
             ItemCount: notebook.Items.Count,
             FolderCount: notebook.Items.Count(item => item.Type == NotebookItemType.Folder),
             PageCount: notebook.Items.Count(item => item.Type == NotebookItemType.Page),
             FavoriteCount: favoriteModel.FavoriteCount,
             IsFavoritedByMe: favoriteModel.IsFavorited,
             LastActivityAtUtc: lastActivityAtUtc);
-
-        return NotesSupport.ToDetailModel(notebook, authorDisplayName, metadata, currentUserId);
     }
 
     private async Task<NotebookFavoriteModel> BuildFavoriteModelAsync(
@@ -678,11 +804,12 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
 
     private async Task<IReadOnlyDictionary<Guid, NotebookItemAggregate>> GetNotebookItemAggregatesFromDatabaseAsync(
         IReadOnlyList<Guid> notebookIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         return await dbContext.NotebookItems
             .AsNoTracking()
-            .Where(item => notebookIds.Contains(item.NotebookId) && !item.IsArchived)
+            .Where(item => notebookIds.Contains(item.NotebookId) && (includeArchived || !item.IsArchived))
             .GroupBy(item => item.NotebookId)
             .Select(group => new NotebookItemAggregate(
                 group.Key,
@@ -695,11 +822,12 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
 
     private async Task<IReadOnlyDictionary<Guid, NotebookItemAggregate>> GetNotebookItemAggregatesInMemoryAsync(
         IReadOnlyList<Guid> notebookIds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
     {
         var notebookItems = await dbContext.NotebookItems
             .AsNoTracking()
-            .Where(item => notebookIds.Contains(item.NotebookId) && !item.IsArchived)
+            .Where(item => notebookIds.Contains(item.NotebookId) && (includeArchived || !item.IsArchived))
             .ToListAsync(cancellationToken);
 
         return notebookItems

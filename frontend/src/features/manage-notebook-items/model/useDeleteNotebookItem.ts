@@ -6,7 +6,7 @@ export function useDeleteNotebookItem(notebookId: string) {
   return useMutation({
     mutationFn: (itemId: string) => deleteNotebookItem(notebookId, itemId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: notesKeys.items(notebookId) })
+      queryClient.invalidateQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
       queryClient.invalidateQueries({ queryKey: notesKeys.all })
     },
   })
