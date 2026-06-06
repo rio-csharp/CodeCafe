@@ -11,7 +11,8 @@ export function applyCodeBlockLineNumbers(container: HTMLElement | null | undefi
   container.querySelectorAll('pre').forEach((pre) => {
     const code = pre.querySelector('code')
     if (!code) return
-    const lineCount = code.textContent?.split('\n').length || 1
+    const raw = code.textContent ?? ''
+    const lineCount = Math.max(1, raw.replace(/\n+$/, '').split('\n').length)
 
     let lineNumbers = pre.querySelector('.line-numbers') as HTMLElement | null
     if (!lineNumbers) {
