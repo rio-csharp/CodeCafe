@@ -28,7 +28,7 @@ export type { TreeNode } from './lib/buildTree'
 export { buildTree, findFirstPage, findPageByPath, flattenTree } from './lib/buildTree'
 export { extractOutline, slugifyHeadingId } from './lib/extractOutline'
 export type { OutlineHeading } from './lib/extractOutline'
-export { findSiblings, findNodeAndSiblings } from './lib/findSiblings'
+export { findSiblings, findNodeAndSiblings, findNode } from './lib/findSiblings'
 export {
   NOTEBOOK_VISIBILITY_COLLECTION_LABELS,
   NOTEBOOK_VISIBILITY_CONTEXT_LABELS,

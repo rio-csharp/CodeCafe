@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Search,
@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
+import type { NotebookItem } from '@/entities/notebook-item'
 import {
   NOTEBOOK_VISIBILITY_CONTEXT_LABELS,
   useNotebookItems,
@@ -40,7 +41,7 @@ interface NotebookTreeProps {
   notebook: Notebook
   notebookSlug: string
   tree: TreeNode[]
-  activePage: import('@/entities/notebook-item').NotebookItem | null
+  activePage: NotebookItem | null
   showArchived: boolean
   onShowArchivedChange: (value: boolean) => void
   onRefreshNotebook?: () => void
@@ -99,7 +100,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
     setShowDeleteConfirm(false)
   })
 
-  const handleCopyLink = () => {
+  const handleCopyLink = useCallback(() => {
     const url = `${window.location.origin}/notes/${notebook.slug}`
     navigator.clipboard.writeText(url).then(() => {
       showToast(t('notebook.linkCopied'))
@@ -107,9 +108,9 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
       showToast(t('notebook.copyFailed'), 'error')
     })
     setMenuOpen(false)
-  }
+  }, [notebook.slug, showToast, t])
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     deleteNotebook.mutate(notebook.id, {
       onSuccess: () => {
         showToast(t('notebook.deleted'))
@@ -119,9 +120,9 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
         showToast(getErrorMessage(err, t('notebook.deleteFailed')), 'error')
       },
     })
-  }
+  }, [deleteNotebook, notebook.id, navigate, showToast, t])
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = useCallback(() => {
     if (!isAuthenticated) {
       navigate('/login')
       return
@@ -135,7 +136,7 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
         },
       },
     )
-  }
+  }, [isAuthenticated, navigate, notebook.id, notebook.isFavoritedByMe, showToast, t, toggleFavorite])
 
   return (
     <TreeContext.Provider value={contextValue}>

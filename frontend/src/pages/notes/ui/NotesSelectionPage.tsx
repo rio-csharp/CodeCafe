@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search, Plus, ArrowRight, Coffee } from 'lucide-react'
+import type { Notebook } from '@/entities/notebook'
 import { useLayout } from '@/shared/model/layoutContext'
 import { useDebounce } from '@/shared/hooks/useDebounce'
 import { usePublicNotes, useMyNotes } from '@/features/search-notebooks'
@@ -8,6 +9,28 @@ import NotebookCard, { SkeletonGrid } from '@/widgets/notebook-card'
 import SectionHeader from '@/widgets/section-header'
 import { useTranslation } from 'react-i18next'
 
+
+interface NotebookGridProps {
+  notebooks: Notebook[] | undefined
+  isPending: boolean
+  isError: boolean
+  errorMessage: string
+  emptyMessage: string
+  showVisibility?: boolean
+}
+
+function NotebookGrid({ notebooks, isPending, isError, errorMessage, emptyMessage, showVisibility }: NotebookGridProps) {
+  if (isPending) return <SkeletonGrid />
+  if (isError) return <p className="text-sm text-status-error">{errorMessage}</p>
+  if (!notebooks?.length) return <p className="text-sm text-text-tertiary">{emptyMessage}</p>
+  return (
+    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {notebooks.map((nb) => (
+        <NotebookCard key={nb.id} notebook={nb} showVisibility={showVisibility} />
+      ))}
+    </div>
+  )
+}
 
 export default function NotesSelectionPage() {
   const { user } = useLayout()
@@ -61,19 +84,13 @@ export default function NotesSelectionPage() {
               </Link>
             }
           />
-          {publicPending ? (
-            <SkeletonGrid />
-          ) : publicError ? (
-            <p className="text-sm text-status-error">{t('notes.loadPublicError')}</p>
-          ) : !publicNotes?.length ? (
-            <p className="text-sm text-text-tertiary">{t('notes.noPublic')}</p>
-          ) : (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {publicNotes.map((nb) => (
-                <NotebookCard key={nb.id} notebook={nb} />
-              ))}
-            </div>
-          )}
+          <NotebookGrid
+            notebooks={publicNotes}
+            isPending={publicPending}
+            isError={publicError}
+            errorMessage={t('notes.loadPublicError')}
+            emptyMessage={t('notes.noPublic')}
+          />
         </section>
 
         {!isAuthenticated && (
@@ -110,19 +127,14 @@ export default function NotesSelectionPage() {
                 </Link>
               }
             />
-            {myPending ? (
-              <SkeletonGrid />
-            ) : myError ? (
-              <p className="text-sm text-status-error">{t('notes.loadMyError')}</p>
-            ) : !myNotes?.length ? (
-              <p className="text-sm text-text-tertiary">{t('notes.noMine')}</p>
-            ) : (
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {myNotes.map((nb) => (
-                  <NotebookCard key={nb.id} notebook={nb} showVisibility />
-                ))}
-              </div>
-            )}
+            <NotebookGrid
+              notebooks={myNotes}
+              isPending={myPending}
+              isError={myError}
+              errorMessage={t('notes.loadMyError')}
+              emptyMessage={t('notes.noMine')}
+              showVisibility
+            />
 
             <div className="mt-8 flex items-center justify-center gap-2 text-xs text-text-tertiary">
               <span className="inline-block h-4 w-4 rounded-full border border-border-hover text-center leading-4">i</span>

@@ -1,30 +1,10 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useEditor, EditorContent } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
-import Color from '@tiptap/extension-color'
-import { TextStyle } from '@tiptap/extension-text-style'
-import Highlight from '@tiptap/extension-highlight'
-import TaskList from '@tiptap/extension-task-list'
-import TaskItem from '@tiptap/extension-task-item'
-import { Table } from '@tiptap/extension-table'
-import TableRow from '@tiptap/extension-table-row'
-import TableHeader from '@tiptap/extension-table-header'
-import TableCell from '@tiptap/extension-table-cell'
-import Underline from '@tiptap/extension-underline'
-import Link from '@tiptap/extension-link'
-import Image from '@tiptap/extension-image'
-import TextAlign from '@tiptap/extension-text-align'
-import Subscript from '@tiptap/extension-subscript'
-import Superscript from '@tiptap/extension-superscript'
-import CharacterCount from '@tiptap/extension-character-count'
-import Youtube from '@tiptap/extension-youtube'
-import FontFamily from '@tiptap/extension-font-family'
 import { Copy, Check } from 'lucide-react'
 import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
-import { lowlight } from '@/shared/lib/lowlight'
+import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
 import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
@@ -108,39 +88,29 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
   const hoveredPreRef = useRef(hoveredPre)
   useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
 
+  // TODO(#1-optimize): For read-only rendering we currently mount a full TipTap
+  // Editor instance because we need DOM-level features (code-block line-number
+  // gutters, copy buttons, link clicks). A lighter alternative is to use
+  // @tiptap/html generateHTML() for static rendering and re-implement the
+  // interactive bits on top of the raw HTML. This would remove the prosemirror
+  // state-management overhead for the viewer path.
   const editor = useEditor({
     editable: false,
     content,
-    extensions: [
-      StarterKit.configure({ codeBlock: false }),
-      CodeBlockLowlight.configure({ lowlight, defaultLanguage: 'plaintext' }),
-      Underline,
-      Link.configure({ openOnClick: true }),
-      FontFamily,
-      Color,
-      TextStyle,
-      Highlight.configure({ multicolor: true }),
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      Subscript,
-      Superscript,
-      Image,
-      Youtube.configure({ nocookie: true }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      CharacterCount,
-    ],
+    extensions: createTipTapExtensions({ editable: false }),
   })
 
-  // Sync content when the editor instance changes
+  const contentKey = JSON.stringify(content)
+
+  // Sync content when the editor instance changes.
+  // contentKey is used instead of content to avoid re-running on every render
+  // when the parent passes a new object reference with identical data.
   useEffect(() => {
     if (editor) {
       editor.commands.setContent(content)
     }
-  }, [editor, content])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, contentKey])
 
   // Inject heading IDs and code block line numbers after content renders
   useEffect(() => {
