@@ -1,6 +1,7 @@
 using CodeCafe.Ai.Configuration;
 using CodeCafe.Application.Notes;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.ComponentModel;
 using System.Security.Claims;
@@ -8,7 +9,7 @@ using System.Security.Claims;
 namespace CodeCafe.Ai.Tools;
 
 public sealed class NotebookAssistantTools(
-    INotebookReadService notebookReadService,
+    IServiceScopeFactory serviceScopeFactory,
     IHttpContextAccessor httpContextAccessor,
     IOptions<AiOptions> aiOptionsAccessor)
 {
@@ -26,6 +27,8 @@ public sealed class NotebookAssistantTools(
         }
 
         var normalizedLimit = NormalizeLimit(limit);
+        using var scope = serviceScopeFactory.CreateScope();
+        var notebookReadService = scope.ServiceProvider.GetRequiredService<INotebookReadService>();
         var ownedNotebooks = await notebookReadService.GetMyNotebooksAsync(
             currentUserId,
             query,
@@ -67,6 +70,8 @@ public sealed class NotebookAssistantTools(
                 "Search query is required."));
         }
 
+        using var scope = serviceScopeFactory.CreateScope();
+        var notebookReadService = scope.ServiceProvider.GetRequiredService<INotebookReadService>();
         var results = await notebookReadService.SearchVisibleNotebookItemsAsync(
             currentUserId,
             query,
@@ -96,6 +101,8 @@ public sealed class NotebookAssistantTools(
                 "Notebook slug is required."));
         }
 
+        using var scope = serviceScopeFactory.CreateScope();
+        var notebookReadService = scope.ServiceProvider.GetRequiredService<INotebookReadService>();
         var result = await notebookReadService.GetNotebookBySlugAsync(
             slug,
             currentUserId,
@@ -133,6 +140,8 @@ public sealed class NotebookAssistantTools(
                 "Notebook slug and page path are required."));
         }
 
+        using var scope = serviceScopeFactory.CreateScope();
+        var notebookReadService = scope.ServiceProvider.GetRequiredService<INotebookReadService>();
         var result = await notebookReadService.GetNotebookItemByPathAsync(
             notebookSlug,
             path,

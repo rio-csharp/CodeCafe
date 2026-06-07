@@ -2,6 +2,7 @@ using CodeCafe.Ai.Configuration;
 using CodeCafe.Ai.Tools;
 using CodeCafe.Application.Notes;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using Xunit;
@@ -257,8 +258,12 @@ public sealed class NotebookAssistantToolsTests
             ], "test"));
         }
 
+        var serviceProvider = new ServiceCollection()
+            .AddSingleton<INotebookReadService>(readService)
+            .BuildServiceProvider();
+
         return new NotebookAssistantTools(
-            readService,
+            serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             new HttpContextAccessor { HttpContext = httpContext },
             Options.Create(new AiOptions
             {

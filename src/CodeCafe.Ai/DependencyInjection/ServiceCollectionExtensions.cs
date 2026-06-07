@@ -60,14 +60,14 @@ public static class ServiceCollectionExtensions
                 "Ai:MaxDraftOutputTokens must be greater than zero.")
             .ValidateOnStart();
 
-        services.AddScoped<NotebookAssistantTools>();
+        services.AddSingleton<NotebookAssistantTools>();
         services.TryAddScoped<IAiNoteDraftGenerator, OpenAiNoteDraftGenerator>();
 
         var configuredOptions = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
         services.AddAIAgent(
             NormalizeAgentName(configuredOptions.AgentName),
             CreateAssistantAgent,
-            ServiceLifetime.Scoped);
+            ServiceLifetime.Singleton);
 
         return services;
     }
