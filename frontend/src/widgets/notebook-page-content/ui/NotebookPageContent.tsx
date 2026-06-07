@@ -7,6 +7,7 @@ import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
 import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
+import { sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { sanitizeTipTapHtml } from '@/shared/lib/sanitizeTipTapHtml'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
@@ -14,35 +15,6 @@ import '@/shared/styles/codeHighlight.css'
 
 interface NotebookPageContentProps {
   page: NotebookItem
-}
-
-/**
- * Remove empty text nodes that ProseMirror rejects.
- * A text node with text === "" causes: RangeError: Empty text nodes are not allowed
- */
-function sanitizeTipTapContent(content: Record<string, unknown>): Record<string, unknown> {
-  if (!content || typeof content !== 'object') return content
-  const clone = JSON.parse(JSON.stringify(content))
-
-  function walk(node: unknown): unknown {
-    if (typeof node !== 'object' || node === null) return node
-    const n = node as Record<string, unknown>
-
-    // Filter out empty text nodes
-    if (n.type === 'text' && n.text === '') {
-      return null
-    }
-
-    if (Array.isArray(n.content)) {
-      n.content = n.content
-        .map(walk)
-        .filter((child): child is Record<string, unknown> => child !== null)
-    }
-
-    return n
-  }
-
-  return walk(clone) as Record<string, unknown>
 }
 
 function CopyOverlay({ pre }: { pre: HTMLElement }) {

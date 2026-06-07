@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import { Check, X } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
+import { createEmptyTipTapDocument, sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
@@ -19,10 +20,14 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
   // Bump on every editor transaction so toolbar `isActive` checks (and any
   // other view-state reads) stay in sync. Replaces the previous `forceUpdate({})`.
   const [tick, setTick] = useState(0)
+  const safeContent = useMemo(
+    () => (page.contentJson ? sanitizeTipTapContent(page.contentJson) : createEmptyTipTapDocument()),
+    [page.contentJson],
+  )
 
   const editor = useEditor({
     extensions: createTipTapExtensions({ editable: true }),
-    content: page.contentJson ?? { type: 'doc', content: [] },
+    content: safeContent,
     autofocus: 'end',
     editorProps: {
       attributes: {
