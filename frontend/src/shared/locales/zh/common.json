@@ -218,6 +218,86 @@
     "onThisPage": "本页目录",
     "noHeadings": "本页暂无标题。"
   },
+  "ai": {
+    "title": "AI 助手",
+    "readOnly": "对话只读",
+    "collapse": "收起 AI 助手",
+    "checking": "正在检查 AI...",
+    "thinking": "正在思考...",
+    "clear": "清空对话",
+    "send": "发送",
+    "stop": "停止",
+    "inputPlaceholder": "询问你的笔记...",
+    "disabledTitle": "AI 尚未配置",
+    "disabledDescription": "配置 Ai:Enabled、Ai:ApiKey 和 Ai:Model 后即可使用笔记助手。",
+    "statusErrorTitle": "AI 状态不可用",
+    "statusErrorDescription": "无法访问助手状态接口。",
+    "signInTitle": "登录后使用 AI",
+    "signInDescription": "助手会通过你的 CodeCafe 账户读取笔记。",
+    "signIn": "登录",
+    "actions": {
+      "summarize": "总结当前上下文",
+      "related": "查找相关笔记",
+      "outline": "建议大纲"
+    },
+    "drafts": {
+      "title": "写入笔记草稿",
+      "generate": "生成草稿",
+      "discard": "丢弃草稿",
+      "applied": "AI 草稿已应用",
+      "placeholder": "描述你希望 AI 起草的笔记内容...",
+      "actions": {
+        "summary": "起草总结页",
+        "outline": "起草大纲",
+        "rewrite": "改写当前页",
+        "expand": "扩写当前页",
+        "continue": "续写当前页"
+      },
+      "apply": {
+        "create": "新建",
+        "append": "追加",
+        "replace": "替换"
+      },
+      "prompts": {
+        "summaryPage": "请为笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 起草一份精炼的 Markdown 总结。包含清晰标题、必要的行动项，以及 Sources 小节。",
+        "summaryNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 起草一份 Markdown 总结。包含关键主题、开放问题，以及 Sources 小节。",
+        "outlinePage": "请为笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 起草一个更清晰的 Markdown 大纲。保留重要观点，并整理为标题和要点。",
+        "outlineNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 起草一个高层 Markdown 大纲。按主题组织相关页面。",
+        "rewritePage": "请将笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 改写成更清晰的 Markdown。保留事实内容，改善结构和表达，并包含 Sources 小节。",
+        "rewriteNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 起草一份结构清晰的 Markdown 综合稿。改善结构和表达，不要编造未被上下文支持的信息。",
+        "expandPage": "请将笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 扩写成更完整的 Markdown 草稿。保留现有事实，补充有帮助的解释，并包含 Sources 小节。",
+        "expandNotebook": "请将 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 扩写成更完整的 Markdown 指南。只使用笔记上下文作为素材，不要编造未被支持的信息。",
+        "continuePage": "请为笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 续写下一个有用的 Markdown 小节。保持现有风格，并包含 Sources 小节。",
+        "continueNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 续写下一个有用的 Markdown 小节或页面构想。相关时引用来源页面。"
+      },
+      "errors": {
+        "generateFailed": "生成 AI 草稿失败",
+        "applyFailed": "应用 AI 草稿失败"
+      }
+    },
+    "prompts": {
+      "summarizePage": "请总结 CodeCafe 笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\"。请先使用笔记工具，并引用 notebook slug 和 page path。",
+      "summarizeNotebook": "请总结 slug 为 {{notebookSlug}} 的 CodeCafe 笔记本 \"{{notebookTitle}}\"。请先使用笔记工具，并在相关位置引用 notebook slug 和 page path。",
+      "relatedPage": "请查找与笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 相关的笔记。说明每个结果为什么相关，并引用 page path。",
+      "relatedNotebook": "请在 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 中查找最相关的笔记。按主题分组，并引用 page path。",
+      "outlinePage": "请为笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 建议一个更清晰的大纲。不要编辑笔记，只返回简洁的结构建议。",
+      "outlineNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 建议一个更清晰的高层大纲。不要编辑笔记，只返回简洁的结构建议。"
+    },
+    "tools": {
+      "list_notebooks": "正在列出笔记本",
+      "search_notes": "正在搜索笔记",
+      "get_notebook": "正在读取笔记本",
+      "get_page": "正在读取页面"
+    },
+    "errors": {
+      "authentication_required": "请重新登录后使用助手。",
+      "connection_failed": "助手连接失败。",
+      "csrf_failed": "安全校验失败，请重试发送。",
+      "not_configured": "AI 尚未配置。",
+      "rate_limited": "助手请求过多，请稍后重试。",
+      "unknown": "助手暂时无法响应。"
+    }
+  },
   "search": {
     "error": "搜索失败，请重试。",
     "noResults": "未找到结果。"

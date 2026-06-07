@@ -19,6 +19,7 @@ frontend:
     targetPort: 8080
   env:
     apiBaseUrl: https://api.example.local
+    aiStatusEndpointPath: /api/ai/status
   probes:
     readiness:
       path: /
@@ -81,6 +82,18 @@ api:
     ttlSecondsAfterFinished: 300
   auth:
     registrationEnabled: true
+  ai:
+    enabled: false
+    endpointPath: /api/ai/assistant
+    statusEndpointPath: /api/ai/status
+    draftEndpointPath: /api/ai/drafts
+    agentName: CodeCafeAssistant
+    model: ""
+    maxToolResults: 10
+    maxToolContentChars: 4000
+    maxDraftPromptChars: 2000
+    maxDraftContextChars: 12000
+    maxDraftOutputTokens: 1600
   cors:
     allowedOrigins:
       - https://frontend.example.local

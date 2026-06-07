@@ -256,7 +256,11 @@ export default function NotebookReaderPage() {
           <div className="flex-1 min-h-0 overflow-y-auto">
             <NotebookOutline headings={outline} scrollContainerRef={mainRef} />
           </div>
-          <AiAssistant />
+          <AiAssistant
+            key={`${notebook.slug}:${activePage?.path ?? 'notebook'}`}
+            notebook={notebook}
+            activePage={activePage}
+          />
         </>
       }
     />

@@ -14,6 +14,7 @@
     </PackageReference>
     <PackageReference Include="OpenIddict.AspNetCore" Version="7.5.0" />
     <ProjectReference Include="..\CodeCafe.Api\CodeCafe.Api.csproj" />
+    <ProjectReference Include="..\CodeCafe.Ai\CodeCafe.Ai.csproj" />
     <ProjectReference Include="..\CodeCafe.Application\CodeCafe.Application.csproj" />
     <ProjectReference Include="..\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
     <ProjectReference Include="..\CodeCafe.Mcp\CodeCafe.Mcp.csproj" />

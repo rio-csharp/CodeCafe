@@ -303,6 +303,14 @@ public static class ServiceCollectionExtensions
                     GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: true),
                     _ => CreateFixedWindowRateLimiterOptions(120, TimeSpan.FromMinutes(1)));
             });
+
+            options.AddPolicy("ai", httpContext =>
+            {
+                var clientIpAddressAccessor = httpContext.RequestServices.GetRequiredService<IClientIpAddressAccessor>();
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    GetRateLimitPartitionKey(httpContext, clientIpAddressAccessor, allowAuthenticatedUserKey: true),
+                    _ => CreateFixedWindowRateLimiterOptions(30, TimeSpan.FromMinutes(1)));
+            });
         });
 
         return services;

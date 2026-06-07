@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next'
 import { ApiError } from '@/shared/api'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
-import type { MarkdownImportErrorCode } from './types'
+import type { MarkdownImportErrorCode } from '@/entities/notebook'
 
 /**
  * Map a Markdown import failure to a translated user-facing message.

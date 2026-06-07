@@ -36,6 +36,26 @@ That is enough for most local work. In Development, the host fills in default va
 - `AuthorizationServer:FrontendBaseUrl` as `http://localhost:5173`
 - `Cors:AllowedOrigins` for the Vite dev server
 
+To enable the in-app AI notebook assistant locally, add the AI settings to the same file or use user secrets/environment variables:
+
+```json
+{
+  "Ai": {
+    "Enabled": true,
+    "Model": "gpt-4.1-mini",
+    "ApiKey": "<your OpenAI API key>"
+  }
+}
+```
+
+When enabled, the backend exposes:
+
+- `GET /api/ai/status` for frontend capability discovery
+- `POST /api/ai/assistant` for the AG-UI notebook chat assistant
+- `POST /api/ai/drafts` for Markdown note drafts that can be created, appended, or used to replace a page
+
+The assistant reads notebooks through the signed-in user's session. Draft application uses the existing Markdown upload/import endpoints, so generated content is still reviewed by the user before it is saved.
+
 ### 3. Configure The Frontend
 
 Create `frontend/.env` from `frontend/.env.example`.
@@ -44,6 +64,7 @@ Default direct-to-backend mode:
 
 ```env
 VITE_API_BASE_URL=https://localhost:7239
+VITE_AI_STATUS_ENDPOINT_PATH=/api/ai/status
 ```
 
 If you prefer to use the Vite proxy instead, leave it empty:
@@ -88,6 +109,7 @@ npm run dev
 The frontend runs on `http://localhost:5173`.
 
 If `VITE_API_BASE_URL=` is blank, `/api` requests are proxied to `http://localhost:5042`.
+Keep `VITE_AI_STATUS_ENDPOINT_PATH` aligned with `Ai:StatusEndpointPath` when you customize the AI status endpoint.
 
 ## Testing And Quality Checks
 
@@ -140,4 +162,5 @@ dotnet CodeCafe.Server.dll migrate
 - `CodeCafe.Server` is the only backend entrypoint for local run, publish, deploy, and migrations.
 - The frontend runtime reads `window.__CODECAFE_CONFIG__.apiBaseUrl` first, then falls back to `VITE_API_BASE_URL`.
 - Browser API writes use CSRF protection. The shared frontend API client handles token fetch and retry automatically.
+- AI is disabled by default. Set `Ai:Enabled`, `Ai:Model`, and `Ai:ApiKey` only in local user secrets, environment variables, or deployment secrets.
 - `scripts/README.md` documents the maintained database-sync helper in `tools/CodeCafe.DbSync`.

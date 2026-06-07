@@ -131,7 +131,7 @@ The deploy script:
 - seeds the OAuth secret when certificate values are provided
 - builds an API config secret from database and OAuth settings
 - deploys frontend and API images through Helm
-- waits for frontend `/`, API readiness, and MCP protected-resource metadata to respond
+- waits for frontend `/`, API readiness, AI status, and MCP protected-resource metadata to respond
 
 ## Runtime Configuration
 
@@ -144,6 +144,22 @@ Important backend runtime settings come from environment variables or secrets:
 - `AuthorizationServer__FrontendBaseUrl`
 - signing/encryption certificate values or paths
 - MCP settings such as audience, scopes, and allowed origins
+- AI settings when the in-app assistant is enabled:
+  - `Ai__Enabled=true`
+  - `Ai__Model`
+  - `Ai__ApiKey`
+  - optional limits such as `Ai__MaxToolResults`, `Ai__MaxToolContentChars`, and `Ai__MaxDraftOutputTokens`
+
+The Helm chart exposes non-sensitive AI values under `api.ai`. Keep `Ai__ApiKey` in a Kubernetes secret or pass it to `scripts/cd/deploy-helm.sh` through `AI_API_KEY`; do not commit it to values files.
+
+`scripts/cd/deploy-helm.sh` supports:
+
+- `AI_ENABLED`, default `false`
+- `AI_MODEL`, required when `AI_ENABLED=true`
+- `AI_API_KEY`, required when `AI_ENABLED=true`
+- `AI_ENDPOINT_PATH`, `AI_STATUS_ENDPOINT_PATH`, `AI_DRAFT_ENDPOINT_PATH`, and generation/tool limit overrides
+
+`AI_STATUS_ENDPOINT_PATH` is also passed to the frontend runtime config so browser capability discovery stays aligned with the backend endpoint. The deploy smoke test checks frontend `/`, API readiness, AI status, and MCP protected-resource metadata.
 
 ### Frontend
 
@@ -153,7 +169,7 @@ The frontend image writes `window.__CODECAFE_CONFIG__` at container startup thro
 frontend/docker-entrypoint.d/10-write-runtime-config.sh
 ```
 
-That runtime config provides `apiBaseUrl` without rebuilding the frontend image per environment.
+That runtime config provides `apiBaseUrl` and `aiStatusEndpointPath` without rebuilding the frontend image per environment.
 
 ## Database Migrations
 

@@ -218,6 +218,86 @@
     "onThisPage": "On this page",
     "noHeadings": "No headings on this page."
   },
+  "ai": {
+    "title": "AI Assistant",
+    "readOnly": "Chat read-only",
+    "collapse": "Collapse AI Assistant",
+    "checking": "Checking AI...",
+    "thinking": "Thinking...",
+    "clear": "Clear conversation",
+    "send": "Send",
+    "stop": "Stop",
+    "inputPlaceholder": "Ask about your notes...",
+    "disabledTitle": "AI is not configured",
+    "disabledDescription": "Set Ai:Enabled, Ai:ApiKey, and Ai:Model to use the notebook assistant.",
+    "statusErrorTitle": "AI status unavailable",
+    "statusErrorDescription": "The assistant status endpoint could not be reached.",
+    "signInTitle": "Sign in to use AI",
+    "signInDescription": "The assistant reads notebooks through your CodeCafe account.",
+    "signIn": "Sign in",
+    "actions": {
+      "summarize": "Summarize current context",
+      "related": "Find related notes",
+      "outline": "Suggest an outline"
+    },
+    "drafts": {
+      "title": "Draft into notes",
+      "generate": "Generate draft",
+      "discard": "Discard draft",
+      "applied": "AI draft applied",
+      "placeholder": "Describe the note you want AI to draft...",
+      "actions": {
+        "summary": "Draft summary page",
+        "outline": "Draft outline",
+        "rewrite": "Rewrite current page",
+        "expand": "Expand current page",
+        "continue": "Continue current page"
+      },
+      "apply": {
+        "create": "New",
+        "append": "Append",
+        "replace": "Replace"
+      },
+      "prompts": {
+        "summaryPage": "Create a polished Markdown summary of page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Include concise headings, action items if relevant, and a Sources section.",
+        "summaryNotebook": "Create a polished Markdown summary of notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Include key themes, open questions, and a Sources section.",
+        "outlinePage": "Create a clearer Markdown outline for page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Preserve the important ideas and organize them into headings and bullet points.",
+        "outlineNotebook": "Create a high-level Markdown outline for notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Group related pages into coherent sections.",
+        "rewritePage": "Rewrite page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}} as polished Markdown. Keep factual content, improve structure and clarity, and include a Sources section.",
+        "rewriteNotebook": "Create a polished Markdown synthesis of notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Improve structure and clarity without inventing unsupported facts.",
+        "expandPage": "Expand page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}} into a fuller Markdown draft. Preserve the existing facts, add useful explanation, and include a Sources section.",
+        "expandNotebook": "Expand notebook \"{{notebookTitle}}\" with slug {{notebookSlug}} into a fuller Markdown guide. Use notebook context as source material and avoid unsupported facts.",
+        "continuePage": "Continue page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}} with the next useful Markdown section. Match the existing style and include a Sources section.",
+        "continueNotebook": "Continue notebook \"{{notebookTitle}}\" with slug {{notebookSlug}} by drafting the next useful Markdown section or page concept. Cite source pages when relevant."
+      },
+      "errors": {
+        "generateFailed": "Failed to generate AI draft",
+        "applyFailed": "Failed to apply AI draft"
+      }
+    },
+    "prompts": {
+      "summarizePage": "Summarize the CodeCafe page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Use notebook tools first and cite the notebook slug and page path.",
+      "summarizeNotebook": "Summarize the CodeCafe notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Use notebook tools first and cite notebook slugs and page paths where relevant.",
+      "relatedPage": "Find notes related to the page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Explain why each result is relevant and cite page paths.",
+      "relatedNotebook": "Find the most relevant notes inside notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Group results by theme and cite page paths.",
+      "outlinePage": "Suggest a clearer outline for the page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Do not edit the notebook; return a concise proposed structure.",
+      "outlineNotebook": "Suggest a clearer high-level outline for notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Do not edit the notebook; return a concise proposed structure."
+    },
+    "tools": {
+      "list_notebooks": "Listing notebooks",
+      "search_notes": "Searching notes",
+      "get_notebook": "Reading notebook",
+      "get_page": "Reading page"
+    },
+    "errors": {
+      "authentication_required": "Sign in again to use the assistant.",
+      "connection_failed": "The assistant could not connect.",
+      "csrf_failed": "Security validation failed. Try sending again.",
+      "not_configured": "AI is not configured yet.",
+      "rate_limited": "Too many assistant requests. Please try again later.",
+      "unknown": "The assistant could not respond."
+    }
+  },
   "search": {
     "error": "Search failed. Please try again.",
     "noResults": "No results found."

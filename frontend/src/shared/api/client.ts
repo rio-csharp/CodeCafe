@@ -1,15 +1,6 @@
-declare global {
-  interface Window {
-    __CODECAFE_CONFIG__?: {
-      apiBaseUrl?: string
-    }
-  }
-}
+import { API_BASE_URL } from '@/shared/config'
 
-export const API_BASE_URL =
-  window.__CODECAFE_CONFIG__?.apiBaseUrl ??
-  import.meta.env.VITE_API_BASE_URL ??
-  ''
+export { API_BASE_URL }
 
 export class ApiError extends Error {
   status: number
