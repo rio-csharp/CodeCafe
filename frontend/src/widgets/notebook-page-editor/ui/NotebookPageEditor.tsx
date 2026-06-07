@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
+import type { Editor } from '@tiptap/react'
 import { Check, X } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
@@ -14,6 +15,16 @@ interface NotebookPageEditorProps {
   onSave: (contentJson: Record<string, unknown>) => void
   onCancel: () => void
   isSaving?: boolean
+}
+
+function getMountedEditorElement(editor: Editor): HTMLElement | null {
+  if (editor.isDestroyed) return null
+
+  try {
+    return editor.view.dom as HTMLElement
+  } catch {
+    return null
+  }
 }
 
 export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }: NotebookPageEditorProps) {
@@ -50,7 +61,29 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
   // when the line count hasn't changed — so running on every tick is cheap.
   useEffect(() => {
     if (!editor) return
-    applyCodeBlockLineNumbers(editor.view.dom as HTMLElement)
+    let frameId: number | null = null
+    let attemptsRemaining = 10
+
+    const syncLineNumbers = () => {
+      const editorElement = getMountedEditorElement(editor)
+      if (editorElement) {
+        applyCodeBlockLineNumbers(editorElement)
+        return
+      }
+
+      if (!editor.isDestroyed && attemptsRemaining > 0) {
+        attemptsRemaining -= 1
+        frameId = window.requestAnimationFrame(syncLineNumbers)
+      }
+    }
+
+    syncLineNumbers()
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId)
+      }
+    }
   }, [editor, tick])
 
   const handleSave = useCallback(() => {
