@@ -220,6 +220,8 @@
   },
   "ai": {
     "title": "AI 助手",
+    "open": "打开 AI 助手",
+    "dragHandle": "拖动 AI 助手",
     "readOnly": "对话只读",
     "collapse": "收起 AI 助手",
     "checking": "正在检查 AI...",

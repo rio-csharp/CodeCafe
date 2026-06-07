@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type HTMLAttributes } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   AlertCircle,
@@ -40,6 +40,9 @@ import { useToast } from '@/shared/ui/Toast'
 interface AiAssistantProps {
   notebook: Notebook
   activePage: NotebookItem | null
+  dragHandleProps?: HTMLAttributes<HTMLDivElement>
+  onCollapse?: () => void
+  variant?: 'docked' | 'floating'
 }
 
 interface QuickAction {
@@ -56,7 +59,13 @@ interface DraftQuickAction {
   prompt: string
 }
 
-export default function AiAssistant({ notebook, activePage }: AiAssistantProps) {
+export default function AiAssistant({
+  notebook,
+  activePage,
+  dragHandleProps,
+  onCollapse,
+  variant = 'docked',
+}: AiAssistantProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [draft, setDraft] = useState('')
   const [draftInstruction, setDraftInstruction] = useState('')
@@ -186,6 +195,11 @@ export default function AiAssistant({ notebook, activePage }: AiAssistantProps) 
     messagesEndRef.current?.scrollIntoView?.({ block: 'end' })
   }, [messages, toolActivities, isRunning])
 
+  const isFloating = variant === 'floating'
+  const isCollapsed = !isFloating && collapsed
+  const handleCollapse = onCollapse ?? (() => setCollapsed(true))
+  const { className: dragHandleClassName, ...dragHandleAttributes } = dragHandleProps ?? {}
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const nextDraft = draft.trim()
@@ -247,7 +261,7 @@ export default function AiAssistant({ notebook, activePage }: AiAssistantProps) 
     }
   }
 
-  if (collapsed) {
+  if (isCollapsed) {
     return (
       <div className="border-t border-border-subtle px-4 py-3">
         <button
@@ -263,9 +277,16 @@ export default function AiAssistant({ notebook, activePage }: AiAssistantProps) 
     )
   }
 
+  const rootClassName = isFloating
+    ? 'flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border-default bg-surface shadow-2xl'
+    : 'flex h-[44vh] min-h-[300px] max-h-[540px] shrink-0 flex-col border-t border-border-subtle bg-surface'
+  const headerClassName = isFloating
+    ? `flex select-none items-start justify-between gap-3 border-b border-border-subtle px-4 py-2.5 ${dragHandleClassName ?? ''}`
+    : 'flex items-start justify-between gap-3 px-4 py-2.5'
+
   return (
-    <div className="flex h-[44vh] min-h-[300px] max-h-[540px] shrink-0 flex-col border-t border-border-subtle bg-surface">
-      <div className="flex items-start justify-between gap-3 px-4 py-2.5">
+    <div className={rootClassName}>
+      <div {...dragHandleAttributes} className={headerClassName}>
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 shrink-0 text-brand-brown" />
@@ -282,7 +303,8 @@ export default function AiAssistant({ notebook, activePage }: AiAssistantProps) 
         </div>
         <button
           type="button"
-          onClick={() => setCollapsed(true)}
+          onClick={handleCollapse}
+          onPointerDown={(event) => event.stopPropagation()}
           className="rounded p-1 text-text-tertiary transition-colors hover:bg-surface-hover hover:text-text-primary"
           aria-label={t('ai.collapse')}
           title={t('ai.collapse')}

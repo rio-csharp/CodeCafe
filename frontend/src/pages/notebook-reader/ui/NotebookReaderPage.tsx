@@ -10,7 +10,7 @@ import NotebookLayout from '@/widgets/notebook-layout'
 import NotebookTree from '@/widgets/notebook-tree'
 import NotebookPageContent from '@/widgets/notebook-page-content'
 import NotebookOutline from '@/widgets/notebook-outline'
-import AiAssistant from '@/widgets/ai-assistant'
+import { FloatingAiAssistant } from '@/widgets/ai-assistant'
 import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
 import { useTranslation } from 'react-i18next'
 
@@ -160,108 +160,104 @@ export default function NotebookReaderPage() {
       }
       contentRef={mainRef}
       content={
-        activePage ? (
-          <div className={contentWrapperClass}>
-            {/* Sticky header: always full width */}
-            <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-12 px-4 sm:px-6 lg:px-12 flex items-start justify-between gap-4 py-1.5 bg-surface/95 backdrop-blur-sm">
-              {!isEditingPage && (
-                <h1
-                  className="text-xl font-semibold text-text-primary truncate min-w-0 cursor-pointer"
-                  title={activePage.title}
-                  onClick={() => {
-                    navigator.clipboard.writeText(activePage.title)
-                      .then(() => showToast(t('notebook.titleCopied')))
-                      .catch(() => showToast(t('notebook.copyFailed'), 'error'))
-                  }}
-                >
-                  {activePage.title}
-                </h1>
-              )}
-              <div className={`flex items-center gap-2 shrink-0 ${isEditingPage ? '' : 'mt-0.5'}`}>
+        <>
+          {activePage ? (
+            <div className={contentWrapperClass}>
+              {/* Sticky header: always full width */}
+              <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-12 px-4 sm:px-6 lg:px-12 flex items-start justify-between gap-4 py-1.5 bg-surface/95 backdrop-blur-sm">
                 {!isEditingPage && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setIsFullWidth(!isFullWidth)}
-                      className="inline-flex items-center gap-1 rounded-md border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary hover:bg-surface-hover transition-colors"
-                      title={isFullWidth ? 'Collapse width' : 'Expand width'}
-                    >
-                      {isFullWidth ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-                      {isFullWidth ? 'Collapse' : 'Full width'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => refetch()}
-                      disabled={isFetching}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
-                      title="Refresh content"
-                    >
-                      <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
-                      Refresh
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(window.location.href)
-                          .then(() => showToast(t('notebook.linkCopied')))
-                          .catch(() => showToast(t('notebook.copyFailed'), 'error'))
-                      }}
-                      className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
-                      title={t('notebook.copyLink')}
-                    >
-                      <LinkIcon className="h-3 w-3" />
-                      {t('notebook.copyLink')}
-                    </button>
-                  </>
-                )}
-                {!isEditingPage && notebook.canEdit && !activePage?.isArchived && (
-                  <button
-                    type="button"
-                    onClick={() => setEditClickedForPath(pagePath)}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                  <h1
+                    className="text-xl font-semibold text-text-primary truncate min-w-0 cursor-pointer"
+                    title={activePage.title}
+                    onClick={() => {
+                      navigator.clipboard.writeText(activePage.title)
+                        .then(() => showToast(t('notebook.titleCopied')))
+                        .catch(() => showToast(t('notebook.copyFailed'), 'error'))
+                    }}
                   >
-                    <Edit3 className="h-3 w-3" />
-                    {t('notebook.editPage')}
-                  </button>
+                    {activePage.title}
+                  </h1>
+                )}
+                <div className={`flex items-center gap-2 shrink-0 ${isEditingPage ? '' : 'mt-0.5'}`}>
+                  {!isEditingPage && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsFullWidth(!isFullWidth)}
+                        className="inline-flex items-center gap-1 rounded-md border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary hover:bg-surface-hover transition-colors"
+                        title={isFullWidth ? 'Collapse width' : 'Expand width'}
+                      >
+                        {isFullWidth ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
+                        {isFullWidth ? 'Collapse' : 'Full width'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => refetch()}
+                        disabled={isFetching}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
+                        title="Refresh content"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(window.location.href)
+                            .then(() => showToast(t('notebook.linkCopied')))
+                            .catch(() => showToast(t('notebook.copyFailed'), 'error'))
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                        title={t('notebook.copyLink')}
+                      >
+                        <LinkIcon className="h-3 w-3" />
+                        {t('notebook.copyLink')}
+                      </button>
+                    </>
+                  )}
+                  {!isEditingPage && notebook.canEdit && !activePage?.isArchived && (
+                    <button
+                      type="button"
+                      onClick={() => setEditClickedForPath(pagePath)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                    >
+                      <Edit3 className="h-3 w-3" />
+                      {t('notebook.editPage')}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isEditingPage ? (
+                <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-text-primary" /></div>}>
+                  <NotebookPageEditor
+                    page={activePage}
+                    onSave={handleSavePage}
+                    onCancel={() => setEditClickedForPath(null)}
+                    isSaving={updateItem.isPending}
+                  />
+                </Suspense>
+              ) : (
+                <NotebookPageContent page={activePage} />
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center px-4">
+                <p className="text-sm text-text-tertiary">{t('notebook.noPages')}</p>
+                {notebook.canEdit && (
+                  <p className="text-xs text-text-tertiary mt-2">{t('notebook.addPageHint')}</p>
                 )}
               </div>
             </div>
-
-            {isEditingPage ? (
-              <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-text-primary" /></div>}>
-                <NotebookPageEditor
-                  page={activePage}
-                  onSave={handleSavePage}
-                  onCancel={() => setEditClickedForPath(null)}
-                  isSaving={updateItem.isPending}
-                />
-              </Suspense>
-            ) : (
-              <NotebookPageContent page={activePage} />
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center px-4">
-              <p className="text-sm text-text-tertiary">{t('notebook.noPages')}</p>
-              {notebook.canEdit && (
-                <p className="text-xs text-text-tertiary mt-2">{t('notebook.addPageHint')}</p>
-              )}
-            </div>
-          </div>
-        )
+          )}
+          <FloatingAiAssistant notebook={notebook} activePage={activePage} />
+        </>
       }
       rightPanel={
-        <>
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            <NotebookOutline headings={outline} scrollContainerRef={mainRef} />
-          </div>
-          <AiAssistant
-            key={`${notebook.slug}:${activePage?.path ?? 'notebook'}`}
-            notebook={notebook}
-            activePage={activePage}
-          />
-        </>
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          <NotebookOutline headings={outline} scrollContainerRef={mainRef} />
+        </div>
       }
     />
   )

@@ -220,6 +220,8 @@
   },
   "ai": {
     "title": "AI Assistant",
+    "open": "Open AI Assistant",
+    "dragHandle": "Drag AI Assistant",
     "readOnly": "Chat read-only",
     "collapse": "Collapse AI Assistant",
     "checking": "Checking AI...",
