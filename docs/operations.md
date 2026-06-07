@@ -157,6 +157,7 @@ The Helm chart exposes non-sensitive AI values under `api.ai`. Keep `Ai__ApiKey`
 - `AI_ENABLED`, default `false`
 - `AI_MODEL`, required when `AI_ENABLED=true`
 - `AI_API_KEY`, required when `AI_ENABLED=true`
+- `AI_BASE_URL`, optional OpenAI-compatible base URL; root URLs are normalized to `/v1`
 - `AI_ENDPOINT_PATH`, `AI_STATUS_ENDPOINT_PATH`, `AI_DRAFT_ENDPOINT_PATH`, and generation/tool limit overrides
 
 `AI_STATUS_ENDPOINT_PATH` is also passed to the frontend runtime config so browser capability discovery stays aligned with the backend endpoint. The deploy smoke test checks frontend `/`, API readiness, AI status, and MCP protected-resource metadata.

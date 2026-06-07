@@ -1,7 +1,6 @@
 using CodeCafe.Ai.Configuration;
 using CodeCafe.Application.Notes;
 using Microsoft.Extensions.Options;
-using OpenAI;
 using OpenAI.Chat;
 using System.Text;
 
@@ -18,7 +17,7 @@ public sealed class OpenAiNoteDraftGenerator(IOptions<AiOptions> aiOptionsAccess
         AiNoteDraftGenerationContext context,
         CancellationToken cancellationToken)
     {
-        var client = new OpenAIClient(_options.ApiKey).GetChatClient(_options.Model);
+        var client = OpenAiClientFactory.Create(_options).GetChatClient(_options.Model);
         var completionResult = await client.CompleteChatAsync(
             [
                 new SystemChatMessage(DraftInstructions),

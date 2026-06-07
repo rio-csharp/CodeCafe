@@ -43,6 +43,11 @@ public static class ServiceCollectionExtensions
                 "Ai:Model is required when AI is enabled.")
             .Validate(options => !options.Enabled || !string.IsNullOrWhiteSpace(options.ApiKey),
                 "Ai:ApiKey is required when AI is enabled.")
+            .Validate(options => !options.Enabled
+                || string.IsNullOrWhiteSpace(options.BaseUrl)
+                || (Uri.TryCreate(options.BaseUrl.Trim(), UriKind.Absolute, out var uri)
+                    && uri.Scheme is "http" or "https"),
+                "Ai:BaseUrl must be an absolute HTTP or HTTPS URL when set.")
             .Validate(options => options.MaxToolResults > 0,
                 "Ai:MaxToolResults must be greater than zero.")
             .Validate(options => options.MaxToolContentChars > 0,
@@ -103,7 +108,7 @@ public static class ServiceCollectionExtensions
                 serializerOptions: jsonOptions.SerializerOptions)
         ];
 
-        return new OpenAIClient(options.ApiKey)
+        return OpenAiClientFactory.Create(options)
             .GetChatClient(options.Model)
             .AsAIAgent(
                 name: agentName,

@@ -56,6 +56,8 @@ spec:
               value: {{ .Values.api.ai.agentName | quote }}
             - name: Ai__Model
               value: {{ .Values.api.ai.model | quote }}
+            - name: Ai__BaseUrl
+              value: {{ .Values.api.ai.baseUrl | quote }}
             - name: Ai__MaxToolResults
               value: {{ .Values.api.ai.maxToolResults | quote }}
             - name: Ai__MaxToolContentChars

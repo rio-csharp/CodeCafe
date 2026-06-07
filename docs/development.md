@@ -43,7 +43,8 @@ To enable the in-app AI notebook assistant locally, add the AI settings to the s
   "Ai": {
     "Enabled": true,
     "Model": "gpt-4.1-mini",
-    "ApiKey": "<your OpenAI API key>"
+    "ApiKey": "<your OpenAI API key>",
+    "BaseUrl": ""
   }
 }
 ```
@@ -110,6 +111,7 @@ The frontend runs on `http://localhost:5173`.
 
 If `VITE_API_BASE_URL=` is blank, `/api` requests are proxied to `http://localhost:5042`.
 Keep `VITE_AI_STATUS_ENDPOINT_PATH` aligned with `Ai:StatusEndpointPath` when you customize the AI status endpoint.
+For OpenAI-compatible routers, set `Ai:BaseUrl` to the provider base URL; root URLs are normalized to `/v1`.
 
 ## Testing And Quality Checks
 
