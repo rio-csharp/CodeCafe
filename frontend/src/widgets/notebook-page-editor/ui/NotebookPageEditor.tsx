@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { Check, X } from 'lucide-react'
@@ -7,6 +7,7 @@ import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
 import { createEmptyTipTapDocument, sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
+import { CodeBlockCopyButton } from '@/shared/ui/CodeBlockCopyButton'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
 import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
@@ -30,13 +31,18 @@ function getMountedEditorElement(editor: Editor): HTMLElement | null {
 }
 
 function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: NotebookPageEditorProps) {
-  // Bump on every editor transaction so toolbar `isActive` checks (and any
-  // other view-state reads) stay in sync. Replaces the previous `forceUpdate({})`.
+  // Bump on every editor update so toolbar `isActive` checks (and any
+  // other view-state reads) stay in sync. Using `update` instead of `transaction`
+  // avoids unnecessary re-renders on selection-only changes.
   const [tick, setTick] = useState(0)
   const safeContent = useMemo(
     () => (page.contentJson ? sanitizeTipTapContent(page.contentJson) : createEmptyTipTapDocument()),
     [page.contentJson],
   )
+
+  const [hoveredPre, setHoveredPre] = useState<HTMLElement | null>(null)
+  const hoveredPreRef = useRef(hoveredPre)
+  useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
 
   const editor = useEditor({
     extensions: createTipTapExtensions({ editable: true }),
@@ -62,13 +68,13 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
     }
   }, [editor, safeContent])
 
-  // Keep React in sync with editor transactions (selection moves, typing, etc.)
+  // Keep React in sync with editor updates (actual document changes only)
   useEffect(() => {
     if (!editor) return
     const bumpTick = () => setTick((t) => t + 1)
-    editor.on('transaction', bumpTick)
+    editor.on('update', bumpTick)
     return () => {
-      editor.off('transaction', bumpTick)
+      editor.off('update', bumpTick)
     }
   }, [editor])
 
@@ -100,6 +106,34 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
       }
     }
   }, [editor, tick])
+
+  // Track hovered code blocks for copy-button visibility
+  useEffect(() => {
+    const editorElement = getMountedEditorElement(editor)
+    if (!editorElement) return
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const pre = (e.target as HTMLElement).closest('pre')
+      if (pre && editorElement.contains(pre)) setHoveredPre(pre as HTMLElement)
+    }
+    const handleMouseOut = (e: MouseEvent) => {
+      const pre = (e.target as HTMLElement).closest('pre')
+      if (pre && pre === hoveredPreRef.current) {
+        const related = e.relatedTarget as HTMLElement | null
+        if (!related || !pre.contains(related)) {
+          setHoveredPre(null)
+        }
+      }
+    }
+
+    editorElement.addEventListener('mouseover', handleMouseOver)
+    editorElement.addEventListener('mouseout', handleMouseOut)
+
+    return () => {
+      editorElement.removeEventListener('mouseover', handleMouseOver)
+      editorElement.removeEventListener('mouseout', handleMouseOut)
+    }
+  }, [editor])
 
   const handleSave = useCallback(() => {
     if (!editor) return
@@ -151,6 +185,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
       </div>
       <div className="px-6 py-4 lg:px-10 lg:py-6">
         <EditorContent editor={editor} />
+        {hoveredPre && <CodeBlockCopyButton pre={hoveredPre} />}
       </div>
       <div className="px-6 py-2 lg:px-10 border-t border-border-subtle flex justify-end">
         <span className="text-xs text-text-tertiary">

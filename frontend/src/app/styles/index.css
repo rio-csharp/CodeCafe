@@ -175,12 +175,15 @@
 
 /* Code block line numbers */
 .prose pre {
-  display: flex;
-  gap: 0.75rem;
-  padding-left: 0.75rem;
+  display: block;
+  position: relative;
+  padding-left: 3rem;
 }
 
 .prose pre .line-numbers {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
   display: flex;
   flex-direction: column;
   text-align: right;
@@ -189,6 +192,7 @@
   font-size: 0.875rem;
   line-height: 1.625;
   user-select: none;
+  pointer-events: none;
 }
 
 .prose pre .line-numbers span {
@@ -196,7 +200,7 @@
 }
 
 .prose pre code {
-  flex: 1;
+  display: block;
   overflow-x: auto;
   background: transparent !important;
   padding: 0 !important;

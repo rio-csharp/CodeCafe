@@ -1,8 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useLayoutEffect, useRef, useState, useMemo } from 'react'
 import { generateHTML } from '@tiptap/html'
 import type { JSONContent } from '@tiptap/core'
-import { Copy, Check } from 'lucide-react'
 import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
@@ -10,6 +8,7 @@ import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import { sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { sanitizeTipTapHtml } from '@/shared/lib/sanitizeTipTapHtml'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
+import { CodeBlockCopyButton } from '@/shared/ui/CodeBlockCopyButton'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
 import '@/shared/styles/codeHighlight.css'
 
@@ -17,40 +16,7 @@ interface NotebookPageContentProps {
   page: NotebookItem
 }
 
-function CopyOverlay({ pre }: { pre: HTMLElement }) {
-  const [copied, setCopied] = useState(false)
-  const timeoutRef = useRef<number | null>(null)
 
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current)
-      }
-    }
-  }, [])
-
-  const handleCopy = useCallback(() => {
-    const code = pre.querySelector('code')
-    if (!code) return
-    navigator.clipboard.writeText(code.textContent ?? '').then(() => {
-      setCopied(true)
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
-      timeoutRef.current = window.setTimeout(() => setCopied(false), 2000)
-    })
-  }, [pre])
-
-  return createPortal(
-    <button
-      type="button"
-      onClick={handleCopy}
-      title="Copy"
-      className="absolute top-2 right-2 p-1.5 rounded-md bg-surface/80 hover:bg-surface border border-border-default/60 text-text-secondary hover:text-text-primary transition-colors shadow-sm z-10"
-    >
-      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>,
-    pre,
-  )
-}
 
 /**
  * Read-only TipTap renderer using generateHTML for static output.
@@ -121,7 +87,7 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
   return (
     <div ref={containerRef} className={PROSE_CONTENT_CLASSES}>
       <div dangerouslySetInnerHTML={{ __html: html }} />
-      {hoveredPre && <CopyOverlay pre={hoveredPre} />}
+      {hoveredPre && <CodeBlockCopyButton pre={hoveredPre} />}
     </div>
   )
 }
