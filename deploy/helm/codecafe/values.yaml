@@ -90,6 +90,8 @@ api:
     agentName: CodeCafeAssistant
     model: ""
     baseUrl: ""
+    apiKeySecretName: ""
+    apiKeySecretKey: "Ai__ApiKey"
     maxToolResults: 10
     maxToolContentChars: 4000
     maxDraftPromptChars: 2000
