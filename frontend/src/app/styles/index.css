@@ -206,6 +206,10 @@
   padding: 0 !important;
 }
 
+.prose pre:hover .code-copy-btn {
+  opacity: 1;
+}
+
 /* TipTap image */
 .prose img {
   max-width: 100%;
