@@ -98,7 +98,8 @@ remote_command+=" OAUTH_ENV_FILE=$(shell_quote "$remote_dir/oauth.env")"
 
 for optional_name in \
   VALUES_FILE KUBECTL_BIN HELM_BIN \
-  HELM_TIMEOUT FRONTEND_REPLICA_COUNT API_REPLICA_COUNT API_MIGRATION_ENABLED; do
+  HELM_TIMEOUT FRONTEND_REPLICA_COUNT API_REPLICA_COUNT API_MIGRATION_ENABLED \
+  AI_ENABLED AI_MODEL AI_BASE_URL AI_API_KEY; do
   if [ -n "${!optional_name:-}" ]; then
     remote_command+=" $optional_name=$(shell_quote "${!optional_name}")"
   fi
