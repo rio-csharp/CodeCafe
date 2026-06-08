@@ -110,9 +110,47 @@ describe('FloatingAiAssistant', () => {
     render(<FloatingAiAssistant notebook={notebook} activePage={activePage} />)
 
     expect(screen.queryByTestId('assistant')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open AI Assistant' }).parentElement).toHaveStyle({
+      height: '44px',
+      left: '432px',
+      top: '632px',
+      width: '44px',
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Open AI Assistant' }))
 
+    expect(screen.getByTestId('assistant')).toBeInTheDocument()
+  })
+
+  it('drags the minimized button without reopening from the release click', () => {
+    setViewport(500, 700)
+
+    render(<FloatingAiAssistant notebook={notebook} activePage={activePage} />)
+
+    const openButton = screen.getByRole('button', { name: 'Open AI Assistant' })
+    fireEvent.pointerDown(openButton, {
+      button: 0,
+      clientX: 440,
+      clientY: 640,
+      pointerId: 1,
+    })
+    fireEvent.pointerMove(window, {
+      clientX: -500,
+      clientY: -500,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(window, {
+      clientX: -500,
+      clientY: -500,
+      pointerId: 1,
+    })
+
+    expect(openButton.parentElement).toHaveStyle({ left: '16px', top: '16px' })
+
+    fireEvent.click(openButton)
+    expect(screen.queryByTestId('assistant')).not.toBeInTheDocument()
+
+    fireEvent.click(openButton)
     expect(screen.getByTestId('assistant')).toBeInTheDocument()
   })
 })
