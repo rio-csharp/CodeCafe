@@ -153,7 +153,15 @@ public sealed class NotebookAssistantTools(
             return GetPageToolResponse.Failure(ToToolError(result.Error!));
         }
 
-        return GetPageToolResponse.Success(ToNotebookItem(result.Value!));
+        var item = result.Value!;
+        if (!string.Equals(item.Type, "page", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetPageToolResponse.Failure(new NotebookAssistantToolError(
+                "notebook_item_not_found",
+                $"The item at path '{path}' is not a page."));
+        }
+
+        return GetPageToolResponse.Success(ToNotebookItem(item));
     }
 
     private bool TryGetCurrentUserId(out Guid currentUserId, out NotebookAssistantToolError error)

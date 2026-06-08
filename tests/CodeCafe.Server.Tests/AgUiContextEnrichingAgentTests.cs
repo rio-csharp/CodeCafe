@@ -39,7 +39,7 @@ public sealed class AgUiContextEnrichingAgentTests
         Assert.Equal(2, requestMessages.Count);
 
         var contextMessage = requestMessages[0];
-        Assert.Equal(ChatRole.User, contextMessage.Role);
+        Assert.Equal(ChatRole.System, contextMessage.Role);
         Assert.Equal("CodeCafeContext", contextMessage.AuthorName);
         Assert.Contains("Current CodeCafe notebook", contextMessage.Text, StringComparison.Ordinal);
         Assert.Contains("\"slug\":\"architecture-notes\"", contextMessage.Text, StringComparison.Ordinal);

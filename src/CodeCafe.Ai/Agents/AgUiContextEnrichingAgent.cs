@@ -73,7 +73,7 @@ internal sealed class AgUiContextEnrichingAgent(AIAgent innerAgent) : Delegating
             builder.AppendLine($"Value JSON: {TrimContextValue(entry.Value)}");
         }
 
-        return new ChatMessage(ChatRole.User, builder.ToString())
+        return new ChatMessage(ChatRole.System, builder.ToString())
         {
             AuthorName = "CodeCafeContext"
         };

@@ -87,7 +87,10 @@ public static class AiNoteDraftEndpoints
                     activePage),
                 cancellationToken);
         }
-        catch (Exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception ex) when (
+            ex is System.ClientModel.ClientResultException
+                or HttpRequestException
+                or InvalidOperationException)
         {
             return ToError(
                 "ai_draft_generation_failed",

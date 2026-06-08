@@ -49,7 +49,7 @@ export default function NotebookReaderPage() {
 
   const tree = useMemo(() => buildTree(visibleItems), [visibleItems])
 
-  const activePage = (() => {
+  const activePage = useMemo(() => {
     if (!notebook) return null
     let page = pagePath ? findPageByPath(tree, pagePath) : null
     if (!page) {
@@ -59,7 +59,7 @@ export default function NotebookReaderPage() {
       }
     }
     return page
-  })()
+  }, [notebook, pagePath, tree])
 
   const { handleSave: handleSavePage, isPending: isSavingPage } = useSaveNotebookPage(
     notebook?.id ?? '',
