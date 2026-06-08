@@ -186,7 +186,7 @@
   flex-direction: column;
   text-align: right;
   color: var(--color-text-tertiary);
-  font-family: var(--font-mono);
+  font-family: inherit;
   font-size: 0.875rem;
   line-height: 1.625;
   user-select: none;
