@@ -124,6 +124,7 @@ export function AiAssistantContent({
               draft={noteDraft}
               draftActions={draftActions}
               generatePending={generatePending}
+              hasConversation={messages.length > 0}
               instruction={draftInstruction}
               onApply={onApplyDraft}
               onGenerate={onGenerateDraft}

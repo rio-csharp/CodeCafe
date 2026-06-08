@@ -5,6 +5,7 @@ import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
 import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
+import { highlightCodeBlocks } from '@/shared/lib/lowlight'
 import { sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { sanitizeTipTapHtml } from '@/shared/lib/sanitizeTipTapHtml'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
@@ -39,7 +40,7 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
     }
   }, [content, extensions])
 
-  // Inject heading IDs and code block line numbers after HTML renders.
+  // Inject heading IDs, highlight code blocks, and add line numbers after HTML renders.
   // Also reset hoveredPre because the previous DOM nodes are replaced.
   useLayoutEffect(() => {
     const container = containerRef.current
@@ -53,6 +54,7 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
       h.id = slugifyHeadingId(text, idx)
     })
 
+    highlightCodeBlocks(container)
     applyCodeBlockLineNumbers(container)
   }, [html])
 
