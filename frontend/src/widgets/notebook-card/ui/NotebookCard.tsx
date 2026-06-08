@@ -10,6 +10,8 @@ import { useToggleFavorite } from '@/features/toggle-favorite'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { pickIcon, formatTimeAgo } from '@/shared/lib'
+import ErrorBoundary from '@/shared/ui/ErrorBoundary'
+import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import type { Notebook } from '@/entities/notebook'
 import { useTranslation } from 'react-i18next'
 
@@ -18,7 +20,7 @@ interface NotebookCardProps {
   showVisibility?: boolean
 }
 
-export default function NotebookCard({ notebook, showVisibility = false }: NotebookCardProps) {
+function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCardProps) {
   const iconComponent = pickIcon(notebook.title)
   const authorName = notebook.authorDisplayName || 'User'
   const initial = authorName.charAt(0).toUpperCase()
@@ -119,5 +121,13 @@ export default function NotebookCard({ notebook, showVisibility = false }: Noteb
         )}
       </div>
     </div>
+  )
+}
+
+export default function NotebookCard(props: NotebookCardProps) {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback title="Notebook Card Error" description="The notebook card failed to render. Try refreshing the page." />}>
+      <NotebookCardComponent {...props} />
+    </ErrorBoundary>
   )
 }

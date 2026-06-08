@@ -32,6 +32,8 @@ import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import { useLayout } from '@/shared/model/layoutContext'
+import ErrorBoundary from '@/shared/ui/ErrorBoundary'
+import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import { TreeContext } from '../model/TreeContext'
 import TreeRootActions from './TreeRootActions'
 import TreeContent from './TreeContent'
@@ -47,7 +49,7 @@ interface NotebookTreeProps {
   onRefreshNotebook?: () => void
 }
 
-export default function NotebookTree({ notebook, notebookSlug, tree, activePage, showArchived, onShowArchivedChange, onRefreshNotebook }: NotebookTreeProps) {
+function NotebookTreeComponent({ notebook, notebookSlug, tree, activePage, showArchived, onShowArchivedChange, onRefreshNotebook }: NotebookTreeProps) {
   const canEdit = !!notebook.canEdit
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
@@ -343,5 +345,13 @@ export default function NotebookTree({ notebook, notebookSlug, tree, activePage,
         onSuccess={onRefreshNotebook}
       />
     </TreeContext.Provider>
+  )
+}
+
+export default function NotebookTree(props: NotebookTreeProps) {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback title="Notebook Tree Error" description="The notebook tree failed to render. Try refreshing the page." />}>
+      <NotebookTreeComponent {...props} />
+    </ErrorBoundary>
   )
 }

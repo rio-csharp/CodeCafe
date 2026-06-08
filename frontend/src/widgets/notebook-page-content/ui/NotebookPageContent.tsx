@@ -138,7 +138,7 @@ function PlainTextViewer({ text }: { text: string }) {
   )
 }
 
-export default function NotebookPageContent({ page }: NotebookPageContentProps) {
+function NotebookPageContentComponent({ page }: NotebookPageContentProps) {
   const safeContent = useMemo(
     () => (page.contentJson ? sanitizeTipTapContent(page.contentJson) : null),
     [page.contentJson],
@@ -176,4 +176,17 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
 
   // No rich content, but we have plain text
   return <PlainTextViewer text={page.plainTextContent!} />
+}
+
+export default function NotebookPageContent(props: NotebookPageContentProps) {
+  return (
+    <ErrorBoundary fallback={
+      <div className="rounded-xl border border-status-error-border bg-status-error-bg p-6">
+        <p className="text-sm font-semibold text-status-error">Unable to display content</p>
+        <p className="mt-1 text-xs text-status-error">The page content could not be rendered.</p>
+      </div>
+    }>
+      <NotebookPageContentComponent {...props} />
+    </ErrorBoundary>
+  )
 }

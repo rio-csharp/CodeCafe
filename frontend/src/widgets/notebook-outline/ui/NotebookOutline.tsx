@@ -1,5 +1,7 @@
 import { useState, useEffect, type RefObject } from 'react'
 import type { OutlineHeading } from '@/entities/notebook'
+import ErrorBoundary from '@/shared/ui/ErrorBoundary'
+import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import { useTranslation } from 'react-i18next'
 
 interface NotebookOutlineProps {
@@ -7,7 +9,7 @@ interface NotebookOutlineProps {
   scrollContainerRef?: RefObject<HTMLElement | null>
 }
 
-export default function NotebookOutline({ headings, scrollContainerRef }: NotebookOutlineProps) {
+function NotebookOutlineComponent({ headings, scrollContainerRef }: NotebookOutlineProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const { t } = useTranslation()
 
@@ -85,5 +87,13 @@ export default function NotebookOutline({ headings, scrollContainerRef }: Notebo
         })}
       </ul>
     </div>
+  )
+}
+
+export default function NotebookOutline(props: NotebookOutlineProps) {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback title="Outline Error" description="The page outline failed to render. Try refreshing the page." />}>
+      <NotebookOutlineComponent {...props} />
+    </ErrorBoundary>
   )
 }

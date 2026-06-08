@@ -7,6 +7,8 @@ import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
 import { createEmptyTipTapDocument, sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
+import ErrorBoundary from '@/shared/ui/ErrorBoundary'
+import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
 import '@/shared/styles/codeHighlight.css'
 
@@ -27,7 +29,7 @@ function getMountedEditorElement(editor: Editor): HTMLElement | null {
   }
 }
 
-export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }: NotebookPageEditorProps) {
+function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: NotebookPageEditorProps) {
   // Bump on every editor transaction so toolbar `isActive` checks (and any
   // other view-state reads) stay in sync. Replaces the previous `forceUpdate({})`.
   const [tick, setTick] = useState(0)
@@ -141,5 +143,13 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
         </span>
       </div>
     </div>
+  )
+}
+
+export default function NotebookPageEditor(props: NotebookPageEditorProps) {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback title="Editor Error" description="The page editor failed to load. Your changes are safe — try refreshing." />}>
+      <NotebookPageEditorComponent {...props} />
+    </ErrorBoundary>
   )
 }
