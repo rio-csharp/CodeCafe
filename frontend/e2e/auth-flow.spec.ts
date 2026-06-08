@@ -20,7 +20,7 @@ test.describe('Authentication flow', () => {
     // Direct navigation to a protected page while anonymous should show the
     // public view with a sign-in prompt rather than redirecting to /login.
     await page.goto('/notes')
-    await expect(page.getByRole('heading', { name: 'Notebooks' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Notebooks', level: 1 })).toBeVisible()
     await expect(page.getByText('Sign in to build your own notebook library')).toBeVisible()
   })
 })
