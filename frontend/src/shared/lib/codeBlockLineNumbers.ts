@@ -20,7 +20,8 @@ export function applyCodeBlockLineNumbers(container: HTMLElement | null | undefi
     const code = pre.querySelector('code')
     if (!code) return
     const raw = code.textContent ?? ''
-    const lineCount = Math.max(1, raw.replace(/\n+$/, '').split('\n').length)
+    const normalized = raw.replace(/\r\n/g, '\n').replace(/\n+$/, '')
+    const lineCount = Math.max(1, normalized.split('\n').length)
 
     let lineNumbers = pre.querySelector('.line-numbers') as HTMLElement | null
     if (!lineNumbers) {

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useMemo } from 'react'
+import { useMemo, useCallback } from 'react'
 import { generateHTML } from '@tiptap/html'
 import type { JSONContent } from '@tiptap/core'
 
@@ -24,71 +24,73 @@ function createCopyButtonSvg(icon: 'copy' | 'check'): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
 }
 
+const COPY_BUTTON_HTML = `<button type="button" title="Copy" class="code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-surface/80 hover:bg-surface border border-border-default/60 text-text-secondary hover:text-text-primary transition-colors shadow-sm z-10 opacity-0 pointer-events-auto">${createCopyButtonSvg('copy')}</button>`
+
 /**
  * Read-only TipTap renderer using generateHTML for static output.
- * No full Editor instance is mounted — only raw HTML + DOM injections
- * for heading IDs, code-block line numbers, and copy buttons.
+ * All visual enhancements (heading IDs, syntax highlighting, line numbers,
+ * copy buttons) are baked into the HTML string before rendering so they
+ * do not depend on useLayoutEffect, which can be unreliable across remounts.
  */
 function TipTapViewer({ content }: { content: Record<string, unknown> }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-
   const extensions = useMemo(() => createTipTapExtensions({ editable: false }), [])
 
   const html = useMemo(() => {
+    let raw: string
     try {
-      return sanitizeTipTapHtml(generateHTML(content as JSONContent, extensions))
+      raw = sanitizeTipTapHtml(generateHTML(content as JSONContent, extensions))
     } catch {
       throw new Error('Failed to generate HTML from TipTap content')
     }
-  }, [content, extensions])
 
-  // Inject heading IDs, highlight code blocks, line numbers, and copy buttons
-  // after HTML renders. All DOM mutations are cleaned up on the next run.
-  useLayoutEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    const temp = document.createElement('div')
+    temp.innerHTML = raw
 
-    const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
-    headings.forEach((h, idx) => {
+    // Heading IDs
+    temp.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((h, idx) => {
       const text = h.textContent ?? ''
       h.id = slugifyHeadingId(text, idx)
     })
 
-    highlightCodeBlocks(container)
-    applyCodeBlockLineNumbers(container)
+    // Syntax highlighting + trim trailing newlines
+    highlightCodeBlocks(temp)
 
-    // Inject copy buttons into every <pre><code> block
-    container.querySelectorAll('pre').forEach((pre) => {
-      const code = pre.querySelector('code')
-      if (!code || pre.querySelector('.code-copy-btn')) return
+    // Line numbers
+    applyCodeBlockLineNumbers(temp)
 
-      const btn = document.createElement('button')
-      btn.type = 'button'
-      btn.title = 'Copy'
-      btn.className =
-        'code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-surface/80 hover:bg-surface border border-border-default/60 text-text-secondary hover:text-text-primary transition-colors shadow-sm z-10 opacity-0 pointer-events-auto'
-      btn.innerHTML = createCopyButtonSvg('copy')
-
-      const handleClick = () => {
-        navigator.clipboard.writeText(code.textContent ?? '').then(() => {
-          btn.innerHTML = createCopyButtonSvg('check')
-          window.setTimeout(() => {
-            btn.innerHTML = createCopyButtonSvg('copy')
-          }, 2000)
-        })
+    // Remove empty paragraphs that create unwanted blank lines after code blocks
+    temp.querySelectorAll('p').forEach((p) => {
+      if (!p.innerHTML.trim()) {
+        p.remove()
       }
-      btn.addEventListener('click', handleClick)
-
-      pre.appendChild(btn)
     })
 
-    return () => {
-      container.querySelectorAll('.code-copy-btn').forEach((btn) => btn.remove())
-    }
-  }, [html])
+    // Copy buttons — baked into HTML, click handled via delegation
+    temp.querySelectorAll('pre').forEach((pre) => {
+      if (!pre.querySelector('code')) return
+      if (pre.querySelector('.code-copy-btn')) return
+      pre.insertAdjacentHTML('beforeend', COPY_BUTTON_HTML)
+    })
+
+    return temp.innerHTML
+  }, [content, extensions])
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const btn = (e.target as HTMLElement).closest('.code-copy-btn')
+    if (!btn) return
+    const pre = btn.closest('pre')
+    const code = pre?.querySelector('code')
+    if (!code) return
+    navigator.clipboard.writeText(code.textContent ?? '').then(() => {
+      btn.innerHTML = createCopyButtonSvg('check')
+      window.setTimeout(() => {
+        btn.innerHTML = createCopyButtonSvg('copy')
+      }, 2000)
+    })
+  }, [])
 
   return (
-    <div ref={containerRef} className={PROSE_CONTENT_CLASSES}>
+    <div className={PROSE_CONTENT_CLASSES} onClick={handleClick}>
       <div dangerouslySetInnerHTML={{ __html: html }} />
     </div>
   )
