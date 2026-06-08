@@ -99,6 +99,7 @@ export default function NotebookReaderChrome({
           <button
             type="button"
             onClick={onEdit}
+            aria-label={t('notebook.editPage')}
             className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
           >
             <Edit3 className="h-3 w-3" />

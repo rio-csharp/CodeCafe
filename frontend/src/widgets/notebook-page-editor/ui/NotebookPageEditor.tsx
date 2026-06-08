@@ -131,6 +131,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
             type="button"
             onClick={onCancel}
             disabled={isSaving}
+            aria-label="Cancel editing"
             className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
           >
             <X className="h-3.5 w-3.5" />
@@ -140,6 +141,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
             type="button"
             onClick={handleSave}
             disabled={isSaving}
+            aria-label="Save page"
             className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Check className="h-3.5 w-3.5" />
