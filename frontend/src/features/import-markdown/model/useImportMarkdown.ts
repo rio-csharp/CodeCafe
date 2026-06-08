@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { notesKeys } from '@/entities/notebook'
 import {
   discardMarkdownUpload,
   importMarkdownAsPage,
+  notesKeys,
   uploadMarkdownFile,
-} from '../api/markdownImportApi'
-import type { MarkdownImportResponse } from './types'
+  type MarkdownImportResponse,
+} from '@/entities/notebook'
 
 export interface ImportMarkdownInput {
   file: File

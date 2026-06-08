@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 import AuthLayout from '@/widgets/auth-layout'
 import { PasswordInput } from '@/widgets/auth-form'
+import { Input } from '@/shared/ui/Input'
 import GitHubIcon from '@/shared/ui/icons/GitHubIcon'
 import { useLoginForm, completePostAuthRedirect } from '@/features/authenticate'
 import { useTranslation } from 'react-i18next'
@@ -44,26 +45,15 @@ export default function LoginPage() {
           </p>
         )}
 
-        <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
-            {t('auth.email')}
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-tertiary" />
-            <input
-              type="email"
-              placeholder={t('auth.emailPlaceholder')}
-              data-testid="login-email"
-              className={`w-full rounded-lg border bg-surface py-2.5 pl-10 pr-4 text-sm text-text-primary outline-none transition-colors focus:border-border-focus ${
-                errors.email ? 'border-status-error-border' : 'border-border-default'
-              }`}
-              {...register('email')}
-            />
-          </div>
-          {errors.email && (
-            <p className="mt-1 text-xs text-status-error">{errors.email.message}</p>
-          )}
-        </div>
+        <Input
+          type="email"
+          label={t('auth.email')}
+          placeholder={t('auth.emailPlaceholder')}
+          data-testid="login-email"
+          iconLeft={<Mail className="h-5 w-5" />}
+          error={errors.email?.message}
+          {...register('email')}
+        />
 
         <div>
           <div className="flex items-center justify-between mb-2">

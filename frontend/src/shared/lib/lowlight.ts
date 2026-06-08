@@ -1,4 +1,5 @@
 import { createLowlight, common } from 'lowlight'
+import type { Nodes } from 'hast'
 
 /**
  * Shared lowlight instance for TipTap's CodeBlockLowlight extension.
@@ -9,3 +10,52 @@ import { createLowlight, common } from 'lowlight'
  * exports a single instance that both the editor and viewer widgets import.
  */
 export const lowlight = createLowlight(common)
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function hastNodeToHtml(node: Nodes): string {
+  if (node.type === 'text') {
+    return escapeHtml(node.value)
+  }
+  if (node.type === 'element') {
+    const props = node.properties || {}
+    const className = Array.isArray(props.className)
+      ? props.className.join(' ')
+      : props.className
+    const attrs = className ? ` class="${className}"` : ''
+    const children = node.children.map(hastNodeToHtml).join('')
+    return `<${node.tagName}${attrs}>${children}</${node.tagName}>`
+  }
+  if (node.type === 'root') {
+    return node.children.map(hastNodeToHtml).join('')
+  }
+  return ''
+}
+
+/**
+ * Highlight all `<pre><code>` blocks inside a container using lowlight.
+ * Mutates the DOM in-place.
+ */
+export function highlightCodeBlocks(container: HTMLElement): void {
+  container.querySelectorAll('pre code').forEach((code) => {
+    const languageMatch = code.className.match(/language-(\w+)/)
+    const language = languageMatch?.[1] || 'plaintext'
+    const text = (code.textContent || '').replace(/\r\n/g, '\n').replace(/\n+$/, '')
+
+    if (code.querySelector('.hljs')) return
+
+    try {
+      const result = lowlight.highlight(language, text)
+      code.innerHTML = hastNodeToHtml(result)
+      code.classList.add('hljs')
+    } catch {
+      // Language not registered — silently skip
+    }
+  })
+}

@@ -1,3 +1,4 @@
+using CodeCafe.Ai.DependencyInjection;
 using CodeCafe.Api.DependencyInjection;
 using CodeCafe.Application;
 using CodeCafe.Infrastructure;
@@ -11,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddCodeCafeApi();
+builder.Services.AddCodeCafeAi(builder.Configuration);
 builder.Services.AddCodeCafeMcp(builder.Configuration);
 builder.Services.AddCodeCafeServerHost(builder.Configuration, builder.Environment);
 

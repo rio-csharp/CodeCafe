@@ -43,6 +43,31 @@ spec:
             - dotnet
             - CodeCafe.Server.dll
             - migrate
+          env:
+            - name: Ai__Enabled
+              value: {{ .Values.api.ai.enabled | quote }}
+            - name: Ai__EndpointPath
+              value: {{ .Values.api.ai.endpointPath | quote }}
+            - name: Ai__StatusEndpointPath
+              value: {{ .Values.api.ai.statusEndpointPath | quote }}
+            - name: Ai__DraftEndpointPath
+              value: {{ .Values.api.ai.draftEndpointPath | quote }}
+            - name: Ai__AgentName
+              value: {{ .Values.api.ai.agentName | quote }}
+            - name: Ai__Model
+              value: {{ .Values.api.ai.model | quote }}
+            - name: Ai__BaseUrl
+              value: {{ .Values.api.ai.baseUrl | quote }}
+            - name: Ai__MaxToolResults
+              value: {{ .Values.api.ai.maxToolResults | quote }}
+            - name: Ai__MaxToolContentChars
+              value: {{ .Values.api.ai.maxToolContentChars | quote }}
+            - name: Ai__MaxDraftPromptChars
+              value: {{ .Values.api.ai.maxDraftPromptChars | quote }}
+            - name: Ai__MaxDraftContextChars
+              value: {{ .Values.api.ai.maxDraftContextChars | quote }}
+            - name: Ai__MaxDraftOutputTokens
+              value: {{ .Values.api.ai.maxDraftOutputTokens | quote }}
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
 {{- end }}

@@ -2,6 +2,7 @@
 
 interface CodeCafeConfig {
   apiBaseUrl?: string
+  aiStatusEndpointPath?: string
 }
 
 declare global {

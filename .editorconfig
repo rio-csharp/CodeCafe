@@ -26,3 +26,7 @@ csharp_style_namespace_declarations = block_scoped:silent
 [*.{yml,yaml,json,md}]
 indent_style = space
 indent_size = 2
+
+[*.{ts,tsx,js,jsx,css}]
+indent_style = space
+indent_size = 2

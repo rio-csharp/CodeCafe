@@ -1,12 +1,12 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { createPortal } from 'react-dom'
+import { useMemo, useCallback } from 'react'
 import { generateHTML } from '@tiptap/html'
 import type { JSONContent } from '@tiptap/core'
-import { Copy, Check } from 'lucide-react'
+
 import { slugifyHeadingId } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
-import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
+import { highlightCodeBlocks } from '@/shared/lib/lowlight'
+import { sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { sanitizeTipTapHtml } from '@/shared/lib/sanitizeTipTapHtml'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
@@ -16,147 +16,58 @@ interface NotebookPageContentProps {
   page: NotebookItem
 }
 
-/**
- * Remove empty text nodes that ProseMirror rejects.
- * A text node with text === "" causes: RangeError: Empty text nodes are not allowed
- */
-function sanitizeTipTapContent(content: Record<string, unknown>): Record<string, unknown> {
-  if (!content || typeof content !== 'object') return content
-  const clone = JSON.parse(JSON.stringify(content))
+const COPY_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`
 
-  function walk(node: unknown): unknown {
-    if (typeof node !== 'object' || node === null) return node
-    const n = node as Record<string, unknown>
+const CHECK_ICON = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`
 
-    // Filter out empty text nodes
-    if (n.type === 'text' && n.text === '') {
-      return null
-    }
+const COPY_BTN_HTML = `<button type="button" title="Copy" class="code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-surface/80 hover:bg-surface border border-border-default/60 text-text-secondary hover:text-text-primary transition-colors shadow-sm z-10 opacity-0 pointer-events-auto">${COPY_ICON}</button>`
 
-    if (Array.isArray(n.content)) {
-      n.content = n.content
-        .map(walk)
-        .filter((child): child is Record<string, unknown> => child !== null)
-    }
-
-    return n
-  }
-
-  return walk(clone) as Record<string, unknown>
-}
-
-function CopyOverlay({ pre }: { pre: HTMLElement }) {
-  const [copied, setCopied] = useState(false)
-  const timeoutRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current)
-      }
-    }
-  }, [])
-
-  const handleCopy = useCallback(() => {
-    const code = pre.querySelector('code')
-    if (!code) return
-    navigator.clipboard.writeText(code.textContent ?? '').then(() => {
-      setCopied(true)
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
-      timeoutRef.current = window.setTimeout(() => setCopied(false), 2000)
-    })
-  }, [pre])
-
-  return createPortal(
-    <button
-      type="button"
-      onClick={handleCopy}
-      title="Copy"
-      className="absolute top-2 right-2 p-1.5 rounded-md bg-surface/80 hover:bg-surface border border-border-default/60 text-text-secondary hover:text-text-primary transition-colors shadow-sm z-10"
-    >
-      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-    </button>,
-    pre,
-  )
-}
-
-/**
- * Read-only TipTap renderer using generateHTML for static output.
- * No full Editor instance is mounted — only raw HTML + DOM injections
- * for heading IDs, code-block line numbers, and copy buttons.
- */
 function TipTapViewer({ content }: { content: Record<string, unknown> }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [hoveredPre, setHoveredPre] = useState<HTMLElement | null>(null)
-  const hoveredPreRef = useRef(hoveredPre)
-  useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
-
   const extensions = useMemo(() => createTipTapExtensions({ editable: false }), [])
 
   const html = useMemo(() => {
-    try {
-      return sanitizeTipTapHtml(generateHTML(content as JSONContent, extensions))
-    } catch {
-      throw new Error('Failed to generate HTML from TipTap content')
-    }
-  }, [content, extensions])
+    const raw = sanitizeTipTapHtml(generateHTML(content as JSONContent, extensions))
+    const temp = document.createElement('div')
+    temp.innerHTML = raw
 
-  // Inject heading IDs and code block line numbers after HTML renders.
-  // Also reset hoveredPre because the previous DOM nodes are replaced.
-  useLayoutEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    setHoveredPre(null)
-
-    const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
-    headings.forEach((h, idx) => {
-      const text = h.textContent ?? ''
-      h.id = slugifyHeadingId(text, idx)
+    temp.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach((h, idx) => {
+      h.id = slugifyHeadingId(h.textContent ?? '', idx)
     })
 
-    applyCodeBlockLineNumbers(container)
-  }, [html])
+    highlightCodeBlocks(temp)
 
-  // Track hovered code blocks via event delegation
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
+    temp.querySelectorAll('p').forEach((p) => {
+      if (!p.innerHTML.trim()) p.remove()
+    })
 
-    const handleMouseOver = (e: MouseEvent) => {
-      const pre = (e.target as HTMLElement).closest('pre')
-      if (pre && container.contains(pre)) setHoveredPre(pre as HTMLElement)
-    }
-    const handleMouseOut = (e: MouseEvent) => {
-      const pre = (e.target as HTMLElement).closest('pre')
-      if (pre && pre === hoveredPreRef.current) {
-        const related = e.relatedTarget as HTMLElement | null
-        if (!related || !pre.contains(related)) {
-          setHoveredPre(null)
-        }
+    temp.querySelectorAll('pre').forEach((pre) => {
+      if (pre.querySelector('code') && !pre.querySelector('.code-copy-btn')) {
+        pre.insertAdjacentHTML('beforeend', COPY_BTN_HTML)
       }
-    }
+    })
 
-    container.addEventListener('mouseover', handleMouseOver)
-    container.addEventListener('mouseout', handleMouseOut)
+    return temp.innerHTML
+  }, [content, extensions])
 
-    return () => {
-      container.removeEventListener('mouseover', handleMouseOver)
-      container.removeEventListener('mouseout', handleMouseOut)
-    }
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    const btn = (e.target as HTMLElement).closest('.code-copy-btn')
+    if (!btn) return
+    const pre = btn.closest('pre')
+    const code = pre?.querySelector('code')
+    if (!code) return
+    navigator.clipboard.writeText(code.textContent ?? '').then(() => {
+      btn.innerHTML = CHECK_ICON
+      window.setTimeout(() => { btn.innerHTML = COPY_ICON }, 2000)
+    })
   }, [])
 
   return (
-    <div ref={containerRef} className={PROSE_CONTENT_CLASSES}>
+    <div className={PROSE_CONTENT_CLASSES} onClick={handleClick}>
       <div dangerouslySetInnerHTML={{ __html: html }} />
-      {hoveredPre && <CopyOverlay pre={hoveredPre} />}
     </div>
   )
 }
 
-/**
- * Plain-text fallback when TipTap fails to render.
- */
 function PlainTextViewer({ text }: { text: string }) {
   return (
     <div className="prose prose-sm max-w-none">
@@ -166,14 +77,13 @@ function PlainTextViewer({ text }: { text: string }) {
   )
 }
 
-export default function NotebookPageContent({ page }: NotebookPageContentProps) {
+function NotebookPageContentComponent({ page }: NotebookPageContentProps) {
   const safeContent = useMemo(
     () => (page.contentJson ? sanitizeTipTapContent(page.contentJson) : null),
     [page.contentJson],
   )
   const hasPlainText = !!page.plainTextContent
 
-  // Nothing to show at all
   if (!safeContent && !hasPlainText) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -182,7 +92,6 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
     )
   }
 
-  // TipTap content available — try rendering it, but guard with ErrorBoundary
   if (safeContent) {
     return (
       <ErrorBoundary
@@ -202,6 +111,18 @@ export default function NotebookPageContent({ page }: NotebookPageContentProps) 
     )
   }
 
-  // No rich content, but we have plain text
   return <PlainTextViewer text={page.plainTextContent!} />
+}
+
+export default function NotebookPageContent(props: NotebookPageContentProps) {
+  return (
+    <ErrorBoundary fallback={
+      <div className="rounded-xl border border-status-error-border bg-status-error-bg p-6">
+        <p className="text-sm font-semibold text-status-error">Unable to display content</p>
+        <p className="mt-1 text-xs text-status-error">The page content could not be rendered.</p>
+      </div>
+    }>
+      <NotebookPageContentComponent {...props} />
+    </ErrorBoundary>
+  )
 }

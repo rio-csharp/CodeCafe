@@ -8,9 +8,10 @@ CodeCafe is an open-source notebook workspace for engineers. It combines a React
 - Rich-text page editing backed by TipTap JSON
 - Private, unlisted, and public sharing
 - Search, favorites, archiving, and public notebook browsing
+- In-app AI notebook assistant for notebook Q&A, note summaries, outlines, rewrites, and AI draft creation
 - OAuth/OpenIddict-backed MCP tools, resources, prompts, and upload sessions
 
-`Codes` and the in-app assistant are planned surfaces in the UI, but notebooks are the production-ready product today.
+`Codes` is still a planned surface in the UI, but notebooks and the in-app AI assistant are production-ready surfaces today.
 
 ## Repository Layout
 
@@ -21,6 +22,7 @@ CodeCafe/
 │  ├─ CodeCafe.Application/
 │  ├─ CodeCafe.Infrastructure/
 │  ├─ CodeCafe.Api/
+│  ├─ CodeCafe.Ai/
 │  ├─ CodeCafe.Mcp/
 │  └─ CodeCafe.Server/
 ├─ tests/
@@ -36,7 +38,7 @@ CodeCafe/
 └─ tools/
 ```
 
-`CodeCafe.Server` is the only runnable backend host. `CodeCafe.Api` and `CodeCafe.Mcp` are adapter libraries composed by that host.
+`CodeCafe.Server` is the only runnable backend host. `CodeCafe.Api`, `CodeCafe.Ai`, and `CodeCafe.Mcp` are adapter libraries composed by that host.
 
 ## Quick Start
 

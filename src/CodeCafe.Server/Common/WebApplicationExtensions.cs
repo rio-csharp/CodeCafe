@@ -1,3 +1,4 @@
+using CodeCafe.Ai.Common;
 using CodeCafe.Api.Common;
 using CodeCafe.Api.Configuration;
 using CodeCafe.Api.Errors;
@@ -26,6 +27,7 @@ public static class WebApplicationExtensions
         app.UseAuthorization();
         app.UseCodeCafeMcpOriginValidation();
         app.MapCodeCafeApi();
+        app.MapCodeCafeAi();
         app.MapNotesMarkdownImportEndpoints();
         app.MapDiagnosticsToolEndpoints();
         app.MapControllers();

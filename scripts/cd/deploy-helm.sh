@@ -24,6 +24,19 @@ VALUES_FILE="${VALUES_FILE:-}"
 FRONTEND_REPLICA_COUNT="${FRONTEND_REPLICA_COUNT:-}"
 API_REPLICA_COUNT="${API_REPLICA_COUNT:-}"
 API_MIGRATION_ENABLED="${API_MIGRATION_ENABLED:-}"
+AI_ENABLED="${AI_ENABLED:-false}"
+AI_ENDPOINT_PATH="${AI_ENDPOINT_PATH:-/api/ai/assistant}"
+AI_STATUS_ENDPOINT_PATH="${AI_STATUS_ENDPOINT_PATH:-/api/ai/status}"
+AI_DRAFT_ENDPOINT_PATH="${AI_DRAFT_ENDPOINT_PATH:-/api/ai/drafts}"
+AI_AGENT_NAME="${AI_AGENT_NAME:-CodeCafeAssistant}"
+AI_MODEL="${AI_MODEL:-}"
+AI_BASE_URL="${AI_BASE_URL:-}"
+AI_MAX_TOOL_RESULTS="${AI_MAX_TOOL_RESULTS:-10}"
+AI_MAX_TOOL_CONTENT_CHARS="${AI_MAX_TOOL_CONTENT_CHARS:-4000}"
+AI_MAX_DRAFT_PROMPT_CHARS="${AI_MAX_DRAFT_PROMPT_CHARS:-2000}"
+AI_MAX_DRAFT_CONTEXT_CHARS="${AI_MAX_DRAFT_CONTEXT_CHARS:-12000}"
+AI_MAX_DRAFT_OUTPUT_TOKENS="${AI_MAX_DRAFT_OUTPUT_TOKENS:-1600}"
+AI_API_KEY="${AI_API_KEY:-}"
 OAUTH_SECRET_NAME="${OAUTH_SECRET_NAME:-codecafe-oauth-secret}"
 OAUTH_SECRET_NAMESPACE="${OAUTH_SECRET_NAMESPACE:-$NAMESPACE}"
 OAUTH_ENV_FILE="${OAUTH_ENV_FILE:-}"
@@ -69,6 +82,27 @@ trap 'on_signal HUP' HUP
 if [ -n "$OAUTH_ENV_FILE" ]; then
   # shellcheck disable=SC1090
   . "$OAUTH_ENV_FILE"
+fi
+
+case "$AI_ENABLED" in
+  true|false)
+    ;;
+  *)
+    echo "AI_ENABLED must be either 'true' or 'false'." >&2
+    exit 1
+    ;;
+esac
+
+if [ "$AI_ENABLED" = "true" ]; then
+  if [ -z "$AI_MODEL" ]; then
+    echo "AI_MODEL is required when AI_ENABLED=true." >&2
+    exit 1
+  fi
+
+  if [ -z "$AI_API_KEY" ]; then
+    echo "AI_API_KEY is required when AI_ENABLED=true." >&2
+    exit 1
+  fi
 fi
 
 append_secret_key() {
@@ -147,6 +181,10 @@ Mcp__RequireAuthorization=true
 Mcp__RequiredAudience=codecafe-mcp
 EOF
 
+if [ "$AI_ENABLED" = "true" ]; then
+  printf 'Ai__ApiKey=%s\n' "$AI_API_KEY" >> "$REMOTE_DIR/api.env"
+fi
+
 append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificateBase64
 append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__SigningCertificatePassword false
 append_secret_key "$OAUTH_SECRET_NAME" "$OAUTH_SECRET_NAMESPACE" AuthorizationServer__EncryptionCertificateBase64
@@ -167,11 +205,24 @@ helm_args=(
   --set "frontend.image.repository=$REGISTRY/$IMAGE_NAMESPACE/frontend"
   --set "frontend.image.tag=$IMAGE_TAG"
   --set "frontend.env.apiBaseUrl=https://$API_HOST"
+  --set-string "frontend.env.aiStatusEndpointPath=$AI_STATUS_ENDPOINT_PATH"
   --set "frontend.ingress.host=$FRONTEND_HOST"
   --set "frontend.ingress.tls.secretName=$TLS_SECRET"
   --set "api.image.repository=$REGISTRY/$IMAGE_NAMESPACE/api"
   --set "api.image.tag=$IMAGE_TAG"
   --set "api.envFromSecrets[0]=$api_config_secret"
+  --set "api.ai.enabled=$AI_ENABLED"
+  --set-string "api.ai.endpointPath=$AI_ENDPOINT_PATH"
+  --set-string "api.ai.statusEndpointPath=$AI_STATUS_ENDPOINT_PATH"
+  --set-string "api.ai.draftEndpointPath=$AI_DRAFT_ENDPOINT_PATH"
+  --set-string "api.ai.agentName=$AI_AGENT_NAME"
+  --set-string "api.ai.model=$AI_MODEL"
+  --set-string "api.ai.baseUrl=$AI_BASE_URL"
+  --set "api.ai.maxToolResults=$AI_MAX_TOOL_RESULTS"
+  --set "api.ai.maxToolContentChars=$AI_MAX_TOOL_CONTENT_CHARS"
+  --set "api.ai.maxDraftPromptChars=$AI_MAX_DRAFT_PROMPT_CHARS"
+  --set "api.ai.maxDraftContextChars=$AI_MAX_DRAFT_CONTEXT_CHARS"
+  --set "api.ai.maxDraftOutputTokens=$AI_MAX_DRAFT_OUTPUT_TOKENS"
   --set "api.cors.allowedOrigins[0]=https://$FRONTEND_HOST"
   --set "api.ingress.host=$API_HOST"
   --set "api.ingress.tls.secretName=$TLS_SECRET"
@@ -247,6 +298,7 @@ for _ in $(seq 1 20); do
 
   if curl --silent --fail --header "Host: $FRONTEND_HOST" "http://127.0.0.1:${frontend_port}/" >/dev/null \
     && curl --silent --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/health/ready" >/dev/null \
+    && curl --silent --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}${AI_STATUS_ENDPOINT_PATH}" >/dev/null \
     && curl --silent --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/.well-known/oauth-protected-resource/mcp" >/dev/null; then
     exit 0
   fi
@@ -256,4 +308,5 @@ done
 dump_port_forward_logs
 curl --fail --header "Host: $FRONTEND_HOST" "http://127.0.0.1:${frontend_port}/"
 curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/health/ready"
+curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}${AI_STATUS_ENDPOINT_PATH}"
 curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/.well-known/oauth-protected-resource/mcp"

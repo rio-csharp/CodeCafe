@@ -17,10 +17,12 @@ json_string() {
 }
 
 api_base_url_json=$(json_string "${API_BASE_URL:-http://localhost:8080}")
+ai_status_endpoint_path_json=$(json_string "${AI_STATUS_ENDPOINT_PATH:-/api/ai/status}")
 
 cat > /usr/share/nginx/html/config.js <<EOF
 window.__CODECAFE_CONFIG__ = {
-  apiBaseUrl: ${api_base_url_json}
+  apiBaseUrl: ${api_base_url_json},
+  aiStatusEndpointPath: ${ai_status_endpoint_path_json}
 };
 EOF
 

@@ -1,10 +1,14 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useReducer, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
+import type { Editor } from '@tiptap/react'
 import { Check, X } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
-import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
+import { createEmptyTipTapDocument, sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
+import { CodeBlockCopyButton } from '@/shared/ui/CodeBlockCopyButton'
+import ErrorBoundary from '@/shared/ui/ErrorBoundary'
+import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
 import '@/shared/styles/codeHighlight.css'
 
@@ -15,14 +19,33 @@ interface NotebookPageEditorProps {
   isSaving?: boolean
 }
 
-export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }: NotebookPageEditorProps) {
-  // Bump on every editor transaction so toolbar `isActive` checks (and any
-  // other view-state reads) stay in sync. Replaces the previous `forceUpdate({})`.
-  const [tick, setTick] = useState(0)
+function getMountedEditorElement(editor: Editor): HTMLElement | null {
+  if (editor.isDestroyed) return null
+
+  try {
+    return editor.view.dom as HTMLElement
+  } catch {
+    return null
+  }
+}
+
+function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: NotebookPageEditorProps) {
+  // Bump on every editor update so toolbar `isActive` checks (and any
+  // other view-state reads) stay in sync. Using `update` instead of `transaction`
+  // avoids unnecessary re-renders on selection-only changes.
+  const [, forceUpdate] = useReducer((c: number) => c + 1, 0)
+  const safeContent = useMemo(
+    () => (page.contentJson ? sanitizeTipTapContent(page.contentJson) : createEmptyTipTapDocument()),
+    [page.contentJson],
+  )
+
+  const [hoveredPre, setHoveredPre] = useState<HTMLElement | null>(null)
+  const hoveredPreRef = useRef(hoveredPre)
+  useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
 
   const editor = useEditor({
     extensions: createTipTapExtensions({ editable: true }),
-    content: page.contentJson ?? { type: 'doc', content: [] },
+    content: safeContent,
     autofocus: 'end',
     editorProps: {
       attributes: {
@@ -31,22 +54,55 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
     },
   })
 
-  // Keep React in sync with editor transactions (selection moves, typing, etc.)
+  // Sync editor content when the external page content changes (e.g. after a
+  // save roundtrip or when navigating between pages). This must run after the
+  // editor instance is ready and be guarded against destroying user edits:
+  // user typing only mutates the editor view, never `page.contentJson`.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    if (editor.isEmpty && !safeContent) return
+    const current = editor.getJSON()
+    if (JSON.stringify(current) !== JSON.stringify(safeContent)) {
+      editor.commands.setContent(safeContent, { emitUpdate: false })
+    }
+  }, [editor, safeContent])
+
+  // Keep React in sync with editor updates (actual document changes only)
   useEffect(() => {
     if (!editor) return
-    const bumpTick = () => setTick((t) => t + 1)
-    editor.on('transaction', bumpTick)
+    editor.on('update', forceUpdate)
     return () => {
-      editor.off('transaction', bumpTick)
+      editor.off('update', forceUpdate)
     }
   }, [editor])
 
-  // Sync code block line numbers. The function is idempotent — it short-circuits
-  // when the line count hasn't changed — so running on every tick is cheap.
+  // Track hovered code blocks for copy-button visibility
   useEffect(() => {
-    if (!editor) return
-    applyCodeBlockLineNumbers(editor.view.dom as HTMLElement)
-  }, [editor, tick])
+    const editorElement = getMountedEditorElement(editor)
+    if (!editorElement) return
+
+    const handleMouseOver = (e: MouseEvent) => {
+      const pre = (e.target as HTMLElement).closest('pre')
+      if (pre && editorElement.contains(pre)) setHoveredPre(pre as HTMLElement)
+    }
+    const handleMouseOut = (e: MouseEvent) => {
+      const pre = (e.target as HTMLElement).closest('pre')
+      if (pre && pre === hoveredPreRef.current) {
+        const related = e.relatedTarget as HTMLElement | null
+        if (!related || !pre.contains(related)) {
+          setHoveredPre(null)
+        }
+      }
+    }
+
+    editorElement.addEventListener('mouseover', handleMouseOver)
+    editorElement.addEventListener('mouseout', handleMouseOut)
+
+    return () => {
+      editorElement.removeEventListener('mouseover', handleMouseOver)
+      editorElement.removeEventListener('mouseout', handleMouseOut)
+    }
+  }, [editor])
 
   const handleSave = useCallback(() => {
     if (!editor) return
@@ -78,6 +134,7 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
             type="button"
             onClick={onCancel}
             disabled={isSaving}
+            aria-label="Cancel editing"
             className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
           >
             <X className="h-3.5 w-3.5" />
@@ -87,6 +144,7 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
             type="button"
             onClick={handleSave}
             disabled={isSaving}
+            aria-label="Save page"
             className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Check className="h-3.5 w-3.5" />
@@ -96,6 +154,7 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
       </div>
       <div className="px-6 py-4 lg:px-10 lg:py-6">
         <EditorContent editor={editor} />
+        {hoveredPre && <CodeBlockCopyButton pre={hoveredPre} />}
       </div>
       <div className="px-6 py-2 lg:px-10 border-t border-border-subtle flex justify-end">
         <span className="text-xs text-text-tertiary">
@@ -103,5 +162,13 @@ export default function NotebookPageEditor({ page, onSave, onCancel, isSaving }:
         </span>
       </div>
     </div>
+  )
+}
+
+export default function NotebookPageEditor(props: NotebookPageEditorProps) {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback title="Editor Error" description="The page editor failed to load. Your changes are safe — try refreshing." />}>
+      <NotebookPageEditorComponent {...props} />
+    </ErrorBoundary>
   )
 }
