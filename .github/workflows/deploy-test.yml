@@ -97,4 +97,8 @@ jobs:
           API_HOST: ${{ vars.TEST_API_HOST }}
           DB_SECRET_NAMESPACE: ${{ env.NAMESPACE }}
           VALUES_FILE: values-test.yaml
+          AI_ENABLED: 'true'
+          AI_MODEL: ${{ vars.AI_MODEL }}
+          AI_BASE_URL: ${{ vars.AI_BASE_URL }}
+          AI_API_KEY: ${{ secrets.AI_API_KEY }}
         run: bash .artifacts/scripts/deploy-environment.sh
