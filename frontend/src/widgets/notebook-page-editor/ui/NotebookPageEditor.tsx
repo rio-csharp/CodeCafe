@@ -49,6 +49,19 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
     },
   })
 
+  // Sync editor content when the external page content changes (e.g. after a
+  // save roundtrip or when navigating between pages). This must run after the
+  // editor instance is ready and be guarded against destroying user edits:
+  // user typing only mutates the editor view, never `page.contentJson`.
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return
+    if (editor.isEmpty && !safeContent) return
+    const current = editor.getJSON()
+    if (JSON.stringify(current) !== JSON.stringify(safeContent)) {
+      editor.commands.setContent(safeContent, { emitUpdate: false })
+    }
+  }, [editor, safeContent])
+
   // Keep React in sync with editor transactions (selection moves, typing, etc.)
   useEffect(() => {
     if (!editor) return
