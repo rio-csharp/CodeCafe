@@ -14,9 +14,17 @@ test.describe('Notebook editor', () => {
     await page.getByTestId('create-notebook-title').fill(notebookTitle)
     await page.getByTestId('create-notebook-submit').click()
 
-    // Wait for the notebook reader to load
-    await page.waitForURL(/\/notes\/e2e-editor/, { timeout: 10000 })
-    await expect(page.getByRole('heading', { name: notebookTitle, level: 1 })).toBeVisible({ timeout: 10000 })
+    // Wait for the notebook reader to load (empty notebook)
+    await page.waitForURL(/\/notes\/e2e-editor/, { timeout: 30000 })
+    await expect(page.getByRole('main').getByText('This notebook does not have any pages yet.')).toBeVisible()
+
+    // Create a root page via the tree
+    await page.getByRole('button', { name: 'Add folder or page' }).click()
+    await page.getByRole('button', { name: 'New page' }).click()
+
+    // Wait for the new page to be created and loaded
+    await page.waitForURL(/\/notes\/e2e-editor-/, { timeout: 30000 })
+    await expect(page.getByRole('button', { name: 'Edit page' })).toBeVisible()
 
     // Enter edit mode
     await page.getByRole('button', { name: 'Edit page' }).click()
