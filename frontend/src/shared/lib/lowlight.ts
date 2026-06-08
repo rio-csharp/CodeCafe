@@ -40,15 +40,14 @@ function hastNodeToHtml(node: Nodes): string {
 
 /**
  * Highlight all `<pre><code>` blocks inside a container using lowlight.
- * Mutates the DOM in-place (safe to call from a layout effect).
+ * Mutates the DOM in-place.
  */
 export function highlightCodeBlocks(container: HTMLElement): void {
   container.querySelectorAll('pre code').forEach((code) => {
     const languageMatch = code.className.match(/language-(\w+)/)
     const language = languageMatch?.[1] || 'plaintext'
-    const text = code.textContent || ''
+    const text = (code.textContent || '').replace(/\r\n/g, '\n').replace(/\n+$/, '')
 
-    // Skip if already highlighted (has hljs child spans)
     if (code.querySelector('.hljs')) return
 
     try {

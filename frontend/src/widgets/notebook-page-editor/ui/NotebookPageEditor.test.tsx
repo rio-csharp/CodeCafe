@@ -1,21 +1,15 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { NotebookItem } from '@/entities/notebook-item'
-import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import NotebookPageEditor from './NotebookPageEditor'
 
 const mocks = vi.hoisted(() => ({
-  applyCodeBlockLineNumbers: vi.fn(),
   useEditor: vi.fn(),
 }))
 
 vi.mock('@tiptap/react', () => ({
   EditorContent: () => <div data-testid="editor-content" />,
   useEditor: mocks.useEditor,
-}))
-
-vi.mock('@/shared/lib/codeBlockLineNumbers', () => ({
-  applyCodeBlockLineNumbers: mocks.applyCodeBlockLineNumbers,
 }))
 
 vi.mock('@/shared/lib/tiptapExtensions', () => ({
@@ -71,15 +65,9 @@ describe('NotebookPageEditor', () => {
 
   it('does not crash when the TipTap view is not mounted yet', () => {
     mocks.useEditor.mockReturnValue(createEditorWithUnavailableView())
-    const requestAnimationFrame = vi
-      .spyOn(window, 'requestAnimationFrame')
-      .mockImplementation(() => 1)
-    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
 
     render(<NotebookPageEditor page={page} onSave={vi.fn()} onCancel={vi.fn()} />)
 
     expect(screen.getByTestId('editor-content')).toBeInTheDocument()
-    expect(requestAnimationFrame).toHaveBeenCalled()
-    expect(applyCodeBlockLineNumbers).not.toHaveBeenCalled()
   })
 })

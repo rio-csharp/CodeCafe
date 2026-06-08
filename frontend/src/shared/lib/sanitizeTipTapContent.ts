@@ -32,13 +32,15 @@ function sanitizeNode(node: unknown): unknown {
     return node
   }
 
-  if (node.type === 'text' && (typeof node.text !== 'string' || node.text.length === 0)) {
-    return null
+  if (node.type === 'text') {
+    if (typeof node.text !== 'string' || node.text.length === 0) {
+      return null
+    }
   }
 
   if (Array.isArray(node.content)) {
     node.content = node.content
-      .map(sanitizeNode)
+      .map((child) => sanitizeNode(child))
       .filter((child): child is Record<string, unknown> => isRecord(child))
   }
 

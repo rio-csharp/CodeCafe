@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, useReducer, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { Check, X } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
 import { createEmptyTipTapDocument, sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
-import { applyCodeBlockLineNumbers } from '@/shared/lib/codeBlockLineNumbers'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import { CodeBlockCopyButton } from '@/shared/ui/CodeBlockCopyButton'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
@@ -34,7 +33,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
   // Bump on every editor update so toolbar `isActive` checks (and any
   // other view-state reads) stay in sync. Using `update` instead of `transaction`
   // avoids unnecessary re-renders on selection-only changes.
-  const [tick, setTick] = useState(0)
+  const [, forceUpdate] = useReducer((c: number) => c + 1, 0)
   const safeContent = useMemo(
     () => (page.contentJson ? sanitizeTipTapContent(page.contentJson) : createEmptyTipTapDocument()),
     [page.contentJson],
@@ -71,41 +70,11 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
   // Keep React in sync with editor updates (actual document changes only)
   useEffect(() => {
     if (!editor) return
-    const bumpTick = () => setTick((t) => t + 1)
-    editor.on('update', bumpTick)
+    editor.on('update', forceUpdate)
     return () => {
-      editor.off('update', bumpTick)
+      editor.off('update', forceUpdate)
     }
   }, [editor])
-
-  // Sync code block line numbers. The function is idempotent — it short-circuits
-  // when the line count hasn't changed — so running on every tick is cheap.
-  useEffect(() => {
-    if (!editor) return
-    let frameId: number | null = null
-    let attemptsRemaining = 10
-
-    const syncLineNumbers = () => {
-      const editorElement = getMountedEditorElement(editor)
-      if (editorElement) {
-        applyCodeBlockLineNumbers(editorElement)
-        return
-      }
-
-      if (!editor.isDestroyed && attemptsRemaining > 0) {
-        attemptsRemaining -= 1
-        frameId = window.requestAnimationFrame(syncLineNumbers)
-      }
-    }
-
-    syncLineNumbers()
-
-    return () => {
-      if (frameId !== null) {
-        window.cancelAnimationFrame(frameId)
-      }
-    }
-  }, [editor, tick])
 
   // Track hovered code blocks for copy-button visibility
   useEffect(() => {
