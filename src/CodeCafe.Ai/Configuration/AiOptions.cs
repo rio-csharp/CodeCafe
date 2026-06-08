@@ -26,7 +26,7 @@ public sealed class AiOptions
 
     public int MaxDraftPromptChars { get; set; } = 2000;
 
-    public int MaxDraftContextChars { get; set; } = 12000;
+    public int MaxDraftContextChars { get; set; } = 200000;
 
     public int MaxDraftOutputTokens { get; set; } = 1600;
 }
