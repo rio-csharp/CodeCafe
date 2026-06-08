@@ -4,6 +4,12 @@ import LanguageDetector from 'i18next-browser-languagedetector'
 import enCommon from '@/shared/locales/en/common.json'
 import zhCommon from '@/shared/locales/zh/common.json'
 
+function syncDocumentLang(lng: string) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lng
+  }
+}
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -23,5 +29,8 @@ i18n
     defaultNS: 'common',
     ns: ['common'],
   })
+
+i18n.on('languageChanged', syncDocumentLang)
+syncDocumentLang(i18n.language || 'en')
 
 export default i18n
