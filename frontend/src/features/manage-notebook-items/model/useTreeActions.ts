@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
-import { findNodeAndSiblings, findNode } from '@/entities/notebook'
+import { findNode } from '@/entities/notebook'
 import { useCreateNotebookItem } from './useCreateNotebookItem'
 import { useUpdateNotebookItem } from './useUpdateNotebookItem'
 import { useArchiveNotebookItem } from './useArchiveNotebookItem'
@@ -11,38 +11,8 @@ import { useDeleteNotebookItem } from './useDeleteNotebookItem'
 import { useReorderNotebookItems } from './useReorderNotebookItems'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
-
-function cloneSiblings(siblings: TreeNode[]): TreeNode[] {
-  return siblings.map((n) => ({ item: n.item, children: n.children }))
-}
-
-/**
- * If the URL currently points at `oldPath` (or a descendant of it, for the
- * folder-rename/move case), rewrite it to the corresponding tail under
- * `newPath` and `replace` the history entry. No-op when the path didn't
- * actually change or the URL isn't under the notebook's prefix.
- *
- * The descendant case: e.g. URL tail is `folder/oldName/sub/page` and
- * `oldPath` is `folder/oldName`, then `newPath` is `folder/oldName-renamed`
- * and we want the new tail to be `folder/oldName-renamed/sub/page`. The
- * `currentTail.slice(oldPath.length)` swap preserves the descendant suffix.
- */
-function syncUrlToPathChange(
-  oldPath: string,
-  newPath: string,
-  notebookSlug: string,
-  locationPathname: string,
-  navigate: (path: string, opts?: { replace?: boolean }) => void,
-): void {
-  if (!oldPath || oldPath === newPath) return
-  const prefix = `/notes/${notebookSlug}/`
-  if (!locationPathname.startsWith(prefix)) return
-  const currentTail = locationPathname.slice(prefix.length)
-  if (currentTail === oldPath || currentTail.startsWith(`${oldPath}/`)) {
-    const newTail = newPath + currentTail.slice(oldPath.length)
-    navigate(`${prefix}${newTail}`, { replace: true })
-  }
-}
+import { computeReorderUpdates } from '../lib/computeReorderUpdates'
+import { syncUrlToPathChange } from '../lib/syncUrlToPathChange'
 
 export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const [draggingId, setDraggingId] = useState<string | null>(null)
@@ -150,104 +120,24 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         return
       }
 
-      const draggedLoc = findNodeAndSiblings(tree, draggingId)
-      const targetLoc = findNodeAndSiblings(tree, targetId)
-      if (!draggedLoc || !targetLoc) {
-        setDraggingId(null)
-        return
-      }
-      const draggedNode = draggedLoc.node
-      const targetNode = targetLoc.node
-
+      const draggedNode = findNode(tree, draggingId)
       // Backend regenerates the dragged item's path on reorder (and rewrites
       // all descendants' paths when the dragged item is a folder). Capture
       // the pre-mutation path so we can rewrite the URL if the user is
       // currently viewing the dragged item or one of its descendants.
-      const oldPath = draggedNode.item.path
+      const oldPath = draggedNode?.item.path
 
-      const isSameSiblings = draggedLoc.siblings === targetLoc.siblings
-
-      // Clone sibling arrays so we never mutate the original tree prop
-      const oldSiblings = cloneSiblings(draggedLoc.siblings)
-      let newSiblings: TreeNode[]
-      let newIndex: number
-      let newParentId: string | null
-
-      if (position === 'inside') {
-        newSiblings = cloneSiblings(targetNode.children)
-        newIndex = newSiblings.length
-        newParentId = targetId
-      } else if (targetNode.item.type === 'folder' && targetNode.children.length === 0) {
-        // Empty folder with a 'before'/'after' Y-position intent. The
-        // visual is the same thin line as any other item, but the drop
-        // means "put me in this folder as the only child" — same parent
-        // rewrite as the 'inside' branch above.
-        newSiblings = cloneSiblings(targetNode.children)
-        newIndex = 0
-        newParentId = targetId
-      } else {
-        newSiblings = cloneSiblings(targetLoc.siblings)
-        newIndex = targetLoc.index
-        if (isSameSiblings && draggedLoc.index < targetLoc.index) {
-          newIndex--
-        }
-        if (position === 'after') {
-          newIndex++
-        }
-        newParentId = targetNode.item.parentId
-      }
-
-      if (newParentId && (newParentId === draggingId || findNode(draggedNode.children, newParentId) !== null)) {
+      const result = computeReorderUpdates(tree, draggingId, targetId, position)
+      if (!result) {
         setDraggingId(null)
         return
       }
 
-      // Remove dragged from its current slot in the source list.
-      const draggedIndexInOld = oldSiblings.findIndex((n) => n.item.id === draggingId)
-      if (draggedIndexInOld >= 0) {
-        oldSiblings.splice(draggedIndexInOld, 1)
-      }
-
-      // If the destination IS the same list (i.e. reordering within the
-      // same parent), the cloned newSiblings still contains the dragged
-      // item and the splice below would duplicate it. The newIndex above
-      // was already adjusted for the removal, so strip the dragged item
-      // out of newSiblings first and the splice produces the final order.
-      if (isSameSiblings && position !== 'inside') {
-        const draggedIndexInNew = newSiblings.findIndex((n) => n.item.id === draggingId)
-        if (draggedIndexInNew >= 0) {
-          newSiblings.splice(draggedIndexInNew, 1)
-        }
-      }
-
-      newSiblings.splice(newIndex, 0, draggedNode)
-
-      const updates: { itemId: string; parentId: string | null; sortOrder: number }[] = []
-
-      const recompute = (siblings: TreeNode[]) => {
-        siblings.forEach((node, idx) => {
-          updates.push({
-            itemId: node.item.id,
-            parentId: node.item.parentId,
-            sortOrder: idx * 10,
-          })
-        })
-      }
-
-      recompute(oldSiblings)
-      if (newSiblings !== oldSiblings) {
-        recompute(newSiblings)
-      }
-
-      // Update dragged item's parentId
-      const draggedUpdate = updates.find((u) => u.itemId === draggingId)
-      if (draggedUpdate) {
-        draggedUpdate.parentId = newParentId
-      }
+      const { updates } = result
 
       try {
-        const result = await reorderItems.mutateAsync({ items: updates })
-        const updatedDragged = result.items.find((it) => it.id === draggingId)
+        const reorderResult = await reorderItems.mutateAsync({ items: updates })
+        const updatedDragged = reorderResult.items.find((it) => it.id === draggingId)
         if (oldPath && updatedDragged) {
           syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
         }

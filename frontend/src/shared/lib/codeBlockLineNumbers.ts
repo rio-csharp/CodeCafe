@@ -9,6 +9,14 @@ export function applyCodeBlockLineNumbers(container: HTMLElement | null | undefi
   if (!container) return
 
   container.querySelectorAll('pre').forEach((pre) => {
+    // Remove whitespace-only text nodes so they don't become anonymous
+    // flex items when pre is display: flex (creates fake indentation).
+    Array.from(pre.childNodes).forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE && !node.textContent?.trim()) {
+        pre.removeChild(node)
+      }
+    })
+
     const code = pre.querySelector('code')
     if (!code) return
     const raw = code.textContent ?? ''

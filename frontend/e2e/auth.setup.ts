@@ -2,35 +2,33 @@ import { test as setup, expect } from '@playwright/test'
 
 const authFile = 'e2e/.auth/user.json'
 
+// Use a fixed e2e test account so repeated runs don't trigger rate limits.
+const email = 'e2e-smoke@test.local'
+const password = 'Test1234!'
+const displayName = 'E2E Smoke User'
+
 setup('authenticate', async ({ page }) => {
-  const timestamp = Date.now()
-  const email = `e2e-${timestamp}@test.local`
-  const password = 'Test1234!'
-  const displayName = `E2E User ${timestamp}`
+  // Try to log in first (most common case when the account already exists).
+  await page.goto('/login')
+  await page.getByTestId('login-email').fill(email)
+  await page.getByTestId('login-password').fill(password)
+  await page.getByTestId('login-submit').click()
 
-  // Try to register
-  await page.goto('/register')
-  await page.getByTestId('register-display-name').fill(displayName)
-  await page.getByTestId('register-email').fill(email)
-  await page.getByTestId('register-password').fill(password)
-
-  await page.getByTestId('register-submit').click()
-
-  // Wait for navigation (register success → dashboard or login)
   try {
-    await page.waitForURL(/\/(dashboard|login)/, { timeout: 10000 })
+    await page.waitForURL('/dashboard', { timeout: 15000 })
   } catch {
-    // If registration fails (e.g., email exists), try logging in
-    await page.goto('/login')
-    await page.getByTestId('login-email').fill(email)
-    await page.getByTestId('login-password').fill(password)
-    await page.getByTestId('login-submit').click()
-    await page.waitForURL('/dashboard', { timeout: 10000 })
+    // Login failed — the account probably doesn't exist yet. Register it.
+    await page.goto('/register')
+    await page.getByTestId('register-display-name').fill(displayName)
+    await page.getByTestId('register-email').fill(email)
+    await page.getByTestId('register-password').fill(password)
+    await page.getByTestId('register-submit').click()
+    await page.waitForURL('/dashboard', { timeout: 30000 })
   }
 
   if (!page.url().includes('/dashboard')) {
     await page.goto('/dashboard')
-    await page.waitForURL('/dashboard', { timeout: 10000 })
+    await page.waitForURL('/dashboard', { timeout: 15000 })
   }
 
   // Verify we are authenticated using stable dashboard UI instead of page copy.

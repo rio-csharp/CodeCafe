@@ -6,6 +6,8 @@ import { useUpdateNotebook } from '@/features/edit-notebook'
 import { useDeleteNotebook } from '@/features/delete-notebook'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
+import ErrorBoundary from '@/shared/ui/ErrorBoundary'
+import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import VisibilityField from './VisibilityField'
 import SettingsFormActions from './SettingsFormActions'
 import type { Notebook } from '@/entities/notebook'
@@ -26,7 +28,7 @@ interface NotebookSettingsFormProps {
   onCancel?: () => void
 }
 
-export default function NotebookSettingsForm({
+function NotebookSettingsFormComponent({
   notebook,
   onSlugChange,
   onDeleteSuccess,
@@ -122,5 +124,13 @@ export default function NotebookSettingsForm({
         isDeleting={deleteNotebook.isPending}
       />
     </form>
+  )
+}
+
+export default function NotebookSettingsForm(props: NotebookSettingsFormProps) {
+  return (
+    <ErrorBoundary fallback={<ErrorFallback title="Settings Error" description="The settings form failed to load. Try refreshing the page." />}>
+      <NotebookSettingsFormComponent {...props} />
+    </ErrorBoundary>
   )
 }

@@ -29,7 +29,7 @@ export function createTipTapExtensions(options: TipTapExtensionOptions = {}) {
   const { editable = true } = options
 
   return [
-    StarterKit.configure({ codeBlock: false }),
+    StarterKit.configure({ codeBlock: false, link: false, underline: false }),
     CodeBlockLowlight.configure({ lowlight, defaultLanguage: 'plaintext' }),
     Underline,
     Link.configure({ openOnClick: !editable }),

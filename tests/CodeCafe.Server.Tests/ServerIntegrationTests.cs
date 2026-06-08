@@ -1,7 +1,11 @@
+using CodeCafe.Ai.Drafts;
 using CodeCafe.Mcp.Tools.Notes;
 using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using System.Net;
@@ -38,6 +42,375 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
 
         Assert.Equal("api", apiDocument.RootElement.GetProperty("adapter").GetString());
         Assert.Equal("mcp", mcpDocument.RootElement.GetProperty("adapter").GetString());
+    }
+
+    [Fact]
+    public async Task CombinedHost_ExposesAiStatusWhenAiIsDisabled()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/ai/status");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.False(document.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("endpointPath").ValueKind);
+    }
+
+    [Fact]
+    public async Task CombinedHost_ExposesAiStatusAtConfiguredPath()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:StatusEndpointPath"] = "/internal/ai/status"
+                });
+            });
+        });
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/internal/ai/status");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.False(document.RootElement.GetProperty("enabled").GetBoolean());
+    }
+
+    [Fact]
+    public async Task CombinedHost_ExposesAiStatusWhenAiIsEnabled()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+        });
+        using var client = factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/ai/status");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
+        Assert.Equal("/api/ai/assistant", document.RootElement.GetProperty("endpointPath").GetString());
+        Assert.Equal("/api/ai/drafts", document.RootElement.GetProperty("draftEndpointPath").GetString());
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiAssistantEndpoint_IsNotMappedWhenAiIsDisabled()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/assistant",
+            new { messages = Array.Empty<object>() });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiAssistantEndpoint_RequiresAuthenticationWhenAiIsEnabled()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+        });
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/assistant",
+            new { messages = Array.Empty<object>() });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiDraftEndpoint_GeneratesDraftFromNotebookContext()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNoteDraftGenerator>();
+                services.AddSingleton<RecordingDraftGenerator>();
+                services.AddSingleton<IAiNoteDraftGenerator>(serviceProvider =>
+                    serviceProvider.GetRequiredService<RecordingDraftGenerator>());
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/drafts",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                intent = "rewrite",
+                prompt = "Turn this into a short implementation checklist.",
+                locale = "en"
+            });
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("# Implementation Checklist", document.RootElement.GetProperty("markdown").GetString()!.Split('\n')[0]);
+        Assert.Equal("Implementation Checklist", document.RootElement.GetProperty("title").GetString());
+        Assert.Equal("rewrite", document.RootElement.GetProperty("intent").GetString());
+        Assert.Equal("architecture-notes", document.RootElement.GetProperty("notebookSlug").GetString());
+        Assert.Equal("guides/overview", document.RootElement.GetProperty("pagePath").GetString());
+
+        var generator = factory.Services.GetRequiredService<RecordingDraftGenerator>();
+        var context = Assert.Single(generator.Contexts);
+        Assert.Equal("rewrite", context.Intent);
+        Assert.Equal("Architecture Notes", context.Notebook.Title);
+        Assert.Equal("Overview", context.ActivePage?.Title);
+        Assert.Equal("Turn this into a short implementation checklist.", context.Prompt);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiDraftEndpoint_ReturnsProblemDetailsWhenGeneratorFails()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNoteDraftGenerator>();
+                services.AddSingleton<IAiNoteDraftGenerator, ThrowingDraftGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/drafts",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                intent = "rewrite",
+                prompt = "Turn this into a short implementation checklist.",
+                locale = "en"
+            });
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("ai_draft_generation_failed", document.RootElement.GetProperty("code").GetString());
+        Assert.True(document.RootElement.GetProperty("retryable").GetBoolean());
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiDraftEndpoint_NormalizesUnknownIntentAndAllowsNotebookWideDrafts()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNoteDraftGenerator>();
+                services.AddSingleton<RecordingDraftGenerator>();
+                services.AddSingleton<IAiNoteDraftGenerator>(serviceProvider =>
+                    serviceProvider.GetRequiredService<RecordingDraftGenerator>());
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/drafts",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = (string?)null,
+                intent = "brainstorm",
+                prompt = "Draft a notebook-level follow-up note.",
+                locale = "en"
+            });
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("custom", document.RootElement.GetProperty("intent").GetString());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("pagePath").ValueKind);
+
+        var generator = factory.Services.GetRequiredService<RecordingDraftGenerator>();
+        var context = Assert.Single(generator.Contexts);
+        Assert.Equal("custom", context.Intent);
+        Assert.Null(context.ActivePage);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiDraftEndpoint_ReturnsNotFoundWhenActivePagePathDoesNotExist()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNoteDraftGenerator>();
+                services.AddSingleton<RecordingDraftGenerator>();
+                services.AddSingleton<IAiNoteDraftGenerator>(serviceProvider =>
+                    serviceProvider.GetRequiredService<RecordingDraftGenerator>());
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/drafts",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/missing",
+                intent = "summarize",
+                prompt = "Summarize this page.",
+                locale = "en"
+            });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("notebook_item_not_found", document.RootElement.GetProperty("code").GetString());
+
+        var generator = factory.Services.GetRequiredService<RecordingDraftGenerator>();
+        Assert.Empty(generator.Contexts);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiDraftEndpoint_ReturnsProblemDetailsWhenGeneratorReturnsEmptyDraft()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNoteDraftGenerator>();
+                services.AddSingleton<IAiNoteDraftGenerator, EmptyDraftGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/drafts",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                intent = "summarize",
+                prompt = "Summarize this page.",
+                locale = "en"
+            });
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("empty_ai_draft", document.RootElement.GetProperty("code").GetString());
+        Assert.True(document.RootElement.GetProperty("retryable").GetBoolean());
     }
 
     [Fact]
@@ -352,5 +725,43 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         return document.RootElement.GetProperty("token").GetString()
             ?? throw new InvalidOperationException("Missing CSRF token.");
+    }
+
+    private sealed class RecordingDraftGenerator : IAiNoteDraftGenerator
+    {
+        public List<AiNoteDraftGenerationContext> Contexts { get; } = [];
+
+        public Task<AiNoteDraftResult> GenerateDraftAsync(
+            AiNoteDraftGenerationContext context,
+            CancellationToken cancellationToken)
+        {
+            Contexts.Add(context);
+            return Task.FromResult(new AiNoteDraftResult("""
+                # Implementation Checklist
+
+                - Verify the current overview.
+                - Cite `architecture-notes/guides/overview`.
+            """));
+        }
+    }
+
+    private sealed class ThrowingDraftGenerator : IAiNoteDraftGenerator
+    {
+        public Task<AiNoteDraftResult> GenerateDraftAsync(
+            AiNoteDraftGenerationContext context,
+            CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("Provider unavailable.");
+        }
+    }
+
+    private sealed class EmptyDraftGenerator : IAiNoteDraftGenerator
+    {
+        public Task<AiNoteDraftResult> GenerateDraftAsync(
+            AiNoteDraftGenerationContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new AiNoteDraftResult("   "));
+        }
     }
 }

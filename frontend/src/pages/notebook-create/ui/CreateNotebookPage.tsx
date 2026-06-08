@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useCreateNotebookForm } from '@/features/create-notebook'
 import { useToast } from '@/shared/ui/Toast'
+import { Input } from '@/shared/ui/Input'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { VisibilityField } from '@/widgets/notebook-settings'
 import { useTranslation } from 'react-i18next'
@@ -46,21 +47,16 @@ export default function CreateNotebookPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          <div>
-            <label htmlFor="notebook-title" className="block text-sm font-medium text-text-primary mb-1">
-              {t('notebook.title')}
-            </label>
-            <input
-              id="notebook-title"
-              type="text"
-              data-testid="create-notebook-title"
-              {...register('title')}
-              placeholder={t('notebook.titlePlaceholder')}
-              className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover"
-              autoFocus
-            />
-            {errors.title && <p className="text-sm text-status-error mt-1">{errors.title.message}</p>}
-          </div>
+          <Input
+            id="notebook-title"
+            type="text"
+            label={t('notebook.title')}
+            data-testid="create-notebook-title"
+            {...register('title')}
+            placeholder={t('notebook.titlePlaceholder')}
+            error={errors.title?.message}
+            autoFocus
+          />
 
           <div>
             <label htmlFor="notebook-description" className="block text-sm font-medium text-text-primary mb-1">

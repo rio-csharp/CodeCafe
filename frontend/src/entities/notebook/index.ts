@@ -5,6 +5,15 @@ export type {
   CreateNotebookRequest,
   UpdateNotebookRequest,
 } from './model/types'
+export type {
+  MarkdownDiscardResponse,
+  MarkdownImportErrorBody,
+  MarkdownImportErrorCode,
+  MarkdownImportRequest,
+  MarkdownImportResponse,
+  MarkdownUpdateRequest,
+  MarkdownUploadResponse,
+} from './model/markdownImportTypes'
 export {
   getPublicNotes,
   getMyNotes,
@@ -23,6 +32,14 @@ export {
   addFavorite,
   removeFavorite,
 } from './api/notebookApi'
+export {
+  appendMarkdownToPage,
+  discardMarkdownUpload,
+  importMarkdownAsPage,
+  replacePageContentFromMarkdown,
+  uploadMarkdownFile,
+  uploadMarkdownText,
+} from './api/markdownImportApi'
 export { notesKeys } from './api/queryKeys'
 export type { TreeNode } from './lib/buildTree'
 export { buildTree, findFirstPage, findPageByPath, flattenTree } from './lib/buildTree'

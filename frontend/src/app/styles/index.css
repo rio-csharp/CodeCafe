@@ -30,6 +30,12 @@
   /* Inverse Surface (for dark buttons on light bg) */
   --color-surface-inverse-hover: #1f2937;
 
+  /* Decorative Glow Colors */
+  --color-glow-primary: color-mix(in srgb, #DBEAFE 50%, transparent);
+  --color-glow-secondary: color-mix(in srgb, #F3E8FF 50%, transparent);
+  --color-brand-alpha-15: color-mix(in srgb, var(--color-brand-brown) 15%, transparent);
+  --color-brand-alpha-25: color-mix(in srgb, var(--color-brand-brown) 25%, transparent);
+
   /* Status Colors */
   --color-status-success: #16a34a;
   --color-status-success-bg: #dcfce7;
@@ -76,6 +82,8 @@
   --color-text-secondary: #a1a1aa;
   --color-text-tertiary: #71717a;
   --color-text-inverse: #09090b;
+  --color-glow-primary: color-mix(in srgb, #1E3A8A 20%, transparent);
+  --color-glow-secondary: color-mix(in srgb, #581C87 20%, transparent);
 
   --color-surface-hover: #1c1c1f;
   --color-surface-active: #27272a;
@@ -145,7 +153,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background-color: rgba(156, 124, 92, 0.15);
+  background-color: var(--color-brand-alpha-15);
   pointer-events: none;
 }
 
@@ -170,6 +178,7 @@
   display: flex;
   gap: 0.75rem;
   padding-left: 0.75rem;
+  position: relative;
 }
 
 .prose pre .line-numbers {
@@ -181,6 +190,7 @@
   font-size: 0.875rem;
   line-height: 1.625;
   user-select: none;
+  pointer-events: none;
 }
 
 .prose pre .line-numbers span {
@@ -189,9 +199,15 @@
 
 .prose pre code {
   flex: 1;
+  min-width: 0;
   overflow-x: auto;
+  display: block;
   background: transparent !important;
   padding: 0 !important;
+}
+
+.prose pre:hover .code-copy-btn {
+  opacity: 1;
 }
 
 /* TipTap image */
@@ -242,7 +258,7 @@
 
 /* Selection color */
 ::selection {
-  background-color: rgba(156, 124, 92, 0.25);
+  background-color: var(--color-brand-alpha-25);
   color: var(--color-text-primary);
 }
 

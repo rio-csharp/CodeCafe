@@ -1,11 +1,10 @@
 /**
- * DTOs for the SPA-only Markdown upload + import flow.
+ * DTOs for the Markdown upload + import flow.
  * Backend contract: `POST /api/notes/uploads/markdown`,
  * `DELETE /api/notes/uploads/{uploadId}`,
- * `POST /api/notes/notebooks/{slug}/pages/import-markdown`.
- *
- * These are feature-local types; the unified import/page endpoint responses
- * are not yet on `entities/notebook-item` because no other feature uses them.
+ * `POST /api/notes/notebooks/{slug}/pages/import-markdown`,
+ * `PUT /api/notes/notebooks/{slug}/pages/{path}/import-markdown`,
+ * `POST /api/notes/notebooks/{slug}/pages/{path}/append-markdown`.
  */
 
 export interface MarkdownUploadResponse {
@@ -23,8 +22,12 @@ export interface MarkdownDiscardResponse {
 
 export interface MarkdownImportRequest {
   title: string
-  /** Path of the parent folder, or null to import at the notebook root. */
   parentPath: string | null
+  uploadId: string
+  includeContent: boolean
+}
+
+export interface MarkdownUpdateRequest {
   uploadId: string
   includeContent: boolean
 }
@@ -46,7 +49,6 @@ export interface MarkdownImportResponse {
   updatedAtUtc: string
 }
 
-/** Server ProblemDetails shape, with Markdown import details in extensions. */
 export interface MarkdownImportErrorBody {
   code: string
   detail: string
@@ -57,7 +59,6 @@ export interface MarkdownImportErrorBody {
   details?: Record<string, unknown> | null
 }
 
-/** Canonical server `code` values we'll map to translated user messages. */
 export type MarkdownImportErrorCode =
   | 'invalid_upload_request'
   | 'invalid_upload_file'

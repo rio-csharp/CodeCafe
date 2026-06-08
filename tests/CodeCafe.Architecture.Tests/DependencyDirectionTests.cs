@@ -1,4 +1,5 @@
 using CodeCafe.Api.Common;
+using CodeCafe.Ai.Common;
 using CodeCafe.Domain.Common.Interfaces;
 using CodeCafe.Mcp.Common;
 using CodeCafe.Server.Common;
@@ -17,6 +18,7 @@ public sealed class DependencyDirectionTests
         Assert.DoesNotContain("CodeCafe.Infrastructure", references);
         Assert.DoesNotContain("CodeCafe.WebApi", references);
         Assert.DoesNotContain("CodeCafe.Api", references);
+        Assert.DoesNotContain("CodeCafe.Ai", references);
         Assert.DoesNotContain("CodeCafe.Mcp", references);
     }
 
@@ -28,6 +30,7 @@ public sealed class DependencyDirectionTests
         Assert.DoesNotContain("CodeCafe.Infrastructure", references);
         Assert.DoesNotContain("CodeCafe.WebApi", references);
         Assert.DoesNotContain("CodeCafe.Api", references);
+        Assert.DoesNotContain("CodeCafe.Ai", references);
         Assert.DoesNotContain("CodeCafe.Mcp", references);
     }
 
@@ -38,17 +41,23 @@ public sealed class DependencyDirectionTests
 
         Assert.DoesNotContain("CodeCafe.WebApi", references);
         Assert.DoesNotContain("CodeCafe.Api", references);
+        Assert.DoesNotContain("CodeCafe.Ai", references);
         Assert.DoesNotContain("CodeCafe.Mcp", references);
     }
 
     [Fact]
-    public void Api_And_Mcp_DoNotReference_EachOther()
+    public void Adapters_DoNotReference_EachOther()
     {
         var apiReferences = GetReferenceNames(typeof(ApiAssemblyMarker).Assembly);
+        var aiReferences = GetReferenceNames(typeof(AiAssemblyMarker).Assembly);
         var mcpReferences = GetReferenceNames(typeof(McpAssemblyMarker).Assembly);
 
+        Assert.DoesNotContain("CodeCafe.Ai", apiReferences);
         Assert.DoesNotContain("CodeCafe.Mcp", apiReferences);
+        Assert.DoesNotContain("CodeCafe.Api", aiReferences);
+        Assert.DoesNotContain("CodeCafe.Mcp", aiReferences);
         Assert.DoesNotContain("CodeCafe.Api", mcpReferences);
+        Assert.DoesNotContain("CodeCafe.Ai", mcpReferences);
     }
 
     [Fact]
@@ -57,6 +66,7 @@ public sealed class DependencyDirectionTests
         var serverReferences = GetReferenceNames(typeof(ServerAssemblyMarker).Assembly);
 
         Assert.Contains("CodeCafe.Api", serverReferences);
+        Assert.Contains("CodeCafe.Ai", serverReferences);
         Assert.Contains("CodeCafe.Mcp", serverReferences);
         Assert.Contains("CodeCafe.Application", serverReferences);
         Assert.Contains("CodeCafe.Infrastructure", serverReferences);

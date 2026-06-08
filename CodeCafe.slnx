@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/CodeCafe.Api/CodeCafe.Api.csproj" />
+    <Project Path="src/CodeCafe.Ai/CodeCafe.Ai.csproj" />
     <Project Path="src/CodeCafe.Application/CodeCafe.Application.csproj" />
     <Project Path="src/CodeCafe.Domain/CodeCafe.Domain.csproj" />
     <Project Path="src/CodeCafe.Infrastructure/CodeCafe.Infrastructure.csproj" />
