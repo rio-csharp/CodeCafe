@@ -27,7 +27,7 @@ export function sanitizeTipTapContent(content: unknown): Record<string, unknown>
   return isRecord(sanitized) ? sanitized : createEmptyTipTapDocument()
 }
 
-function sanitizeNode(node: unknown, parentType?: string): unknown {
+function sanitizeNode(node: unknown): unknown {
   if (!isRecord(node)) {
     return node
   }
@@ -36,17 +36,11 @@ function sanitizeNode(node: unknown, parentType?: string): unknown {
     if (typeof node.text !== 'string' || node.text.length === 0) {
       return null
     }
-    if (parentType === 'codeBlock') {
-      node.text = (node.text as string).replace(/\n+$/, '')
-      if ((node.text as string).length === 0) {
-        return null
-      }
-    }
   }
 
   if (Array.isArray(node.content)) {
     node.content = node.content
-      .map((child) => sanitizeNode(child, node.type as string))
+      .map((child) => sanitizeNode(child))
       .filter((child): child is Record<string, unknown> => isRecord(child))
   }
 
