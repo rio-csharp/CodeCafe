@@ -173,6 +173,16 @@
   margin-bottom: 1.5rem;
 }
 
+/* Offset anchor scroll so sticky reader chrome doesn't cover headings */
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  scroll-margin-top: 3rem;
+}
+
 /* Code block copy button */
 .prose pre:hover .code-copy-btn {
   opacity: 1;
