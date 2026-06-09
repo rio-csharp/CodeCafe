@@ -9,6 +9,13 @@ internal static class OpenIddictClientRegistration
 {
     private const string DynamicClientIdPrefix = "codecafe-";
     private const string InvalidAllowedScopesMessage = "Allowed scopes must contain at least one configured MCP read/write scope and no unsupported scopes.";
+    private static readonly string[] DefaultProtocolScopes =
+    [
+        Scopes.OpenId,
+        Scopes.Profile,
+        Scopes.Email,
+        Scopes.OfflineAccess
+    ];
 
     public static string CreateDynamicClientId() => $"{DynamicClientIdPrefix}{Guid.NewGuid():N}";
 
@@ -58,7 +65,7 @@ internal static class OpenIddictClientRegistration
             Permissions.ResponseTypes.Code
         ]);
 
-        foreach (var scopeName in NormalizeAllowedScopes(allowedScopes, mcpOptions))
+        foreach (var scopeName in GetGrantedScopes(allowedScopes, mcpOptions))
         {
             descriptor.Permissions.Add(Permissions.Prefixes.Scope + scopeName);
         }
@@ -155,8 +162,12 @@ internal static class OpenIddictClientRegistration
         McpOptions mcpOptions,
         out IReadOnlyList<string> normalizedScopes)
     {
-        var supportedScopes = mcpOptions.RequiredReadScopes
+        var protectedScopes = mcpOptions.RequiredReadScopes
             .Concat(mcpOptions.RequiredWriteScopes)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var supportedScopes = protectedScopes
+            .Concat(DefaultProtocolScopes)
             .ToHashSet(StringComparer.Ordinal);
 
         var requestedScopes = allowedScopes
@@ -167,7 +178,19 @@ internal static class OpenIddictClientRegistration
             .ToArray();
 
         normalizedScopes = requestedScopes;
-        return requestedScopes.Length > 0 && requestedScopes.All(supportedScopes.Contains);
+        return requestedScopes.Length > 0
+            && requestedScopes.Any(protectedScopes.Contains)
+            && requestedScopes.All(supportedScopes.Contains);
+    }
+
+    private static IReadOnlyList<string> GetGrantedScopes(
+        IEnumerable<string> allowedScopes,
+        McpOptions mcpOptions)
+    {
+        return NormalizeAllowedScopes(allowedScopes, mcpOptions)
+            .Concat(DefaultProtocolScopes)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
     private static bool ReplaceUris(ICollection<Uri> existingValues, IEnumerable<Uri> desiredValues)
