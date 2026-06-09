@@ -99,7 +99,7 @@ public sealed class DynamicClientRegistrationController(
             clientId,
             request.ClientName,
             normalizedRedirectUris,
-            mcpOptionsAccessor.Value.RequiredReadScopes,
+            OpenIddictClientRegistration.GetDynamicClientAllowedScopes(mcpOptionsAccessor.Value),
             mcpOptionsAccessor.Value,
             authorizationServerOptionsAccessor.Value);
 
@@ -180,7 +180,7 @@ public sealed class DynamicClientRegistrationController(
             existingClient.ClientId,
             desiredDisplayName,
             normalizedRedirectUris,
-            mcpOptionsAccessor.Value.RequiredReadScopes,
+            OpenIddictClientRegistration.GetDynamicClientAllowedScopes(mcpOptionsAccessor.Value),
             mcpOptionsAccessor.Value,
             authorizationServerOptionsAccessor.Value);
 
@@ -191,7 +191,6 @@ public sealed class DynamicClientRegistrationController(
 
         return new ExistingDynamicClient(existingClient.ClientId, existingDescriptor.DisplayName);
     }
-
     private static bool TryParseRedirectUris(string? redirectUrisJson, out HashSet<string> redirectUris)
     {
         redirectUris = new HashSet<string>(StringComparer.Ordinal);
