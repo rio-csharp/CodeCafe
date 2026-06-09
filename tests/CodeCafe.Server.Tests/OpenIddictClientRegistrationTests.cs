@@ -61,6 +61,14 @@ public sealed class OpenIddictClientRegistrationTests
     }
 
     [Fact]
+    public void GetDynamicClientAllowedScopes_IncludesReadAndWriteScopes()
+    {
+        var scopes = OpenIddictClientRegistration.GetDynamicClientAllowedScopes(CreateMcpOptions());
+
+        Assert.Equal(["notes.read", "notes.write"], scopes);
+    }
+
+    [Fact]
     public void ReconcileDescriptor_RemovesStaleWriteScopeFromDynamicClient()
     {
         var existing = new OpenIddictApplicationDescriptor
