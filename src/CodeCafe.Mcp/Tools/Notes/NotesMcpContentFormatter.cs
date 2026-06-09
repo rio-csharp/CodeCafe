@@ -15,6 +15,7 @@ internal static class NotesMcpContentFormatter
             GetPageToolResponse response => FormatGetPage(response, fallbackSummary),
             SearchNotesToolResponse response => FormatSearch(response, fallbackSummary),
             GetNotesLimitsToolResponse response => FormatLimits(response),
+            PrepareHttpUploadToolResponse response => FormatPrepareHttpUpload(response),
             CreateUploadToolResponse response => FormatCreateUpload(response),
             AppendUploadChunkToolResponse response => FormatAppendUploadChunk(response),
             DiscardUploadToolResponse response => FormatDiscardUpload(response),
@@ -138,6 +139,21 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"maxTipTapNodeCount: {response.MaxTipTapNodeCount}");
         builder.AppendLine($"maxTipTapTextLength: {response.MaxTipTapTextLength}");
         builder.AppendLine($"supportedImportFormats: {string.Join(", ", response.SupportedImportFormats)}");
+        return builder.ToString().TrimEnd();
+    }
+
+    private static string FormatPrepareHttpUpload(PrepareHttpUploadToolResponse response)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("HTTP upload plan prepared.");
+        builder.AppendLine($"uploadUrl: {response.UploadUrl}");
+        builder.AppendLine($"method: {response.Method}");
+        builder.AppendLine($"auth: {response.Auth}");
+        builder.AppendLine($"contentType: {response.ContentType}");
+        builder.AppendLine($"fields: {string.Join(", ", response.Fields)}");
+        builder.AppendLine($"maxUploadBytes: {response.MaxUploadBytes}");
+        builder.AppendLine($"supportedMediaTypes: {string.Join(", ", response.SupportedMediaTypes)}");
+        builder.AppendLine($"nextStep: {response.NextStep}");
         return builder.ToString().TrimEnd();
     }
 

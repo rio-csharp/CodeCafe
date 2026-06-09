@@ -35,7 +35,11 @@ export default function NotebookReaderPage() {
     isFetching,
   } = useNotebook(notebookSlug!)
 
-  const { data: notebookItems, isPending: notebookItemsPending } = useNotebookItems(
+  const {
+    data: notebookItems,
+    isPending: notebookItemsPending,
+    refetch: refetchItems,
+  } = useNotebookItems(
     notebook?.id ?? '',
     undefined,
     showArchived,
@@ -89,7 +93,10 @@ export default function NotebookReaderPage() {
   }, [activePage, editClickedForPath, setEditClickedForPath])
 
   const handleToggleFullWidth = () => setIsFullWidth((prev) => !prev)
-  const handleRefresh = () => refetch()
+  const handleRefresh = () => {
+    refetch()
+    refetchItems()
+  }
   const handleEdit = () => setEditClickedForPath(pagePath)
 
   if (notebookPending) {
@@ -117,7 +124,7 @@ export default function NotebookReaderPage() {
 
   return (
     <NotebookLayout
-      tree={<NotebookTree notebook={notebook} notebookSlug={notebook.slug} tree={tree} activePage={activePage} showArchived={showArchived} onShowArchivedChange={setShowArchived} onRefreshNotebook={refetch} />}
+      tree={<NotebookTree notebook={notebook} notebookSlug={notebook.slug} tree={tree} activePage={activePage} showArchived={showArchived} onShowArchivedChange={setShowArchived} onRefreshNotebook={handleRefresh} />}
       contentRef={mainRef}
       content={
         <>
