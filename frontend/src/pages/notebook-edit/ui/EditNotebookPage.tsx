@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import { useNotebook } from '@/entities/notebook'
 import NotebookSettingsForm from '@/widgets/notebook-settings'
@@ -8,7 +8,9 @@ import { useTranslation } from 'react-i18next'
 export default function EditNotebookPage() {
   const { notebookSlug } = useParams<{ notebookSlug: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const { t } = useTranslation()
+  const fromPagePath = (location.state as { fromPagePath?: string } | null)?.fromPagePath
 
   const { data: notebook, isPending, isError } = useNotebook(notebookSlug!)
 
@@ -42,11 +44,19 @@ export default function EditNotebookPage() {
     )
   }
 
+  const goBack = (slug: string) => {
+    if (fromPagePath) {
+      navigate(`/notes/${slug}/${fromPagePath}`, { replace: true })
+    } else {
+      navigate(`/notes/${slug}`, { replace: true })
+    }
+  }
+
   return (
     <div className="pt-24 pb-20 lg:pt-32 lg:pb-24">
       <div className="mx-auto max-w-xl px-6 lg:px-8">
         <button
-          onClick={() => navigate(`/notes/${notebookSlug}`)}
+          onClick={() => goBack(notebookSlug!)}
           className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors mb-6"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -60,9 +70,9 @@ export default function EditNotebookPage() {
 
         <NotebookSettingsForm
           notebook={notebook}
-          onSlugChange={(newSlug) => navigate(`/notes/${newSlug}`, { replace: true })}
+          onSlugChange={(newSlug) => goBack(newSlug)}
           onDeleteSuccess={() => navigate('/notes')}
-          onCancel={() => navigate(`/notes/${notebookSlug}`)}
+          onCancel={() => goBack(notebookSlug!)}
         />
       </div>
     </div>
