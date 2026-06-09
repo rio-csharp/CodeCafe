@@ -65,6 +65,7 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.Contains(tools, tool => tool.Name == "notes_get_public_notebook");
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.ListNotebooks);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.GetLimits);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.PrepareHttpUpload);
         var createPageTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.CreatePage);
         var updatePageTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.UpdatePageContentJson);
         var renameItemTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.RenameItem);
@@ -84,8 +85,16 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.Equal(5000, limitsResult.StructuredContent!.Value.GetProperty("maxTipTapNodeCount").GetInt32());
         Assert.Equal(200000, limitsResult.StructuredContent!.Value.GetProperty("maxTipTapTextLength").GetInt32());
 
+        var httpUploadResult = await mcpClient.CallToolAsync(NotesMcpToolNames.PrepareHttpUpload, new Dictionary<string, object?>());
+        Assert.Equal("/api/mcp/uploads/markdown", httpUploadResult.StructuredContent!.Value.GetProperty("uploadUrl").GetString());
+        Assert.Equal("POST", httpUploadResult.StructuredContent!.Value.GetProperty("method").GetString());
+        Assert.Equal("multipart/form-data", httpUploadResult.StructuredContent!.Value.GetProperty("contentType").GetString());
+        Assert.Equal(4194304, httpUploadResult.StructuredContent!.Value.GetProperty("maxUploadBytes").GetInt32());
+        Assert.Contains(NotesMcpToolNames.CreatePage, httpUploadResult.StructuredContent!.Value.GetProperty("nextStep").GetString(), StringComparison.Ordinal);
+
         var guideResult = await mcpClient.ReadResourceAsync("notes://guide");
         var guide = Assert.IsType<TextResourceContents>(Assert.Single(guideResult.Contents));
+        Assert.Contains(NotesMcpToolNames.PrepareHttpUpload, guide.Text, StringComparison.Ordinal);
         Assert.Contains(NotesMcpToolNames.AppendUploadChunk, guide.Text, StringComparison.Ordinal);
         Assert.Contains("TipTap node and text limits", guide.Text, StringComparison.Ordinal);
 

@@ -189,6 +189,16 @@ public sealed record GetNotesLimitsToolResponse(
     IReadOnlyList<string> SupportedImportFormats,
     IReadOnlyList<string> SupportedHttpUploadMediaTypes);
 
+public sealed record PrepareHttpUploadToolResponse(
+    string UploadUrl,
+    string Method,
+    string Auth,
+    string ContentType,
+    IReadOnlyList<string> Fields,
+    int MaxUploadBytes,
+    IReadOnlyList<string> SupportedMediaTypes,
+    string NextStep);
+
 public sealed record CreateUploadToolResponse(
     string UploadId,
     string? FileName,

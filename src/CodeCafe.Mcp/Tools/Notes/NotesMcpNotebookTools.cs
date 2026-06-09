@@ -140,6 +140,39 @@ public sealed class NotesMcpNotebookTools
     }
 
     [McpServerTool(
+        Name = NotesMcpToolNames.PrepareHttpUpload,
+        Title = "Prepare HTTP Upload",
+        ReadOnly = true,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(PrepareHttpUploadToolResponse))]
+    [Description("Return the preferred HTTP upload request details for larger local Markdown files so clients can upload without sending file text through MCP tool arguments.")]
+    public CallToolResult PrepareHttpUpload(
+        ClaimsPrincipal user,
+        IOptions<McpOptions> mcpOptionsAccessor)
+    {
+        var options = mcpOptionsAccessor.Value;
+        var actorResult = NotesMcpSupport.RequireActor(user, options.RequiredWriteScopes);
+        if (!actorResult.Succeeded)
+        {
+            return NotesMcpResultMapper.Failure(actorResult.Error!);
+        }
+
+        var response = new PrepareHttpUploadToolResponse(
+            "/api/mcp/uploads/markdown",
+            "POST",
+            "Bearer token (same OAuth access token used for MCP)",
+            "multipart/form-data",
+            ["file", "fileName (optional)"],
+            options.MaxUploadBytes,
+            ["text/markdown"],
+            $"After upload, pass the returned uploadId to {NotesMcpToolNames.CreatePage}, {NotesMcpToolNames.UpdatePageContentJson}, or {NotesMcpToolNames.AppendBlocksToPage}.");
+
+        return NotesMcpResultMapper.Success(response, "HTTP upload plan prepared.");
+    }
+
+    [McpServerTool(
         Name = NotesMcpToolNames.Search,
         Title = "Search Notes",
         ReadOnly = true,
