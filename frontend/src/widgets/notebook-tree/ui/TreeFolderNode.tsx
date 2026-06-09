@@ -16,13 +16,22 @@ interface TreeFolderNodeProps {
   children: React.ReactNode
 }
 
+function hasActiveDescendant(node: TreeNode, activePath: string | null): boolean {
+  if (!activePath) return false
+  for (const child of node.children) {
+    if (child.item.type === 'page' && child.item.path === activePath) return true
+    if (child.item.type === 'folder' && hasActiveDescendant(child, activePath)) return true
+  }
+  return false
+}
+
 function TreeFolderNode({
   node,
   level,
   children,
 }: TreeFolderNodeProps) {
-  const { canEdit, dragState, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
-  const [expanded, setExpanded] = useState(false)
+  const { canEdit, dragState, activePath, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
+  const [expanded, setExpanded] = useState(() => hasActiveDescendant(node, activePath))
   const { t } = useTranslation()
   const {
     isEditing,
