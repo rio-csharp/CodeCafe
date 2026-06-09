@@ -1,5 +1,6 @@
 using CodeCafe.Mcp.Configuration;
 using CodeCafe.Server.Auth;
+using CodeCafe.Server.Configuration;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using Xunit;
@@ -23,10 +24,10 @@ public sealed class OpenIddictClientRegistrationTests
     public void NormalizeAllowedScopes_TrimsAndDeduplicatesSupportedScopes()
     {
         var scopes = OpenIddictClientRegistration.NormalizeAllowedScopes(
-            [" notes.write ", "notes.read", "notes.write", ""],
+            [" notes.write ", "notes.read", "notes.write", "openid", ""],
             CreateMcpOptions());
 
-        Assert.Equal(["notes.write", "notes.read"], scopes);
+        Assert.Equal(["notes.write", "notes.read", "openid"], scopes);
     }
 
     [Fact]
@@ -35,9 +36,28 @@ public sealed class OpenIddictClientRegistrationTests
         var mcpOptions = CreateMcpOptions();
 
         Assert.False(OpenIddictClientRegistration.AreAllowedScopesValid(["notes.delete"], mcpOptions));
+        Assert.False(OpenIddictClientRegistration.AreAllowedScopesValid(["openid"], mcpOptions));
         Assert.False(OpenIddictClientRegistration.AreAllowedScopesValid([], mcpOptions));
         Assert.Throws<InvalidOperationException>(() =>
             OpenIddictClientRegistration.NormalizeAllowedScopes(["notes.delete"], mcpOptions));
+    }
+
+    [Fact]
+    public void CreatePublicNativeDescriptor_AddsStandardProtocolScopes()
+    {
+        var descriptor = OpenIddictClientRegistration.CreatePublicNativeDescriptor(
+            "codecafe-claude",
+            "Claude Code",
+            ["http://localhost/callback"],
+            ["notes.read"],
+            CreateMcpOptions(),
+            new AuthorizationServerOptions());
+
+        Assert.Contains(Permissions.Prefixes.Scope + Scopes.OpenId, descriptor.Permissions);
+        Assert.Contains(Permissions.Prefixes.Scope + Scopes.Profile, descriptor.Permissions);
+        Assert.Contains(Permissions.Prefixes.Scope + Scopes.Email, descriptor.Permissions);
+        Assert.Contains(Permissions.Prefixes.Scope + Scopes.OfflineAccess, descriptor.Permissions);
+        Assert.Contains(Permissions.Prefixes.Scope + "notes.read", descriptor.Permissions);
     }
 
     [Fact]
