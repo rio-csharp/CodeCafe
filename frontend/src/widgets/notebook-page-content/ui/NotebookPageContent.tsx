@@ -40,6 +40,10 @@ function TipTapViewer({ content }: { content: Record<string, unknown> }) {
       if (!p.innerHTML.trim()) p.remove()
     })
 
+    temp.querySelectorAll('ul[data-type="taskList"] input[type="checkbox"]').forEach((input) => {
+      input.setAttribute('disabled', 'disabled')
+    })
+
     temp.querySelectorAll('pre').forEach((pre) => {
       if (pre.querySelector('code') && !pre.querySelector('.code-copy-btn')) {
         pre.insertAdjacentHTML('beforeend', COPY_BTN_HTML)

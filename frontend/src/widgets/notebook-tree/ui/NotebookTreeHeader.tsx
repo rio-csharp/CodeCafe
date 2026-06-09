@@ -4,7 +4,6 @@ import {
   Search,
   FolderOpen,
   Archive,
-  Star,
   MoreHorizontal,
   Link2,
   Settings,
@@ -17,12 +16,11 @@ import {
 import type { Notebook } from '@/entities/notebook'
 import { NOTEBOOK_VISIBILITY_CONTEXT_LABELS } from '@/entities/notebook'
 import { useDeleteNotebook } from '@/features/delete-notebook'
-import { useToggleFavorite } from '@/features/toggle-favorite'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
-import { useLayout } from '@/shared/model/layoutContext'
 import { useTranslation } from 'react-i18next'
+import { useTreeContext } from '../model/TreeContext'
 
 interface NotebookTreeHeaderProps {
   notebook: Notebook
@@ -44,14 +42,12 @@ export default function NotebookTreeHeader({
   onOpenImportModal,
 }: NotebookTreeHeaderProps) {
   const { t } = useTranslation()
-  const { user } = useLayout()
   const navigate = useNavigate()
-  const isAuthenticated = !!user
+  const { activePath } = useTreeContext()
   const [menuOpen, setMenuOpen] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const deleteNotebook = useDeleteNotebook()
-  const toggleFavorite = useToggleFavorite()
   const { showToast } = useToast()
 
   useClickOutside(menuRef, () => {
@@ -81,22 +77,6 @@ export default function NotebookTreeHeader({
     })
   }, [deleteNotebook, notebook.id, navigate, showToast, t])
 
-  const handleToggleFavorite = useCallback(() => {
-    if (!isAuthenticated) {
-      navigate('/login')
-      return
-    }
-    if (toggleFavorite.isPending) return
-    toggleFavorite.mutate(
-      { notebookId: notebook.id, isFavorited: notebook.isFavoritedByMe },
-      {
-        onError: (err: unknown) => {
-          showToast(getErrorMessage(err, t('notebook.favoriteFailed')), 'error')
-        },
-      },
-    )
-  }, [isAuthenticated, navigate, notebook.id, notebook.isFavoritedByMe, showToast, t, toggleFavorite])
-
   const handleOpenImportModal = useCallback(() => {
     onOpenImportModal()
     setMenuOpen(false)
@@ -114,20 +94,17 @@ export default function NotebookTreeHeader({
             <div className="flex items-start justify-between gap-2">
               <h2 className="text-sm font-bold text-text-primary leading-tight line-clamp-2">{notebook.title}</h2>
               <div className="flex items-center gap-1 shrink-0 mt-0.5">
-                <button
-                  type="button"
-                  onClick={handleToggleFavorite}
-                  disabled={toggleFavorite.isPending}
-                  className={`p-1 rounded-md transition-colors ${
-                    notebook.isFavoritedByMe
-                      ? 'text-status-favorite bg-status-favorite-bg'
-                      : 'text-text-secondary hover:bg-surface-hover'
-                  }`}
-                  title={notebook.isFavoritedByMe ? t('notebook.favoriteRemove') : t('notebook.favoriteAdd')}
-                  aria-label={notebook.isFavoritedByMe ? t('notebook.favoriteRemove') : t('notebook.favoriteAdd')}
-                >
-                  <Star className={`h-3.5 w-3.5 ${notebook.isFavoritedByMe ? 'fill-status-favorite' : ''}`} />
-                </button>
+                {onRefreshNotebook && (
+                  <button
+                    type="button"
+                    onClick={onRefreshNotebook}
+                    className="p-1 text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
+                    title="Refresh"
+                    aria-label="Refresh"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 <div className="relative" ref={menuRef}>
                   <button
                     type="button"
@@ -139,19 +116,6 @@ export default function NotebookTreeHeader({
                   </button>
                   {menuOpen && (
                     <div className="absolute right-0 mt-1 w-44 rounded-lg border border-border-subtle bg-surface shadow-lg z-50 py-1">
-                      {onRefreshNotebook && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onRefreshNotebook()
-                            setMenuOpen(false)
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
-                        >
-                          <RefreshCw className="h-3.5 w-3.5" />
-                          Refresh
-                        </button>
-                      )}
                       <button
                         type="button"
                         onClick={() => onShowArchivedChange(!showArchived)}
@@ -186,6 +150,7 @@ export default function NotebookTreeHeader({
                         <>
                           <Link
                             to={`/notes/${notebook.slug}/edit`}
+                            state={{ fromPagePath: activePath ?? undefined }}
                             onClick={() => setMenuOpen(false)}
                             className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
                           >

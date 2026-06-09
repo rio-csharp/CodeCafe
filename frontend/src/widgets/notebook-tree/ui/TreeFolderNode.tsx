@@ -22,7 +22,7 @@ function TreeFolderNode({
   children,
 }: TreeFolderNodeProps) {
   const { canEdit, dragState, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const { t } = useTranslation()
   const {
     isEditing,
