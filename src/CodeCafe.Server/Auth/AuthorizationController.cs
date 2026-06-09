@@ -114,6 +114,11 @@ public sealed class AuthorizationController(
         IEnumerable<string> requestedScopes,
         CancellationToken cancellationToken)
     {
+        var requestedScopeSet = requestedScopes.ToHashSet(StringComparer.Ordinal);
+        var includeIdentityToken = requestedScopeSet.Contains(Scopes.OpenId);
+        var includeProfile = requestedScopeSet.Contains(Scopes.Profile);
+        var includeEmail = requestedScopeSet.Contains(Scopes.Email);
+
         var identity = new ClaimsIdentity(
             TokenValidationParameters.DefaultAuthenticationType,
             Claims.Name,
@@ -123,14 +128,17 @@ public sealed class AuthorizationController(
         identity.SetClaim(Claims.Name, user.DisplayName);
         identity.SetClaim(Claims.Email, user.Email);
 
-        identity.SetDestinations(static claim => claim.Type switch
+        identity.SetDestinations(claim => claim.Type switch
         {
+            Claims.Subject when includeIdentityToken => [Destinations.AccessToken, Destinations.IdentityToken],
+            Claims.Name when includeIdentityToken && includeProfile => [Destinations.AccessToken, Destinations.IdentityToken],
+            Claims.Email when includeIdentityToken && includeEmail => [Destinations.AccessToken, Destinations.IdentityToken],
             Claims.Name or Claims.Email or Claims.Subject => [Destinations.AccessToken],
             _ => []
         });
 
         var principal = new ClaimsPrincipal(identity);
-        principal.SetScopes(requestedScopes);
+        principal.SetScopes(requestedScopeSet);
 
         var resources = new List<string>();
         await foreach (var resource in scopeManager.ListResourcesAsync(principal.GetScopes(), cancellationToken))
