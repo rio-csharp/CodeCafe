@@ -19,7 +19,6 @@ const SANITIZE_CONFIG: Config = {
     'disabled',
   ],
   ALLOW_UNKNOWN_PROTOCOLS: false,
-  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[#/])/i,
 }
 
 export function sanitizeTipTapHtml(html: string): string {
