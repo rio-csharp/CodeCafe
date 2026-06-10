@@ -19,6 +19,15 @@ describe('sanitizeTipTapHtml', () => {
     expect(html).not.toContain('<img')
   })
 
+  it('preserves taskList checkbox type attribute', () => {
+    const html = sanitizeTipTapHtml(
+      '<ul data-type="taskList"><li data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>hello</p></div></li></ul>',
+    )
+
+    expect(html).toContain('type="checkbox"')
+    expect(html).toContain('<input type="checkbox">')
+  })
+
   it('keeps YouTube embed iframes but removes other iframe origins', () => {
     const html = sanitizeTipTapHtml(
       '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe><iframe src="https://evil.example/embed/dQw4w9WgXcQ"></iframe>',
