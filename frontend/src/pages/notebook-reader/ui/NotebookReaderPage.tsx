@@ -132,6 +132,9 @@ export default function NotebookReaderPage() {
     <NotebookLayout
       tree={<NotebookTree notebook={notebook} notebookSlug={notebook.slug} tree={tree} activePage={activePage} showArchived={showArchived} onShowArchivedChange={setShowArchived} onRefreshNotebook={handleRefresh} />}
       contentRef={mainRef}
+      notebookSlug={notebookSlug}
+      prevPage={prev}
+      nextPage={next}
       content={
         <>
           {activePage ? (

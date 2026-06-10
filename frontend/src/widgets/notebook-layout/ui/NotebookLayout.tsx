@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { PanelLeft, PanelRight, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, PanelLeft, PanelRight, X } from 'lucide-react'
+import type { NotebookItem } from '@/entities/notebook-item'
 
 interface NotebookLayoutProps {
   topBar?: ReactNode
@@ -7,12 +9,16 @@ interface NotebookLayoutProps {
   content: ReactNode
   rightPanel: ReactNode
   contentRef?: RefObject<HTMLElement | null>
+  notebookSlug?: string
+  prevPage?: NotebookItem | null
+  nextPage?: NotebookItem | null
 }
 
 const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
-export default function NotebookLayout({ topBar, tree, content, rightPanel, contentRef }: NotebookLayoutProps) {
+export default function NotebookLayout({ topBar, tree, content, rightPanel, contentRef, notebookSlug, prevPage, nextPage }: NotebookLayoutProps) {
+  const navigate = useNavigate()
   const [mobilePanel, setMobilePanel] = useState<'none' | 'tree' | 'right'>('none')
   const treePanelRef = useRef<HTMLElement>(null)
   const rightPanelRef = useRef<HTMLElement>(null)
@@ -85,26 +91,56 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
 
         {/* Content */}
         <main ref={contentRef} className="overflow-y-auto min-h-0 bg-surface relative">
-          {/* Mobile panel toggles */}
-          <div className="lg:hidden fixed bottom-4 left-4 right-4 flex items-center justify-between z-30 pointer-events-none">
-            <button
-              type="button"
-              onClick={() => setMobilePanel(mobilePanel === 'tree' ? 'none' : 'tree')}
-              className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
-              aria-label="Toggle contents panel"
-            >
-              <PanelLeft className="h-3.5 w-3.5" />
-              Contents
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobilePanel(mobilePanel === 'right' ? 'none' : 'right')}
-              className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
-              aria-label="Toggle outline panel"
-            >
-              Outline
-              <PanelRight className="h-3.5 w-3.5" />
-            </button>
+          {/* Mobile bottom toolbar */}
+          <div className="lg:hidden fixed bottom-4 left-4 right-4 flex items-center justify-between gap-2 z-30 pointer-events-none">
+            <div className="flex items-center gap-2 pointer-events-auto">
+              {prevPage && notebookSlug && (
+                <button
+                  type="button"
+                  onClick={() => { navigate(`/notes/${notebookSlug}/${prevPage.path}`); window.scrollTo(0, 0) }}
+                  className="flex items-center gap-1 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                  title={prevPage.title}
+                  aria-label={`Previous: ${prevPage.title}`}
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline max-w-[80px] truncate">{prevPage.title}</span>
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <button
+                type="button"
+                onClick={() => setMobilePanel(mobilePanel === 'tree' ? 'none' : 'tree')}
+                className="flex items-center gap-1.5 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                aria-label="Toggle contents panel"
+              >
+                <PanelLeft className="h-3.5 w-3.5" />
+                Contents
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobilePanel(mobilePanel === 'right' ? 'none' : 'right')}
+                className="flex items-center gap-1.5 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                aria-label="Toggle outline panel"
+              >
+                Outline
+                <PanelRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 pointer-events-auto">
+              {nextPage && notebookSlug && (
+                <button
+                  type="button"
+                  onClick={() => { navigate(`/notes/${notebookSlug}/${nextPage.path}`); window.scrollTo(0, 0) }}
+                  className="flex items-center gap-1 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+                  title={nextPage.title}
+                  aria-label={`Next: ${nextPage.title}`}
+                >
+                  <span className="hidden sm:inline max-w-[80px] truncate">{nextPage.title}</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           </div>
           {content}
         </main>
