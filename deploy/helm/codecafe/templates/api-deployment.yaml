@@ -118,5 +118,11 @@ spec:
             periodSeconds: {{ .Values.api.probes.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.api.probes.liveness.timeoutSeconds }}
             failureThreshold: {{ .Values.api.probes.liveness.failureThreshold }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}

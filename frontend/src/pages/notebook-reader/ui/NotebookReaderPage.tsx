@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react'
 import { useEditorStore } from '@/widgets/notebook-page-editor/store'
 import { useParams, Navigate } from 'react-router-dom'
-import { useNotebook, useNotebookItems, buildTree, findFirstPage, findPageByPath, extractOutline } from '@/entities/notebook'
+import { useNotebook, useNotebookItems, buildTree, findFirstPage, findPageByPath, extractOutline, findAdjacentPage } from '@/entities/notebook'
 import { useSaveNotebookPage } from '@/features/edit-notebook-page'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import NotebookLayout from '@/widgets/notebook-layout'
@@ -10,6 +10,7 @@ import NotebookPageContent from '@/widgets/notebook-page-content'
 import NotebookOutline from '@/widgets/notebook-outline'
 import NotebookReaderChrome from '@/widgets/notebook-reader-chrome'
 import NotebookPageEmpty from '@/widgets/notebook-page-empty'
+import NotebookPageNavigation from '@/widgets/notebook-page-navigation/ui/NotebookPageNavigation'
 import { FloatingAiAssistant } from '@/widgets/ai-assistant'
 import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
 import { useTranslation } from 'react-i18next'
@@ -99,6 +100,11 @@ export default function NotebookReaderPage() {
   }
   const handleEdit = () => setEditClickedForPath(pagePath)
 
+  const { prev, next } = useMemo(() => {
+    if (!activePage) return { prev: null, next: null }
+    return findAdjacentPage(tree, activePage.id)
+  }, [tree, activePage])
+
   if (notebookPending) {
     return <div className="h-screen flex items-center justify-center bg-surface"><RouteGuardSpinner /></div>
   }
@@ -126,6 +132,9 @@ export default function NotebookReaderPage() {
     <NotebookLayout
       tree={<NotebookTree notebook={notebook} notebookSlug={notebook.slug} tree={tree} activePage={activePage} showArchived={showArchived} onShowArchivedChange={setShowArchived} onRefreshNotebook={handleRefresh} />}
       contentRef={mainRef}
+      notebookSlug={notebookSlug}
+      prevPage={prev}
+      nextPage={next}
       content={
         <>
           {activePage ? (
@@ -136,7 +145,10 @@ export default function NotebookReaderPage() {
                   <NotebookPageEditor page={activePage} onSave={handleSavePage} onCancel={() => setEditClickedForPath(null)} isSaving={isSavingPage} />
                 </Suspense>
               ) : (
-                <NotebookPageContent page={activePage} />
+                <>
+                  <NotebookPageContent page={activePage} />
+                  <NotebookPageNavigation notebookSlug={notebookSlug!} prev={prev} next={next} />
+                </>
               )}
             </div>
           ) : (
