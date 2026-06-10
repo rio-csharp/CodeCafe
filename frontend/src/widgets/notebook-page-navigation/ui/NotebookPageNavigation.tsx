@@ -19,7 +19,7 @@ export default function NotebookPageNavigation({ notebookSlug, prev, next }: Not
   }
 
   return (
-    <nav className="mt-8 pt-6 border-t border-border-subtle">
+    <nav className="mt-8 pt-6 pb-20 lg:pb-6 border-t border-border-subtle">
       <div className="flex items-center justify-between gap-4">
         {prev ? (
           <button
