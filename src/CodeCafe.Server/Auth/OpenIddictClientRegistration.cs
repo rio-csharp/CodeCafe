@@ -157,6 +157,14 @@ internal static class OpenIddictClientRegistration
             : throw new InvalidOperationException(InvalidAllowedScopesMessage);
     }
 
+    internal static IReadOnlyList<string> GetDynamicClientAllowedScopes(McpOptions mcpOptions)
+    {
+        return mcpOptions.RequiredReadScopes
+            .Concat(mcpOptions.RequiredWriteScopes)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
     private static bool TryNormalizeAllowedScopes(
         IEnumerable<string> allowedScopes,
         McpOptions mcpOptions,
