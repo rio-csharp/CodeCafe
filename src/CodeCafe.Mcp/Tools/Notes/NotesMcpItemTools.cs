@@ -165,7 +165,7 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(CreateUploadToolResponse))]
-    [Description("Create a server-managed MCP upload session for chunked local content such as Markdown or TipTap JSON. Preferred for remote clients and larger payloads.")]
+    [Description("Fallback upload path for clients that cannot use the HTTP upload returned by notes_prepare_http_upload. Creates a server-managed MCP upload session for chunked content such as Markdown or TipTap JSON. Use notes_append_upload_chunk to send the file text, then pass the uploadId to notes_create_page, notes_update_page_content, or notes_append_blocks_to_page.")]
     public async Task<CallToolResult> CreateUpload(
         ClaimsPrincipal user,
         IOptions<McpOptions> mcpOptionsAccessor,
@@ -221,7 +221,7 @@ public sealed class NotesMcpItemTools
     [Description("Append UTF-8 text to a server-managed upload session. Use this for local Markdown or JSON files instead of assuming shared server storage.")]
     public async Task<CallToolResult> AppendUploadChunk(
         [Description("The upload session id returned by notes_create_upload.")] string uploadId,
-        [Description("UTF-8 text chunk to append to the upload.")] string chunkText,
+        [Description("UTF-8 text chunk to append to the upload. Must not exceed maxUploadChunkBytes returned by notes_get_limits.")] string chunkText,
         ClaimsPrincipal user,
         IOptions<McpOptions> mcpOptionsAccessor,
         IMcpUploadStore uploadStore,
@@ -530,15 +530,15 @@ public sealed class NotesMcpItemTools
     }
 
     [McpServerTool(
-        Name = NotesMcpToolNames.UpdatePageContentJson,
+        Name = NotesMcpToolNames.UpdatePageContent,
         Title = "Update Page Content",
         ReadOnly = false,
         Destructive = false,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
-    [Description("Replace a page's stored body content. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger edits. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
-    public async Task<CallToolResult> UpdatePageContentJsonAsync(
+    [Description("Replace a page's stored body content. Accepts small inline TipTap JSON or uploaded Markdown / TipTap JSON for larger edits. Markdown is converted server-side into TipTap JSON. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
+    public async Task<CallToolResult> UpdatePageContentAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path. " + PathCompatibilityDescription)] string path,
         ClaimsPrincipal user,
@@ -556,7 +556,7 @@ public sealed class NotesMcpItemTools
     {
         return await mutationExecutor.ExecuteAsync(
             user,
-            NotesMcpToolNames.UpdatePageContentJson,
+            NotesMcpToolNames.UpdatePageContent,
             async ct =>
             {
                 var mcpOptions = mcpOptionsAccessor.Value;
@@ -635,7 +635,7 @@ public sealed class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
-    [Description("Append block content to an existing page body. Accepts small inline TipTap blocks JSON or uploaded Markdown / TipTap blocks JSON for larger additions. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
+    [Description("Append block content to an existing page body. Accepts small inline TipTap blocks JSON, or uploaded Markdown / TipTap blocks JSON for larger additions. Markdown is converted server-side into TipTap blocks before append. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
     public async Task<CallToolResult> AppendBlocksToPageAsync(
         [Description("The notebook slug.")] string notebookSlug,
         [Description("The page path. " + PathCompatibilityDescription)] string path,
@@ -763,6 +763,400 @@ public sealed class NotesMcpItemTools
                 return McpMutationResult<UpdatePageContentToolResponse>.Success(
                     response,
                     $"Appended blocks to page '{response.Title}'.",
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id);
+            },
+            cancellationToken);
+    }
+
+    [McpServerTool(
+        Name = NotesMcpToolNames.ReplaceBlockAtIndex,
+        Title = "Replace Block At Index",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(UpdatePageContentToolResponse))]
+    [Description("Replace one block in a page's TipTap document by its zero-based index in doc.content. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
+    public async Task<CallToolResult> ReplaceBlockAtIndexAsync(
+        [Description("The notebook slug.")] string notebookSlug,
+        [Description("The page path. " + PathCompatibilityDescription)] string path,
+        [Description("Zero-based index of the block to replace in doc.content.")] int index,
+        [Description("The new TipTap block JSON object.")] JsonElement block,
+        ClaimsPrincipal user,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
+        IMcpContentImportService contentImportService,
+        IMcpMutationExecutor mutationExecutor,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken,
+        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
+        [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
+    {
+        return await mutationExecutor.ExecuteAsync(
+            user,
+            NotesMcpToolNames.ReplaceBlockAtIndex,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var pageContextResult = await NotesMcpSupport.RequirePageSummaryContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookReadService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!pageContextResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(pageContextResult.Error!);
+                }
+
+                var pageContext = pageContextResult.Value;
+                JsonElement nextContentJson;
+                try
+                {
+                    nextContentJson = NotesMcpSupport.ReplaceBlockAtIndex(pageContext.Item.ContentJson, index, block);
+                }
+                catch (ArgumentOutOfRangeException exception)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "block_index_out_of_range",
+                        exception.Message,
+                        "index"),
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+                catch (ArgumentException exception)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_block",
+                        exception.Message,
+                        "block"),
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var sizeResult = contentImportService.EnforcePageContentSize(nextContentJson, "content_too_large");
+                if (!sizeResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        sizeResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id,
+                    pageContext.ActorId,
+                    pageContext.Item.Title,
+                    default,
+                    null,
+                    nextContentJson,
+                    ct,
+                    expectedUpdatedAtUtc);
+                if (!updateResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        updateResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!, includeContent);
+                return McpMutationResult<UpdatePageContentToolResponse>.Success(
+                    response,
+                    $"Replaced block at index {index} in page '{response.Title}'.",
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id);
+            },
+            cancellationToken);
+    }
+
+    [McpServerTool(
+        Name = NotesMcpToolNames.InsertBlocksAtIndex,
+        Title = "Insert Blocks At Index",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(UpdatePageContentToolResponse))]
+    [Description("Insert one or more blocks into a page's TipTap document at a zero-based index in doc.content. Use index 0 to insert at the beginning, or doc.content.length to append at the end. " + PageContentLimitDescription + " " + PathCompatibilityDescription)]
+    public async Task<CallToolResult> InsertBlocksAtIndexAsync(
+        [Description("The notebook slug.")] string notebookSlug,
+        [Description("The page path. " + PathCompatibilityDescription)] string path,
+        [Description("Zero-based index where the blocks should be inserted in doc.content.")] int index,
+        [Description("The TipTap block JSON array to insert.")] JsonElement blocks,
+        ClaimsPrincipal user,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
+        IMcpContentImportService contentImportService,
+        IMcpMutationExecutor mutationExecutor,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken,
+        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
+        [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
+    {
+        return await mutationExecutor.ExecuteAsync(
+            user,
+            NotesMcpToolNames.InsertBlocksAtIndex,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var pageContextResult = await NotesMcpSupport.RequirePageSummaryContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookReadService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!pageContextResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(pageContextResult.Error!);
+                }
+
+                var pageContext = pageContextResult.Value;
+                JsonElement nextContentJson;
+                try
+                {
+                    nextContentJson = NotesMcpSupport.InsertBlocksAtIndex(pageContext.Item.ContentJson, index, blocks);
+                }
+                catch (ArgumentException exception)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "invalid_blocks",
+                        exception.Message,
+                        "blocks"),
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var sizeResult = contentImportService.EnforcePageContentSize(nextContentJson, "content_too_large");
+                if (!sizeResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        sizeResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id,
+                    pageContext.ActorId,
+                    pageContext.Item.Title,
+                    default,
+                    null,
+                    nextContentJson,
+                    ct,
+                    expectedUpdatedAtUtc);
+                if (!updateResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        updateResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!, includeContent);
+                return McpMutationResult<UpdatePageContentToolResponse>.Success(
+                    response,
+                    $"Inserted {blocks.GetArrayLength()} block(s) at index {index} in page '{response.Title}'.",
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id);
+            },
+            cancellationToken);
+    }
+
+    [McpServerTool(
+        Name = NotesMcpToolNames.DeleteBlockAtIndex,
+        Title = "Delete Block At Index",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(UpdatePageContentToolResponse))]
+    [Description("Delete one block from a page's TipTap document by its zero-based index in doc.content. " + PathCompatibilityDescription)]
+    public async Task<CallToolResult> DeleteBlockAtIndexAsync(
+        [Description("The notebook slug.")] string notebookSlug,
+        [Description("The page path. " + PathCompatibilityDescription)] string path,
+        [Description("Zero-based index of the block to delete in doc.content.")] int index,
+        ClaimsPrincipal user,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
+        IMcpContentImportService contentImportService,
+        IMcpMutationExecutor mutationExecutor,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken,
+        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
+        [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
+    {
+        return await mutationExecutor.ExecuteAsync(
+            user,
+            NotesMcpToolNames.DeleteBlockAtIndex,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var pageContextResult = await NotesMcpSupport.RequirePageSummaryContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookReadService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!pageContextResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(pageContextResult.Error!);
+                }
+
+                var pageContext = pageContextResult.Value;
+                JsonElement nextContentJson;
+                try
+                {
+                    nextContentJson = NotesMcpSupport.DeleteBlockAtIndex(pageContext.Item.ContentJson, index);
+                }
+                catch (ArgumentOutOfRangeException exception)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "block_index_out_of_range",
+                        exception.Message,
+                        "index"),
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var sizeResult = contentImportService.EnforcePageContentSize(nextContentJson, "content_too_large");
+                if (!sizeResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        sizeResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id,
+                    pageContext.ActorId,
+                    pageContext.Item.Title,
+                    default,
+                    null,
+                    nextContentJson,
+                    ct,
+                    expectedUpdatedAtUtc);
+                if (!updateResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        updateResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!, includeContent);
+                return McpMutationResult<UpdatePageContentToolResponse>.Success(
+                    response,
+                    $"Deleted block at index {index} from page '{response.Title}'.",
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id);
+            },
+            cancellationToken);
+    }
+
+    [McpServerTool(
+        Name = NotesMcpToolNames.ReplaceText,
+        Title = "Replace Text",
+        ReadOnly = false,
+        Destructive = false,
+        OpenWorld = false,
+        UseStructuredContent = true,
+        OutputSchemaType = typeof(UpdatePageContentToolResponse))]
+    [Description("Search and replace plain text inside a page's TipTap document without changing block structure. Only text nodes are modified. " + PathCompatibilityDescription)]
+    public async Task<CallToolResult> ReplaceTextAsync(
+        [Description("The notebook slug.")] string notebookSlug,
+        [Description("The page path. " + PathCompatibilityDescription)] string path,
+        [Description("The text to search for.")] string searchText,
+        [Description("The text to replace it with.")] string replacementText,
+        ClaimsPrincipal user,
+        INotebookReadService notebookReadService,
+        INotebookItemMutationService notebookItemMutationService,
+        IMcpContentImportService contentImportService,
+        IMcpMutationExecutor mutationExecutor,
+        IOptions<McpOptions> mcpOptionsAccessor,
+        CancellationToken cancellationToken,
+        [Description("Optional expected updated timestamp in UTC for conflict detection.")] DateTimeOffset? expectedUpdatedAtUtc = null,
+        [Description("Whether to replace all occurrences. Defaults to false (replace only the first occurrence).")] bool replaceAll = false,
+        [Description("Whether to include full contentJson and plainTextContent in the response. Defaults to false to keep write responses small.")] bool includeContent = false)
+    {
+        return await mutationExecutor.ExecuteAsync(
+            user,
+            NotesMcpToolNames.ReplaceText,
+            async ct =>
+            {
+                var mcpOptions = mcpOptionsAccessor.Value;
+                var pageContextResult = await NotesMcpSupport.RequirePageSummaryContextAsync(
+                    notebookSlug,
+                    path,
+                    user,
+                    notebookReadService,
+                    ct,
+                    mcpOptions.RequiredWriteScopes);
+                if (!pageContextResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(pageContextResult.Error!);
+                }
+
+                var pageContext = pageContextResult.Value;
+                JsonElement nextContentJson;
+                try
+                {
+                    nextContentJson = NotesMcpSupport.ReplaceTextInDocument(pageContext.Item.ContentJson, searchText, replacementText, replaceAll);
+                }
+                catch (ArgumentException exception)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(new NotesError(
+                        NotesFailureKind.Validation,
+                        "text_not_found",
+                        exception.Message,
+                        "searchText"),
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var sizeResult = contentImportService.EnforcePageContentSize(nextContentJson, "content_too_large");
+                if (!sizeResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        sizeResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
+                    pageContext.Notebook.Id,
+                    pageContext.Item.Id,
+                    pageContext.ActorId,
+                    pageContext.Item.Title,
+                    default,
+                    null,
+                    nextContentJson,
+                    ct,
+                    expectedUpdatedAtUtc);
+                if (!updateResult.Succeeded)
+                {
+                    return McpMutationResult<UpdatePageContentToolResponse>.Failure(
+                        updateResult.Error!,
+                        pageContext.Notebook.Id,
+                        pageContext.Item.Id);
+                }
+
+                var response = NotesMcpSupport.ToUpdatePageContentToolResponse(pageContext.Notebook, updateResult.Value!, includeContent);
+                return McpMutationResult<UpdatePageContentToolResponse>.Success(
+                    response,
+                    $"Replaced text in page '{response.Title}'.",
                     pageContext.Notebook.Id,
                     pageContext.Item.Id);
             },
