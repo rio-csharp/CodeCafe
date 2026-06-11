@@ -134,7 +134,7 @@ public sealed class NotesMcpNotebookTools
             TipTapContentService.MaxNodeCount,
             TipTapContentService.MaxTextLength,
             ["tiptap_json", "tiptap_blocks_json", "markdown"],
-            ["text/markdown", "text/plain"]);
+            ["text/markdown"]);
 
         return NotesMcpResultMapper.Success(response, "MCP limits loaded.");
     }
@@ -147,7 +147,7 @@ public sealed class NotesMcpNotebookTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(PrepareHttpUploadToolResponse))]
-    [Description("Return the preferred HTTP upload request details for larger local Markdown files so clients can upload without sending file text through MCP tool arguments.")]
+    [Description("For local Markdown files, call this tool FIRST. It returns the HTTP request details needed to upload a file directly via POST /api/mcp/uploads/markdown using the same OAuth bearer token used for MCP. The client must then perform the returned HTTP request with multipart/form-data and pass the returned uploadId to notes_create_page, notes_update_page_content, or notes_append_blocks_to_page. Only fall back to notes_create_upload if the client cannot make HTTP requests.")]
     public CallToolResult PrepareHttpUpload(
         ClaimsPrincipal user,
         IOptions<McpOptions> mcpOptionsAccessor)
@@ -167,7 +167,7 @@ public sealed class NotesMcpNotebookTools
             ["file", "fileName (optional)"],
             options.MaxUploadBytes,
             ["text/markdown"],
-            $"After upload, pass the returned uploadId to {NotesMcpToolNames.CreatePage}, {NotesMcpToolNames.UpdatePageContentJson}, or {NotesMcpToolNames.AppendBlocksToPage}.");
+            $"After upload, pass the returned uploadId to {NotesMcpToolNames.CreatePage}, {NotesMcpToolNames.UpdatePageContent}, or {NotesMcpToolNames.AppendBlocksToPage}.");
 
         return NotesMcpResultMapper.Success(response, "HTTP upload plan prepared.");
     }

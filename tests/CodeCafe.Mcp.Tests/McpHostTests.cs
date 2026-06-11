@@ -67,7 +67,7 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.GetLimits);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.PrepareHttpUpload);
         var createPageTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.CreatePage);
-        var updatePageTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.UpdatePageContentJson);
+        var updatePageTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.UpdatePageContent);
         var renameItemTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.RenameItem);
         Assert.Contains("maxPageContentBytes", createPageTool.Description ?? string.Empty, StringComparison.Ordinal);
         Assert.Contains("maxTipTapNodeCount", updatePageTool.Description ?? string.Empty, StringComparison.Ordinal);
@@ -76,11 +76,15 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.Contains(resources, resource => resource.Uri == "notes://guide");
         Assert.Contains(resourceTemplates, resource => resource.UriTemplate == "notebook://{slug}");
         Assert.Contains(prompts, prompt => prompt.Name == "notes.summarize_page");
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.ReplaceBlockAtIndex);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.InsertBlocksAtIndex);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.DeleteBlockAtIndex);
+        Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.ReplaceText);
 
         var limitsResult = await mcpClient.CallToolAsync(NotesMcpToolNames.GetLimits, new Dictionary<string, object?>());
         Assert.Equal(131072, limitsResult.StructuredContent!.Value.GetProperty("maxInlineContentBytes").GetInt32());
         Assert.Equal(4194304, limitsResult.StructuredContent!.Value.GetProperty("maxHttpUploadBytes").GetInt32());
-        Assert.Equal(900, limitsResult.StructuredContent!.Value.GetProperty("httpUploadIdleTimeoutSeconds").GetInt32());
+        Assert.Equal(900, limitsResult.StructuredContent!.Value.GetProperty("uploadIdleTimeoutSeconds").GetInt32());
         Assert.Equal(64, limitsResult.StructuredContent!.Value.GetProperty("maxTipTapDepth").GetInt32());
         Assert.Equal(5000, limitsResult.StructuredContent!.Value.GetProperty("maxTipTapNodeCount").GetInt32());
         Assert.Equal(200000, limitsResult.StructuredContent!.Value.GetProperty("maxTipTapTextLength").GetInt32());
@@ -251,5 +255,64 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.Equal("contentJson", content.GetProperty("field").GetString());
         Assert.Equal(5000, content.GetProperty("details").GetProperty("maxTipTapNodeCount").GetInt32());
         Assert.Equal(5001, content.GetProperty("details").GetProperty("actualTipTapNodeCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task PrecisionEditTools_CanMutatePageContent()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(McpTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(client.BaseAddress!, "/mcp"),
+                TransportMode = HttpTransportMode.StreamableHttp
+            },
+            client);
+
+        await using var mcpClient = await McpClient.CreateAsync(transport);
+
+        var replaceResult = await mcpClient.CallToolAsync(NotesMcpToolNames.ReplaceBlockAtIndex, new Dictionary<string, object?>
+        {
+            ["notebookSlug"] = "architecture-notes",
+            ["path"] = "overview",
+            ["index"] = 0,
+            ["block"] = JsonSerializer.SerializeToElement(new { type = "heading", attrs = new { level = 1 }, content = new[] { new { type = "text", text = "New heading" } } })
+        });
+        Assert.False(replaceResult.IsError ?? false);
+        Assert.Equal(5, replaceResult.StructuredContent!.Value.GetProperty("tipTapNodeCount").GetInt32());
+
+        var insertResult = await mcpClient.CallToolAsync(NotesMcpToolNames.InsertBlocksAtIndex, new Dictionary<string, object?>
+        {
+            ["notebookSlug"] = "architecture-notes",
+            ["path"] = "overview",
+            ["index"] = 1,
+            ["blocks"] = JsonSerializer.SerializeToElement(new[]
+            {
+                new { type = "paragraph", content = new[] { new { type = "text", text = "Inserted paragraph." } } }
+            })
+        });
+        Assert.False(insertResult.IsError ?? false);
+        Assert.Equal(7, insertResult.StructuredContent!.Value.GetProperty("tipTapNodeCount").GetInt32());
+
+        var deleteResult = await mcpClient.CallToolAsync(NotesMcpToolNames.DeleteBlockAtIndex, new Dictionary<string, object?>
+        {
+            ["notebookSlug"] = "architecture-notes",
+            ["path"] = "overview",
+            ["index"] = 1
+        });
+        Assert.False(deleteResult.IsError ?? false);
+        Assert.Equal(3, deleteResult.StructuredContent!.Value.GetProperty("tipTapNodeCount").GetInt32());
+
+        var replaceTextResult = await mcpClient.CallToolAsync(NotesMcpToolNames.ReplaceText, new Dictionary<string, object?>
+        {
+            ["notebookSlug"] = "architecture-notes",
+            ["path"] = "overview",
+            ["searchText"] = "First",
+            ["replacementText"] = "Updated",
+            ["replaceAll"] = false
+        });
+        Assert.False(replaceTextResult.IsError ?? false);
     }
 }

@@ -180,7 +180,7 @@ public sealed record GetNotesLimitsToolResponse(
     int MaxUploadChunkBytes,
     int MaxUploadBytes,
     int MaxHttpUploadBytes,
-    int HttpUploadIdleTimeoutSeconds,
+    int UploadIdleTimeoutSeconds,
     int MaxPageContentBytes,
     int MaxListItemsLimit,
     int MaxTipTapDepth,
@@ -210,7 +210,7 @@ public sealed record AppendUploadChunkToolResponse(
     string UploadId,
     int BytesReceived,
     int ChunkBytesReceived,
-    bool IsReady);
+    bool HasReceivedContent);
 
 public sealed record DiscardUploadToolResponse(
     string UploadId,
