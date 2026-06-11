@@ -18,8 +18,12 @@ public static class NotesMcpToolNames
     public const string DiscardUpload = "notes_discard_upload";
     public const string CreateFolder = "notes_create_folder";
     public const string CreatePage = "notes_create_page";
-    public const string UpdatePageContentJson = "notes_update_page_content_json";
+    public const string UpdatePageContent = "notes_update_page_content";
     public const string AppendBlocksToPage = "notes_append_blocks_to_page";
+    public const string ReplaceBlockAtIndex = "notes_replace_block_at_index";
+    public const string InsertBlocksAtIndex = "notes_insert_blocks_at_index";
+    public const string DeleteBlockAtIndex = "notes_delete_block_at_index";
+    public const string ReplaceText = "notes_replace_text";
     public const string RenameItem = "notes_rename_item";
     public const string MoveItem = "notes_move_item";
     public const string ReorderItems = "notes_reorder_items";

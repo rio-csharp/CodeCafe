@@ -94,6 +94,15 @@ internal sealed class TestNotebookQueryService : INotebookReadService
 {
     private static readonly Guid NotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+    private static readonly JsonElement OverviewContentJson = JsonSerializer.SerializeToElement(new
+    {
+        type = "doc",
+        content = new[]
+        {
+            new { type = "paragraph", content = new[] { new { type = "text", text = "First paragraph." } } },
+            new { type = "paragraph", content = new[] { new { type = "text", text = "Second paragraph." } } }
+        }
+    });
     private static readonly NotebookItemModel[] Items =
     [
         new(
@@ -106,7 +115,7 @@ internal sealed class TestNotebookQueryService : INotebookReadService
             "overview",
             1,
             "tiptap_json",
-            null,
+            OverviewContentJson,
             "Overview content",
             false,
             null,

@@ -140,8 +140,12 @@ Item and content mutation:
 - `notes_discard_upload`
 - `notes_create_folder`
 - `notes_create_page`
-- `notes_update_page_content_json`
+- `notes_update_page_content`
 - `notes_append_blocks_to_page`
+- `notes_replace_block_at_index`
+- `notes_insert_blocks_at_index`
+- `notes_delete_block_at_index`
+- `notes_replace_text`
 - `notes_rename_item`
 - `notes_move_item`
 - `notes_reorder_items`
@@ -181,7 +185,7 @@ For larger content, the recommended flow is:
 
 1. Call `notes_get_limits`.
 2. Prefer `POST /api/mcp/uploads/markdown` with the same bearer token used for MCP.
-3. Pass the returned `uploadId` into `notes_create_page`, `notes_update_page_content_json`, or `notes_append_blocks_to_page`.
+3. Pass the returned `uploadId` into `notes_create_page`, `notes_update_page_content`, or `notes_append_blocks_to_page`.
 4. Optionally clean up abandoned uploads with `DELETE /api/mcp/uploads/{uploadId}` or `notes_discard_upload`.
 
 Chunked MCP upload remains available for clients that cannot use HTTP:
@@ -210,8 +214,12 @@ Use the content mutation tools this way:
 | Tool | Use when | Content argument |
 | --- | --- | --- |
 | `notes_create_page` | Creating a new page, optionally with initial body content | `contentJson` or `contentUploadId` |
-| `notes_update_page_content_json` | Replacing the entire stored TipTap document | `contentJson` or `contentUploadId` |
+| `notes_update_page_content` | Replacing the entire stored TipTap document | `contentJson` or `contentUploadId` |
 | `notes_append_blocks_to_page` | Appending block nodes to the end of an existing page | `blocks` or `blocksUploadId` |
+| `notes_replace_block_at_index` | Replacing one block in an existing page by zero-based index | `index`, `block` |
+| `notes_insert_blocks_at_index` | Inserting blocks into an existing page at a zero-based index | `index`, `blocks` |
+| `notes_delete_block_at_index` | Deleting one block from an existing page by zero-based index | `index` |
+| `notes_replace_text` | Searching and replacing plain text inside an existing page without changing block structure | `searchText`, `replacementText` |
 
 Write tools default to lightweight responses: `contentJson` and `plainTextContent` are omitted, while `contentJsonBytes`, `plainTextLength`, `tipTapNodeCount`, and page identifiers are still returned. Pass `includeContent: true` only when the client explicitly needs the full updated document in the mutation response. Use `notes_get_page` for normal full-content reads.
 

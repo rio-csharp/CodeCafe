@@ -15,4 +15,8 @@
     <ProjectReference Include="..\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CodeCafe.Mcp.Tests" />
+  </ItemGroup>
+
 </Project>

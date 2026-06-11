@@ -835,6 +835,187 @@ internal static class NotesMcpSupport
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
     }
 
+    public static JsonElement ReplaceBlockAtIndex(JsonElement? existingContentJson, int index, JsonElement block)
+    {
+        var (root, content) = GetDocumentContentArray(existingContentJson);
+        if (index < 0 || index >= content.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+        }
+
+        try
+        {
+            content[index] = JsonNode.Parse(block.GetRawText());
+        }
+        catch (JsonException)
+        {
+            throw new ArgumentException("Block contains invalid JSON.", nameof(block));
+        }
+
+        return JsonSerializer.SerializeToElement(root, SerializerOptions);
+    }
+
+    public static JsonElement InsertBlocksAtIndex(JsonElement? existingContentJson, int index, JsonElement blocks)
+    {
+        if (blocks.ValueKind != JsonValueKind.Array)
+        {
+            throw new ArgumentException("Blocks must be a JSON array.", nameof(blocks));
+        }
+
+        var (root, content) = GetDocumentContentArray(existingContentJson);
+        if (index < 0 || index > content.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+        }
+
+        var nodes = new List<JsonNode?>();
+        foreach (var block in blocks.EnumerateArray())
+        {
+            try
+            {
+                nodes.Add(JsonNode.Parse(block.GetRawText()));
+            }
+            catch (JsonException)
+            {
+                throw new ArgumentException("Blocks contain an invalid JSON node.", nameof(blocks));
+            }
+        }
+
+        for (var i = nodes.Count - 1; i >= 0; i--)
+        {
+            content.Insert(index, nodes[i]);
+        }
+
+        return JsonSerializer.SerializeToElement(root, SerializerOptions);
+    }
+
+    public static JsonElement DeleteBlockAtIndex(JsonElement? existingContentJson, int index)
+    {
+        var (root, content) = GetDocumentContentArray(existingContentJson);
+        if (index < 0 || index >= content.Count)
+        {
+            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+        }
+
+        content.RemoveAt(index);
+        return JsonSerializer.SerializeToElement(root, SerializerOptions);
+    }
+
+    public static JsonElement ReplaceTextInDocument(JsonElement? existingContentJson, string searchText, string replacementText, bool replaceAll)
+    {
+        if (string.IsNullOrEmpty(searchText))
+        {
+            throw new ArgumentException("Search text cannot be empty.", nameof(searchText));
+        }
+
+        var root = existingContentJson is null || existingContentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+            ? new JsonObject
+            {
+                ["type"] = "doc",
+                ["content"] = new JsonArray()
+            }
+            : JsonNode.Parse(existingContentJson.Value.GetRawText())?.AsObject()
+              ?? new JsonObject
+              {
+                  ["type"] = "doc",
+                  ["content"] = new JsonArray()
+              };
+
+        var replaced = ReplaceTextInNode(root, searchText, replacementText, replaceAll);
+        if (!replaced)
+        {
+            throw new ArgumentException($"Text '{searchText}' was not found in the document.", nameof(searchText));
+        }
+
+        return JsonSerializer.SerializeToElement(root, SerializerOptions);
+    }
+
+    private static (JsonObject Root, JsonArray Content) GetDocumentContentArray(JsonElement? existingContentJson)
+    {
+        var root = existingContentJson is null || existingContentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+            ? new JsonObject
+            {
+                ["type"] = "doc",
+                ["content"] = new JsonArray()
+            }
+            : JsonNode.Parse(existingContentJson.Value.GetRawText())?.AsObject()
+              ?? new JsonObject
+              {
+                  ["type"] = "doc",
+                  ["content"] = new JsonArray()
+              };
+
+        root["type"] ??= "doc";
+        var content = root["content"] as JsonArray ?? new JsonArray();
+        root["content"] = content;
+        return (root, content);
+    }
+
+    private static bool ReplaceTextInNode(JsonNode? node, string searchText, string replacementText, bool replaceAll)
+    {
+        var replaced = false;
+        if (node is JsonObject obj)
+        {
+            if (obj.TryGetPropertyValue("type", out var typeNode)
+                && typeNode is JsonValue typeValue
+                && typeValue.TryGetValue<string>(out var type)
+                && string.Equals(type, "text", StringComparison.Ordinal)
+                && obj.TryGetPropertyValue("text", out var textNode)
+                && textNode is JsonValue textValue
+                && textValue.TryGetValue<string>(out var text))
+            {
+                var newText = replaceAll
+                    ? text.Replace(searchText, replacementText)
+                    : ReplaceFirst(text, searchText, replacementText);
+                if (!string.Equals(newText, text, StringComparison.Ordinal))
+                {
+                    obj["text"] = newText;
+                    replaced = true;
+                    if (!replaceAll)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            foreach (var property in obj.ToList())
+            {
+                if (property.Value is not null && ReplaceTextInNode(property.Value, searchText, replacementText, replaceAll))
+                {
+                    replaced = true;
+                    if (!replaceAll)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        else if (node is JsonArray array)
+        {
+            foreach (var item in array)
+            {
+                if (ReplaceTextInNode(item, searchText, replacementText, replaceAll))
+                {
+                    replaced = true;
+                    if (!replaceAll)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return replaced;
+    }
+
+    private static string ReplaceFirst(string text, string searchText, string replacementText)
+    {
+        var index = text.IndexOf(searchText, StringComparison.Ordinal);
+        return index < 0
+            ? text
+            : string.Concat(text.AsSpan(0, index), replacementText, text.AsSpan(index + searchText.Length));
+    }
+
     public static string BuildNotebookUri(string notebookSlug) => $"notebook://{notebookSlug}";
 
     public static string BuildNotebookItemsUri(string notebookSlug) => $"notebook://{notebookSlug}/items";

@@ -21,7 +21,7 @@ internal static class NotesMcpContentFormatter
             DiscardUploadToolResponse response => FormatDiscardUpload(response),
             CreateItemToolResponse response => FormatCreateItem(response),
             CreatePageToolResponse response => FormatCreatePage(response),
-            UpdatePageContentToolResponse response => FormatUpdatePageContent(response),
+            UpdatePageContentToolResponse response => FormatUpdatePageContent(response, fallbackSummary),
             MoveItemToolResponse response => FormatMoveItem(response),
             ReorderItemsToolResponse response => FormatReorderItems(response),
             DeleteItemToolResponse response => FormatDeleteItem(response),
@@ -133,12 +133,15 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"maxInlineContentBytes: {response.MaxInlineContentBytes}");
         builder.AppendLine($"maxUploadChunkBytes: {response.MaxUploadChunkBytes}");
         builder.AppendLine($"maxUploadBytes: {response.MaxUploadBytes}");
+        builder.AppendLine($"maxHttpUploadBytes: {response.MaxHttpUploadBytes}");
+        builder.AppendLine($"uploadIdleTimeoutSeconds: {response.UploadIdleTimeoutSeconds}");
         builder.AppendLine($"maxPageContentBytes: {response.MaxPageContentBytes}");
         builder.AppendLine($"maxListItemsLimit: {response.MaxListItemsLimit}");
         builder.AppendLine($"maxTipTapDepth: {response.MaxTipTapDepth}");
         builder.AppendLine($"maxTipTapNodeCount: {response.MaxTipTapNodeCount}");
         builder.AppendLine($"maxTipTapTextLength: {response.MaxTipTapTextLength}");
         builder.AppendLine($"supportedImportFormats: {string.Join(", ", response.SupportedImportFormats)}");
+        builder.AppendLine($"supportedHttpUploadMediaTypes: {string.Join(", ", response.SupportedHttpUploadMediaTypes)}");
         return builder.ToString().TrimEnd();
     }
 
@@ -173,7 +176,7 @@ internal static class NotesMcpContentFormatter
 
     private static string FormatAppendUploadChunk(AppendUploadChunkToolResponse response)
     {
-        return $"Upload '{response.UploadId}' now holds {response.BytesReceived} bytes after appending {response.ChunkBytesReceived} bytes.";
+        return $"Upload '{response.UploadId}' now holds {response.BytesReceived} bytes after appending {response.ChunkBytesReceived} bytes. Continue appending chunks if there is more content, then pass the uploadId to notes_create_page, notes_update_page_content, or notes_append_blocks_to_page.";
     }
 
     private static string FormatDiscardUpload(DiscardUploadToolResponse response)
@@ -276,10 +279,10 @@ internal static class NotesMcpContentFormatter
         return builder.ToString().TrimEnd();
     }
 
-    private static string FormatUpdatePageContent(UpdatePageContentToolResponse response)
+    private static string FormatUpdatePageContent(UpdatePageContentToolResponse response, string fallbackSummary)
     {
         var builder = new StringBuilder();
-        builder.AppendLine($"Page '{response.Title}' updated.");
+        builder.AppendLine(fallbackSummary);
         builder.AppendLine($"notebookSlug: {response.NotebookSlug}");
         builder.AppendLine($"path: {response.Path}");
         builder.AppendLine($"notebookUri: {response.NotebookUri}");
