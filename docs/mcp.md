@@ -109,6 +109,10 @@ CodeCafe also seeds a built-in public client:
 
 ## Tools
 
+### Diagnostics Tools
+
+- `diagnostics_status`
+
 ### Public Read Tools
 
 These tools only expose public notebook data:
@@ -124,6 +128,7 @@ Notebook discovery and search:
 - `notes_get_notebook`
 - `notes_search`
 - `notes_get_limits`
+- `notes_prepare_http_upload`
 
 Notebook mutation:
 
@@ -183,17 +188,18 @@ These prompts are helpers layered on top of notebook reads and writes; they do n
 
 For larger content, the recommended flow is:
 
-1. Call `notes_get_limits`.
-2. Prefer `POST /api/mcp/uploads/markdown` with the same bearer token used for MCP.
+1. Call `notes_prepare_http_upload` first.
+2. Follow the returned HTTP request details for `POST /api/mcp/uploads/markdown` using the same bearer token used for MCP.
 3. Pass the returned `uploadId` into `notes_create_page`, `notes_update_page_content`, or `notes_append_blocks_to_page`.
 4. Optionally clean up abandoned uploads with `DELETE /api/mcp/uploads/{uploadId}` or `notes_discard_upload`.
 
 Chunked MCP upload remains available for clients that cannot use HTTP:
 
-1. Start a session with `notes_create_upload`.
-2. Send one or more UTF-8 chunks with `notes_append_upload_chunk`.
-3. Apply the uploaded content with page-creation or page-update tools.
-4. Optionally discard abandoned sessions with `notes_discard_upload`.
+1. Optionally call `notes_get_limits` to fetch the runtime chunk and size caps.
+2. Start a session with `notes_create_upload`.
+3. Send one or more UTF-8 chunks with `notes_append_upload_chunk`.
+4. Apply the uploaded content with page-creation or page-update tools.
+5. Optionally discard abandoned sessions with `notes_discard_upload`.
 
 Supported uploaded formats:
 
@@ -202,6 +208,7 @@ Supported uploaded formats:
 - `tiptap_blocks_json`
 
 Markdown uploads are converted server-side into TipTap JSON before validation and persistence.
+This Markdown support is an import convenience for MCP/API clients. It is not the target write format for the in-app AI notebook editor; AI editing should produce validated TipTap JSON or structured operations that become TipTap JSON.
 
 The create/update/append tool descriptions expose the default page-content limits by field name: `maxInlineContentBytes`, `maxPageContentBytes`, `maxTipTapDepth`, `maxTipTapNodeCount`, and `maxTipTapTextLength`. Treat `notes_get_limits` as the runtime source of truth when configuration differs from defaults.
 
@@ -223,6 +230,14 @@ Use the content mutation tools this way:
 
 Write tools default to lightweight responses: `contentJson` and `plainTextContent` are omitted, while `contentJsonBytes`, `plainTextLength`, `tipTapNodeCount`, and page identifiers are still returned. Pass `includeContent: true` only when the client explicitly needs the full updated document in the mutation response. Use `notes_get_page` for normal full-content reads.
 
+## Query Semantics
+
+- `notes_list_notebooks` supports `scope=all|mine|public`.
+- `notes_search` supports `scope=all|notebooks|items` and optional `notebookSlug` narrowing.
+- `notes_list_items` supports `search`, `parentPath`, `type=all|page|folder`, `includeArchived`, `offset`, and `limit`.
+- `includeArchived=true` is owner-only.
+- Resource-style `page/<path>` and `folder/<path>` values are accepted on path-based item/page tools for clients that derive paths from MCP resource URIs.
+
 ## Default Limits
 
 From `src/CodeCafe.Server/appsettings.json`:
@@ -243,6 +258,7 @@ Clients should treat these values as runtime configuration, not hard-coded const
 ## Operational Notes
 
 - MCP diagnostics are exposed at `/mcp/health/live`.
+- The MCP server also exposes `diagnostics_status` as a read-only tool for smoke testing and adapter diagnostics.
 - Notebook reads and writes still flow through the same notebook rules used by the REST API.
 - Public-only MCP tools are narrower in scope than the authenticated notebook tools, but they still live on the same MCP host surface.
 
