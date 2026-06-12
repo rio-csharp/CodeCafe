@@ -41,7 +41,7 @@ function NotebookTreeComponent({ notebook, notebookSlug, tree, activePage, showA
     data: searchResults,
     isPending: searchPending,
     isError: searchError,
-  } = useNotebookItems(notebook.id, debouncedSearch || undefined, showArchived, isSearching)
+  } = useNotebookItems(notebook.id, debouncedSearch || undefined, showArchived, isSearching, false)
 
   const {
     handleCreateRoot,

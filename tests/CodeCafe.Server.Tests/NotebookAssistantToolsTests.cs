@@ -482,10 +482,22 @@ public sealed class NotebookAssistantToolsTests
             string? search,
             CancellationToken cancellationToken,
             bool includeArchived = false,
+            bool includeContent = true,
             int? limit = null)
             => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
                 NotesFailureKind.NotFound,
                 "notebook_not_found",
                 "Notebook was not found."));
+
+        public Task<NotesResult<NotebookItemModel>> GetNotebookItemByIdAsync(
+            Guid notebookId,
+            Guid itemId,
+            Guid currentUserId,
+            CancellationToken cancellationToken,
+            bool includeArchived = false)
+            => Task.FromResult(NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.NotFound,
+                "notebook_item_not_found",
+                "Notebook item was not found."));
     }
 }

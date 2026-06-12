@@ -6,4 +6,5 @@ public sealed record GetNotebookItemsQuery(
     Guid NotebookId,
     Guid CurrentUserId,
     string? Search,
-    bool IncludeArchived = false) : IQuery<NotesResult<IReadOnlyList<NotebookItemModel>>>;
+    bool IncludeArchived = false,
+    bool IncludeContent = true) : IQuery<NotesResult<IReadOnlyList<NotebookItemModel>>>;

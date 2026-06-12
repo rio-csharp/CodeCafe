@@ -35,6 +35,11 @@ internal static class NotesSupport
 
     public static NotebookItemModel ToItemModel(NotebookItem item)
     {
+        return ToItemModel(item, includeContent: true);
+    }
+
+    public static NotebookItemModel ToItemModel(NotebookItem item, bool includeContent)
+    {
         return new NotebookItemModel(
             item.Id,
             item.NotebookId,
@@ -45,8 +50,8 @@ internal static class NotesSupport
             item.Path,
             item.SortOrder,
             item.ContentFormat,
-            ParseContent(item.ContentJson),
-            item.PlainTextContent,
+            includeContent ? ParseContent(item.ContentJson) : null,
+            includeContent ? item.PlainTextContent : null,
             item.IsArchived,
             item.ArchivedAtUtc,
             item.ArchivedByUserId,

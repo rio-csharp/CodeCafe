@@ -5,6 +5,7 @@ using CodeCafe.Application.Notes.Commands.DeleteNotebookItem;
 using CodeCafe.Application.Notes.Commands.ReorderNotebookItems;
 using CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
 using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Application.Notes.Queries.GetNotebookItemById;
 using CodeCafe.Application.Notes.Queries.GetNotebookItems;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -16,6 +17,8 @@ public static partial class NotesEndpoints
     private static void MapItemEndpoints(RouteGroupBuilder group)
     {
         group.MapGet("/{notebookId:guid}/items", GetNotebookItemsAsync)
+            .AllowAnonymous();
+        group.MapGet("/{notebookId:guid}/items/{itemId:guid}", GetNotebookItemByIdAsync)
             .AllowAnonymous();
         group.MapPost("/{notebookId:guid}/items", CreateNotebookItemAsync)
             .RequireAuthorization();
@@ -36,6 +39,7 @@ public static partial class NotesEndpoints
         Guid notebookId,
         [FromQuery] string? search,
         [FromQuery] bool? includeArchived,
+        [FromQuery] bool? includeContent,
         HttpContext httpContext,
         CancellationToken cancellationToken)
     {
@@ -44,10 +48,30 @@ public static partial class NotesEndpoints
                 notebookId,
                 GetCurrentUserId(httpContext.User),
                 search,
-                includeArchived ?? false),
+                includeArchived ?? false,
+                includeContent ?? true),
             cancellationToken);
 
         return ToListResult(result);
+    }
+
+    private static async Task<IResult> GetNotebookItemByIdAsync(
+        [FromServices] ISender sender,
+        Guid notebookId,
+        Guid itemId,
+        [FromQuery] bool? includeArchived,
+        HttpContext httpContext,
+        CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(
+            new GetNotebookItemByIdQuery(
+                notebookId,
+                itemId,
+                GetCurrentUserId(httpContext.User),
+                includeArchived ?? false),
+            cancellationToken);
+
+        return ToItemResult(result);
     }
 
     private static async Task<IResult> CreateNotebookItemAsync(
