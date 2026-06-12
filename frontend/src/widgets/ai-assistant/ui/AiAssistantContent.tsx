@@ -6,9 +6,10 @@ import {
   type AiAssistantErrorCode,
   type AiAssistantVisibleMessage,
   type AiToolActivity,
+  type EditMessage,
 } from '@/features/ai-assistant'
 import { errorKey } from '../lib/labels'
-import type { AiAssistantMode, EditMessage } from './AiAssistant'
+import type { AiAssistantMode } from './AiAssistant'
 import { AiAssistantForm } from './AiAssistantForm'
 import { AssistantThinking } from './AssistantThinking'
 import { MessageBubble } from './MessageBubble'

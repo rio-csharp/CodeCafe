@@ -118,7 +118,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
     const json = editor.getJSON() as Record<string, unknown>
     setPendingPreview({
       contentJson: json,
-      text: editor.getText(),
+      text: editor.getText({ blockSeparator: '\n' }),
     })
   }, [editor])
 

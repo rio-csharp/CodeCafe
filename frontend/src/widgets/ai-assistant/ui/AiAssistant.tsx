@@ -9,22 +9,15 @@ import {
   useAiStatus,
   useCreateAiEditProposal,
   useAiEditStore,
-  type AiEditResponse,
 } from '@/features/ai-assistant'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { useToast } from '@/shared/ui/Toast'
 import { AiAssistantContent } from './AiAssistantContent'
 import { AiAssistantGate } from './AiAssistantGate'
 import { AiAssistantHeader } from './AiAssistantHeader'
+import { useEditMessages } from './useEditMessages'
 
 export type AiAssistantMode = 'chat' | 'edit'
-
-export interface EditMessage {
-  id: string
-  role: 'user' | 'assistant' | 'proposal'
-  content?: string
-  proposal?: AiEditResponse
-}
 
 interface AiAssistantProps {
   notebook: Notebook
@@ -50,8 +43,8 @@ export default function AiAssistant({
 }: AiAssistantProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [mode, setMode] = useState<AiAssistantMode>('chat')
+  const { editMessages, setEditMessages, clearEditMessages } = useEditMessages({ notebook, activePage })
   const [draft, setDraft] = useState('')
-  const [editMessages, setEditMessages] = useState<EditMessage[]>([])
   const [dockedHeight, setDockedHeight] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -95,11 +88,6 @@ export default function AiAssistant({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ block: 'end' })
   }, [chatMessages, editMessages, toolActivities, isChatRunning, createEdit.isPending])
-
-  useEffect(() => {
-    setEditMessages([])
-    clearProposal()
-  }, [notebook.slug, activePage?.path, clearProposal])
 
   const isFloating = variant === 'floating'
   const isCollapsed = !isFloating && collapsed
@@ -156,7 +144,7 @@ export default function AiAssistant({
     if (mode === 'chat') {
       clear()
     } else {
-      setEditMessages([])
+      clearEditMessages()
       clearProposal()
     }
   }
