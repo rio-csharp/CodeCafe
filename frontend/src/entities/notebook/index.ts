@@ -48,9 +48,9 @@ export type { OutlineHeading } from './lib/extractOutline'
 export { findSiblings, findNodeAndSiblings, findNode } from './lib/findSiblings'
 export { findAdjacentPage } from './lib/findAdjacentPage'
 export {
-  NOTEBOOK_VISIBILITY_COLLECTION_LABELS,
-  NOTEBOOK_VISIBILITY_CONTEXT_LABELS,
-  NOTEBOOK_VISIBILITY_HELP_TEXT,
-  NOTEBOOK_VISIBILITY_LABELS,
+  useNotebookVisibilityCollectionLabels,
+  useNotebookVisibilityContextLabels,
+  useNotebookVisibilityHelpText,
+  useNotebookVisibilityLabels,
 } from './lib/visibility'
 export { useNotebook, useNotebookItems } from './model/useNotebookQueries'

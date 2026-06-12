@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Folder, FileText } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
 
@@ -9,6 +10,7 @@ interface SearchResultItemProps {
 }
 
 export default function SearchResultItem({ item, notebookSlug, activePath }: SearchResultItemProps) {
+  const { t } = useTranslation()
   const isActive = item.type === 'page' && item.path === activePath
   const isFolder = item.type === 'folder'
 
@@ -28,7 +30,7 @@ export default function SearchResultItem({ item, notebookSlug, activePath }: Sea
         <FileText className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
       )}
       <span className="truncate">{item.title}</span>
-      {isFolder && <span className="text-[10px] text-text-tertiary ml-1">(folder)</span>}
+      {isFolder && <span className="text-[10px] text-text-tertiary ml-1">({t('notebook.folder')})</span>}
     </div>
   )
 

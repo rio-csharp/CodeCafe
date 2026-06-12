@@ -1,20 +1,26 @@
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useCreateNotebook } from './useCreateNotebook'
 
-const schema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string(),
-  visibility: z.enum(['private', 'unlisted', 'public']),
-})
+export type CreateNotebookFormData = z.infer<ReturnType<typeof useCreateNotebookSchema>>
 
-export type CreateNotebookFormData = z.infer<typeof schema>
+function useCreateNotebookSchema() {
+  const { t } = useTranslation()
+  return z.object({
+    title: z.string().min(1, t('notebook.titleRequired')),
+    description: z.string(),
+    visibility: z.enum(['private', 'unlisted', 'public']),
+  })
+}
 
 export function useCreateNotebookForm(
   onSuccess: (slug: string) => void,
   onError: (message: string) => void,
 ) {
+  const { t } = useTranslation()
+  const schema = useCreateNotebookSchema()
   const create = useCreateNotebook()
 
   const {
@@ -40,7 +46,7 @@ export function useCreateNotebookForm(
       },
       {
         onSuccess: (responseData) => onSuccess(responseData.slug),
-        onError: (err: unknown) => onError(err instanceof Error ? err.message : 'Failed to create notebook'),
+        onError: (err: unknown) => onError(err instanceof Error ? err.message : t('notebook.createFailed')),
       },
     )
   }

@@ -21,7 +21,7 @@ export function Input({ label, error, iconLeft, className = '', ...props }: Inpu
           </span>
         )}
         <input
-          className={`w-full rounded-lg border outline-none focus:border-border-hover transition-colors placeholder:text-text-tertiary ${
+          className={`w-full rounded-lg border bg-surface text-text-primary outline-none focus:border-border-hover transition-colors placeholder:text-text-tertiary ${
             error
               ? 'border-status-error-border focus:border-status-error'
               : 'border-border-default'

@@ -9,7 +9,7 @@ describe('MessageBubble', () => {
     const bubble = container.querySelector('.rounded-md')
     expect(bubble).toHaveClass('bg-brand-brown')
     expect(bubble).toHaveClass('dark:bg-brand-brown-light')
-    expect(bubble).toHaveClass('dark:text-surface')
+    expect(bubble).toHaveClass('dark:text-text-inverse')
   })
 
   it('keeps assistant markdown content inheriting the bubble text color', () => {

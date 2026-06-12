@@ -14,7 +14,7 @@ import {
   FileUp,
 } from 'lucide-react'
 import type { Notebook } from '@/entities/notebook'
-import { NOTEBOOK_VISIBILITY_CONTEXT_LABELS } from '@/entities/notebook'
+import { useNotebookVisibilityContextLabels } from '@/entities/notebook'
 import { useDeleteNotebook } from '@/features/delete-notebook'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
@@ -42,6 +42,7 @@ export default function NotebookTreeHeader({
   onOpenImportModal,
 }: NotebookTreeHeaderProps) {
   const { t } = useTranslation()
+  const visibilityContextLabels = useNotebookVisibilityContextLabels()
   const navigate = useNavigate()
   const { activePath } = useTreeContext()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -99,8 +100,8 @@ export default function NotebookTreeHeader({
                     type="button"
                     onClick={onRefreshNotebook}
                     className="p-1 text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
-                    title="Refresh"
-                    aria-label="Refresh"
+                    title={t('notebook.refresh')}
+                    aria-label={t('notebook.refresh')}
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
                   </button>
@@ -110,7 +111,7 @@ export default function NotebookTreeHeader({
                     type="button"
                     onClick={() => setMenuOpen(!menuOpen)}
                     className="p-1 text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
-                    aria-label="Notebook menu"
+                    aria-label={t('notebook.notebookMenu')}
                   >
                     <MoreHorizontal className="h-3.5 w-3.5" />
                   </button>
@@ -122,7 +123,7 @@ export default function NotebookTreeHeader({
                         className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
                       >
                         <Archive className="h-3.5 w-3.5" />
-                        <span className="flex-1 text-left">Show archived</span>
+                        <span className="flex-1 text-left">{showArchived ? t('notebook.hideArchived') : t('notebook.showArchived')}</span>
                         {showArchived && <Check className="h-3 w-3 text-brand-brown" />}
                       </button>
                       <button
@@ -131,7 +132,7 @@ export default function NotebookTreeHeader({
                         className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
                       >
                         <Link2 className="h-3.5 w-3.5" />
-                        Copy link
+                        {t('notebook.copyLink')}
                       </button>
                       {notebook.canEdit && (
                         <>
@@ -155,7 +156,7 @@ export default function NotebookTreeHeader({
                             className="w-full flex items-center gap-2 px-3 py-2 text-xs text-text-secondary hover:bg-surface-hover transition-colors"
                           >
                             <Settings className="h-3.5 w-3.5" />
-                            Notebook settings
+                            {t('notebook.settingsMenu')}
                           </Link>
                           <div className="my-1 border-t border-border-subtle" />
                           {!showDeleteConfirm ? (
@@ -165,11 +166,11 @@ export default function NotebookTreeHeader({
                               className="w-full flex items-center gap-2 px-3 py-2 text-xs text-status-error hover:bg-status-error-bg transition-colors"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
-                              Delete notebook
+                              {t('notebook.deleteNotebook')}
                             </button>
                           ) : (
                             <div className="px-3 py-2 space-y-2">
-                              <p className="text-xs text-status-error">Are you sure? This cannot be undone.</p>
+                              <p className="text-xs text-status-error">{t('notebook.deleteConfirmInline')}</p>
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
@@ -180,10 +181,10 @@ export default function NotebookTreeHeader({
                                   {deleteNotebook.isPending ? (
                                     <span className="flex items-center gap-1">
                                       <Loader2 className="h-3 w-3 animate-spin" />
-                                      Deleting...
+                                      {t('notebook.deleting')}
                                     </span>
                                   ) : (
-                                    'Delete'
+                                    t('notebook.delete')
                                   )}
                                 </button>
                                 <button
@@ -191,7 +192,7 @@ export default function NotebookTreeHeader({
                                   onClick={() => setShowDeleteConfirm(false)}
                                   className="rounded-md border border-border-default px-2 py-1 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
                                 >
-                                  Cancel
+                                  {t('notebook.cancel')}
                                 </button>
                               </div>
                             </div>
@@ -204,7 +205,7 @@ export default function NotebookTreeHeader({
               </div>
             </div>
             <p className="text-xs text-text-tertiary mt-0.5">
-              {NOTEBOOK_VISIBILITY_CONTEXT_LABELS[notebook.visibility]}
+              {visibilityContextLabels[notebook.visibility]}
             </p>
           </div>
         </div>

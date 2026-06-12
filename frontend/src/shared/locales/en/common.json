@@ -3,6 +3,38 @@
     "name": "CodeCafe",
     "domain": "codes.cafe"
   },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggle": "Toggle theme"
+  },
+  "language": {
+    "switch": "Switch language",
+    "en": "English",
+    "zh": "中文"
+  },
+  "common": {
+    "user": "User",
+    "close": "Close",
+    "closeModal": "Close modal",
+    "dismissNotification": "Dismiss notification",
+    "dialog": "Dialog",
+    "copy": "Copy",
+    "refresh": "Refresh",
+    "errorTitle": "Something went wrong",
+    "errorDescription": "This part of the UI crashed. You can try refreshing or continue using other features.",
+    "tryAgain": "Try again",
+    "refreshPage": "Refresh page",
+    "plainTextFallback": "Content could not be rendered in rich text. Showing plain text instead.",
+    "pageEmpty": "This page is empty.",
+    "unableToDisplayContent": "Unable to display content",
+    "pageContentRenderError": "The page content could not be rendered.",
+    "dropHere": "Drop here to reorder",
+    "bytes": "B",
+    "kilobytes": "KB",
+    "megabytes": "MB"
+  },
   "nav": {
     "notes": "Notes",
     "codes": "Codes",
@@ -12,12 +44,14 @@
     "login": "Login",
     "logout": "Logout",
     "loggingOut": "Logging out...",
+    "toggleMenu": "Toggle menu",
     "workspace": "Workspace",
     "exploreNotebooks": "Explore notebooks"
   },
   "home": {
     "tagline": "Structured notebooks for engineering work.",
     "highlight": "engineering work.",
+    "brandIllustration": "CodeCafe brand illustration",
     "description": "Write in the browser, share the right notebooks publicly or by link, and connect the same knowledge base to MCP clients when you need automation.",
     "login": "Login",
     "explore": "Explore notebooks"
@@ -33,6 +67,7 @@
     "viewAll": "View all",
     "myTitle": "My notebooks",
     "myDesc": "Your private, unlisted, and published notebooks.",
+    "sharedTitle": "Shared notebooks",
     "newNotebook": "New Notebook",
     "noPublic": "No public notebooks yet.",
     "noMine": "You haven't created any notebooks yet.",
@@ -74,10 +109,14 @@
     "displayNameMin": "Display name must be at least 2 characters",
     "displayNameMax": "Display name must be at most 40 characters",
     "passwordMin": "Password must be at least 8 characters",
-    "passwordComplexity": "Password must include uppercase, lowercase, number, and special character"
+    "passwordComplexity": "Password must include uppercase, lowercase, number, and special character",
+    "password": "Password",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "dashboard": {
     "greeting": "Welcome back",
+    "greetingFallback": "there",
     "title": "Your knowledge workspace",
     "subtitle": "Pick up a notebook, or check what is shipping next.",
     "notesLive": "Notes are live today.",
@@ -212,7 +251,88 @@
     "importMarkdownErrorInvalidParent": "The chosen folder is no longer available",
     "importMarkdownErrorNotFound": "Notebook or page not found",
     "importMarkdownErrorAccessDenied": "You don't have permission to add pages to this notebook",
-    "importMarkdownErrorGeneric": "Failed to import Markdown"
+    "importMarkdownErrorGeneric": "Failed to import Markdown",
+    "changePreview": {
+      "label": "Review changes",
+      "edit": "Edit",
+      "save": "Save changes",
+      "delete": "Delete page",
+      "deleteWarning": "This proposal will delete the page \"{{title}}\".",
+      "before": "Before",
+      "after": "After",
+      "discard": "Discard",
+      "added": "added",
+      "removed": "removed",
+      "noChanges": "No text changes detected. Formatting-only changes can still be saved.",
+      "empty": "No content to preview."
+    },
+    "mcpReady": "Browser + MCP ready",
+    "notebookMenu": "Notebook menu",
+    "folder": "folder",
+    "characters": "characters",
+    "words": "words"
+  },
+  "editor": {
+    "cancelEditing": "Cancel editing",
+    "savePage": "Save page",
+    "toolbar": {
+      "heading1": "Heading 1",
+      "heading2": "Heading 2",
+      "heading3": "Heading 3",
+      "heading4": "Heading 4",
+      "bold": "Bold",
+      "italic": "Italic",
+      "underline": "Underline",
+      "strikethrough": "Strikethrough",
+      "subscript": "Subscript",
+      "superscript": "Superscript",
+      "fontFamily": "Font family",
+      "alignLeft": "Align left",
+      "alignCenter": "Align center",
+      "alignRight": "Align right",
+      "alignJustify": "Align justify",
+      "bulletList": "Bullet list",
+      "numberedList": "Numbered list",
+      "taskList": "Task list",
+      "link": "Link",
+      "codeBlock": "Code block",
+      "codeLanguage": "Code language",
+      "quote": "Quote",
+      "horizontalRule": "Horizontal rule",
+      "insertImage": "Insert image",
+      "insertYoutube": "Insert YouTube video",
+      "insertTable": "Insert table",
+      "addColumnBefore": "Add column before",
+      "addColumnAfter": "Add column after",
+      "deleteColumn": "Delete column",
+      "addRowBefore": "Add row before",
+      "addRowAfter": "Add row after",
+      "deleteRow": "Delete row",
+      "deleteTable": "Delete table",
+      "undo": "Undo",
+      "redo": "Redo",
+      "textColor": "Text color",
+      "highlight": "Highlight"
+    },
+    "prompt": {
+      "url": "URL",
+      "imageUrl": "Image URL",
+      "youtubeUrl": "YouTube URL"
+    }
+  },
+  "layout": {
+    "closePanel": "Close panel",
+    "contents": "Contents",
+    "outline": "Outline",
+    "previous": "Previous: {{title}}",
+    "next": "Next: {{title}}"
+  },
+  "sidebar": {
+    "userMenu": "User menu",
+    "openSidebar": "Open sidebar",
+    "closeSidebar": "Close sidebar",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar"
   },
   "outline": {
     "onThisPage": "On this page",
@@ -222,7 +342,7 @@
     "title": "AI Assistant",
     "open": "Open AI Assistant",
     "dragHandle": "Drag AI Assistant",
-    "readOnly": "Chat read-only",
+    "resizeHandle": "Resize AI Assistant",
     "collapse": "Collapse AI Assistant",
     "checking": "Checking AI...",
     "thinking": "Thinking...",
@@ -237,53 +357,23 @@
     "signInTitle": "Sign in to use AI",
     "signInDescription": "The assistant reads notebooks through your CodeCafe account.",
     "signIn": "Sign in",
-    "actions": {
-      "summarize": "Summarize current context",
-      "related": "Find related notes",
-      "outline": "Suggest an outline"
+    "mode": {
+      "chat": "Chat",
+      "edit": "Edit"
     },
-    "drafts": {
-      "title": "Draft into notes",
-      "generate": "Generate draft",
-      "discard": "Discard draft",
-      "applied": "AI draft applied",
-      "placeholder": "Describe the note you want AI to draft...",
-      "actions": {
-        "summary": "Draft summary page",
-        "outline": "Draft outline",
-        "rewrite": "Rewrite current page",
-        "expand": "Expand current page",
-        "continue": "Continue current page"
-      },
-      "apply": {
-        "create": "New",
-        "append": "Append",
-        "replace": "Replace"
-      },
-      "prompts": {
-        "summaryPage": "Create a polished Markdown summary of page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Include concise headings, action items if relevant, and a Sources section.",
-        "summaryNotebook": "Create a polished Markdown summary of notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Include key themes, open questions, and a Sources section.",
-        "outlinePage": "Create a clearer Markdown outline for page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Preserve the important ideas and organize them into headings and bullet points.",
-        "outlineNotebook": "Create a high-level Markdown outline for notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Group related pages into coherent sections.",
-        "rewritePage": "Rewrite page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}} as polished Markdown. Keep factual content, improve structure and clarity, and include a Sources section.",
-        "rewriteNotebook": "Create a polished Markdown synthesis of notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Improve structure and clarity without inventing unsupported facts.",
-        "expandPage": "Expand page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}} into a fuller Markdown draft. Preserve the existing facts, add useful explanation, and include a Sources section.",
-        "expandNotebook": "Expand notebook \"{{notebookTitle}}\" with slug {{notebookSlug}} into a fuller Markdown guide. Use notebook context as source material and avoid unsupported facts.",
-        "continuePage": "Continue page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}} with the next useful Markdown section. Match the existing style and include a Sources section.",
-        "continueNotebook": "Continue notebook \"{{notebookTitle}}\" with slug {{notebookSlug}} by drafting the next useful Markdown section or page concept. Cite source pages when relevant."
-      },
+    "edit": {
+      "newPageTitle": "New page: {{title}}",
+      "applied": "AI edit applied",
+      "discarded": "AI edit discarded",
+      "inputPlaceholder": "Tell AI how to edit...",
+      "previewShown": "Preview is shown above.",
+      "review": "Review changes",
       "errors": {
-        "generateFailed": "Failed to generate AI draft",
-        "applyFailed": "Failed to apply AI draft"
+        "notConfigured": "AI editing is not configured.",
+        "createFailed": "Failed to create AI edit proposal",
+        "applyFailed": "Failed to apply AI edit",
+        "discardFailed": "Failed to discard AI edit"
       }
-    },
-    "prompts": {
-      "summarizePage": "Summarize the CodeCafe page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Use notebook tools first and cite the notebook slug and page path.",
-      "summarizeNotebook": "Summarize the CodeCafe notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Use notebook tools first and cite notebook slugs and page paths where relevant.",
-      "relatedPage": "Find notes related to the page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Explain why each result is relevant and cite page paths.",
-      "relatedNotebook": "Find the most relevant notes inside notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Group results by theme and cite page paths.",
-      "outlinePage": "Suggest a clearer outline for the page \"{{pageTitle}}\" in notebook {{notebookSlug}} at path {{pagePath}}. Do not edit the notebook; return a concise proposed structure.",
-      "outlineNotebook": "Suggest a clearer high-level outline for notebook \"{{notebookTitle}}\" with slug {{notebookSlug}}. Do not edit the notebook; return a concise proposed structure."
     },
     "tools": {
       "list_notebooks": "Listing notebooks",
@@ -335,7 +425,13 @@
     "title": "Codes",
     "comingSoon": "Coming soon"
   },
+  "health": {
+    "checking": "Checking health",
+    "healthy": "Service healthy",
+    "unhealthy": "Service unhealthy"
+  },
   "errors": {
-    "generic": "Something went wrong"
+    "generic": "Something went wrong",
+    "csrfFailed": "Failed to fetch CSRF token"
   }
 }

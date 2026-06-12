@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import type { Editor } from '@tiptap/react'
 
 const LANGUAGES = [
@@ -24,6 +25,7 @@ interface ToolbarLanguageSelectProps {
 }
 
 export default function ToolbarLanguageSelect({ editor }: ToolbarLanguageSelectProps) {
+  const { t } = useTranslation()
   const currentLang = (editor.getAttributes('codeBlock').language as string | undefined) || 'plaintext'
 
   return (
@@ -31,7 +33,7 @@ export default function ToolbarLanguageSelect({ editor }: ToolbarLanguageSelectP
       value={currentLang}
       onChange={(e) => editor.chain().focus().setCodeBlock({ language: e.target.value }).run()}
       className="text-xs border border-border-default rounded px-1.5 py-0.5 bg-surface text-text-secondary outline-none focus:border-border-hover cursor-pointer"
-      title="Code language"
+      title={t('editor.toolbar.codeLanguage')}
     >
       {LANGUAGES.map((lang) => (
         <option key={lang.value} value={lang.value}>

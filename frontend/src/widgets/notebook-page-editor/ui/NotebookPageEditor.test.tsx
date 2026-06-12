@@ -20,6 +20,13 @@ vi.mock('./NotebookEditorToolbar', () => ({
   default: () => <div data-testid="editor-toolbar" />,
 }))
 
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en', resolvedLanguage: 'en' },
+  }),
+}))
+
 const page: NotebookItem = {
   id: 'page-1',
   notebookId: 'notebook-1',

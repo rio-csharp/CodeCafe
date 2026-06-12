@@ -15,7 +15,7 @@ export function MessageBubble({ role, text }: MessageBubbleProps) {
       <div
         className={`max-w-[92%] rounded-md px-3 py-2 text-xs leading-5 ${
           isUser
-            ? 'bg-brand-brown text-white dark:bg-brand-brown-light dark:text-surface'
+            ? 'bg-brand-brown text-text-inverse dark:bg-brand-brown-light dark:text-text-inverse'
             : 'border border-border-subtle bg-surface-elevated text-text-primary'
         }`}
       >

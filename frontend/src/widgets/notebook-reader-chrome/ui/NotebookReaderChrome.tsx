@@ -69,20 +69,20 @@ export default function NotebookReaderChrome({
               type="button"
               onClick={onToggleFullWidth}
               className="inline-flex items-center gap-1 rounded-md border border-border-subtle px-2 py-0.5 text-[11px] text-text-secondary hover:bg-surface-hover transition-colors"
-              title={isFullWidth ? 'Collapse width' : 'Expand width'}
+              title={isFullWidth ? t('notebook.collapseWidth') : t('notebook.expandWidth')}
             >
               {isFullWidth ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
-              {isFullWidth ? 'Collapse' : 'Full width'}
+              {isFullWidth ? t('notebook.collapse') : t('notebook.fullWidth')}
             </button>
             <button
               type="button"
               onClick={onRefresh}
               disabled={isFetching}
               className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
-              title="Refresh content"
+              title={t('notebook.refreshContent')}
             >
               <RefreshCw className={`h-3 w-3 ${isFetching ? 'animate-spin' : ''}`} />
-              Refresh
+              {t('notebook.refresh')}
             </button>
             <button
               type="button"

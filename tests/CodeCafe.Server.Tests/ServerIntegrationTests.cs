@@ -1,4 +1,6 @@
 using CodeCafe.Ai.Drafts;
+using CodeCafe.Ai.Edits;
+using CodeCafe.Application.Notes;
 using CodeCafe.Mcp.Tools.Notes;
 using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -102,6 +104,7 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.True(document.RootElement.GetProperty("enabled").GetBoolean());
         Assert.Equal("/api/ai/assistant", document.RootElement.GetProperty("endpointPath").GetString());
+        Assert.Equal("/api/ai/edits", document.RootElement.GetProperty("editEndpointPath").GetString());
         Assert.Equal("/api/ai/drafts", document.RootElement.GetProperty("draftEndpointPath").GetString());
     }
 
@@ -406,14 +409,469 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
                 locale = "en"
             });
 
-        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("empty_ai_draft", document.RootElement.GetProperty("code").GetString());
-        Assert.True(document.RootElement.GetProperty("retryable").GetBoolean());
+        Assert.False(document.RootElement.GetProperty("retryable").GetBoolean());
     }
 
     [Fact]
+    public async Task CombinedHost_AiEditEndpoint_ReturnsPreviewForCurrentPage()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<RecordingEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator>(serviceProvider =>
+                    serviceProvider.GetRequiredService<RecordingEditGenerator>());
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                prompt = "Rewrite this page as a clearer checklist.",
+                operation = "replace_current_page",
+                locale = "en",
+                apply = false
+            });
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("replace_current_page", document.RootElement.GetProperty("operation").GetString());
+        Assert.False(document.RootElement.GetProperty("applied").GetBoolean());
+        Assert.Equal("full_document", document.RootElement.GetProperty("mode").GetString());
+        Assert.Equal("Overview", document.RootElement.GetProperty("title").GetString());
+        Assert.Equal("guides/overview", document.RootElement.GetProperty("pagePath").GetString());
+        Assert.True(document.RootElement.GetProperty("afterContentJsonBytes").GetInt32() > 0);
+        Assert.True(document.RootElement.GetProperty("afterTipTapNodeCount").GetInt32() > 0);
+        Assert.Equal(JsonValueKind.Object, document.RootElement.GetProperty("beforeContentJson").ValueKind);
+        Assert.Equal(JsonValueKind.Object, document.RootElement.GetProperty("afterContentJson").ValueKind);
+        var previewPath = document.RootElement.GetProperty("previewPath").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("proposalId").GetString()));
+        Assert.False(string.IsNullOrWhiteSpace(previewPath));
+
+        using var previewResponse = await client.GetAsync(previewPath);
+        var previewBody = await previewResponse.Content.ReadAsStringAsync();
+        Assert.True(previewResponse.IsSuccessStatusCode, previewBody);
+        using var previewDocument = JsonDocument.Parse(previewBody);
+        Assert.Equal("Overview", previewDocument.RootElement.GetProperty("title").GetString());
+
+        var generator = factory.Services.GetRequiredService<RecordingEditGenerator>();
+        var context = Assert.Single(generator.Contexts);
+        Assert.Equal("replace_current_page", context.RequestedOperation);
+        Assert.Equal("Overview", context.ActivePage?.Title);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiEditEndpoint_CanApplyCurrentPageUpdate()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<RecordingEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator>(serviceProvider =>
+                    serviceProvider.GetRequiredService<RecordingEditGenerator>());
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                prompt = "Rewrite this page as a clearer checklist.",
+                operation = "replace_current_page",
+                locale = "en",
+                apply = true
+            });
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.True(document.RootElement.GetProperty("applied").GetBoolean());
+        Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("savedAtUtc").GetString()));
+        Assert.Equal("guides/overview", document.RootElement.GetProperty("pagePath").GetString());
+        Assert.Contains(
+            "Implementation checklist",
+            document.RootElement.GetProperty("afterPlainTextContent").GetString() ?? string.Empty,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiEditEndpoint_CanCreatePageWhenApplying()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator, CreatePageEditGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                prompt = "Create a follow-up page for rollout checks.",
+                operation = "create_page",
+                locale = "en",
+                apply = true
+            });
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("create_page", document.RootElement.GetProperty("operation").GetString());
+        Assert.True(document.RootElement.GetProperty("applied").GetBoolean());
+        Assert.Equal("operations", document.RootElement.GetProperty("mode").GetString());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("beforeContentJson").ValueKind);
+        Assert.Equal("Rollout Checklist", document.RootElement.GetProperty("title").GetString());
+        Assert.Equal("guides", document.RootElement.GetProperty("parentPath").GetString());
+        Assert.Equal("guides/rollout-checklist", document.RootElement.GetProperty("pagePath").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("savedAtUtc").GetString()));
+        Assert.DoesNotContain(
+            "Overview content",
+            document.RootElement.GetProperty("afterPlainTextContent").GetString() ?? string.Empty,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiEditEndpoint_CreatePagePreview_HasNoCurrentPageTarget()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator, CreatePageEditGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                prompt = "Create a follow-up page for rollout checks.",
+                operation = "create_page",
+                locale = "en",
+                apply = false
+            });
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("create_page", document.RootElement.GetProperty("operation").GetString());
+        Assert.Equal("operations", document.RootElement.GetProperty("mode").GetString());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("pageId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("pagePath").ValueKind);
+        Assert.Equal(JsonValueKind.Null, document.RootElement.GetProperty("beforeContentJson").ValueKind);
+        Assert.DoesNotContain(
+            "Overview content",
+            document.RootElement.GetProperty("afterPlainTextContent").GetString() ?? string.Empty,
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiEditEndpoint_ReturnsValidationErrorWhenCurrentPageOperationLacksActivePage()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator, RecordingEditGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = (string?)null,
+                prompt = "Rewrite the current page.",
+                operation = "replace_current_page",
+                locale = "en",
+                apply = false
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("active_page_required", document.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiEditEndpoint_ReturnsProblemDetailsWhenGeneratorFails()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator, ThrowingEditGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                prompt = "Rewrite this page.",
+                operation = "replace_current_page",
+                locale = "en",
+                apply = false
+            });
+
+        Assert.Equal(HttpStatusCode.BadGateway, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("ai_edit_generation_failed", document.RootElement.GetProperty("code").GetString());
+    }
+
+        [Fact]
+    public async Task CombinedHost_AiEditEndpoint_CanDeletePageWhenApplying()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator, DeletePageEditGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                prompt = "Delete this page.",
+                operation = "delete_page",
+                locale = "en",
+                apply = true
+            });
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("delete_page", document.RootElement.GetProperty("operation").GetString());
+        Assert.True(document.RootElement.GetProperty("applied").GetBoolean());
+        Assert.Equal("guides/overview", document.RootElement.GetProperty("pagePath").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("savedAtUtc").GetString()));
+
+        using var itemsResponse = await client.GetAsync("/api/notes/11111111-1111-1111-1111-111111111111/items?includeArchived=true");
+        var itemsBody = await itemsResponse.Content.ReadAsStringAsync();
+        Assert.True(itemsResponse.IsSuccessStatusCode, itemsBody);
+        using var itemsDocument = JsonDocument.Parse(itemsBody);
+        var overview = itemsDocument.RootElement.EnumerateArray().SingleOrDefault(item =>
+            item.GetProperty("path").GetString() == "guides/overview");
+        Assert.NotEqual(JsonValueKind.Undefined, overview.ValueKind);
+        Assert.True(overview.GetProperty("isArchived").GetBoolean());
+    }
+
+    [Fact]
+    public async Task CombinedHost_AiEditEndpoint_DeletePagePreview_DoesNotMutate()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator, DeletePageEditGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                prompt = "Delete this page.",
+                operation = "delete_page",
+                locale = "en",
+                apply = false
+            });
+
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(response.IsSuccessStatusCode, responseBody);
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.Equal("delete_page", document.RootElement.GetProperty("operation").GetString());
+        Assert.False(document.RootElement.GetProperty("applied").GetBoolean());
+        Assert.Equal("guides/overview", document.RootElement.GetProperty("pagePath").GetString());
+
+        using var itemsResponse = await client.GetAsync("/api/notes/11111111-1111-1111-1111-111111111111/items?includeArchived=true");
+        var itemsBody = await itemsResponse.Content.ReadAsStringAsync();
+        Assert.True(itemsResponse.IsSuccessStatusCode, itemsBody);
+        using var itemsDocument = JsonDocument.Parse(itemsBody);
+        var overview = itemsDocument.RootElement.EnumerateArray().Single(item =>
+            item.GetProperty("path").GetString() == "guides/overview");
+        Assert.False(overview.GetProperty("isArchived").GetBoolean());
+    }
+
+[Fact]
     public async Task CombinedHost_ExposesApiNotesAndAuthEndpoints()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -751,7 +1209,7 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
             AiNoteDraftGenerationContext context,
             CancellationToken cancellationToken)
         {
-            throw new InvalidOperationException("Provider unavailable.");
+            throw new HttpRequestException("Provider unavailable.");
         }
     }
 
@@ -762,6 +1220,118 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
             CancellationToken cancellationToken)
         {
             return Task.FromResult(new AiNoteDraftResult("   "));
+        }
+    }
+
+    private sealed class RecordingEditGenerator : IAiNotebookEditGenerator
+    {
+        public List<AiNotebookEditGenerationContext> Contexts { get; } = [];
+
+        public Task<AiNotebookEditResult> GenerateEditAsync(
+            AiNotebookEditGenerationContext context,
+            CancellationToken cancellationToken)
+        {
+            Contexts.Add(context);
+            return Task.FromResult(new AiNotebookEditResult(
+                "replace_current_page",
+                "full_document",
+                context.ActivePage?.Title,
+                "Rewrite the current page as a checklist.",
+                JsonSerializer.SerializeToElement(new
+                {
+                    type = "doc",
+                    content = new object[]
+                    {
+                        new
+                        {
+                            type = "heading",
+                            attrs = new { level = 1 },
+                            content = new[] { new { type = "text", text = "Implementation checklist" } }
+                        },
+                        new
+                        {
+                            type = "bulletList",
+                            content = new object[]
+                            {
+                                new
+                                {
+                                    type = "listItem",
+                                    content = new object[]
+                                    {
+                                        new
+                                        {
+                                            type = "paragraph",
+                                            content = new[] { new { type = "text", text = "Verify adapters and routes." } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }),
+                null));
+        }
+    }
+
+    private sealed class CreatePageEditGenerator : IAiNotebookEditGenerator
+    {
+        public Task<AiNotebookEditResult> GenerateEditAsync(
+            AiNotebookEditGenerationContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new AiNotebookEditResult(
+                "create_page",
+                "operations",
+                "Rollout Checklist",
+                "Create a follow-up rollout page.",
+                null,
+                JsonSerializer.SerializeToElement(new object[]
+                {
+                    new
+                    {
+                        type = "append_blocks",
+                        blocks = new object[]
+                        {
+                            new
+                            {
+                                type = "heading",
+                                attrs = new { level = 1 },
+                                content = new[] { new { type = "text", text = "Rollout checklist" } }
+                            },
+                            new
+                            {
+                                type = "paragraph",
+                                content = new[] { new { type = "text", text = "Confirm smoke checks and deployment notes." } }
+                            }
+                        }
+                    }
+                })));
+        }
+    }
+
+    private sealed class DeletePageEditGenerator : IAiNotebookEditGenerator
+    {
+        public Task<AiNotebookEditResult> GenerateEditAsync(
+            AiNotebookEditGenerationContext context,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(new AiNotebookEditResult(
+                "delete_page",
+                "operations",
+                context.ActivePage?.Title,
+                "Delete the current page.",
+                null,
+                null));
+        }
+    }
+
+    private sealed class ThrowingEditGenerator : IAiNotebookEditGenerator
+    {
+        public Task<AiNotebookEditResult> GenerateEditAsync(
+            AiNotebookEditGenerationContext context,
+            CancellationToken cancellationToken)
+        {
+            throw new HttpRequestException("Provider unavailable.");
         }
     }
 }

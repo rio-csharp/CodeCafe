@@ -92,7 +92,7 @@ function NotebookOutlineComponent({ headings, scrollContainerRef }: NotebookOutl
 
 export default function NotebookOutline(props: NotebookOutlineProps) {
   return (
-    <ErrorBoundary fallback={<ErrorFallback title="Outline Error" description="The page outline failed to render. Try refreshing the page." />}>
+    <ErrorBoundary fallback={<ErrorFallback />}>
       <NotebookOutlineComponent {...props} />
     </ErrorBoundary>
   )

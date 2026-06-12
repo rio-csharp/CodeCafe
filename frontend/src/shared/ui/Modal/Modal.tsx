@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 
 interface ModalProps {
@@ -14,6 +15,7 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export function Modal({ isOpen, onClose, title, ariaLabel, children }: ModalProps) {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -85,7 +87,7 @@ export function Modal({ isOpen, onClose, title, ariaLabel, children }: ModalProp
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
-        aria-label={!title ? ariaLabel ?? 'Dialog' : undefined}
+        aria-label={!title ? ariaLabel ?? t('common.dialog') : undefined}
         className="relative w-full max-w-md rounded-2xl bg-surface p-6 shadow-xl mx-4"
       >
         {title && (
@@ -96,7 +98,7 @@ export function Modal({ isOpen, onClose, title, ariaLabel, children }: ModalProp
               type="button"
               onClick={onClose}
               className="p-1 rounded-lg hover:bg-surface-active transition-colors"
-              aria-label="Close modal"
+              aria-label={t('common.closeModal')}
             >
               <X className="h-5 w-5 text-text-tertiary" />
             </button>

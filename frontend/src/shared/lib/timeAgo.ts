@@ -9,7 +9,7 @@ const DIVISIONS: Array<{ amount: number; unit: RelativeUnit }> = [
   { amount: Number.POSITIVE_INFINITY, unit: 'year' },
 ]
 
-export function formatTimeAgo(iso: string, locale = 'en'): string {
+export function formatTimeAgo(iso: string, locale?: string): string {
   const ts = new Date(iso).getTime()
   const formatter = new Intl.RelativeTimeFormat(locale, {
     numeric: 'auto',

@@ -40,7 +40,7 @@ export default function Sidebar() {
     })
   }
 
-  const displayName = user?.displayName || 'User'
+  const displayName = user?.displayName || t('common.user')
   const email = user?.email || ''
   const initial = displayName.charAt(0).toUpperCase()
 
@@ -103,7 +103,7 @@ export default function Sidebar() {
           className={`flex items-center w-full text-left hover:bg-surface-hover rounded-lg p-2 transition-colors ${
             isCollapsed ? 'justify-center' : 'gap-3'
           }`}
-          aria-label="User menu"
+          aria-label={t('sidebar.userMenu')}
         >
           <div className="h-8 w-8 rounded-full bg-brand-brown flex items-center justify-center text-text-inverse text-sm font-medium shrink-0">
             {initial}
@@ -147,7 +147,7 @@ export default function Sidebar() {
         type="button"
         onClick={openMobileSidebar}
         className="md:hidden fixed top-3 left-3 z-50 p-2 rounded-lg bg-surface border border-border-default shadow-sm"
-        aria-label="Open sidebar"
+        aria-label={t('sidebar.openSidebar')}
       >
         <Menu className="h-5 w-5 text-text-primary" />
       </button>
@@ -173,8 +173,8 @@ export default function Sidebar() {
           type="button"
           onClick={toggle}
           className="hidden md:flex absolute top-3 right-2 items-center justify-center h-7 w-7 rounded-lg hover:bg-surface-hover transition-colors z-10"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={isCollapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
+          title={isCollapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')}
         >
           {isCollapsed ? <PanelLeftOpen className="h-4 w-4 text-text-tertiary" /> : <PanelLeftClose className="h-4 w-4 text-text-tertiary" />}
         </button>
@@ -185,7 +185,7 @@ export default function Sidebar() {
             type="button"
             onClick={closeMobileSidebar}
             className="p-2 rounded-lg hover:bg-surface-hover transition-colors"
-            aria-label="Close sidebar"
+            aria-label={t('sidebar.closeSidebar')}
           >
             <X className="h-5 w-5 text-text-secondary" />
           </button>

@@ -48,7 +48,7 @@ export default function VisibilityField<T extends FieldValues>({
               value={opt.value}
               checked={value === opt.value}
               onChange={() => onChange(opt.value)}
-              className="accent-brand-brown"
+              className="accent-brand-brown bg-transparent"
             />
             {opt.label}
           </label>

@@ -1,25 +1,38 @@
+import { useTranslation } from 'react-i18next'
 import type { NotebookVisibility } from '../model/types'
 
-export const NOTEBOOK_VISIBILITY_LABELS = {
-  private: 'Private',
-  unlisted: 'Unlisted',
-  public: 'Public',
-} satisfies Record<NotebookVisibility, string>
+export function useNotebookVisibilityLabels() {
+  const { t } = useTranslation()
+  return {
+    private: t('notebook.visibilityPrivate'),
+    unlisted: t('notebook.visibilityUnlisted'),
+    public: t('notebook.visibilityPublic'),
+  } satisfies Record<NotebookVisibility, string>
+}
 
-export const NOTEBOOK_VISIBILITY_CONTEXT_LABELS = {
-  private: 'Private notebook',
-  unlisted: 'Shared via link',
-  public: 'Public notebook',
-} satisfies Record<NotebookVisibility, string>
+export function useNotebookVisibilityContextLabels() {
+  const { t } = useTranslation()
+  return {
+    private: t('notebook.visibilityPrivateContext'),
+    unlisted: t('notebook.visibilityUnlistedContext'),
+    public: t('notebook.visibilityPublicContext'),
+  } satisfies Record<NotebookVisibility, string>
+}
 
-export const NOTEBOOK_VISIBILITY_COLLECTION_LABELS = {
-  private: 'My notebooks',
-  unlisted: 'Shared notebooks',
-  public: 'Public notebooks',
-} satisfies Record<NotebookVisibility, string>
+export function useNotebookVisibilityCollectionLabels() {
+  const { t } = useTranslation()
+  return {
+    private: t('notes.myTitle'),
+    unlisted: t('notes.sharedTitle'),
+    public: t('notes.publicTitle'),
+  } satisfies Record<NotebookVisibility, string>
+}
 
-export const NOTEBOOK_VISIBILITY_HELP_TEXT = {
-  private: 'Only you can open this notebook.',
-  unlisted: 'Anyone with the link can open it, but it stays out of public listings.',
-  public: 'Anyone can discover and open this notebook.',
-} satisfies Record<NotebookVisibility, string>
+export function useNotebookVisibilityHelpText() {
+  const { t } = useTranslation()
+  return {
+    private: t('notebook.visibilityPrivateHelp'),
+    unlisted: t('notebook.visibilityUnlistedHelp'),
+    public: t('notebook.visibilityPublicHelp'),
+  } satisfies Record<NotebookVisibility, string>
+}
