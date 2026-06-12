@@ -7,6 +7,12 @@ export {
   useDiscardAiEditProposal,
 } from './model/useAiEdit'
 export { getMessageText } from './model/aiAssistantUtils'
+export {
+  clearEditThread,
+  loadEditThread,
+  saveEditThread,
+  type EditMessage,
+} from './model/aiEditThreadStorage'
 export type { AiAssistantErrorCode } from './model/useAiAssistantSession'
 export type {
   AiAssistantNotebookContext,
