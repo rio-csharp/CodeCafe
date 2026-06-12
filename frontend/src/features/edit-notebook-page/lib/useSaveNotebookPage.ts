@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type Query } from '@tanstack/react-query'
 import { updateNotebookItem, notesKeys } from '@/entities/notebook'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
@@ -24,10 +24,16 @@ export function useSaveNotebookPage(
     mutationFn: ({ itemId, data }: { itemId: string; data: { title: string; sortOrder: number; contentJson: Record<string, unknown> } }) =>
       updateNotebookItem(notebookId, itemId, data),
     onSuccess: (data) => {
-      queryClient.setQueriesData<NotebookItem[]>({ queryKey: notesKeys.itemsRoot(notebookId) }, (old) => {
-        if (!old) return old
-        return old.map((item) => (item.id === data.id ? { ...item, title: data.title, sortOrder: data.sortOrder } : item))
-      })
+      queryClient.setQueriesData<NotebookItem[]>(
+        {
+          queryKey: notesKeys.itemsRoot(notebookId),
+          predicate: (query: Query) => Array.isArray(query.state.data),
+        },
+        (old) => {
+          if (!old) return old
+          return old.map((item) => (item.id === data.id ? { ...item, title: data.title, sortOrder: data.sortOrder } : item))
+        },
+      )
       queryClient.invalidateQueries({ queryKey: notesKeys.item(notebookId, data.id) })
       queryClient.invalidateQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
       queryClient.invalidateQueries({ queryKey: notesKeys.all })
