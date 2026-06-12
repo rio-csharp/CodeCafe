@@ -4,9 +4,9 @@ import { DashboardCards } from '@/widgets/dashboard-cards'
 import { useTranslation } from 'react-i18next'
 
 export default function DashboardPage() {
-  const { user } = useLayout()
-  const displayName = user?.displayName || 'there'
   const { t } = useTranslation()
+  const { user } = useLayout()
+  const displayName = user?.displayName || t('dashboard.greetingFallback')
 
   return (
     <div className="p-6 sm:p-8 lg:p-12 max-w-6xl">

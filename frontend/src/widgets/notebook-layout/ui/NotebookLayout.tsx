@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, PanelLeft, PanelRight, X } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
@@ -18,6 +19,7 @@ const FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export default function NotebookLayout({ topBar, tree, content, rightPanel, contentRef, notebookSlug, prevPage, nextPage }: NotebookLayoutProps) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [mobilePanel, setMobilePanel] = useState<'none' | 'tree' | 'right'>('none')
   const treePanelRef = useRef<HTMLElement>(null)
@@ -82,7 +84,7 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
           className={`${mobilePanel === 'tree' ? 'fixed inset-y-0 left-0 z-40 w-[280px] border-r border-border-default' : 'hidden'} lg:flex lg:static lg:z-auto flex-col bg-surface border-r border-border-default overflow-hidden`}
         >
           <div className="lg:hidden flex items-center justify-end p-2 border-b border-border-subtle">
-            <button ref={treeCloseButtonRef} type="button" onClick={closePanel} className="p-1.5 rounded-md hover:bg-surface-hover" aria-label="Close panel">
+            <button ref={treeCloseButtonRef} type="button" onClick={closePanel} className="p-1.5 rounded-md hover:bg-surface-hover" aria-label={t('layout.closePanel')}>
               <X className="h-4 w-4 text-text-secondary" />
             </button>
           </div>
@@ -100,7 +102,7 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
                   onClick={() => { navigate(`/notes/${notebookSlug}/${prevPage.path}`); window.scrollTo(0, 0) }}
                   className="flex items-center gap-1 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
                   title={prevPage.title}
-                  aria-label={`Previous: ${prevPage.title}`}
+                  aria-label={t('layout.previous', { title: prevPage.title })}
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline max-w-[80px] truncate">{prevPage.title}</span>
@@ -112,18 +114,18 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
                 type="button"
                 onClick={() => setMobilePanel(mobilePanel === 'tree' ? 'none' : 'tree')}
                 className="flex items-center gap-1.5 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
-                aria-label="Toggle contents panel"
+                aria-label={t('layout.contents')}
               >
                 <PanelLeft className="h-3.5 w-3.5" />
-                Contents
+                {t('layout.contents')}
               </button>
               <button
                 type="button"
                 onClick={() => setMobilePanel(mobilePanel === 'right' ? 'none' : 'right')}
                 className="flex items-center gap-1.5 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
-                aria-label="Toggle outline panel"
+                aria-label={t('layout.outline')}
               >
-                Outline
+                {t('layout.outline')}
                 <PanelRight className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -134,7 +136,7 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
                   onClick={() => { navigate(`/notes/${notebookSlug}/${nextPage.path}`); window.scrollTo(0, 0) }}
                   className="flex items-center gap-1 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
                   title={nextPage.title}
-                  aria-label={`Next: ${nextPage.title}`}
+                  aria-label={t('layout.next', { title: nextPage.title })}
                 >
                   <span className="hidden sm:inline max-w-[80px] truncate">{nextPage.title}</span>
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -151,7 +153,7 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
           className={`${mobilePanel === 'right' ? 'fixed inset-y-0 right-0 z-40 w-[300px] border-l border-border-default' : 'hidden'} lg:flex lg:static lg:z-auto flex-col bg-surface border-l border-border-default overflow-hidden`}
         >
           <div className="lg:hidden flex items-center justify-end p-2 border-b border-border-subtle">
-            <button ref={rightCloseButtonRef} type="button" onClick={closePanel} className="p-1.5 rounded-md hover:bg-surface-hover" aria-label="Close panel">
+            <button ref={rightCloseButtonRef} type="button" onClick={closePanel} className="p-1.5 rounded-md hover:bg-surface-hover" aria-label={t('layout.closePanel')}>
               <X className="h-4 w-4 text-text-secondary" />
             </button>
           </div>

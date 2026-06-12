@@ -136,7 +136,7 @@ function Navbar() {
             <button
               className="md:hidden p-2 rounded-lg hover:bg-surface-hover transition-colors"
               onClick={toggleMobileMenu}
-              aria-label="Toggle menu"
+              aria-label={t('nav.toggleMenu')}
             >
               {mobileOpen ? <X className="h-5 w-5 text-text-primary" /> : <Menu className="h-5 w-5 text-text-primary" />}
             </button>

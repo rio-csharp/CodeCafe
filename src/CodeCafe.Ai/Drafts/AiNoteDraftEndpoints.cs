@@ -89,19 +89,25 @@ public static class AiNoteDraftEndpoints
         }
         catch (Exception ex) when (
             ex is System.ClientModel.ClientResultException
-                or HttpRequestException
-                or InvalidOperationException)
+                or HttpRequestException)
         {
             return ToError(
                 "ai_draft_generation_failed",
                 "The assistant could not generate a note draft. Please try again.",
                 StatusCodes.Status502BadGateway);
         }
+        catch (Exception ex) when (ex is InvalidOperationException)
+        {
+            return ToError(
+                "ai_draft_generation_failed",
+                "The assistant returned an unparseable or invalid draft. Please rephrase your prompt.",
+                StatusCodes.Status422UnprocessableEntity);
+        }
 
         var markdown = result.Markdown.Trim();
         if (string.IsNullOrWhiteSpace(markdown))
         {
-            return ToError("empty_ai_draft", "The assistant returned an empty draft.", StatusCodes.Status502BadGateway);
+            return ToError("empty_ai_draft", "The assistant returned an empty draft.", StatusCodes.Status422UnprocessableEntity);
         }
 
         var title = ExtractTitle(markdown)

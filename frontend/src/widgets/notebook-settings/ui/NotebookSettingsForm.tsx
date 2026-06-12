@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useUpdateNotebook } from '@/features/edit-notebook'
@@ -11,15 +12,17 @@ import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import VisibilityField from './VisibilityField'
 import SettingsFormActions from './SettingsFormActions'
 import type { Notebook } from '@/entities/notebook'
-import { useTranslation } from 'react-i18next'
 
-const schema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string(),
-  visibility: z.enum(['private', 'unlisted', 'public']),
-})
+function useSettingsSchema() {
+  const { t } = useTranslation()
+  return z.object({
+    title: z.string().min(1, t('notebook.titleRequired')),
+    description: z.string(),
+    visibility: z.enum(['private', 'unlisted', 'public']),
+  })
+}
 
-type FormData = z.infer<typeof schema>
+type FormData = z.infer<ReturnType<typeof useSettingsSchema>>
 
 interface NotebookSettingsFormProps {
   notebook: Notebook
@@ -38,6 +41,7 @@ function NotebookSettingsFormComponent({
   const deleteNotebook = useDeleteNotebook()
   const { showToast } = useToast()
   const { t } = useTranslation()
+  const schema = useSettingsSchema()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const {
@@ -95,7 +99,7 @@ function NotebookSettingsFormComponent({
           type="text"
           {...register('title')}
           placeholder={t('notebook.titlePlaceholder')}
-          className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover"
+          className="w-full rounded-lg border border-border-default bg-surface text-text-primary px-4 py-2.5 text-sm outline-none focus:border-border-hover"
           autoFocus
         />
         {errors.title && <p className="text-sm text-status-error mt-1">{errors.title.message}</p>}
@@ -108,7 +112,7 @@ function NotebookSettingsFormComponent({
           {...register('description')}
           placeholder={t('notebook.descriptionPlaceholder')}
           rows={3}
-          className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
+          className="w-full rounded-lg border border-border-default bg-surface text-text-primary px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
         />
       </div>
 
@@ -129,7 +133,7 @@ function NotebookSettingsFormComponent({
 
 export default function NotebookSettingsForm(props: NotebookSettingsFormProps) {
   return (
-    <ErrorBoundary fallback={<ErrorFallback title="Settings Error" description="The settings form failed to load. Try refreshing the page." />}>
+    <ErrorBoundary fallback={<ErrorFallback />}>
       <NotebookSettingsFormComponent {...props} />
     </ErrorBoundary>
   )

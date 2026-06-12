@@ -178,7 +178,7 @@ export function ImportMarkdownModal({
                 <FileText className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-text-primary truncate">{file.name}</p>
-                  <p className="text-[11px] text-text-tertiary">{formatBytes(file.size)}</p>
+                  <p className="text-[11px] text-text-tertiary">{formatBytes(file.size, t)}</p>
                 </div>
                 <button
                   type="button"
@@ -273,8 +273,8 @@ function stripMarkdownExtension(name: string): string {
   return name.replace(/\.(md|markdown)$/i, '')
 }
 
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+function formatBytes(bytes: number, t: (key: string) => string): string {
+  if (bytes < 1024) return `${bytes} ${t('common.bytes')}`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} ${t('common.kilobytes')}`
+  return `${(bytes / (1024 * 1024)).toFixed(2)} ${t('common.megabytes')}`
 }

@@ -2,13 +2,16 @@ import { useEffect, useMemo, useRef, useState, useReducer, useCallback } from 'r
 import { useEditor, EditorContent } from '@tiptap/react'
 import type { Editor } from '@tiptap/react'
 import { Check, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
+import { getTipTapText } from '@/shared/lib/getTipTapText'
 import { createEmptyTipTapDocument, sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import { CodeBlockCopyButton } from '@/shared/ui/CodeBlockCopyButton'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
 import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
+import { NotebookChangePreview } from '@/widgets/notebook-change-preview'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
 import '@/shared/styles/codeHighlight.css'
 
@@ -17,6 +20,7 @@ interface NotebookPageEditorProps {
   onSave: (contentJson: Record<string, unknown>) => void
   onCancel: () => void
   isSaving?: boolean
+  initialContentJson?: Record<string, unknown> | null
 }
 
 function getMountedEditorElement(editor: Editor): HTMLElement | null {
@@ -29,17 +33,23 @@ function getMountedEditorElement(editor: Editor): HTMLElement | null {
   }
 }
 
-function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: NotebookPageEditorProps) {
+function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initialContentJson }: NotebookPageEditorProps) {
+  const { t } = useTranslation()
   // Bump on every editor update so toolbar `isActive` checks (and any
   // other view-state reads) stay in sync. Using `update` instead of `transaction`
   // avoids unnecessary re-renders on selection-only changes.
   const [, forceUpdate] = useReducer((c: number) => c + 1, 0)
+  const sourceContentJson = initialContentJson ?? page.contentJson
   const safeContent = useMemo(
-    () => (page.contentJson ? sanitizeTipTapContent(page.contentJson) : createEmptyTipTapDocument()),
-    [page.contentJson],
+    () => (sourceContentJson ? sanitizeTipTapContent(sourceContentJson) : createEmptyTipTapDocument()),
+    [sourceContentJson],
   )
 
   const [hoveredPre, setHoveredPre] = useState<HTMLElement | null>(null)
+  const [pendingPreview, setPendingPreview] = useState<{
+    contentJson: Record<string, unknown>
+    text: string
+  } | null>(null)
   const hoveredPreRef = useRef(hoveredPre)
   useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
 
@@ -107,8 +117,21 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
   const handleSave = useCallback(() => {
     if (!editor) return
     const json = editor.getJSON() as Record<string, unknown>
-    onSave(json)
-  }, [editor, onSave])
+    setPendingPreview({
+      contentJson: json,
+      text: editor.getText({ blockSeparator: '\n' }),
+    })
+  }, [editor])
+
+  const handleConfirmSave = useCallback(() => {
+    if (!pendingPreview) return
+    onSave(pendingPreview.contentJson)
+  }, [onSave, pendingPreview])
+
+  const originalText = useMemo(() => getTipTapText(safeContent), [safeContent])
+  const hasJsonChanges = pendingPreview
+    ? JSON.stringify(pendingPreview.contentJson) !== JSON.stringify(safeContent)
+    : false
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -123,6 +146,23 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
 
   if (!editor) return null
 
+  if (pendingPreview) {
+    return (
+      <NotebookChangePreview
+        afterContentJson={pendingPreview.contentJson}
+        afterText={pendingPreview.text}
+        beforeContentJson={page.contentJson}
+        beforeText={originalText}
+        canSave={hasJsonChanges}
+        isSaving={isSaving}
+        onCancel={onCancel}
+        onEdit={() => setPendingPreview(null)}
+        onSave={handleConfirmSave}
+        title={page.title}
+      />
+    )
+  }
+
   return (
     <div className="border border-border-default rounded-xl bg-surface">
       <div className="sticky top-0 z-20 flex items-center justify-between bg-surface rounded-t-xl border-b border-border-subtle">
@@ -134,21 +174,21 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
             type="button"
             onClick={onCancel}
             disabled={isSaving}
-            aria-label="Cancel editing"
+            aria-label={t('editor.cancelEditing')}
             className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
           >
             <X className="h-3.5 w-3.5" />
-            Cancel
+            {t('notebook.cancel')}
           </button>
           <button
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            aria-label="Save page"
+            aria-label={t('editor.savePage')}
             className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Check className="h-3.5 w-3.5" />
-            {isSaving ? 'Saving...' : 'Save'}
+            {isSaving ? t('notebook.saving') : t('notebook.save')}
           </button>
         </div>
       </div>
@@ -158,7 +198,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
       </div>
       <div className="px-6 py-2 lg:px-10 border-t border-border-subtle flex justify-end">
         <span className="text-xs text-text-tertiary">
-          {editor.storage.characterCount.characters()} characters · {editor.storage.characterCount.words()} words
+          {editor.storage.characterCount.characters()} {t('notebook.characters')} · {editor.storage.characterCount.words()} {t('notebook.words')}
         </span>
       </div>
     </div>
@@ -167,7 +207,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving }: Noteb
 
 export default function NotebookPageEditor(props: NotebookPageEditorProps) {
   return (
-    <ErrorBoundary fallback={<ErrorFallback title="Editor Error" description="The page editor failed to load. Your changes are safe — try refreshing." />}>
+    <ErrorBoundary fallback={<ErrorFallback />}>
       <NotebookPageEditorComponent {...props} />
     </ErrorBoundary>
   )

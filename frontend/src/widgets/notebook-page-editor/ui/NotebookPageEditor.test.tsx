@@ -16,8 +16,19 @@ vi.mock('@/shared/lib/tiptapExtensions', () => ({
   createTipTapExtensions: () => [],
 }))
 
+vi.mock('@/shared/lib/getTipTapText', () => ({
+  getTipTapText: () => '',
+}))
+
 vi.mock('./NotebookEditorToolbar', () => ({
   default: () => <div data-testid="editor-toolbar" />,
+}))
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+    i18n: { language: 'en', resolvedLanguage: 'en' },
+  }),
 }))
 
 const page: NotebookItem = {

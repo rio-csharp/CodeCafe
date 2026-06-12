@@ -1,3 +1,7 @@
+import { slugifyHeadingId } from '@/shared/lib/slugifyHeadingId'
+
+export { slugifyHeadingId }
+
 export interface OutlineHeading {
   id: string
   level: number
@@ -23,16 +27,6 @@ function getTextFromNode(node: TipTapNode): string {
     return node.content.map(getTextFromNode).join('')
   }
   return ''
-}
-
-export function slugifyHeadingId(text: string, index: number): string {
-  const slug = text
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9\u4e00-\u9fa5-]/g, '')
-    .substring(0, 60)
-  return slug ? `heading-${slug}` : `heading-${index}`
 }
 
 export function extractOutline(contentJson: Record<string, unknown> | null): OutlineHeading[] {

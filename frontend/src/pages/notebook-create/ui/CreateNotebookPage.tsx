@@ -68,7 +68,7 @@ export default function CreateNotebookPage() {
               {...register('description')}
               placeholder={t('notebook.descriptionPlaceholder')}
               rows={3}
-              className="w-full rounded-lg border border-border-default px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
+              className="w-full rounded-lg border border-border-default bg-surface text-text-primary px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
             />
           </div>
 

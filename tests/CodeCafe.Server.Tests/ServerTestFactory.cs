@@ -97,79 +97,6 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
 {
     private static readonly Guid NotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-    private static readonly NotebookItemModel[] Items =
-    [
-        new(
-            Guid.Parse("33333333-3333-3333-3333-333333333333"),
-            NotebookId,
-            null,
-            "folder",
-            "Guides",
-            "guides",
-            "guides",
-            1,
-            null,
-            null,
-            null,
-            false,
-            null,
-            null,
-            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
-            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00")),
-        new(
-            Guid.Parse("44444444-4444-4444-4444-444444444444"),
-            NotebookId,
-            Guid.Parse("33333333-3333-3333-3333-333333333333"),
-            "page",
-            "Overview",
-            "overview",
-            "guides/overview",
-            2,
-            "tiptap_json",
-            JsonSerializer.SerializeToElement(new
-            {
-                type = "doc",
-                content = new object[]
-                {
-                    new
-                    {
-                        type = "paragraph",
-                        content = new object[]
-                        {
-                            new { type = "text", text = "Overview content" }
-                        }
-                    }
-                }
-            }),
-            "Overview content",
-            false,
-            null,
-            null,
-            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
-            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"))
-    ];
-
-    private static NotebookDetailModel CreateNotebookDetail(Guid currentUserId)
-        => new(
-            NotebookId,
-            OwnerId,
-            "Architecture Notes",
-            "architecture-notes",
-            "Refactor plan",
-            "public",
-            true,
-            "Yao",
-            currentUserId == OwnerId,
-            2,
-            1,
-            1,
-            0,
-            false,
-            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-            DateTimeOffset.Parse("2026-05-31T00:00:00+00:00"),
-            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-            DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-            Items);
 
     public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null)
         => Task.FromResult<IReadOnlyList<NotebookSummaryModel>>(
@@ -224,23 +151,25 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
 
     public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(Guid currentUserId, string search, CancellationToken cancellationToken, int? limit = null)
         => Task.FromResult<IReadOnlyList<NotebookItemSearchModel>>(
-        search.Contains("overview", StringComparison.OrdinalIgnoreCase)
-            ?
-            [
-                new(
+            notebookMutationStore.GetItems()
+                .Where(item =>
+                    item.NotebookId == NotebookId
+                    && (item.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
+                        || item.Path.Contains(search, StringComparison.OrdinalIgnoreCase)
+                        || (item.PlainTextContent?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)))
+                .Select(item => new NotebookItemSearchModel(
                     NotebookId,
                     "architecture-notes",
                     "Architecture Notes",
                     currentUserId == OwnerId,
-                    Items[1].Id,
-                    Items[1].Path,
-                    Items[1].Title,
-                    Items[1].Type,
-                    Items[1].PlainTextContent,
-                    Items[1].CreatedAtUtc,
-                    Items[1].UpdatedAtUtc)
-            ]
-            : []);
+                    item.Id,
+                    item.Path,
+                    item.Title,
+                    item.Type,
+                    item.PlainTextContent,
+                    item.CreatedAtUtc,
+                    item.UpdatedAtUtc))
+                .ToArray());
 
     public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
         string slug,
@@ -250,19 +179,20 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
         bool includeItems = true)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
-                ? NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail(currentUserId))
+                && notebookMutationStore.TryGetNotebookDetail(NotebookId, currentUserId, out var notebookDetail)
+                ? NotesResult<NotebookDetailModel>.Success(notebookDetail)
                 : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
-                ? NotesResult<IReadOnlyList<NotebookItemModel>>.Success(Items)
+                ? NotesResult<IReadOnlyList<NotebookItemModel>>.Success(notebookMutationStore.GetItems())
                 : NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<NotebookItemModel>> GetPublicNotebookItemAsync(string slug, string path, CancellationToken cancellationToken)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
-                ? NotesResult<NotebookItemModel>.Success(Items[1])
+                ? NotesResult<NotebookItemModel>.Success(notebookMutationStore.GetItems().Single(item => item.Path == path))
                 : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found."));
 
     public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
@@ -292,8 +222,8 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
             notebookId == NotebookId
                 ? NotesResult<IReadOnlyList<NotebookItemModel>>.Success(
                     string.IsNullOrWhiteSpace(search)
-                        ? Items
-                        : Items.Where(item =>
+                        ? notebookMutationStore.GetItems()
+                        : notebookMutationStore.GetItems().Where(item =>
                                 item.Title.Contains(search, StringComparison.OrdinalIgnoreCase)
                                 || item.Path.Contains(search, StringComparison.OrdinalIgnoreCase)
                                 || (item.PlainTextContent?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
@@ -301,27 +231,36 @@ internal sealed class ServerTestNotebookQueryService(ServerTestNotebookMutationS
                 : NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 }
 
-internal sealed class ServerTestNotebookCommandService : INotebookItemMutationService
+internal sealed class ServerTestNotebookCommandService(ServerTestNotebookMutationStore notebookMutationStore) : INotebookItemMutationService
 {
     public Task<NotesResult<NotebookItemModel>> CreateNotebookItemAsync(Guid notebookId, Guid currentUserId, Guid? parentId, string type, string title, int sortOrder, JsonElement? contentJson, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<NotebookItemModel>.Success(CreateItem(
+    {
+        var item = CreateItem(
             Guid.Parse("66666666-6666-6666-6666-666666666666"),
             notebookId,
             parentId,
             type,
             title,
             sortOrder,
-            contentJson)));
+            contentJson);
+        notebookMutationStore.UpsertItem(item);
+        return Task.FromResult(NotesResult<NotebookItemModel>.Success(item));
+    }
 
     public Task<NotesResult<NotebookItemModel>> UpdateNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, string title, JsonElement parentId, int? sortOrder, JsonElement contentJson, CancellationToken cancellationToken, DateTimeOffset? expectedUpdatedAtUtc = null)
-        => Task.FromResult(NotesResult<NotebookItemModel>.Success(CreateItem(
+    {
+        var existingItem = notebookMutationStore.GetItems().SingleOrDefault(item => item.Id == itemId);
+        var item = CreateItem(
             itemId,
             notebookId,
-            null,
+            existingItem?.ParentId,
             "page",
             title,
-            sortOrder ?? 1,
-            contentJson.ValueKind is JsonValueKind.Undefined ? null : contentJson)));
+            sortOrder ?? existingItem?.SortOrder ?? 1,
+            contentJson.ValueKind is JsonValueKind.Undefined ? null : contentJson);
+        notebookMutationStore.UpsertItem(item);
+        return Task.FromResult(NotesResult<NotebookItemModel>.Success(item));
+    }
 
     public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> ReorderNotebookItemsAsync(Guid notebookId, Guid currentUserId, IReadOnlyList<ReorderNotebookItemModel> items, CancellationToken cancellationToken)
         => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "not_implemented", "Not implemented in server tests."));
@@ -330,7 +269,27 @@ internal sealed class ServerTestNotebookCommandService : INotebookItemMutationSe
         => Task.FromResult(NotesResult.Success());
 
     public Task<NotesResult<NotebookItemModel>> ArchiveNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken)
-        => Task.FromResult(NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "not_implemented", "Not implemented in server tests."));
+    {
+        var item = notebookMutationStore.GetItems().SingleOrDefault(existing =>
+            existing.Id == itemId && existing.NotebookId == notebookId);
+        if (item is null)
+        {
+            return Task.FromResult(NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.NotFound,
+                "notebook_item_not_found",
+                "Notebook item was not found."));
+        }
+
+        var archived = item with
+        {
+            IsArchived = true,
+            ArchivedAtUtc = DateTimeOffset.UtcNow,
+            ArchivedByUserId = currentUserId,
+            UpdatedAtUtc = DateTimeOffset.UtcNow,
+        };
+        notebookMutationStore.UpsertItem(archived);
+        return Task.FromResult(NotesResult<NotebookItemModel>.Success(archived));
+    }
 
     public Task<NotesResult<NotebookItemModel>> RestoreNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken)
         => Task.FromResult(NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "not_implemented", "Not implemented in server tests."));
@@ -425,6 +384,7 @@ internal sealed class ServerTestNotebookMutationStore : INotebookMutationStore
             DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"))
     ];
     private readonly Dictionary<Guid, Notebook> _notebooks;
+    private readonly List<NotebookItemModel> _items;
 
     public ServerTestNotebookMutationStore()
     {
@@ -444,6 +404,7 @@ internal sealed class ServerTestNotebookMutationStore : INotebookMutationStore
                 PublishedAtUtc = DateTimeOffset.Parse("2026-06-01T00:00:00+00:00")
             }
         };
+        _items = DefaultItems.ToList();
     }
 
     public void AddNotebook(Notebook notebook) => _notebooks[notebook.Id] = notebook;
@@ -484,10 +445,29 @@ internal sealed class ServerTestNotebookMutationStore : INotebookMutationStore
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
+    public IReadOnlyList<NotebookItemModel> GetItems() => _items;
+
+    public void UpsertItem(NotebookItemModel item)
+    {
+        var index = _items.FindIndex(existing => existing.Id == item.Id);
+        if (index >= 0)
+        {
+            _items[index] = item;
+            return;
+        }
+
+        _items.Add(item);
+    }
+
     public bool TryGetNotebookDetail(Guid notebookId, Guid currentUserId, out NotebookDetailModel notebookDetail)
     {
         if (_notebooks.TryGetValue(notebookId, out var notebook))
         {
+            var notebookItems = _items
+                .Where(item => item.NotebookId == notebookId)
+                .OrderBy(item => item.SortOrder)
+                .ThenBy(item => item.Path, StringComparer.Ordinal)
+                .ToArray();
             notebookDetail = new NotebookDetailModel(
                 notebook.Id,
                 notebook.OwnerId,
@@ -498,16 +478,16 @@ internal sealed class ServerTestNotebookMutationStore : INotebookMutationStore
                 notebook.IsPublished,
                 "Yao",
                 notebook.OwnerId == currentUserId,
-                DefaultItems.Count,
-                1,
-                1,
+                notebookItems.Length,
+                notebookItems.Count(item => string.Equals(item.Type, "folder", StringComparison.OrdinalIgnoreCase)),
+                notebookItems.Count(item => string.Equals(item.Type, "page", StringComparison.OrdinalIgnoreCase)),
                 0,
                 false,
                 notebook.UpdatedAtUtc ?? notebook.CreatedAtUtc,
                 notebook.CreatedAtUtc,
                 notebook.UpdatedAtUtc,
                 notebook.PublishedAtUtc,
-                DefaultItems);
+                notebookItems);
             return true;
         }
 

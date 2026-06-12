@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { HttpAgent, type AgentSubscriber } from '@ag-ui/client'
 import type { Message, ToolCallArgsEvent, ToolCallResultEvent, ToolCallStartEvent, UserMessage } from '@ag-ui/core'
 import { API_BASE_URL, ApiError, clearCsrfToken, fetchCsrfToken } from '@/shared/api/client'
 import { createAiContext, createPromptId, getVisibleMessages } from './aiAssistantUtils'
+import { clearThread, loadThread, saveThread } from './aiThreadStorage'
 import type {
   AiAssistantNotebookContext,
   AiAssistantRunState,
@@ -43,6 +45,7 @@ export function useAiAssistantSession({
   notebook,
   activePage,
 }: UseAiAssistantSessionOptions) {
+  const { t } = useTranslation()
   const [messages, setMessages] = useState<Message[]>([])
   const [toolActivities, setToolActivities] = useState<AiToolActivity[]>([])
   const [runState, setRunState] = useState<AiAssistantRunState>('idle')
@@ -70,6 +73,15 @@ export function useAiAssistantSession({
 
     agentRef.current = agent
 
+    const persisted = loadThread(threadKey)
+    if (persisted) {
+      agent.setMessages(persisted.messages)
+      // Restoring persisted thread from browser storage when the notebook/page
+      // context changes is an intentional synchronization with an external store.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMessages(persisted.messages)
+    }
+
     return () => {
       agent.abortRun()
       if (agentRef.current === agent) {
@@ -86,6 +98,7 @@ export function useAiAssistantSession({
     () => ({
       onMessagesChanged: ({ messages }) => {
         syncMessages(messages)
+        saveThread(threadKey, messages)
       },
       onToolCallStartEvent: ({ event }) => {
         setToolActivities((current) => upsertToolStart(current, event))
@@ -100,7 +113,7 @@ export function useAiAssistantSession({
         setError({ code: 'connection_failed', message: event.message })
       },
     }),
-    [syncMessages],
+    [syncMessages, threadKey],
   )
 
   const sendMessage = useCallback(
@@ -113,7 +126,7 @@ export function useAiAssistantSession({
       if (!enabled || !endpointPath || !agentRef.current) {
         setError({
           code: 'not_configured',
-          message: 'CodeCafe AI is not enabled.',
+          message: t('ai.errors.not_configured'),
         })
         setRunState('error')
         return
@@ -147,11 +160,11 @@ export function useAiAssistantSession({
           return
         }
 
-        setError(toAiAssistantError(err))
+        setError(toAiAssistantError(err, t))
         setRunState('error')
       }
     },
-    [activePage, enabled, endpointPath, notebook, runState, subscriber, syncMessages],
+    [activePage, enabled, endpointPath, notebook, runState, subscriber, syncMessages, t],
   )
 
   const stop = useCallback(() => {
@@ -162,11 +175,12 @@ export function useAiAssistantSession({
   const clear = useCallback(() => {
     agentRef.current?.abortRun()
     agentRef.current?.setMessages([])
+    clearThread(threadKey)
     setMessages([])
     setToolActivities([])
     setError(null)
     setRunState('idle')
-  }, [])
+  }, [threadKey])
 
   const visibleMessages = useMemo<AiAssistantVisibleMessage[]>(
     () => getVisibleMessages(messages),
@@ -249,7 +263,7 @@ async function isInvalidCsrfResponse(response: Response): Promise<boolean> {
   return details.code === 'invalid_csrf_token' || details.title === 'invalid_csrf_token'
 }
 
-function toAiAssistantError(err: unknown): AiAssistantError {
+function toAiAssistantError(err: unknown, t: (key: string) => string): AiAssistantError {
   if (err instanceof ApiError) {
     if (err.status === 401) {
       return { code: 'authentication_required', message: err.message }
@@ -274,7 +288,7 @@ function toAiAssistantError(err: unknown): AiAssistantError {
     return { code: 'connection_failed', message: err.message }
   }
 
-  return { code: 'unknown', message: 'The assistant could not respond.' }
+  return { code: 'unknown', message: t('ai.errors.unknown') }
 }
 
 function isAbortError(err: unknown): boolean {

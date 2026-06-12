@@ -22,7 +22,8 @@ interface NotebookCardProps {
 
 function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCardProps) {
   const iconComponent = pickIcon(notebook.title)
-  const authorName = notebook.authorDisplayName || 'User'
+  const { i18n, t } = useTranslation()
+  const authorName = notebook.authorDisplayName || t('common.user')
   const initial = authorName.charAt(0).toUpperCase()
   const lastActivity = notebook.lastActivityAtUtc || notebook.updatedAtUtc || new Date().toISOString()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -33,7 +34,6 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
   const deleteNotebook = useDeleteNotebook()
   const toggleFavorite = useToggleFavorite()
   const { showToast } = useToast()
-  const { i18n, t } = useTranslation()
 
   useClickOutside(menuRef, () => setMenuOpen(false))
 
@@ -126,7 +126,7 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
 
 export default function NotebookCard(props: NotebookCardProps) {
   return (
-    <ErrorBoundary fallback={<ErrorFallback title="Notebook Card Error" description="The notebook card failed to render. Try refreshing the page." />}>
+    <ErrorBoundary fallback={<ErrorFallback />}>
       <NotebookCardComponent {...props} />
     </ErrorBoundary>
   )

@@ -3,6 +3,38 @@
     "name": "CodeCafe",
     "domain": "codes.cafe"
   },
+  "theme": {
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统",
+    "toggle": "切换主题"
+  },
+  "language": {
+    "switch": "切换语言",
+    "en": "English",
+    "zh": "中文"
+  },
+  "common": {
+    "user": "用户",
+    "close": "关闭",
+    "closeModal": "关闭弹窗",
+    "dismissNotification": "关闭通知",
+    "dialog": "对话框",
+    "copy": "复制",
+    "refresh": "刷新",
+    "errorTitle": "出了点问题",
+    "errorDescription": "这部分界面崩溃了。你可以尝试刷新或继续使用其他功能。",
+    "tryAgain": "重试",
+    "refreshPage": "刷新页面",
+    "plainTextFallback": "无法以富文本渲染内容，改为显示纯文本。",
+    "pageEmpty": "此页面为空。",
+    "unableToDisplayContent": "无法显示内容",
+    "pageContentRenderError": "页面内容无法渲染。",
+    "dropHere": "拖放到此处以重新排序",
+    "bytes": "B",
+    "kilobytes": "KB",
+    "megabytes": "MB"
+  },
   "nav": {
     "notes": "笔记",
     "codes": "代码",
@@ -12,12 +44,14 @@
     "login": "登录",
     "logout": "退出登录",
     "loggingOut": "正在退出登录...",
+    "toggleMenu": "切换菜单",
     "workspace": "工作区",
     "exploreNotebooks": "浏览笔记"
   },
   "home": {
     "tagline": "专为工程工作设计的结构化笔记本。",
     "highlight": "工程工作",
+    "brandIllustration": "CodeCafe 品牌插图",
     "description": "在浏览器中写作，公开或按链接分享合适的笔记本，并在需要自动化时将同一知识库连接到 MCP 客户端。",
     "login": "登录",
     "explore": "浏览笔记"
@@ -33,6 +67,7 @@
     "viewAll": "查看全部",
     "myTitle": "我的笔记本",
     "myDesc": "你的私人、未列出和已发布的笔记本。",
+    "sharedTitle": "共享笔记本",
     "newNotebook": "新建笔记本",
     "noPublic": "暂无可公开笔记本。",
     "noMine": "你还没有创建任何笔记本。",
@@ -74,10 +109,14 @@
     "displayNameMin": "显示名称至少需要 2 个字符",
     "displayNameMax": "显示名称最多 40 个字符",
     "passwordMin": "密码至少需要 8 个字符",
-    "passwordComplexity": "密码必须包含大写字母、小写字母、数字和特殊字符"
+    "passwordComplexity": "密码必须包含大写字母、小写字母、数字和特殊字符",
+    "password": "密码",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码"
   },
   "dashboard": {
     "greeting": "欢迎回来",
+    "greetingFallback": "朋友",
     "title": "你的知识工作区",
     "subtitle": "打开一个笔记本，或者查看接下来会有什么新功能。",
     "notesLive": "笔记功能现已上线。",
@@ -212,7 +251,88 @@
     "importMarkdownErrorInvalidParent": "所选文件夹已不可用",
     "importMarkdownErrorNotFound": "笔记本或页面未找到",
     "importMarkdownErrorAccessDenied": "你没有权限向此笔记本添加页面",
-    "importMarkdownErrorGeneric": "导入 Markdown 失败"
+    "importMarkdownErrorGeneric": "导入 Markdown 失败",
+    "changePreview": {
+      "label": "预览修改",
+      "edit": "继续编辑",
+      "save": "保存修改",
+      "delete": "删除页面",
+      "deleteWarning": "此提案将删除页面「{{title}}」.",
+      "before": "修改前",
+      "after": "修改后",
+      "discard": "丢弃",
+      "added": "新增",
+      "removed": "删除",
+      "noChanges": "未检测到文本变化。仅格式变化仍可保存。",
+      "empty": "没有可预览的内容。"
+    },
+    "mcpReady": "浏览器 + MCP 已就绪",
+    "notebookMenu": "笔记本菜单",
+    "folder": "文件夹",
+    "characters": "字符",
+    "words": "词"
+  },
+  "editor": {
+    "cancelEditing": "取消编辑",
+    "savePage": "保存页面",
+    "toolbar": {
+      "heading1": "一级标题",
+      "heading2": "二级标题",
+      "heading3": "三级标题",
+      "heading4": "四级标题",
+      "bold": "加粗",
+      "italic": "斜体",
+      "underline": "下划线",
+      "strikethrough": "删除线",
+      "subscript": "下标",
+      "superscript": "上标",
+      "fontFamily": "字体",
+      "alignLeft": "左对齐",
+      "alignCenter": "居中对齐",
+      "alignRight": "右对齐",
+      "alignJustify": "两端对齐",
+      "bulletList": "无序列表",
+      "numberedList": "有序列表",
+      "taskList": "任务列表",
+      "link": "链接",
+      "codeBlock": "代码块",
+      "codeLanguage": "代码语言",
+      "quote": "引用",
+      "horizontalRule": "分隔线",
+      "insertImage": "插入图片",
+      "insertYoutube": "插入 YouTube 视频",
+      "insertTable": "插入表格",
+      "addColumnBefore": "在前方插入列",
+      "addColumnAfter": "在后方插入列",
+      "deleteColumn": "删除列",
+      "addRowBefore": "在前方插入行",
+      "addRowAfter": "在后方插入行",
+      "deleteRow": "删除行",
+      "deleteTable": "删除表格",
+      "undo": "撤销",
+      "redo": "重做",
+      "textColor": "文字颜色",
+      "highlight": "高亮"
+    },
+    "prompt": {
+      "url": "URL",
+      "imageUrl": "图片 URL",
+      "youtubeUrl": "YouTube URL"
+    }
+  },
+  "layout": {
+    "closePanel": "关闭面板",
+    "contents": "目录",
+    "outline": "大纲",
+    "previous": "上一个：{{title}}",
+    "next": "下一个：{{title}}"
+  },
+  "sidebar": {
+    "userMenu": "用户菜单",
+    "openSidebar": "打开侧边栏",
+    "closeSidebar": "关闭侧边栏",
+    "expandSidebar": "展开侧边栏",
+    "collapseSidebar": "收起侧边栏"
   },
   "outline": {
     "onThisPage": "本页目录",
@@ -222,7 +342,7 @@
     "title": "AI 助手",
     "open": "打开 AI 助手",
     "dragHandle": "拖动 AI 助手",
-    "readOnly": "对话只读",
+    "resizeHandle": "调整 AI 助手大小",
     "collapse": "收起 AI 助手",
     "checking": "正在检查 AI...",
     "thinking": "正在思考...",
@@ -237,53 +357,23 @@
     "signInTitle": "登录后使用 AI",
     "signInDescription": "助手会通过你的 CodeCafe 账户读取笔记。",
     "signIn": "登录",
-    "actions": {
-      "summarize": "总结当前上下文",
-      "related": "查找相关笔记",
-      "outline": "建议大纲"
+    "mode": {
+      "chat": "对话",
+      "edit": "编辑"
     },
-    "drafts": {
-      "title": "写入笔记草稿",
-      "generate": "生成草稿",
-      "discard": "丢弃草稿",
-      "applied": "AI 草稿已应用",
-      "placeholder": "描述你希望 AI 起草的笔记内容...",
-      "actions": {
-        "summary": "起草总结页",
-        "outline": "起草大纲",
-        "rewrite": "改写当前页",
-        "expand": "扩写当前页",
-        "continue": "续写当前页"
-      },
-      "apply": {
-        "create": "新建",
-        "append": "追加",
-        "replace": "替换"
-      },
-      "prompts": {
-        "summaryPage": "请为笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 起草一份精炼的 Markdown 总结。包含清晰标题、必要的行动项，以及 Sources 小节。",
-        "summaryNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 起草一份 Markdown 总结。包含关键主题、开放问题，以及 Sources 小节。",
-        "outlinePage": "请为笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 起草一个更清晰的 Markdown 大纲。保留重要观点，并整理为标题和要点。",
-        "outlineNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 起草一个高层 Markdown 大纲。按主题组织相关页面。",
-        "rewritePage": "请将笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 改写成更清晰的 Markdown。保留事实内容，改善结构和表达，并包含 Sources 小节。",
-        "rewriteNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 起草一份结构清晰的 Markdown 综合稿。改善结构和表达，不要编造未被上下文支持的信息。",
-        "expandPage": "请将笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 扩写成更完整的 Markdown 草稿。保留现有事实，补充有帮助的解释，并包含 Sources 小节。",
-        "expandNotebook": "请将 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 扩写成更完整的 Markdown 指南。只使用笔记上下文作为素材，不要编造未被支持的信息。",
-        "continuePage": "请为笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 续写下一个有用的 Markdown 小节。保持现有风格，并包含 Sources 小节。",
-        "continueNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 续写下一个有用的 Markdown 小节或页面构想。相关时引用来源页面。"
-      },
+    "edit": {
+      "newPageTitle": "新建页面：{{title}}",
+      "applied": "AI 编辑已应用",
+      "discarded": "AI 编辑已丢弃",
+      "inputPlaceholder": "告诉 AI 如何编辑...",
+      "previewShown": "预览已显示在上方。",
+      "review": "查看修改",
       "errors": {
-        "generateFailed": "生成 AI 草稿失败",
-        "applyFailed": "应用 AI 草稿失败"
+        "notConfigured": "AI 编辑未配置。",
+        "createFailed": "创建 AI 编辑提案失败",
+        "applyFailed": "应用 AI 编辑失败",
+        "discardFailed": "丢弃 AI 编辑失败"
       }
-    },
-    "prompts": {
-      "summarizePage": "请总结 CodeCafe 笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\"。请先使用笔记工具，并引用 notebook slug 和 page path。",
-      "summarizeNotebook": "请总结 slug 为 {{notebookSlug}} 的 CodeCafe 笔记本 \"{{notebookTitle}}\"。请先使用笔记工具，并在相关位置引用 notebook slug 和 page path。",
-      "relatedPage": "请查找与笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 相关的笔记。说明每个结果为什么相关，并引用 page path。",
-      "relatedNotebook": "请在 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 中查找最相关的笔记。按主题分组，并引用 page path。",
-      "outlinePage": "请为笔记本 {{notebookSlug}} 中路径为 {{pagePath}} 的页面 \"{{pageTitle}}\" 建议一个更清晰的大纲。不要编辑笔记，只返回简洁的结构建议。",
-      "outlineNotebook": "请为 slug 为 {{notebookSlug}} 的笔记本 \"{{notebookTitle}}\" 建议一个更清晰的高层大纲。不要编辑笔记，只返回简洁的结构建议。"
     },
     "tools": {
       "list_notebooks": "正在列出笔记本",
@@ -335,7 +425,14 @@
     "title": "代码",
     "comingSoon": "即将推出"
   },
+  "health": {
+    "checking": "正在检查服务状态",
+    "healthy": "服务正常",
+    "unhealthy": "服务异常"
+  },
   "errors": {
-    "generic": "出了点问题"
+    "generic": "出了点问题",
+    "csrfFailed": "获取 CSRF token 失败"
   }
 }
+

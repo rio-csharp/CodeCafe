@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import {
   Coffee,
@@ -29,6 +30,7 @@ interface NotebookTreeProps {
 }
 
 function NotebookTreeComponent({ notebook, notebookSlug, tree, activePage, showArchived, onShowArchivedChange, onRefreshNotebook }: NotebookTreeProps) {
+  const { t } = useTranslation()
   const canEdit = !!notebook.canEdit
   const [searchInput, setSearchInput] = useState('')
   const debouncedSearch = useDebounce(searchInput, 300)
@@ -103,11 +105,11 @@ function NotebookTreeComponent({ notebook, notebookSlug, tree, activePage, showA
             className="flex items-center justify-center gap-1.5 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Notes
+            {t('notebook.backToNotes')}
           </Link>
           <div className="flex items-center gap-2 text-xs text-text-tertiary">
             <Coffee className="h-3.5 w-3.5" />
-            <span>Browser + MCP ready</span>
+            <span>{t('notebook.mcpReady')}</span>
           </div>
         </div>
       </div>
@@ -126,7 +128,7 @@ function NotebookTreeComponent({ notebook, notebookSlug, tree, activePage, showA
 
 export default function NotebookTree(props: NotebookTreeProps) {
   return (
-    <ErrorBoundary fallback={<ErrorFallback title="Notebook Tree Error" description="The notebook tree failed to render. Try refreshing the page." />}>
+    <ErrorBoundary fallback={<ErrorFallback />}>
       <NotebookTreeComponent {...props} />
     </ErrorBoundary>
   )

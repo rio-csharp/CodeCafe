@@ -1,5 +1,6 @@
 using CodeCafe.Ai.Configuration;
 using CodeCafe.Ai.Drafts;
+using CodeCafe.Ai.Edits;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -17,6 +18,7 @@ public static class WebApplicationExtensions
         endpoints.MapGet(options.StatusEndpointPath, () => Results.Ok(new AiStatusResponse(
                 options.Enabled,
                 options.Enabled ? options.EndpointPath : null,
+                options.Enabled ? options.EditEndpointPath : null,
                 options.Enabled ? options.DraftEndpointPath : null)))
             .AllowAnonymous();
 
@@ -25,6 +27,7 @@ public static class WebApplicationExtensions
             return endpoints;
         }
 
+        endpoints.MapAiNotebookEditEndpoints();
         endpoints.MapAiNoteDraftEndpoints();
 
         endpoints.MapAGUI(NormalizeAgentName(options.AgentName), options.EndpointPath)
@@ -42,5 +45,6 @@ public static class WebApplicationExtensions
     private sealed record AiStatusResponse(
         bool Enabled,
         string? EndpointPath,
+        string? EditEndpointPath,
         string? DraftEndpointPath);
 }

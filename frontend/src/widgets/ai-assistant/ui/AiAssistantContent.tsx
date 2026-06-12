@@ -1,137 +1,83 @@
 import type { FormEvent, RefObject } from 'react'
 import { BookOpen } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { Notebook } from '@/entities/notebook'
-import type { NotebookItem } from '@/entities/notebook-item'
 import {
   getMessageText,
   type AiAssistantErrorCode,
   type AiAssistantVisibleMessage,
-  type AiDraftApplyMode,
-  type AiDraftIntent,
-  type AiNoteDraftResponse,
   type AiToolActivity,
+  type EditMessage,
 } from '@/features/ai-assistant'
 import { errorKey } from '../lib/labels'
-import type { DraftQuickAction, QuickAction } from '../lib/types'
+import type { AiAssistantMode } from './AiAssistant'
 import { AiAssistantForm } from './AiAssistantForm'
 import { AssistantThinking } from './AssistantThinking'
-import { DraftWorkspace } from './DraftWorkspace'
 import { MessageBubble } from './MessageBubble'
-import { QuickActionButton } from './QuickActionButton'
 import { ToolActivityRow } from './ToolActivityRow'
 
 interface AiAssistantContentProps {
-  notebook: Notebook
-  activePage: NotebookItem | null
-  messages: AiAssistantVisibleMessage[]
+  mode: AiAssistantMode
+  onModeChange: (mode: AiAssistantMode) => void
+  chatMessages: AiAssistantVisibleMessage[]
+  editMessages: EditMessage[]
   toolActivities: AiToolActivity[]
   isRunning: boolean
   canUseAssistant: boolean
-  canUseDrafts: boolean
-  quickActions: QuickAction[]
-  draftActions: DraftQuickAction[]
-  noteDraft: AiNoteDraftResponse | null
-  draftInstruction: string
+  canUseEdit: boolean
   error: { code: AiAssistantErrorCode; message: string } | null
-  applyPending: boolean
-  generatePending: boolean
   draft: string
   setDraft: (value: string) => void
-  onQuickAction: (prompt: string) => void
-  onGenerateDraft: (intent: AiDraftIntent, prompt: string) => void
-  onInstructionChange: (value: string) => void
-  onCustomDraft: () => void
-  onApplyDraft: (mode: AiDraftApplyMode) => void
-  onDiscardDraft: () => void
   onSubmit: (event: FormEvent<HTMLFormElement>) => void
   onClear: () => void
   onStop: () => void
+  onReopenProposal?: () => void
   messagesEndRef: RefObject<HTMLDivElement | null>
 }
 
 export function AiAssistantContent({
-  notebook,
-  activePage,
-  messages,
+  mode,
+  onModeChange,
+  chatMessages,
+  editMessages,
   toolActivities,
   isRunning,
   canUseAssistant,
-  canUseDrafts,
-  quickActions,
-  draftActions,
-  noteDraft,
-  draftInstruction,
+  canUseEdit,
   error,
-  applyPending,
-  generatePending,
   draft,
   setDraft,
-  onQuickAction,
-  onGenerateDraft,
-  onInstructionChange,
-  onCustomDraft,
-  onApplyDraft,
-  onDiscardDraft,
   onSubmit,
   onClear,
   onStop,
+  onReopenProposal,
   messagesEndRef,
 }: AiAssistantContentProps) {
   const { t } = useTranslation()
+  const messages = mode === 'chat' ? chatMessages : editMessages
+  const isEmpty = messages.length === 0 && toolActivities.length === 0
 
   return (
     <>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         <div className="space-y-3">
-          {messages.length === 0 ? (
-            <div>
-              <div className="mb-3 flex items-start gap-2 rounded-md border border-border-subtle bg-surface-elevated px-3 py-2.5">
+          {isEmpty ? (
+            <div className="rounded-md border border-border-subtle bg-surface-elevated px-3 py-2.5">
+              <div className="flex items-start gap-2">
                 <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-brand-brown" />
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-text-primary">
-                    {activePage?.title ?? notebook.title}
-                  </p>
-                  <p className="mt-0.5 text-[11px] text-text-tertiary">
-                    {activePage ? activePage.path : notebook.slug}
-                  </p>
-                </div>
-              </div>
-              <div className="grid gap-2">
-                {quickActions.map((action) => (
-                  <QuickActionButton
-                    key={action.id}
-                    action={action}
-                    disabled={!canUseAssistant || isRunning}
-                    onClick={onQuickAction}
-                  />
-                ))}
+                <p className="text-sm text-text-secondary">{t('ai.inputPlaceholder')}</p>
               </div>
             </div>
           ) : (
             <div className="space-y-3">
-              {messages.map((message) => (
-                <MessageBubble key={message.id} role={message.role} text={getMessageText(message)} />
-              ))}
+              {mode === 'chat'
+                ? chatMessages.map((message) => (
+                    <MessageBubble key={message.id} role={message.role} text={getMessageText(message)} />
+                  ))
+                : editMessages.map((message) => (
+                    <EditMessageRow key={message.id} message={message} onReopenProposal={onReopenProposal} />
+                  ))}
               {isRunning && <AssistantThinking />}
             </div>
-          )}
-
-          {canUseDrafts && (
-            <DraftWorkspace
-              activePage={activePage}
-              applyPending={applyPending}
-              draft={noteDraft}
-              draftActions={draftActions}
-              generatePending={generatePending}
-              hasConversation={messages.length > 0}
-              instruction={draftInstruction}
-              onApply={onApplyDraft}
-              onGenerate={onGenerateDraft}
-              onInstructionChange={onInstructionChange}
-              onCustomGenerate={onCustomDraft}
-              onDiscardDraft={onDiscardDraft}
-            />
           )}
         </div>
 
@@ -152,15 +98,49 @@ export function AiAssistantContent({
       )}
 
       <AiAssistantForm
+        mode={mode}
         draft={draft}
         setDraft={setDraft}
         canUseAssistant={canUseAssistant}
+        canUseEdit={canUseEdit}
         isRunning={isRunning}
         canClear={messages.length > 0 || toolActivities.length > 0}
         onSubmit={onSubmit}
         onClear={onClear}
         onStop={onStop}
+        onModeChange={onModeChange}
       />
     </>
   )
+}
+
+function EditMessageRow({ message, onReopenProposal }: { message: EditMessage; onReopenProposal?: () => void }) {
+  const { t } = useTranslation()
+
+  if (message.role === 'proposal' && message.proposal) {
+    const proposal = message.proposal
+    return (
+      <div className="rounded-md border border-border-subtle bg-surface-elevated p-3">
+        <p className="text-xs font-medium text-text-primary">
+          {proposal.operation === 'create_page'
+            ? t('ai.edit.newPageTitle', { title: proposal.title })
+            : proposal.title}
+        </p>
+        {proposal.summary && <p className="mt-1 text-xs text-text-secondary">{proposal.summary}</p>}
+        {onReopenProposal ? (
+          <button
+            type="button"
+            onClick={onReopenProposal}
+            className="mt-2 text-left text-xs font-medium text-brand-brown hover:underline"
+          >
+            {t('ai.edit.review')}
+          </button>
+        ) : (
+          <p className="mt-2 text-[11px] text-text-tertiary">{t('ai.edit.previewShown')}</p>
+        )}
+      </div>
+    )
+  }
+
+  return <MessageBubble role={message.role as 'user' | 'assistant'} text={message.content ?? ''} />
 }

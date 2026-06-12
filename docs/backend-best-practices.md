@@ -3,7 +3,7 @@
 This guide reflects the current backend standard for CodeCafe.
 
 `CodeCafe.WebApi` has been retired. New backend work targets `CodeCafe.Api`,
-`CodeCafe.Mcp`, and `CodeCafe.Server` only.
+`CodeCafe.Ai`, `CodeCafe.Mcp`, and `CodeCafe.Server` only.
 
 ## Architecture
 
@@ -12,6 +12,7 @@ The backend is now organized around three adapters and a shared core:
 ```text
 CodeCafe.Server
 ├─ CodeCafe.Api
+├─ CodeCafe.Ai
 ├─ CodeCafe.Mcp
 ├─ CodeCafe.Application
 ├─ CodeCafe.Domain
@@ -23,8 +24,9 @@ Dependency direction:
 ```text
 Domain <- Application <- Infrastructure
                       <- Api
+                      <- Ai
                       <- Mcp
-Server -> Api + Mcp + Application + Infrastructure
+Server -> Api + Ai + Mcp + Application + Infrastructure
 ```
 
 Rules:
@@ -32,7 +34,7 @@ Rules:
 - `CodeCafe.Domain` references nothing outside itself.
 - `CodeCafe.Application` references only `CodeCafe.Domain`.
 - `CodeCafe.Infrastructure` implements application abstractions.
-- `CodeCafe.Api` and `CodeCafe.Mcp` are thin adapter libraries.
+- `CodeCafe.Api`, `CodeCafe.Ai`, and `CodeCafe.Mcp` are adapter libraries.
 - `CodeCafe.Server` is the only runnable backend host and composition root.
 
 ## Project Responsibilities
@@ -98,6 +100,23 @@ Must not own:
 - startup hosting
 - cookie/auth middleware policy
 - rate limiting, CORS, or forwarded-header policy
+
+### `CodeCafe.Ai`
+
+Owns:
+
+- in-app AI assistant endpoints and AG-UI integration
+- AI-specific notebook tools
+- AI prompt and model orchestration
+
+Must not own:
+
+- notebook business rules outside shared application behavior
+- direct persistence logic
+- a separate notebook content format
+- long-term chat or edit history unless a future requirement explicitly adds it
+
+AI notebook editing must treat TipTap JSON as the canonical content format. Markdown can remain an import format in MCP/API upload flows, but it must not become the AI write format.
 
 ### `CodeCafe.Mcp`
 
@@ -167,6 +186,7 @@ CodeCafe.Application/
 Adapter code should map into those slices:
 
 - `CodeCafe.Api/Endpoints/Notes`
+- `CodeCafe.Ai/Tools` or `CodeCafe.Ai/Endpoints`
 - `CodeCafe.Mcp/Tools/Notes`
 
 Do not add new backend behavior to large shared helpers or controller-style classes.
@@ -208,6 +228,19 @@ Rules:
 - write tools must enforce the same validation and authorization rules
 - uploads must stay bounded by actor, byte caps, and expiration
 - MCP results should include structured content whenever useful
+
+## AI Adapter Rules
+
+AI is a first-class adapter over the notebook application layer.
+
+Rules:
+
+- assistant reads and writes must call shared application services
+- write tools must enforce the same validation and authorization rules as REST and MCP
+- generated page content must be validated as TipTap JSON before persistence
+- preview flows may diff extracted plain text, but must save TipTap JSON
+- direct save requires explicit user intent
+- do not add persistent AI chat history or AI edit history without a separate product requirement
 
 ## Configuration
 

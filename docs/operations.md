@@ -148,7 +148,7 @@ Important backend runtime settings come from environment variables or secrets:
   - `Ai__Enabled=true`
   - `Ai__Model`
   - `Ai__ApiKey`
-  - optional limits such as `Ai__MaxToolResults`, `Ai__MaxToolContentChars`, and `Ai__MaxDraftOutputTokens`
+  - optional limits such as `Ai__MaxToolResults`, `Ai__MaxToolContentChars`, `Ai__MaxDraftPromptChars`, `Ai__MaxDraftContextChars`, and `Ai__MaxDraftOutputTokens`
 
 The Helm chart exposes non-sensitive AI values under `api.ai`. Keep `Ai__ApiKey` in a Kubernetes secret or pass it to `scripts/cd/deploy-helm.sh` through `AI_API_KEY`; do not commit it to values files.
 
@@ -158,7 +158,9 @@ The Helm chart exposes non-sensitive AI values under `api.ai`. Keep `Ai__ApiKey`
 - `AI_MODEL`, required when `AI_ENABLED=true`
 - `AI_API_KEY`, required when `AI_ENABLED=true`
 - `AI_BASE_URL`, optional OpenAI-compatible base URL; root URLs are normalized to `/v1`
-- `AI_ENDPOINT_PATH`, `AI_STATUS_ENDPOINT_PATH`, `AI_DRAFT_ENDPOINT_PATH`, and generation/tool limit overrides
+- `AI_ENDPOINT_PATH`, `AI_STATUS_ENDPOINT_PATH`, `AI_DRAFT_ENDPOINT_PATH`, and AI limit overrides
+
+Current deployments may still expose draft-specific variables because the transitional draft endpoint is still part of the runtime status and configuration surface. New AI notebook editing work should still target backend-managed TipTap JSON proposals and direct-save flows rather than treating Markdown drafts as the long-term architecture.
 
 `AI_STATUS_ENDPOINT_PATH` is also passed to the frontend runtime config so browser capability discovery stays aligned with the backend endpoint. The deploy smoke test checks frontend `/`, API readiness, AI status, and MCP protected-resource metadata.
 

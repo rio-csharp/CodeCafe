@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useLayout } from '@/shared/model/layoutContext'
 
 function BrandCard() {
+  const { t } = useTranslation()
   return (
     <motion.div
       whileHover={{ scale: 1.02 }}
@@ -14,7 +15,7 @@ function BrandCard() {
     >
       <img
         src="/images/codecafe-brand-card.png"
-        alt="CodeCafe brand illustration"
+        alt={t('home.brandIllustration')}
         className="w-full h-full object-contain"
         loading="eager"
       />
