@@ -53,9 +53,12 @@ When enabled, the backend exposes:
 
 - `GET /api/ai/status` for frontend capability discovery
 - `POST /api/ai/assistant` for the AG-UI notebook chat assistant
-- `POST /api/ai/drafts` for Markdown note drafts that can be created, appended, or used to replace a page
+- `POST /api/ai/edits` for backend-managed notebook edit proposals and direct-save flows
+- `POST /api/ai/drafts` as the current transitional draft-generation endpoint
 
-The assistant reads notebooks through the signed-in user's session. Draft application uses the existing Markdown upload/import endpoints, so generated content is still reviewed by the user before it is saved.
+The assistant reads notebooks through the signed-in user's session. Today, the AI status payload still includes both the assistant endpoint and the transitional draft endpoint so the existing frontend can discover both capabilities.
+
+New AI write work should not treat Markdown drafts as the long-term write format. Generated notebook changes should ultimately be TipTap JSON or structured operations that the backend validates as TipTap JSON before saving.
 
 ### 3. Configure The Frontend
 
@@ -165,4 +168,6 @@ dotnet CodeCafe.Server.dll migrate
 - The frontend runtime reads `window.__CODECAFE_CONFIG__.apiBaseUrl` first, then falls back to `VITE_API_BASE_URL`.
 - Browser API writes use CSRF protection. The shared frontend API client handles token fetch and retry automatically.
 - AI is disabled by default. Set `Ai:Enabled`, `Ai:Model`, and `Ai:ApiKey` only in local user secrets, environment variables, or deployment secrets.
+- Current AI configuration still includes `Ai:DraftEndpointPath`, `Ai:MaxDraftPromptChars`, `Ai:MaxDraftContextChars`, and `Ai:MaxDraftOutputTokens` for the transitional draft flow.
+- Notebook page content is stored as TipTap JSON. Markdown is allowed only as an import/upload input that is converted before persistence.
 - `scripts/README.md` documents the maintained database-sync helper in `tools/CodeCafe.DbSync`.

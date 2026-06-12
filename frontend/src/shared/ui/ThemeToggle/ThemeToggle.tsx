@@ -1,13 +1,17 @@
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { useThemeStore } from '@/shared/model/themeStore'
 import { useState, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
 
-const options = [
-  { value: 'light' as const, label: 'Light', icon: Sun },
-  { value: 'dark' as const, label: 'Dark', icon: Moon },
-  { value: 'system' as const, label: 'System', icon: Monitor },
-]
+function useThemeOptions() {
+  const { t } = useTranslation()
+  return [
+    { value: 'light' as const, label: t('theme.light'), icon: Sun },
+    { value: 'dark' as const, label: t('theme.dark'), icon: Moon },
+    { value: 'system' as const, label: t('theme.system'), icon: Monitor },
+  ]
+}
 
 interface ThemeToggleProps {
   placement?: 'top' | 'bottom'
@@ -15,11 +19,13 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ placement = 'bottom', align = 'right' }: ThemeToggleProps) {
+  const { t } = useTranslation()
   const { theme, setTheme } = useThemeStore()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   useClickOutside(ref, () => setOpen(false))
 
+  const options = useThemeOptions()
   const active = options.find((o) => o.value === theme) ?? options[2]
   const Icon = active.icon
 
@@ -35,8 +41,8 @@ export function ThemeToggle({ placement = 'bottom', align = 'right' }: ThemeTogg
         type="button"
         onClick={() => setOpen(!open)}
         className="flex items-center justify-center h-8 w-8 rounded-lg hover:bg-surface-hover dark:hover:bg-surface-active transition-colors"
-        aria-label="Toggle theme"
-        title="Toggle theme"
+        aria-label={t('theme.toggle')}
+        title={t('theme.toggle')}
       >
         <Icon className="h-4 w-4 text-text-secondary" />
       </button>

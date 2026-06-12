@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { fetchHealth } from '@/shared/api/health'
 
 function HealthDot() {
+  const { t } = useTranslation()
   const { data, isLoading } = useQuery({
     queryKey: ['health'],
     queryFn: fetchHealth,
@@ -18,10 +20,10 @@ function HealthDot() {
       : 'bg-status-error'
 
   const statusLabel = isLoading
-    ? 'Checking health'
+    ? t('health.checking')
     : isHealthy
-      ? 'Service healthy'
-      : 'Service unhealthy'
+      ? t('health.healthy')
+      : t('health.unhealthy')
 
   return (
     <span className="relative flex h-2 w-2" role="status" aria-label={statusLabel}>

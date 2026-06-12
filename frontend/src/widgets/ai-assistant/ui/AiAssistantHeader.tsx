@@ -38,9 +38,6 @@ export function AiAssistantHeader({
           <span className="max-w-[138px] truncate rounded-sm bg-surface-elevated px-1.5 py-0.5 text-[10px] text-text-tertiary">
             {activePage?.title ?? notebook.title}
           </span>
-          <span className="rounded-sm bg-brand-brown/10 px-1.5 py-0.5 text-[10px] font-medium text-brand-brown">
-            {t('ai.readOnly')}
-          </span>
         </div>
       </div>
       <button

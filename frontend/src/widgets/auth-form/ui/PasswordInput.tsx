@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Eye, EyeOff, Lock } from 'lucide-react'
 
 interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -7,6 +8,7 @@ interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement>
 }
 
 export default function PasswordInput({ error, className, ref, ...rest }: PasswordInputProps) {
+  const { t } = useTranslation()
   const [show, setShow] = useState(false)
 
   return (
@@ -19,13 +21,13 @@ export default function PasswordInput({ error, className, ref, ...rest }: Passwo
           className={`w-full rounded-lg border bg-surface py-2.5 pl-10 pr-10 text-sm text-text-primary outline-none transition-colors focus:border-border-focus ${
             error ? 'border-status-error-border' : 'border-border-default'
           }`}
-          aria-label="Password"
+          aria-label={t('auth.password')}
           {...rest}
         />
         <button
           type="button"
           onClick={() => setShow(!show)}
-          aria-label={show ? 'Hide password' : 'Show password'}
+          aria-label={show ? t('auth.hidePassword') : t('auth.showPassword')}
           className="absolute right-3 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
         >
           {show ? (

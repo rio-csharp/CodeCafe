@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/shared/config'
+import i18n from '@/shared/lib/i18n'
 
 export { API_BASE_URL }
 
@@ -28,7 +29,7 @@ export async function fetchCsrfToken(): Promise<string> {
       })
       if (!response.ok) {
         const error = await response.json().catch(() => ({}))
-        throw new Error(error.detail || error.message || 'Failed to fetch CSRF token')
+        throw new Error(error.detail || error.message || i18n.t('errors.csrfFailed'))
       }
       const data: { token: string } = await response.json()
       csrfToken = data.token

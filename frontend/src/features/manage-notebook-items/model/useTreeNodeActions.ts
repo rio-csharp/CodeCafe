@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { TreeNode } from '@/entities/notebook'
 import { useToast } from '@/shared/ui/Toast'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
@@ -12,6 +13,7 @@ interface UseTreeNodeActionsOptions {
 }
 
 export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem }: UseTreeNodeActionsOptions) {
+  const { t } = useTranslation()
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(node.item.title)
   const { showToast } = useToast()
@@ -26,40 +28,40 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
       await onRenameItem(node.item.id, editTitle.trim(), node.item.sortOrder)
       setIsEditing(false)
     } catch (err) {
-      showToast(getErrorMessage(err, 'Failed to rename'), 'error')
+      showToast(getErrorMessage(err, t('notebook.itemRenameFailed')), 'error')
     }
-  }, [editTitle, node.item.id, node.item.title, node.item.sortOrder, onRenameItem, showToast])
+  }, [editTitle, node.item.id, node.item.title, node.item.sortOrder, onRenameItem, showToast, t])
 
   const handleArchive = useCallback(async () => {
-    if (!confirm(`Archive "${node.item.title}"? It will be hidden from the notebook.`)) return
+    if (!confirm(t('notebook.archiveConfirm', { title: node.item.title }))) return
     try {
       await onArchiveItem(node.item.id)
     } catch (err) {
-      showToast(getErrorMessage(err, 'Failed to archive'), 'error')
+      showToast(getErrorMessage(err, t('notebook.itemArchiveFailed')), 'error')
     }
-  }, [node.item.id, node.item.title, onArchiveItem, showToast])
+  }, [node.item.id, node.item.title, onArchiveItem, showToast, t])
 
   const handleRestore = useCallback(async () => {
     try {
       await onRestoreItem(node.item.id)
     } catch (err) {
-      showToast(getErrorMessage(err, 'Failed to restore'), 'error')
+      showToast(getErrorMessage(err, t('notebook.itemRestoreFailed')), 'error')
     }
-  }, [node.item.id, onRestoreItem, showToast])
+  }, [node.item.id, onRestoreItem, showToast, t])
 
   const handleDelete = useCallback(async () => {
     const isArchived = node.item.isArchived
     if (!isArchived) {
-      showToast('Archive this item before deleting it permanently.', 'error')
+      showToast(t('notebook.deleteAfterArchive'), 'error')
       return
     }
-    if (!confirm(`Delete "${node.item.title}" permanently? This cannot be undone.`)) return
+    if (!confirm(t('notebook.deletePermanentlyConfirm', { title: node.item.title }))) return
     try {
       await onDeleteItem(node.item.id)
     } catch (err) {
-      showToast(getErrorMessage(err, 'Failed to delete'), 'error')
+      showToast(getErrorMessage(err, t('notebook.itemDeleteFailed')), 'error')
     }
-  }, [node.item.id, node.item.title, node.item.isArchived, onDeleteItem, showToast])
+  }, [node.item.id, node.item.title, node.item.isArchived, onDeleteItem, showToast, t])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleRename()

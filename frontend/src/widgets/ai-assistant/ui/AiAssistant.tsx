@@ -1,26 +1,30 @@
-import { useEffect, useRef, useState, type FormEvent, type HTMLAttributes } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type HTMLAttributes } from 'react'
 import { Loader2, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Notebook } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { useUser } from '@/entities/user'
 import {
-  useApplyAiNoteDraft,
   useAiAssistantSession,
-  useGenerateAiNoteDraft,
   useAiStatus,
-  type AiDraftApplyMode,
-  type AiDraftIntent,
-  type AiNoteDraftResponse,
+  useCreateAiEditProposal,
+  useAiEditStore,
+  type AiEditResponse,
 } from '@/features/ai-assistant'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { useToast } from '@/shared/ui/Toast'
-import { useDraftActions } from '../hooks/useDraftActions'
-import { useQuickActions } from '../hooks/useQuickActions'
 import { AiAssistantContent } from './AiAssistantContent'
 import { AiAssistantGate } from './AiAssistantGate'
 import { AiAssistantHeader } from './AiAssistantHeader'
+
+export type AiAssistantMode = 'chat' | 'edit'
+
+export interface EditMessage {
+  id: string
+  role: 'user' | 'assistant' | 'proposal'
+  content?: string
+  proposal?: AiEditResponse
+}
 
 interface AiAssistantProps {
   notebook: Notebook
@@ -28,6 +32,13 @@ interface AiAssistantProps {
   dragHandleProps?: HTMLAttributes<HTMLDivElement>
   onCollapse?: () => void
   variant?: 'docked' | 'floating'
+}
+
+const DOCKED_MIN_HEIGHT = 300
+const DOCKED_MAX_HEIGHT = 540
+
+function createMessageId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
 export default function AiAssistant({
@@ -38,122 +49,155 @@ export default function AiAssistant({
   variant = 'docked',
 }: AiAssistantProps) {
   const [collapsed, setCollapsed] = useState(false)
+  const [mode, setMode] = useState<AiAssistantMode>('chat')
   const [draft, setDraft] = useState('')
-  const [draftInstruction, setDraftInstruction] = useState('')
-  const [noteDraft, setNoteDraft] = useState<AiNoteDraftResponse | null>(null)
+  const [editMessages, setEditMessages] = useState<EditMessage[]>([])
+  const [dockedHeight, setDockedHeight] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { t, i18n } = useTranslation()
-  const navigate = useNavigate()
+  const rootRef = useRef<HTMLDivElement>(null)
+  const resizeStartRef = useRef<{ pointerId: number; startY: number; startHeight: number } | null>(null)
+  const { t } = useTranslation()
   const { showToast } = useToast()
   const aiStatus = useAiStatus()
   const user = useUser()
+  const setProposal = useAiEditStore((s) => s.setProposal)
+  const clearProposal = useAiEditStore((s) => s.clearProposal)
+  const openPreview = useAiEditStore((s) => s.openPreview)
 
   const aiEnabled = aiStatus.data?.enabled ?? false
   const endpointPath = aiStatus.data?.endpointPath ?? null
-  const draftEndpointPath = aiStatus.data?.draftEndpointPath ?? null
+  const editEndpointPath = aiStatus.data?.editEndpointPath ?? null
   const isSignedIn = Boolean(user.data?.user)
   const canUseAssistant = aiEnabled && isSignedIn
-  const canUseDrafts = canUseAssistant && Boolean(notebook.canEdit) && Boolean(draftEndpointPath)
+  const canUseEdit = canUseAssistant && Boolean(notebook.canEdit) && Boolean(editEndpointPath)
 
   const {
     clear,
-    error,
-    isRunning,
-    messages,
+    error: chatError,
+    isRunning: isChatRunning,
+    messages: chatMessages,
     sendMessage,
     stop,
     toolActivities,
   } = useAiAssistantSession({
-    enabled: canUseAssistant,
+    enabled: canUseAssistant && mode === 'chat',
     endpointPath,
     notebook,
     activePage,
   })
 
-  const generateDraft = useGenerateAiNoteDraft({
-    draftEndpointPath,
-    notebook,
-    activePage,
-    locale: i18n.resolvedLanguage ?? i18n.language,
-  })
-
-  const applyDraft = useApplyAiNoteDraft({
+  const createEdit = useCreateAiEditProposal({
+    editEndpointPath,
     notebook,
     activePage,
   })
-
-  const quickActions = useQuickActions(activePage, notebook)
-  const draftActions = useDraftActions(activePage, notebook)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ block: 'end' })
-  }, [messages, toolActivities, isRunning])
+  }, [chatMessages, editMessages, toolActivities, isChatRunning, createEdit.isPending])
+
+  useEffect(() => {
+    setEditMessages([])
+    clearProposal()
+  }, [notebook.slug, activePage?.path, clearProposal])
 
   const isFloating = variant === 'floating'
   const isCollapsed = !isFloating && collapsed
   const handleCollapse = onCollapse ?? (() => setCollapsed(true))
   const { className: dragHandleClassName, ...dragHandleAttributes } = dragHandleProps ?? {}
 
+  const isRunning = mode === 'chat' ? isChatRunning : createEdit.isPending
+  const error = mode === 'chat' ? chatError : null
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const nextDraft = draft.trim()
-    if (!nextDraft || !canUseAssistant || isRunning) {
+    const prompt = draft.trim()
+    if (!prompt || !canUseAssistant || isRunning) {
+      return
+    }
+
+    if (mode === 'chat') {
+      setDraft('')
+      await sendMessage(prompt)
+      return
+    }
+
+    if (!canUseEdit) {
+      showToast(t('ai.edit.errors.notConfigured'), 'error')
       return
     }
 
     setDraft('')
-    await sendMessage(nextDraft)
-  }
-
-  const handleQuickAction = async (prompt: string) => {
-    if (!canUseAssistant || isRunning) {
-      return
-    }
-
-    await sendMessage(prompt)
-  }
-
-  const handleGenerateDraft = async (intent: AiDraftIntent, prompt: string) => {
-    if (!canUseDrafts || generateDraft.isPending) {
-      return
-    }
+    setEditMessages((current) => [
+      ...current,
+      { id: createMessageId(), role: 'user', content: prompt },
+    ])
 
     try {
-      const generatedDraft = await generateDraft.mutateAsync({ intent, prompt })
-      setNoteDraft(generatedDraft)
-      setDraftInstruction('')
+      const response = await createEdit.mutateAsync({ prompt })
+      setProposal(response)
+      setEditMessages((current) => [
+        ...current,
+        { id: createMessageId(), role: 'proposal', proposal: response },
+      ])
     } catch (err) {
-      showToast(getErrorMessage(err, t('ai.drafts.errors.generateFailed')), 'error')
+      setEditMessages((current) => [
+        ...current,
+        { id: createMessageId(), role: 'assistant', content: getErrorMessage(err, t('ai.edit.errors.createFailed')) },
+      ])
     }
   }
 
-  const handleCustomDraft = async () => {
-    const prompt = draftInstruction.trim()
-    if (!prompt) {
-      return
-    }
+  const handleReopenProposal = useCallback(() => {
+    openPreview()
+  }, [openPreview])
 
-    await handleGenerateDraft('custom', prompt)
-  }
-
-  const handleApplyDraft = async (mode: AiDraftApplyMode) => {
-    if (!noteDraft || applyDraft.isPending) {
-      return
-    }
-
-    try {
-      const result = await applyDraft.mutateAsync({
-        mode,
-        markdown: noteDraft.markdown,
-        title: noteDraft.title,
-      })
-      showToast(t('ai.drafts.applied'))
-      setNoteDraft(null)
-      navigate(`/notes/${notebook.slug}/${result.path}`)
-    } catch (err) {
-      showToast(getErrorMessage(err, t('ai.drafts.errors.applyFailed')), 'error')
+  const handleClear = () => {
+    if (mode === 'chat') {
+      clear()
+    } else {
+      setEditMessages([])
+      clearProposal()
     }
   }
+
+  const handleResizeStart = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || isFloating) return
+    event.preventDefault()
+    resizeStartRef.current = {
+      pointerId: event.pointerId,
+      startY: event.clientY,
+      startHeight: dockedHeight ?? rootRef.current?.getBoundingClientRect().height ?? DOCKED_MIN_HEIGHT,
+    }
+    ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  }, [dockedHeight, isFloating])
+
+  useEffect(() => {
+    if (!resizeStartRef.current) return
+
+    function handlePointerMove(event: PointerEvent) {
+      const start = resizeStartRef.current
+      if (!start || event.pointerId !== start.pointerId) return
+      const deltaY = start.startY - event.clientY
+      const nextHeight = Math.min(DOCKED_MAX_HEIGHT, Math.max(DOCKED_MIN_HEIGHT, start.startHeight + deltaY))
+      setDockedHeight(nextHeight)
+    }
+
+    function handlePointerEnd(event: PointerEvent) {
+      const start = resizeStartRef.current
+      if (!start || event.pointerId !== start.pointerId) return
+      resizeStartRef.current = null
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerup', handlePointerEnd)
+    window.addEventListener('pointercancel', handlePointerEnd)
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerup', handlePointerEnd)
+      window.removeEventListener('pointercancel', handlePointerEnd)
+    }
+  }, [])
 
   if (isCollapsed) {
     return (
@@ -173,13 +217,27 @@ export default function AiAssistant({
 
   const rootClassName = isFloating
     ? 'flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border-default bg-surface shadow-2xl'
-    : 'flex h-[44vh] min-h-[300px] max-h-[540px] shrink-0 flex-col border-t border-border-subtle bg-surface'
+    : 'flex min-h-[300px] max-h-[540px] shrink-0 flex-col border-t border-border-subtle bg-surface'
+
+  const rootStyle = !isFloating && dockedHeight !== null
+    ? { height: `${dockedHeight}px` }
+    : undefined
 
   const isGateBlocking =
     aiStatus.isPending || user.isPending || aiStatus.isError || !aiEnabled || !isSignedIn
 
   return (
-    <div className={rootClassName}>
+    <div ref={rootRef} className={rootClassName} style={rootStyle}>
+      {!isFloating && (
+        <div
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label={t('ai.resizeHandle')}
+          title={t('ai.resizeHandle')}
+          onPointerDown={handleResizeStart}
+          className="h-1.5 w-full shrink-0 cursor-ns-resize bg-transparent hover:bg-border-subtle"
+        />
+      )}
       <AiAssistantHeader
         variant={variant}
         notebook={notebook}
@@ -199,31 +257,21 @@ export default function AiAssistant({
         />
       ) : (
         <AiAssistantContent
-          notebook={notebook}
-          activePage={activePage}
-          messages={messages}
-          toolActivities={toolActivities}
+          mode={mode}
+          onModeChange={setMode}
+          canUseEdit={canUseEdit}
+          chatMessages={chatMessages}
+          editMessages={editMessages}
+          toolActivities={mode === 'chat' ? toolActivities : []}
           isRunning={isRunning}
           canUseAssistant={canUseAssistant}
-          canUseDrafts={canUseDrafts}
-          quickActions={quickActions}
-          draftActions={draftActions}
-          noteDraft={noteDraft}
-          draftInstruction={draftInstruction}
           error={error}
-          applyPending={applyDraft.isPending}
-          generatePending={generateDraft.isPending}
           draft={draft}
           setDraft={setDraft}
-          onQuickAction={handleQuickAction}
-          onGenerateDraft={handleGenerateDraft}
-          onInstructionChange={setDraftInstruction}
-          onCustomDraft={handleCustomDraft}
-          onApplyDraft={handleApplyDraft}
-          onDiscardDraft={() => setNoteDraft(null)}
           onSubmit={handleSubmit}
-          onClear={clear}
+          onClear={handleClear}
           onStop={stop}
+          onReopenProposal={handleReopenProposal}
           messagesEndRef={messagesEndRef}
         />
       )}

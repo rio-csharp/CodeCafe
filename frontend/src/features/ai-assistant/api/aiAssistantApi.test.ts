@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { apiFetch } from '@/shared/api/client'
-import { generateAiNoteDraft, getAiStatus } from './aiAssistantApi'
+import {
+  applyAiEditProposal,
+  createAiEditProposal,
+  discardAiEditProposal,
+  getAiStatus,
+} from './aiAssistantApi'
 
 vi.mock('@/shared/api/client', () => ({
   apiFetch: vi.fn(),
@@ -15,9 +20,10 @@ const apiFetchMock = vi.mocked(apiFetch)
 describe('aiAssistantApi', () => {
   it('loads AI status from the configured discovery endpoint', async () => {
     apiFetchMock.mockResolvedValueOnce({
-      draftEndpointPath: '/api/ai/drafts',
       enabled: true,
       endpointPath: '/api/ai/assistant',
+      editEndpointPath: '/api/ai/edits',
+      draftEndpointPath: '/api/ai/drafts',
     })
 
     await getAiStatus()
@@ -25,33 +31,48 @@ describe('aiAssistantApi', () => {
     expect(apiFetchMock).toHaveBeenCalledWith('/custom/ai/status')
   })
 
-  it('posts AI draft requests to the discovered draft endpoint', async () => {
-    apiFetchMock.mockResolvedValueOnce({
-      generatedAtUtc: '2026-06-01T00:00:00Z',
-      intent: 'custom',
-      markdown: '# Draft',
-      notebookSlug: 'architecture-notes',
-      pagePath: null,
-      title: 'Draft',
-    })
+  it('posts AI edit requests to the discovered edit endpoint', async () => {
+    apiFetchMock.mockResolvedValueOnce({ proposalId: '1' })
 
-    await generateAiNoteDraft('/api/ai/drafts', {
-      activePagePath: null,
-      intent: 'custom',
+    await createAiEditProposal('/api/ai/edits', {
+      notebookSlug: 'architecture-notes',
+      activePagePath: 'guides/overview',
+      prompt: 'Rewrite this page',
+      operation: 'auto',
       locale: 'en',
-      notebookSlug: 'architecture-notes',
-      prompt: 'Draft a page.',
+      apply: false,
     })
 
-    expect(apiFetchMock).toHaveBeenCalledWith('/api/ai/drafts', {
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/ai/edits', {
       body: JSON.stringify({
-        activePagePath: null,
-        intent: 'custom',
-        locale: 'en',
         notebookSlug: 'architecture-notes',
-        prompt: 'Draft a page.',
+        activePagePath: 'guides/overview',
+        prompt: 'Rewrite this page',
+        operation: 'auto',
+        locale: 'en',
+        apply: false,
       }),
       method: 'POST',
+    })
+  })
+
+  it('posts to the discovered apply path', async () => {
+    apiFetchMock.mockResolvedValueOnce({ applied: true })
+
+    await applyAiEditProposal('/api/ai/edits/proposals/1/apply')
+
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/ai/edits/proposals/1/apply', {
+      method: 'POST',
+    })
+  })
+
+  it('deletes the discovered discard path', async () => {
+    apiFetchMock.mockResolvedValueOnce(undefined)
+
+    await discardAiEditProposal('/api/ai/edits/proposals/1')
+
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/ai/edits/proposals/1', {
+      method: 'DELETE',
     })
   })
 })

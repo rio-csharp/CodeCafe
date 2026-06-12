@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { TreeNode } from '@/entities/notebook'
 import type { Notebook } from '@/entities/notebook'
@@ -15,6 +16,7 @@ import { computeReorderUpdates } from '../lib/computeReorderUpdates'
 import { syncUrlToPathChange } from '../lib/syncUrlToPathChange'
 
 export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
+  const { t } = useTranslation()
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const location = useLocation()
   const navigate = useNavigate()
@@ -35,7 +37,7 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
   const { showToast: showTreeToast } = useToast()
 
   const handleCreateRoot = useCallback((type: 'folder' | 'page') => {
-    const title = type === 'folder' ? 'New Folder' : 'New Page'
+    const title = type === 'folder' ? t('notebook.newFolder') : t('notebook.newPage')
     createItem.mutate(
       {
         parentId: null,
@@ -45,17 +47,17 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
       },
       {
-        onSuccess: () => showTreeToast('Item created'),
+        onSuccess: () => showTreeToast(t('notebook.itemCreated')),
         onError: (err: unknown) => {
-          showTreeToast(getErrorMessage(err, 'Failed to create'), 'error')
+          showTreeToast(getErrorMessage(err, t('notebook.itemCreateFailed')), 'error')
         },
       },
     )
-  }, [createItem, showTreeToast])
+  }, [createItem, showTreeToast, t])
 
   const handleCreateItem = useCallback(
     async (parentId: string | null, type: 'folder' | 'page') => {
-      const title = type === 'folder' ? 'New Folder' : 'New Page'
+      const title = type === 'folder' ? t('notebook.newFolder') : t('notebook.newPage')
       try {
         await createItem.mutateAsync({
           parentId,
@@ -64,12 +66,12 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
           sortOrder: 0,
           contentJson: type === 'page' ? { type: 'doc', content: [] } : null,
         })
-        showTreeToast('Item created')
+        showTreeToast(t('notebook.itemCreated'))
       } catch (err) {
-        showTreeToast(getErrorMessage(err, 'Failed to create'), 'error')
+        showTreeToast(getErrorMessage(err, t('notebook.itemCreateFailed')), 'error')
       }
     },
-    [createItem, showTreeToast],
+    [createItem, showTreeToast, t],
   )
 
   const handleRenameItem = useCallback(
@@ -80,37 +82,37 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
       const oldPath = findNode(tree, itemId)?.item.path
 
       const updated = await updateItem.mutateAsync({ itemId, data: { title, sortOrder } })
-      showTreeToast('Renamed')
+      showTreeToast(t('notebook.itemRenamed'))
 
       if (oldPath) {
         syncUrlToPathChange(oldPath, updated.path, notebook.slug, location.pathname, navigate)
       }
     },
-    [updateItem, showTreeToast, tree, location.pathname, navigate, notebook.slug],
+    [updateItem, showTreeToast, tree, location.pathname, navigate, notebook.slug, t],
   )
 
   const handleArchiveItem = useCallback(
     async (itemId: string) => {
       await archiveItem.mutateAsync(itemId)
-      showTreeToast('Archived')
+      showTreeToast(t('notebook.itemArchived'))
     },
-    [archiveItem, showTreeToast],
+    [archiveItem, showTreeToast, t],
   )
 
   const handleRestoreItem = useCallback(
     async (itemId: string) => {
       await restoreItem.mutateAsync(itemId)
-      showTreeToast('Restored')
+      showTreeToast(t('notebook.itemRestored'))
     },
-    [restoreItem, showTreeToast],
+    [restoreItem, showTreeToast, t],
   )
 
   const handleDeleteItem = useCallback(
     async (itemId: string) => {
       await deleteItem.mutateAsync(itemId)
-      showTreeToast('Deleted')
+      showTreeToast(t('notebook.itemDeleted'))
     },
-    [deleteItem, showTreeToast],
+    [deleteItem, showTreeToast, t],
   )
 
   const handleDropReorder = useCallback(
@@ -142,12 +144,12 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
           syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
         }
       } catch (err) {
-        showTreeToast(getErrorMessage(err, 'Failed to reorder'), 'error')
+        showTreeToast(getErrorMessage(err, t('notebook.itemReorderFailed')), 'error')
       } finally {
         setDraggingId(null)
       }
     },
-    [draggingId, reorderItems, tree, location.pathname, navigate, notebook.slug, showTreeToast],
+    [draggingId, reorderItems, tree, location.pathname, navigate, notebook.slug, showTreeToast, t],
   )
 
   const handleDropOnRoot = useCallback(async () => {
@@ -174,11 +176,11 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
         syncUrlToPathChange(oldPath, updatedDragged.path, notebook.slug, location.pathname, navigate)
       }
     } catch (err) {
-      showTreeToast(getErrorMessage(err, 'Failed to reorder'), 'error')
+      showTreeToast(getErrorMessage(err, t('notebook.itemReorderFailed')), 'error')
     } finally {
       setDraggingId(null)
     }
-  }, [draggingId, tree, handleDropReorder, reorderItems, location.pathname, navigate, notebook.slug, showTreeToast])
+  }, [draggingId, tree, handleDropReorder, reorderItems, location.pathname, navigate, notebook.slug, showTreeToast, t])
 
   const handleDragStart = useCallback(
     (id: string) => {

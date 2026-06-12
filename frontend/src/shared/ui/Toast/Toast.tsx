@@ -1,8 +1,10 @@
 import { CheckCircle, AlertCircle, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { useToastStore } from '@/shared/model/toastStore'
 
 export function ToastContainer() {
+  const { t } = useTranslation()
   const { toasts, removeToast } = useToastStore()
 
   return (
@@ -37,7 +39,7 @@ export function ToastContainer() {
               type="button"
               onClick={() => removeToast(toast.id)}
               className="ml-1 p-0.5 hover:bg-white/10 rounded transition-colors"
-              aria-label="Dismiss notification"
+              aria-label={t('common.dismissNotification')}
             >
               <X className="h-3.5 w-3.5" />
             </button>

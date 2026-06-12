@@ -1,16 +1,21 @@
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useLogin } from './useLogin'
 
-const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(1, 'Please enter your password'),
-})
+export type LoginFormData = z.infer<ReturnType<typeof useLoginSchema>>
 
-export type LoginFormData = z.infer<typeof loginSchema>
+function useLoginSchema() {
+  const { t } = useTranslation()
+  return z.object({
+    email: z.string().email(t('auth.emailInvalid')),
+    password: z.string().min(1, t('auth.passwordRequired')),
+  })
+}
 
 export function useLoginForm(onSuccess: () => void) {
+  const loginSchema = useLoginSchema()
   const loginMutation = useLogin()
 
   const {

@@ -29,7 +29,7 @@ describe('extractOutline', () => {
     const outline = extractOutline(doc)
     expect(outline).toEqual([
       { id: 'heading-getting-started', level: 2, text: 'Getting Started' },
-      { id: 'heading-installation', level: 3, text: 'Installation' },
+      { id: 'heading-installation-1', level: 3, text: 'Installation' },
     ])
   })
 
@@ -96,5 +96,11 @@ describe('slugifyHeadingId', () => {
 
   it('handles mixed Chinese and English', () => {
     expect(slugifyHeadingId('第1章 Introduction', 0)).toBe('heading-第1章-introduction')
+  })
+
+  it('deduplicates repeated headings with an index suffix', () => {
+    expect(slugifyHeadingId('Getting Started', 0)).toBe('heading-getting-started')
+    expect(slugifyHeadingId('Getting Started', 1)).toBe('heading-getting-started-1')
+    expect(slugifyHeadingId('Getting Started', 2)).toBe('heading-getting-started-2')
   })
 })

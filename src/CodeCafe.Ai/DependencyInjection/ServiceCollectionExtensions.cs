@@ -1,6 +1,7 @@
 using CodeCafe.Ai.Agents;
 using CodeCafe.Ai.Configuration;
 using CodeCafe.Ai.Drafts;
+using CodeCafe.Ai.Edits;
 using CodeCafe.Ai.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Hosting;
@@ -24,6 +25,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddHttpContextAccessor();
         services.AddAGUI();
+        services.AddMemoryCache();
 
         services.AddOptions<AiOptions>()
             .Bind(configuration.GetSection(AiOptions.SectionName))
@@ -34,6 +36,10 @@ public static class ServiceCollectionExtensions
             .Validate(options => !string.IsNullOrWhiteSpace(options.StatusEndpointPath)
                 && options.StatusEndpointPath.StartsWith("/", StringComparison.Ordinal),
                 "Ai:StatusEndpointPath must start with '/'.")
+            .Validate(options => !options.Enabled
+                || (!string.IsNullOrWhiteSpace(options.EditEndpointPath)
+                    && options.EditEndpointPath.StartsWith("/", StringComparison.Ordinal)),
+                "Ai:EditEndpointPath must start with '/' when AI is enabled.")
             .Validate(options => !options.Enabled
                 || (!string.IsNullOrWhiteSpace(options.DraftEndpointPath)
                     && options.DraftEndpointPath.StartsWith("/", StringComparison.Ordinal)),
@@ -62,6 +68,8 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         services.AddSingleton<NotebookAssistantTools>();
+        services.TryAddSingleton<IAiNotebookEditProposalStore, MemoryAiNotebookEditProposalStore>();
+        services.TryAddScoped<IAiNotebookEditGenerator, OpenAiNotebookEditGenerator>();
         services.TryAddScoped<IAiNoteDraftGenerator, OpenAiNoteDraftGenerator>();
 
         var configuredOptions = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();

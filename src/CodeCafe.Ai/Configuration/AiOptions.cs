@@ -10,6 +10,8 @@ public sealed class AiOptions
 
     public string StatusEndpointPath { get; set; } = "/api/ai/status";
 
+    public string EditEndpointPath { get; set; } = "/api/ai/edits";
+
     public string DraftEndpointPath { get; set; } = "/api/ai/drafts";
 
     public string AgentName { get; set; } = "CodeCafeAssistant";
