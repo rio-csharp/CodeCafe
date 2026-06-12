@@ -39,6 +39,7 @@ public sealed class GetNotebookItemsQueryHandler(
             request.CurrentUserId,
             request.Search,
             cancellationToken,
-            request.IncludeArchived);
+            request.IncludeArchived,
+            request.IncludeContent);
     }
 }

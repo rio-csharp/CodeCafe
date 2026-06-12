@@ -24,10 +24,11 @@ export function useSaveNotebookPage(
     mutationFn: ({ itemId, data }: { itemId: string; data: { title: string; sortOrder: number; contentJson: Record<string, unknown> } }) =>
       updateNotebookItem(notebookId, itemId, data),
     onSuccess: (data) => {
-      queryClient.setQueryData<NotebookItem[]>(notesKeys.items(notebookId), (old) => {
+      queryClient.setQueriesData<NotebookItem[]>({ queryKey: notesKeys.itemsRoot(notebookId) }, (old) => {
         if (!old) return old
-        return old.map((item) => (item.id === data.id ? data : item))
+        return old.map((item) => (item.id === data.id ? { ...item, title: data.title, sortOrder: data.sortOrder } : item))
       })
+      queryClient.invalidateQueries({ queryKey: notesKeys.item(notebookId, data.id) })
       queryClient.invalidateQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
       queryClient.invalidateQueries({ queryKey: notesKeys.all })
     },

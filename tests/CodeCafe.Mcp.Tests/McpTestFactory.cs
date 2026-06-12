@@ -237,11 +237,18 @@ internal sealed class TestNotebookQueryService : INotebookReadService
                 ? NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail(currentUserId))
                 : NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
-    public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, int? limit = null)
+    public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, bool includeContent = true, int? limit = null)
         => Task.FromResult(
             notebookId == NotebookId
                 ? NotesResult<IReadOnlyList<NotebookItemModel>>.Success(Items)
                 : NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
+
+    public Task<NotesResult<NotebookItemModel>> GetNotebookItemByIdAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
+        => Task.FromResult(
+            notebookId == NotebookId
+            && Items.SingleOrDefault(item => item.Id == itemId) is { } item
+                ? NotesResult<NotebookItemModel>.Success(item)
+                : NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found."));
 
     public Task<NotesResult<NotebookItemsPageModel>> GetNotebookItemsPageAsync(
         Guid notebookId,

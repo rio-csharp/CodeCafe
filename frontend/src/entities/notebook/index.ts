@@ -19,6 +19,7 @@ export {
   getMyNotes,
   getNotebookBySlug,
   getNotebookItems,
+  getNotebookItem,
   createNotebook,
   updateNotebook,
   deleteNotebook,
@@ -53,4 +54,4 @@ export {
   useNotebookVisibilityHelpText,
   useNotebookVisibilityLabels,
 } from './lib/visibility'
-export { useNotebook, useNotebookItems } from './model/useNotebookQueries'
+export { useNotebook, useNotebookItems, useNotebookItem } from './model/useNotebookQueries'

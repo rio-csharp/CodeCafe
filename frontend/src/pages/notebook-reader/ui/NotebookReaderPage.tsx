@@ -2,7 +2,17 @@ import { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEditorStore } from '@/widgets/notebook-page-editor/store'
 import { useParams, Navigate, useNavigate } from 'react-router-dom'
-import { useNotebook, useNotebookItems, buildTree, findFirstPage, findPageByPath, extractOutline, findAdjacentPage, notesKeys } from '@/entities/notebook'
+import {
+  useNotebook,
+  useNotebookItems,
+  useNotebookItem,
+  buildTree,
+  findFirstPage,
+  findPageByPath,
+  extractOutline,
+  findAdjacentPage,
+  notesKeys,
+} from '@/entities/notebook'
 import { useSaveNotebookPage } from '@/features/edit-notebook-page'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { NotebookChangePreview } from '@/widgets/notebook-change-preview'
@@ -19,6 +29,31 @@ import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
 import { useTranslation } from 'react-i18next'
 
 const NotebookPageEditor = lazy(() => import('@/widgets/notebook-page-editor'))
+
+function TreeSkeleton() {
+  return (
+    <div className="p-4 space-y-3">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div
+          key={i}
+          className="h-4 bg-surface-hover rounded animate-pulse"
+          style={{ marginLeft: `${(i % 3) * 16}px`, width: `${60 + (i % 4) * 10}%` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function ContentSkeleton() {
+  return (
+    <div className="space-y-4 py-4">
+      <div className="h-8 bg-surface-hover rounded animate-pulse w-2/3" />
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="h-4 bg-surface-hover rounded animate-pulse" style={{ width: `${70 + (i % 5) * 6}%` }} />
+      ))}
+    </div>
+  )
+}
 
 export default function NotebookReaderPage() {
   const { notebookSlug, '*': splat } = useParams<{ notebookSlug: string; '*': string }>()
@@ -55,23 +90,20 @@ export default function NotebookReaderPage() {
     isFetching,
   } = useNotebook(notebookSlug!)
 
-  const applyProposal = useApplyAiEditProposal(notebook?.id ?? '')
+  const notebookId = notebook?.id ?? ''
+
+  const applyProposal = useApplyAiEditProposal(notebookId)
 
   const {
     data: notebookItems,
     isPending: notebookItemsPending,
     refetch: refetchItems,
-  } = useNotebookItems(
-    notebook?.id ?? '',
-    undefined,
-    showArchived,
-    !!notebook,
-  )
+  } = useNotebookItems(notebookId, undefined, showArchived, !!notebook, false)
 
   const visibleItems = useMemo(() => {
-    const items = notebookItems ?? notebook?.items ?? []
+    const items = notebookItems ?? []
     return showArchived ? items : items.filter((item) => !item.isArchived)
-  }, [notebookItems, notebook?.items, showArchived])
+  }, [notebookItems, showArchived])
 
   const tree = useMemo(() => buildTree(visibleItems), [visibleItems])
 
@@ -87,9 +119,25 @@ export default function NotebookReaderPage() {
     return page
   }, [notebook, pagePath, tree])
 
+  const {
+    data: activePageContent,
+    isPending: contentPending,
+    refetch: refetchContent,
+  } = useNotebookItem(notebookId, activePage?.id ?? null, !!activePage)
+
+  const activePageWithContent = useMemo<typeof activePage>(() => {
+    if (!activePage) return null
+    if (!activePageContent) return activePage
+    return {
+      ...activePage,
+      contentJson: activePageContent.contentJson,
+      plainTextContent: activePageContent.plainTextContent,
+    }
+  }, [activePage, activePageContent])
+
   const { handleSave: handleSavePage, isPending: isSavingPage } = useSaveNotebookPage(
-    notebook?.id ?? '',
-    activePage,
+    notebookId,
+    activePageWithContent,
     {
       onSuccess: () => {
         setEditClickedForPath(null)
@@ -122,6 +170,9 @@ export default function NotebookReaderPage() {
   const handleRefresh = () => {
     refetch()
     refetchItems()
+    if (activePage) {
+      refetchContent()
+    }
   }
   const handleEdit = () => setEditClickedForPath(pagePath)
 
@@ -131,7 +182,7 @@ export default function NotebookReaderPage() {
       { applyPath: proposal.applyPath },
       {
         onSuccess: async (result) => {
-          await queryClient.refetchQueries({ queryKey: notesKeys.itemsRoot(notebook?.id ?? '') })
+          await queryClient.refetchQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
           if (result.operation === 'delete_page') {
             navigate(`/notes/${notebookSlug}`)
             return
@@ -159,7 +210,7 @@ export default function NotebookReaderPage() {
         { applyPath: proposal.applyPath },
         {
           onSuccess: async (result) => {
-            await queryClient.refetchQueries({ queryKey: notesKeys.itemsRoot(notebook?.id ?? '') })
+            await queryClient.refetchQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
             if (result.pagePath) {
               setEditClickedForPath(result.pagePath)
               navigate(`/notes/${notebookSlug}/${result.pagePath}`)
@@ -178,34 +229,149 @@ export default function NotebookReaderPage() {
     return findAdjacentPage(tree, activePage.id)
   }, [tree, activePage])
 
+  const outline = useMemo(
+    () => (activePageWithContent?.contentJson ? extractOutline(activePageWithContent.contentJson) : []),
+    [activePageWithContent],
+  )
+
+  const contentWrapperClass = isEditingPage
+    ? 'px-4 sm:px-6 pb-4 lg:px-12 w-full'
+    : `px-4 sm:px-6 pb-4 lg:px-12 ${isFullWidth ? 'w-full' : 'max-w-3xl mx-auto'}`
+
+  // Show a full-screen spinner only while we don't even know which notebook this is.
+  // Once the notebook metadata is loading, render the layout shell so the user feels
+  // they have already entered the notebook.
   if (notebookPending) {
-    return <div className="h-screen flex items-center justify-center bg-surface"><RouteGuardSpinner /></div>
+    return (
+      <NotebookLayout
+        tree={<TreeSkeleton />}
+        contentRef={mainRef}
+        notebookSlug={notebookSlug}
+        prevPage={null}
+        nextPage={null}
+        content={
+          <div className="h-full flex items-center justify-center">
+            <RouteGuardSpinner />
+          </div>
+        }
+        rightPanel={<div className="flex-1 min-h-0 overflow-y-auto" />}
+      />
+    )
   }
 
   if (notebookIsError || !notebook) {
     const errMsg = getErrorMessage(notebookError, t('errors.generic'))
-    return <div className="h-screen flex items-center justify-center bg-surface"><p className="text-sm text-status-error">{errMsg}</p></div>
+    return (
+      <NotebookLayout
+        tree={<TreeSkeleton />}
+        contentRef={mainRef}
+        notebookSlug={notebookSlug}
+        prevPage={null}
+        nextPage={null}
+        content={
+          <div className="h-full flex items-center justify-center">
+            <p className="text-sm text-status-error">{errMsg}</p>
+          </div>
+        }
+        rightPanel={<div className="flex-1 min-h-0 overflow-y-auto" />}
+      />
+    )
   }
 
-  if (notebookItemsPending && notebookItems === undefined) {
-    return <div className="h-screen flex items-center justify-center bg-surface"><RouteGuardSpinner /></div>
-  }
-
-  // Redirect to first page when no path is specified
-  if (!pagePath && activePage) {
+  // Redirect to first page when no path is specified and the tree has loaded.
+  if (!pagePath && activePage && !notebookItemsPending) {
     return <Navigate to={`/notes/${notebookSlug}/${activePage.path}`} replace />
   }
 
-  const outline = activePage ? extractOutline(activePage.contentJson) : []
-  const contentWrapperClass = isEditingPage
-    ? 'px-4 sm:px-6 pb-4 lg:px-12 w-full'
-    : `px-4 sm:px-6 pb-4 lg:px-12 ${isFullWidth ? 'w-full' : 'max-w-3xl mx-auto'}`
+  const treePanel = notebookItemsPending ? (
+    <TreeSkeleton />
+  ) : (
+    <NotebookTree
+      notebook={notebook}
+      notebookSlug={notebook.slug}
+      tree={tree}
+      activePage={activePage}
+      showArchived={showArchived}
+      onShowArchivedChange={setShowArchived}
+      onRefreshNotebook={handleRefresh}
+    />
+  )
+
+  const contentPanel = (
+    <>
+      {activePage ? (
+        <div className={contentWrapperClass}>
+          <NotebookReaderChrome
+            activePage={activePage}
+            isEditingPage={isEditingPage}
+            isFullWidth={isFullWidth}
+            isFetching={isFetching || contentPending}
+            canEdit={notebook.canEdit ?? false}
+            onToggleFullWidth={handleToggleFullWidth}
+            onRefresh={handleRefresh}
+            onEdit={handleEdit}
+          />
+          {contentPending ? (
+            <ContentSkeleton />
+          ) : isEditingPage ? (
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-32">
+                  <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-text-primary" />
+                </div>
+              }
+            >
+              <NotebookPageEditor
+                page={activePageWithContent ?? activePage}
+                onSave={handleSavePage}
+                onCancel={() => {
+                  setEditClickedForPath(null)
+                }}
+                isSaving={isSavingPage}
+                initialContentJson={aiEditInitialContent}
+              />
+            </Suspense>
+          ) : (
+            <>
+              <NotebookPageContent page={activePageWithContent ?? activePage} />
+              <NotebookPageNavigation notebookSlug={notebookSlug!} prev={prev} next={next} />
+            </>
+          )}
+        </div>
+      ) : (
+        <NotebookPageEmpty canEdit={notebook.canEdit ?? false} />
+      )}
+      <FloatingAiAssistant notebook={notebook} activePage={activePageWithContent ?? activePage} />
+    </>
+  )
+
+  const rightPanel = (
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      {contentPending ? (
+        <div className="p-4 space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-4 bg-surface-hover rounded animate-pulse"
+              style={{ marginLeft: `${(i % 3) * 12}px`, width: `${60 + (i % 4) * 10}%` }}
+            />
+          ))}
+        </div>
+      ) : (
+        <NotebookOutline headings={outline} scrollContainerRef={mainRef} />
+      )}
+    </div>
+  )
 
   return (
     <>
       {isAiEditPreviewActive && proposal && (
         <NotebookChangePreview
-          title={proposal.operation === 'create_page' ? t('ai.edit.newPageTitle', { title: proposal.title }) : proposal.title}
+          title={
+            proposal.operation === 'create_page'
+              ? t('ai.edit.newPageTitle', { title: proposal.title })
+              : proposal.title
+          }
           beforeContentJson={proposal.beforeContentJson}
           afterContentJson={proposal.afterContentJson}
           beforeText={proposal.beforePlainTextContent}
@@ -222,39 +388,14 @@ export default function NotebookReaderPage() {
         />
       )}
       <NotebookLayout
-        tree={<NotebookTree notebook={notebook} notebookSlug={notebook.slug} tree={tree} activePage={activePage} showArchived={showArchived} onShowArchivedChange={setShowArchived} onRefreshNotebook={handleRefresh} />}
+        tree={treePanel}
         contentRef={mainRef}
         notebookSlug={notebookSlug}
         prevPage={prev}
         nextPage={next}
-        content={
-          <>
-            {activePage ? (
-            <div className={contentWrapperClass}>
-              <NotebookReaderChrome activePage={activePage} isEditingPage={isEditingPage} isFullWidth={isFullWidth} isFetching={isFetching} canEdit={notebook.canEdit ?? false} onToggleFullWidth={handleToggleFullWidth} onRefresh={handleRefresh} onEdit={handleEdit} />
-              {isEditingPage ? (
-                <Suspense fallback={<div className="flex items-center justify-center h-32"><div className="h-8 w-8 animate-spin rounded-full border-2 border-border-hover border-t-text-primary" /></div>}>
-                  <NotebookPageEditor page={activePage} onSave={handleSavePage} onCancel={() => { setEditClickedForPath(null) }} isSaving={isSavingPage} initialContentJson={aiEditInitialContent} />
-                </Suspense>
-              ) : (
-                <>
-                  <NotebookPageContent page={activePage} />
-                  <NotebookPageNavigation notebookSlug={notebookSlug!} prev={prev} next={next} />
-                </>
-              )}
-            </div>
-          ) : (
-            <NotebookPageEmpty canEdit={notebook.canEdit ?? false} />
-          )}
-          <FloatingAiAssistant notebook={notebook} activePage={activePage} />
-        </>
-      }
-      rightPanel={
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <NotebookOutline headings={outline} scrollContainerRef={mainRef} />
-        </div>
-      }
-    />
+        content={contentPanel}
+        rightPanel={rightPanel}
+      />
     </>
   )
 }

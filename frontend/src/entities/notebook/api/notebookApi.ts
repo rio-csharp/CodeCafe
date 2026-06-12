@@ -41,12 +41,21 @@ export async function getNotebookItems(
   notebookId: string,
   search?: string,
   includeArchived?: boolean,
+  includeContent?: boolean,
 ): Promise<NotebookItem[]> {
   const params = buildQueryString({
     search,
     includeArchived: includeArchived ? 'true' : undefined,
+    includeContent: includeContent === false ? 'false' : undefined,
   })
   return apiFetch<NotebookItem[]>(`/api/notes/${notebookId}/items${params}`)
+}
+
+export async function getNotebookItem(
+  notebookId: string,
+  itemId: string,
+): Promise<NotebookItem> {
+  return apiFetch<NotebookItem>(`/api/notes/${notebookId}/items/${itemId}`)
 }
 
 export async function createNotebook(data: CreateNotebookRequest): Promise<Notebook> {

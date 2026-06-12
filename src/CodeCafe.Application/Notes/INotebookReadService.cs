@@ -51,7 +51,15 @@ public interface INotebookReadService
         string? search,
         CancellationToken cancellationToken,
         bool includeArchived = false,
+        bool includeContent = true,
         int? limit = null);
+
+    Task<NotesResult<NotebookItemModel>> GetNotebookItemByIdAsync(
+        Guid notebookId,
+        Guid itemId,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false);
 
     async Task<NotesResult<NotebookSummaryModel>> GetNotebookSummaryBySlugAsync(
         string slug,

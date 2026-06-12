@@ -257,6 +257,7 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         string? search,
         CancellationToken cancellationToken,
         bool includeArchived = false,
+        bool includeContent = true,
         int? limit = null)
     {
         var notebookAccessResult = await GetReadableNotebookAccessAsync(notebookId, currentUserId, cancellationToken);
@@ -279,10 +280,48 @@ public sealed class NotebookReadService(ApplicationDbContext dbContext) : INoteb
         var items = await ApplyLimit(
                 OrderNotebookItems(BuildNotebookItemsQuery(notebookId, search, includeArchived)),
                 limit)
-            .Select(item => NotesSupport.ToItemModel(item))
+            .Select(item => NotesSupport.ToItemModel(item, includeContent))
             .ToListAsync(cancellationToken);
 
         return NotesResult<IReadOnlyList<NotebookItemModel>>.Success(items);
+    }
+
+    public async Task<NotesResult<NotebookItemModel>> GetNotebookItemByIdAsync(
+        Guid notebookId,
+        Guid itemId,
+        Guid currentUserId,
+        CancellationToken cancellationToken,
+        bool includeArchived = false)
+    {
+        var notebookAccessResult = await GetReadableNotebookAccessAsync(notebookId, currentUserId, cancellationToken);
+        if (!notebookAccessResult.Succeeded)
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                notebookAccessResult.Error!.Kind,
+                notebookAccessResult.Error.Code,
+                notebookAccessResult.Error.Message);
+        }
+
+        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                archiveError.Kind,
+                archiveError.Code,
+                archiveError.Message);
+        }
+
+        var item = await dbContext.NotebookItems
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                existingItem =>
+                    existingItem.NotebookId == notebookAccessResult.Value!.Id
+                    && existingItem.Id == itemId
+                    && (includeArchived || !existingItem.IsArchived),
+                cancellationToken);
+
+        return item is null
+            ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.")
+            : NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
     }
 
     public async Task<NotesResult<NotebookSummaryModel>> GetNotebookSummaryBySlugAsync(
