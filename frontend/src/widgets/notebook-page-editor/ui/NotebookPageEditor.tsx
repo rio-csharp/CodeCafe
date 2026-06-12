@@ -5,6 +5,7 @@ import { Check, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { NotebookItem } from '@/entities/notebook-item'
 import { createTipTapExtensions } from '@/shared/lib/tiptapExtensions'
+import { getTipTapText } from '@/shared/lib/getTipTapText'
 import { createEmptyTipTapDocument, sanitizeTipTapContent } from '@/shared/lib/sanitizeTipTapContent'
 import { PROSE_CONTENT_CLASSES } from '@/shared/ui/proseContentClasses'
 import { CodeBlockCopyButton } from '@/shared/ui/CodeBlockCopyButton'
@@ -127,7 +128,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
     onSave(pendingPreview.contentJson)
   }, [onSave, pendingPreview])
 
-  const originalText = page.plainTextContent ?? ''
+  const originalText = useMemo(() => getTipTapText(safeContent), [safeContent])
   const hasJsonChanges = pendingPreview
     ? JSON.stringify(pendingPreview.contentJson) !== JSON.stringify(safeContent)
     : false

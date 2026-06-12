@@ -16,6 +16,10 @@ vi.mock('@/shared/lib/tiptapExtensions', () => ({
   createTipTapExtensions: () => [],
 }))
 
+vi.mock('@/shared/lib/getTipTapText', () => ({
+  getTipTapText: () => '',
+}))
+
 vi.mock('./NotebookEditorToolbar', () => ({
   default: () => <div data-testid="editor-toolbar" />,
 }))
