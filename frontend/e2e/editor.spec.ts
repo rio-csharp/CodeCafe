@@ -35,8 +35,9 @@ test.describe('Notebook editor', () => {
     await editor.click()
     await editor.fill(paragraph)
 
-    // Save and wait for the reader to return
+    // Save and confirm the change preview
     await page.getByRole('button', { name: 'Save page' }).click()
+    await page.getByRole('button', { name: 'Save changes' }).click()
 
     // After saving, the edit button should reappear and the content should be visible
     await expect(page.getByRole('button', { name: 'Edit page' })).toBeVisible()
