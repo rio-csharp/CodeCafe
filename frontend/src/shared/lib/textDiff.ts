@@ -16,8 +16,8 @@ export interface TextDiffResult {
 }
 
 export function diffTextByLine(before: string | null | undefined, after: string | null | undefined): TextDiffResult {
-  const beforeLines = splitLines(before ?? '')
-  const afterLines = splitLines(after ?? '')
+  const beforeLines = splitLines((before ?? '').trimEnd())
+  const afterLines = splitLines((after ?? '').trimEnd())
   const table = buildLcsTable(beforeLines, afterLines)
   const segments: TextDiffSegment[] = []
   let added = 0

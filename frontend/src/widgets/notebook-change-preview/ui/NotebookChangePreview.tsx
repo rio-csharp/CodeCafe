@@ -75,7 +75,7 @@ export function NotebookChangePreview({
     >
       <div className="flex h-full flex-col">
         <header className="border-b border-border-subtle bg-surface px-4 py-3 sm:px-6 lg:px-8">
-          <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
                 {t('notebook.changePreview.label')}
@@ -133,7 +133,7 @@ export function NotebookChangePreview({
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">
+          <div>
             <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
               <span className="rounded-md bg-status-success-bg px-2 py-1 font-medium text-status-success">
                 +{diff.summary.added} {t('notebook.changePreview.added')}
