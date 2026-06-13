@@ -149,9 +149,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
   if (pendingPreview) {
     return (
       <NotebookChangePreview
-        afterContentJson={pendingPreview.contentJson}
         afterText={pendingPreview.text}
-        beforeContentJson={page.contentJson}
         beforeText={originalText}
         canSave={hasJsonChanges}
         isSaving={isSaving}

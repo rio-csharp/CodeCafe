@@ -14,4 +14,15 @@ describe('diffTextByLine', () => {
       { type: 'added', lines: ['delta'] },
     ])
   })
+
+  it('ignores trailing newline differences caused by inconsistent text extraction', () => {
+    const result = diffTextByLine('alpha\nbeta', 'alpha\nbravo\n')
+
+    expect(result.summary).toEqual({ added: 1, removed: 1 })
+    expect(result.segments).toEqual([
+      { type: 'unchanged', lines: ['alpha'] },
+      { type: 'removed', lines: ['beta'] },
+      { type: 'added', lines: ['bravo'] },
+    ])
+  })
 })
