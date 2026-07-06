@@ -4,7 +4,7 @@
 
 CodeCafe's production-ready surface today is a structured notebook system for engineers. The same notebook data is available through:
 
-- a React web application in `frontend/`
+- a React web application in `clients/web/`
 - a cookie-authenticated REST API in `CodeCafe.Api`
 - an OAuth-protected MCP adapter in `CodeCafe.Mcp`
 - an optional in-app AI assistant in `CodeCafe.Ai`

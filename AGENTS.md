@@ -8,6 +8,6 @@ Treat `main` as pull-request-only: never push directly to `main`; merge changes 
 Prefer the GitHub CLI (`gh`) for creating and managing pull requests when it is available.
 
 Before pushing or reporting that CI should be green, run the relevant local checks and ensure they pass:
-- **Frontend**: `npm run lint && npm run test && npm run build && npm run e2e` from `frontend`
-- **Backend**: `dotnet build` and `dotnet test` from solution root
+- **Frontend**: `npm run lint && npm run test && npm run build && npm run e2e` from `clients/web`
+- **Backend**: `dotnet build server/CodeCafe.slnx` and `dotnet test server/CodeCafe.slnx` from repository root
 Always report the result.

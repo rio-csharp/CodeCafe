@@ -240,7 +240,7 @@ Write tools default to lightweight responses: `contentJson` and `plainTextConten
 
 ## Default Limits
 
-From `src/CodeCafe.Server/appsettings.json`:
+From `server/Host/CodeCafe.Server/appsettings.json`:
 
 - Max inline content: `131072` bytes
 - Max upload chunk: `262144` bytes
@@ -267,8 +267,8 @@ Clients should treat these values as runtime configuration, not hard-coded const
 Run the combined backend host locally:
 
 ```powershell
-dotnet restore CodeCafe.slnx
-dotnet run --project src/CodeCafe.Server
+dotnet restore server/CodeCafe.slnx
+dotnet run --project server/Host/CodeCafe.Server
 ```
 
 The checked-in development profile serves:

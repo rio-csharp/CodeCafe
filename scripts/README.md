@@ -8,12 +8,12 @@ Repository automation scripts are grouped by what owns the workflow:
 - `maintenance/`: operational cleanup and environment maintenance scripts.
 
 The previous single-file database sync script has been replaced by the maintained
-console project at `tools/CodeCafe.DbSync`.
+console project at `server/tools/CodeCafe.DbSync`.
 
 Use:
 
 ```bash
-dotnet run --project tools/CodeCafe.DbSync -- check
-dotnet run --project tools/CodeCafe.DbSync -- prod-to-local
-dotnet run --project tools/CodeCafe.DbSync -- local-to-test
+dotnet run --project server/tools/CodeCafe.DbSync -- check
+dotnet run --project server/tools/CodeCafe.DbSync -- prod-to-local
+dotnet run --project server/tools/CodeCafe.DbSync -- local-to-test
 ```

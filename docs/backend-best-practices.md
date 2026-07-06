@@ -249,7 +249,7 @@ Committed defaults live in `appsettings.json`.
 Local secrets belong in:
 
 ```text
-src/CodeCafe.Server/appsettings.Development.json
+server/Host/CodeCafe.Server/appsettings.Development.json
 ```
 
 Do not commit real credentials, connection strings, private hosts, or per-machine settings.

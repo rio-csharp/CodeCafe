@@ -5,19 +5,19 @@
 Backend deploy target:
 
 ```text
-src/CodeCafe.Server/CodeCafe.Server.csproj
+server/Host/CodeCafe.Server/CodeCafe.Server.csproj
 ```
 
 Frontend deploy target:
 
 ```text
-frontend/
+clients/web/
 ```
 
 Container images are built from:
 
-- `src/CodeCafe.Server/Dockerfile`
-- `frontend/Dockerfile`
+- `server/Host/CodeCafe.Server/Dockerfile`
+- `clients/web/Dockerfile`
 
 ## GitHub Workflow
 
@@ -169,7 +169,7 @@ Current deployments may still expose draft-specific variables because the transi
 The frontend image writes `window.__CODECAFE_CONFIG__` at container startup through:
 
 ```text
-frontend/docker-entrypoint.d/10-write-runtime-config.sh
+clients/web/docker-entrypoint.d/10-write-runtime-config.sh
 ```
 
 That runtime config provides `apiBaseUrl` and `aiStatusEndpointPath` without rebuilding the frontend image per environment.
@@ -189,7 +189,7 @@ Development startup applies migrations automatically. Helm also includes an API 
 The maintained database helper lives in:
 
 ```text
-tools/CodeCafe.DbSync
+server/tools/CodeCafe.DbSync
 ```
 
 Supported commands:

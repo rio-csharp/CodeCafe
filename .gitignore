@@ -11,7 +11,7 @@ deploy/cloudflare/*.private.*
 .artifacts/
 .tmp/
 .dotnet-user/
-frontend/e2e/.auth/
+clients/web/e2e/.auth/
 
 # Local development configuration can contain secrets.
 appsettings.Development.json
@@ -305,8 +305,8 @@ FakesAssemblies/
 .ntvs_analysis.dat
 node_modules/
 dist/
-frontend/.vite/
-frontend/coverage/
+clients/web/.vite/
+clients/web/coverage/
 
 # Visual Studio 6 build log
 *.plg
