@@ -40,6 +40,7 @@ AI_API_KEY="${AI_API_KEY:-}"
 OAUTH_SECRET_NAME="${OAUTH_SECRET_NAME:-codecafe-oauth-secret}"
 OAUTH_SECRET_NAMESPACE="${OAUTH_SECRET_NAMESPACE:-$NAMESPACE}"
 OAUTH_ENV_FILE="${OAUTH_ENV_FILE:-}"
+AI_ENV_FILE="${AI_ENV_FILE:-}"
 tls_cert_file=""
 tls_key_file=""
 frontend_pid=""
@@ -82,6 +83,11 @@ trap 'on_signal HUP' HUP
 if [ -n "$OAUTH_ENV_FILE" ]; then
   # shellcheck disable=SC1090
   . "$OAUTH_ENV_FILE"
+fi
+
+if [ -n "$AI_ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$AI_ENV_FILE"
 fi
 
 case "$AI_ENABLED" in

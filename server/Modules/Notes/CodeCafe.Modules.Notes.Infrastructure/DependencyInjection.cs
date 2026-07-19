@@ -1,20 +1,20 @@
-using CodeCafe.Application.Auth;
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Application.Notes;
-using CodeCafe.Infrastructure.Identity;
-using CodeCafe.Infrastructure.Notes;
-using CodeCafe.Infrastructure.Persistence;
-using CodeCafe.Infrastructure.Services;
+using CodeCafe.Modules.Identity.Application.Auth;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Identity.Infrastructure.Identity;
+using CodeCafe.Modules.Notes.Infrastructure.Notes;
+using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Modules.Notes.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace CodeCafe.Infrastructure;
+namespace CodeCafe.Modules.Notes.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructure(
+    public static IServiceCollection AddNotesInfrastructure(
         this IServiceCollection services,
         IConfiguration configuration,
         IHostEnvironment environment)

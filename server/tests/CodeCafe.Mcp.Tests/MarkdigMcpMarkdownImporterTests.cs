@@ -1,7 +1,7 @@
-using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Modules.Mcp.Tools.Notes;
 using System.Text.Json;
 
-namespace CodeCafe.Mcp.Tests;
+namespace CodeCafe.Modules.Mcp.Tests;
 
 public sealed class MarkdigMcpMarkdownImporterTests
 {
@@ -142,5 +142,66 @@ public sealed class MarkdigMcpMarkdownImporterTests
         Assert.Contains("\u201D", raw, StringComparison.Ordinal);
         Assert.DoesNotContain("\\u201C", raw, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("\\u201D", raw, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("data:text/html;base64,PHNjcmlwdD4=")]
+    [InlineData("vbscript:msgbox(1)")]
+    [InlineData("//evil.example/phish")]
+    public void ConvertMarkdownToDocument_RemovesLinkMarkForUnsafeUrls(string url)
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument($"[click me]({url})");
+
+        Assert.DoesNotContain("\"type\":\"link\"", document.GetRawText(), StringComparison.Ordinal);
+        var paragraph = document.GetProperty("content")[0];
+        Assert.Equal("click me", paragraph.GetProperty("content")[0].GetProperty("text").GetString());
+    }
+
+    [Theory]
+    [InlineData("https://example.com/page")]
+    [InlineData("mailto:user@example.com")]
+    [InlineData("tel:+1234567890")]
+    [InlineData("/docs/getting-started")]
+    public void ConvertMarkdownToDocument_KeepsLinkMarkForAllowedUrls(string url)
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument($"[click me]({url})");
+
+        var textNode = document.GetProperty("content")[0].GetProperty("content")[0];
+        var linkMark = textNode.GetProperty("marks")[0];
+        Assert.Equal("link", linkMark.GetProperty("type").GetString());
+        Assert.Equal(url, linkMark.GetProperty("attrs").GetProperty("href").GetString());
+    }
+
+    [Theory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("data:image/svg+xml;base64,PHN2Zz4=")]
+    [InlineData("//evil.example/tracker.png")]
+    public void ConvertMarkdownToDocument_RemovesImageSrcForUnsafeUrls(string url)
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument($"![alt text]({url})");
+
+        var image = document.GetProperty("content")[0].GetProperty("content")[0];
+        Assert.Equal("image", image.GetProperty("type").GetString());
+        Assert.False(image.GetProperty("attrs").TryGetProperty("src", out _));
+        Assert.Equal("alt text", image.GetProperty("attrs").GetProperty("alt").GetString());
+    }
+
+    [Fact]
+    public void ConvertMarkdownToDocument_KeepsImageSrcForAllowedUrls()
+    {
+        var importer = new MarkdigMcpMarkdownImporter();
+
+        var document = importer.ConvertMarkdownToDocument("![alt text](https://cdn.example.com/a.png)");
+
+        var image = document.GetProperty("content")[0].GetProperty("content")[0];
+        Assert.Equal("image", image.GetProperty("type").GetString());
+        Assert.Equal("https://cdn.example.com/a.png", image.GetProperty("attrs").GetProperty("src").GetString());
     }
 }

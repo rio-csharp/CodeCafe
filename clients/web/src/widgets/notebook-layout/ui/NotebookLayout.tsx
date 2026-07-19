@@ -99,7 +99,7 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
               {prevPage && notebookSlug && (
                 <button
                   type="button"
-                  onClick={() => { navigate(`/notes/${notebookSlug}/${prevPage.path}`); window.scrollTo(0, 0) }}
+                  onClick={() => { navigate(`/notes/${notebookSlug}/${prevPage.path}`); contentRef?.current?.scrollTo(0, 0) }}
                   className="flex items-center gap-1 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
                   title={prevPage.title}
                   aria-label={t('layout.previous', { title: prevPage.title })}
@@ -133,7 +133,7 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
               {nextPage && notebookSlug && (
                 <button
                   type="button"
-                  onClick={() => { navigate(`/notes/${notebookSlug}/${nextPage.path}`); window.scrollTo(0, 0) }}
+                  onClick={() => { navigate(`/notes/${notebookSlug}/${nextPage.path}`); contentRef?.current?.scrollTo(0, 0) }}
                   className="flex items-center gap-1 rounded-full bg-surface border border-border-default shadow-lg px-3 py-2 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors"
                   title={nextPage.title}
                   aria-label={t('layout.next', { title: nextPage.title })}

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace CodeCafe.Api.Endpoints.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
 
 public sealed record RegisterRequest(
     [Required, EmailAddress] string Email,

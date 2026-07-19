@@ -34,6 +34,7 @@ import {
 import ToolbarGroup from './ToolbarGroup'
 import ToolbarButton from './ToolbarButton'
 import ToolbarColorControls from './ToolbarColorControls'
+import { usePromptDialog } from '@/shared/ui/PromptDialog'
 import {
   normalizeEditorImageUrl,
   normalizeEditorLinkUrl,
@@ -60,11 +61,11 @@ const LANGUAGES = [
 ]
 
 const FONTS = [
-  { value: '', label: 'Default' },
-  { value: 'serif', label: 'Serif' },
-  { value: 'sans-serif', label: 'Sans Serif' },
-  { value: 'monospace', label: 'Monospace' },
-]
+  { value: '', labelKey: 'editor.toolbar.fontDefault' },
+  { value: 'serif', labelKey: 'editor.toolbar.fontSerif' },
+  { value: 'sans-serif', labelKey: 'editor.toolbar.fontSans' },
+  { value: 'monospace', labelKey: 'editor.toolbar.fontMono' },
+] as const
 
 interface NotebookEditorToolbarProps {
   editor: Editor
@@ -72,10 +73,18 @@ interface NotebookEditorToolbarProps {
 
 export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarProps) {
   const { t } = useTranslation()
+  const { requestPrompt, promptDialog } = usePromptDialog()
 
-  const handleSetLink = useCallback(() => {
+  const handleSetLink = useCallback(async () => {
     const previousUrl = editor.getAttributes('link').href as string | undefined
-    const url = window.prompt(t('editor.prompt.url'), previousUrl)
+    const url = await requestPrompt({
+      title: t('editor.toolbar.link'),
+      label: t('editor.prompt.url'),
+      defaultValue: previousUrl ?? '',
+      placeholder: 'https://',
+      // An empty value means "remove the link" — always valid.
+      validate: (value) => (value === '' || normalizeEditorLinkUrl(value) ? null : t('editor.prompt.invalidUrl')),
+    })
     if (url === null) return
     if (url === '') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
@@ -85,27 +94,37 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
         editor.chain().focus().extendMarkRange('link').setLink({ href: safeUrl }).run()
       }
     }
-  }, [editor, t])
+  }, [editor, requestPrompt, t])
 
-  const handleInsertImage = useCallback(() => {
-    const url = window.prompt(t('editor.prompt.imageUrl'))
+  const handleInsertImage = useCallback(async () => {
+    const url = await requestPrompt({
+      title: t('editor.toolbar.insertImage'),
+      label: t('editor.prompt.imageUrl'),
+      placeholder: 'https://',
+      validate: (value) => (normalizeEditorImageUrl(value) ? null : t('editor.prompt.invalidUrl')),
+    })
     if (url) {
       const safeUrl = normalizeEditorImageUrl(url)
       if (safeUrl) {
         editor.chain().focus().setImage({ src: safeUrl }).run()
       }
     }
-  }, [editor, t])
+  }, [editor, requestPrompt, t])
 
-  const handleInsertYoutube = useCallback(() => {
-    const url = window.prompt(t('editor.prompt.youtubeUrl'))
+  const handleInsertYoutube = useCallback(async () => {
+    const url = await requestPrompt({
+      title: t('editor.toolbar.insertYoutube'),
+      label: t('editor.prompt.youtubeUrl'),
+      placeholder: 'https://www.youtube.com/watch?v=…',
+      validate: (value) => (normalizeEditorYoutubeUrl(value) ? null : t('editor.prompt.invalidUrl')),
+    })
     if (url) {
       const safeUrl = normalizeEditorYoutubeUrl(url)
       if (safeUrl) {
         editor.chain().focus().setYoutubeVideo({ src: safeUrl }).run()
       }
     }
-  }, [editor, t])
+  }, [editor, requestPrompt, t])
 
   const currentLang = (editor.getAttributes('codeBlock').language as string | undefined) || 'plaintext'
   const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) || ''
@@ -141,7 +160,7 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
           title={t('editor.toolbar.fontFamily')}
         >
           {FONTS.map((f) => (
-            <option key={f.value} value={f.value}>{f.label}</option>
+            <option key={f.value} value={f.value}>{t(f.labelKey)}</option>
           ))}
         </select>
         <ToolbarColorControls editor={editor} />
@@ -192,6 +211,7 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
         <ToolbarButton onClick={() => editor.chain().focus().undo().run()} title={t('editor.toolbar.undo')}><Undo className="h-4 w-4" /></ToolbarButton>
         <ToolbarButton onClick={() => editor.chain().focus().redo().run()} title={t('editor.toolbar.redo')}><Redo className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
+      {promptDialog}
     </div>
   )
 }

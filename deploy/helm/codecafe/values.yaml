@@ -6,13 +6,24 @@ imagePullSecrets: []
 frontend:
   replicaCount: 2
   terminationGracePeriodSeconds: 30
+  podSecurityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  # NOTE: readOnlyRootFilesystem stays false — the container entrypoint
+  # writes config.js and patches index.html under the html root at startup.
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
   strategy:
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 1
   image:
     repository: ghcr.io/example/codecafe/frontend
-    tag: latest
+    tag: "" # required at deploy time; the chart fails without an explicit immutable tag
     pullPolicy: IfNotPresent
   service:
     port: 80
@@ -70,7 +81,7 @@ api:
       maxSurge: 1
   image:
     repository: ghcr.io/example/codecafe/api
-    tag: latest
+    tag: "" # required at deploy time; the chart fails without an explicit immutable tag
     pullPolicy: IfNotPresent
   service:
     port: 80
@@ -106,7 +117,7 @@ api:
       initialDelaySeconds: 3
       periodSeconds: 5
       timeoutSeconds: 2
-      failureThreshold: 1
+      failureThreshold: 3
     liveness:
       path: /health/live
       initialDelaySeconds: 10

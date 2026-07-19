@@ -1,8 +1,8 @@
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Domain.Mcp;
-using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Shared.Domain.Mcp;
+using CodeCafe.Shared.Infrastructure.Persistence;
 
-namespace CodeCafe.Infrastructure.Services;
+namespace CodeCafe.Modules.Notes.Infrastructure.Services;
 
 internal sealed class McpAuditService(
     ApplicationDbContext dbContext,

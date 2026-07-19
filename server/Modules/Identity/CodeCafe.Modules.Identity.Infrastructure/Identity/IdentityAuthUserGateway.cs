@@ -1,8 +1,13 @@
-using CodeCafe.Application.Auth;
+using CodeCafe.Modules.Identity.Application.Auth;
 using Microsoft.AspNetCore.Identity;
 
-namespace CodeCafe.Infrastructure.Identity;
+namespace CodeCafe.Modules.Identity.Infrastructure.Identity;
 
+/// <remarks>
+/// The <see cref="CancellationToken"/> parameters exist for interface
+/// conformance only: <see cref="UserManager{TUser}"/> exposes no
+/// cancellation-token overloads, so cancellation is not honored here.
+/// </remarks>
 public sealed class IdentityAuthUserGateway(
     UserManager<ApplicationUser> userManager) : IAuthUserGateway
 {

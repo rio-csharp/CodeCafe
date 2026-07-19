@@ -119,7 +119,7 @@ export function NotebookChangePreview({
                 type="button"
                 onClick={onSave}
                 disabled={isSaving || !saveEnabled}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Check className="h-3.5 w-3.5" />
                 {isSaving

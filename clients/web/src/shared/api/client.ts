@@ -1,18 +1,9 @@
 import { API_BASE_URL } from '@/shared/config'
 import i18n from '@/shared/lib/i18n'
+import { ApiError } from './ApiError'
 
 export { API_BASE_URL }
-
-export class ApiError extends Error {
-  status: number
-  code?: string
-  constructor(status: number, message: string, code?: string) {
-    super(message)
-    this.status = status
-    this.code = code
-    this.name = 'ApiError'
-  }
-}
+export { ApiError }
 
 let csrfToken: string | null = null
 let csrfTokenInFlight: Promise<string> | null = null

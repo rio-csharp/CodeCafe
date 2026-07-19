@@ -13,6 +13,8 @@ export default function ToolbarButton({ active, onClick, children, title }: Tool
       type="button"
       onClick={onClick}
       title={title}
+      aria-label={title}
+      aria-pressed={active}
       className={`p-1.5 rounded-md transition-colors ${
         active ? 'bg-surface-active text-brand-brown' : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
       }`}

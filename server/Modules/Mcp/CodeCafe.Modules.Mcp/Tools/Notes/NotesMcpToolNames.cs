@@ -1,4 +1,4 @@
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 public static class NotesMcpToolNames
 {

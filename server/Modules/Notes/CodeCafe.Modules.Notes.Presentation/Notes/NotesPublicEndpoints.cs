@@ -1,11 +1,12 @@
-using CodeCafe.Application.Notes.Queries.GetPublicNotebook;
-using CodeCafe.Application.Notes.Queries.GetPublicNotebookItem;
-using CodeCafe.Application.Notes.Queries.GetPublicNotebookItems;
-using CodeCafe.Application.Notes.Queries.GetPublicNotebooks;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebook;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebookItems;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebooks;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CodeCafe.Api.Endpoints.Notes;
+namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
 public static partial class NotesEndpoints
 {
@@ -23,12 +24,18 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> GetPublicNotebooksAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         [FromQuery] string? search,
-        HttpContext httpContext,
+        [FromQuery] int? limit,
+        [FromQuery] int? offset,
         CancellationToken cancellationToken)
     {
         var notebooks = await sender.Send(
-            new GetPublicNotebooksQuery(search, GetCurrentUserId(httpContext.User)),
+            new GetPublicNotebooksQuery(
+                search,
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
+                NormalizeNotebookListLimit(limit),
+                NormalizeNotebookListOffset(offset)),
             cancellationToken);
 
         return TypedResults.Ok<IReadOnlyList<NotebookSummaryResponse>>(
@@ -37,16 +44,18 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> GetPublicNotebookAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         string slug,
         [FromQuery] bool? includeItems,
-        HttpContext httpContext,
+        [FromQuery] bool? includeContent,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new GetPublicNotebookQuery(
                 slug,
-                GetCurrentUserId(httpContext.User),
-                IncludeItems: includeItems ?? true),
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
+                IncludeItems: includeItems ?? false,
+                IncludeContent: includeContent ?? false),
             cancellationToken);
 
         return ToDetailResult(result);

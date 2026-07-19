@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Commands.DeleteNotebookItem;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebookItem;
 
 public sealed class DeleteNotebookItemCommandHandler(
     INotebookItemMutationService notebookItemMutationService)

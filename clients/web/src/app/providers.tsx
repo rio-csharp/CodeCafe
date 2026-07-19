@@ -12,6 +12,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
+      // Low-churn notebook data: avoid refetching on every mount/navigation.
+      // Mutations still invalidate explicitly, so freshness is preserved.
+      staleTime: 30_000,
       retry: (failureCount, error) => {
         // Do not retry client errors (4xx) — they won't resolve on retry
         if (error instanceof ApiError && error.status >= 400 && error.status < 500) {

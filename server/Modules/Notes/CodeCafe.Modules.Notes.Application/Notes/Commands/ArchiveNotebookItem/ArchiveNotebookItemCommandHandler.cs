@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
 
 public sealed class ArchiveNotebookItemCommandHandler(
     INotebookItemMutationService notebookItemMutationService)

@@ -1,16 +1,15 @@
-using CodeCafe.Ai.Configuration;
-using CodeCafe.Application.Notes;
-using Microsoft.AspNetCore.Http;
+using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.ComponentModel;
-using System.Security.Claims;
 
-namespace CodeCafe.Ai.Tools;
+namespace CodeCafe.Modules.Ai.Tools;
 
 public sealed class NotebookAssistantTools(
     IServiceScopeFactory serviceScopeFactory,
-    IHttpContextAccessor httpContextAccessor,
+    ICurrentUserAccessor currentUserAccessor,
     IOptions<AiOptions> aiOptionsAccessor)
 {
     private readonly AiOptions _options = aiOptionsAccessor.Value;
@@ -166,13 +165,9 @@ public sealed class NotebookAssistantTools(
 
     private bool TryGetCurrentUserId(out Guid currentUserId, out NotebookAssistantToolError error)
     {
-        var user = httpContextAccessor.HttpContext?.User;
-        var claimValue = user?.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user?.FindFirstValue("sub");
-
-        if (user?.Identity?.IsAuthenticated == true
-            && Guid.TryParse(claimValue, out currentUserId))
+        if (currentUserAccessor.GetCurrentUserId() is Guid userId)
         {
+            currentUserId = userId;
             error = default!;
             return true;
         }

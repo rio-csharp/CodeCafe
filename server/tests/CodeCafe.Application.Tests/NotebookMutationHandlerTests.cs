@@ -1,12 +1,12 @@
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Application.Notes;
-using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
-using CodeCafe.Application.Notes.Commands.CreateNotebook;
-using CodeCafe.Application.Notes.Commands.DeleteNotebook;
-using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
-using CodeCafe.Application.Notes.Commands.UpdateNotebook;
-using CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
-using CodeCafe.Domain.Notes;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.AddNotebookFavorite;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebook;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.RemoveNotebookFavorite;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookFavoriteStatus;
+using CodeCafe.Modules.Notes.Domain.Notes;
 
 namespace CodeCafe.Application.Tests;
 
@@ -160,10 +160,10 @@ public sealed class NotebookMutationHandlerTests
     {
         public Guid LastNotebookId { get; private set; }
 
-        public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null)
+        public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null, int? offset = null)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null)
+        public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null, int? offset = null)
             => throw new NotSupportedException();
 
         public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(Guid currentUserId, string search, CancellationToken cancellationToken, int? limit = null)
@@ -174,7 +174,8 @@ public sealed class NotebookMutationHandlerTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
             => throw new NotSupportedException();
 
         public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken)
@@ -188,7 +189,8 @@ public sealed class NotebookMutationHandlerTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
         {
             LastNotebookId = notebookId;
             return Task.FromResult(NotesResult<NotebookDetailModel>.Success(
@@ -219,7 +221,8 @@ public sealed class NotebookMutationHandlerTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
             => throw new NotSupportedException();
 
         public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, bool includeContent = true, int? limit = null)

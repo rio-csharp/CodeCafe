@@ -3,7 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Unicode;
 
-namespace CodeCafe.Application.Notes;
+namespace CodeCafe.Modules.Notes.Application.Notes;
 
 public static class TipTapDocumentOperations
 {

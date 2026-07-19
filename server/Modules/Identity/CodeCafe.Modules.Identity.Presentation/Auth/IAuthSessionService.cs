@@ -1,4 +1,4 @@
-namespace CodeCafe.Api.Endpoints.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
 
 public interface IAuthSessionService
 {

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Home, FileText, Code, ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen, X, Menu } from 'lucide-react'
-import logoIcon from '@/shared/assets/codecafe-icon.png'
+import { LogoMark } from '@/shared/ui/icons'
 import { useLogout } from '@/features/authenticate'
 import { useLayout } from '@/shared/model/layoutContext'
 import { useSidebarStore } from '../model/sidebarStore'
@@ -55,7 +55,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className={`pb-4 flex flex-col items-center gap-1 ${isCollapsed ? 'px-2 pt-10' : 'px-6 pt-6'}`}>
         <Link to="/dashboard" className="flex flex-col items-center gap-1">
-          <img src={logoIcon} alt="CodeCafe" className="h-8 w-8" />
+          <LogoMark className="h-8 w-8 text-text-primary" />
           {!isCollapsed && (
             <>
               <span className="text-lg font-bold text-text-primary tracking-tight">CodeCafe</span>
@@ -105,7 +105,7 @@ export default function Sidebar() {
           }`}
           aria-label={t('sidebar.userMenu')}
         >
-          <div className="h-8 w-8 rounded-full bg-brand-brown flex items-center justify-center text-text-inverse text-sm font-medium shrink-0">
+          <div className="h-8 w-8 rounded-full bg-brand-brown-dark dark:bg-brand-brown flex items-center justify-center text-text-inverse text-sm font-medium shrink-0">
             {initial}
           </div>
           {!isCollapsed && (

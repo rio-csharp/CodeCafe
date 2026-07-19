@@ -1,12 +1,11 @@
-using CodeCafe.Ai.Common;
-using CodeCafe.Api.Common;
-using CodeCafe.Api.Configuration;
-using CodeCafe.Api.Errors;
-using CodeCafe.Mcp.Common;
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Mcp.Tools.Diagnostics;
-using CodeCafe.Server.Endpoints.Notes;
-using CodeCafe.Server.Configuration;
+using CodeCafe.Modules.Ai.Common;
+using CodeCafe.Modules.Notes.Presentation.Common;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
+using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Modules.Mcp.Common;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Mcp.Tools.Diagnostics;
+using CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -19,8 +18,14 @@ public static class WebApplicationExtensions
     public static WebApplication UseCodeCafeServerPipeline(this WebApplication app)
     {
         app.UseExceptionHandler();
+        if (app.Environment.IsProduction())
+        {
+            app.UseHsts();
+        }
         app.UseForwardedHeaders();
+        app.UseCodeCafeSecurityHeaders();
         app.UseCodeCafeCors();
+        app.UseResponseCompression();
         app.UseAuthentication();
         app.UseRateLimiter();
         app.UseCodeCafeApiAntiforgery();
@@ -123,6 +128,20 @@ public static class WebApplicationExtensions
         return endpoints;
     }
 
+    private static IApplicationBuilder UseCodeCafeSecurityHeaders(this IApplicationBuilder app)
+    {
+        return app.Use(async (httpContext, next) =>
+        {
+            // Defense-in-depth for any HTML-ish response (error pages, OIDC
+            // flows). Inert for JSON API responses.
+            var headers = httpContext.Response.Headers;
+            headers["X-Content-Type-Options"] = "nosniff";
+            headers["Referrer-Policy"] = "no-referrer";
+            headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+            await next(httpContext);
+        });
+    }
+
     private static IApplicationBuilder UseCodeCafeCors(this WebApplication app)
     {
         var corsOptions = app.Services.GetRequiredService<IOptions<CorsOptions>>().Value;
@@ -134,8 +153,8 @@ public static class WebApplicationExtensions
         app.UseCors(policy =>
         {
             policy.WithOrigins(corsOptions.AllowedOrigins)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
+                .WithHeaders("Content-Type", "X-CSRF-TOKEN", "Authorization")
+                .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .AllowCredentials();
         });
 

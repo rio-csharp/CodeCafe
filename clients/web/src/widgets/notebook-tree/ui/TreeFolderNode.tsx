@@ -31,7 +31,12 @@ function TreeFolderNode({
   children,
 }: TreeFolderNodeProps) {
   const { canEdit, dragState, activePath, onCreateItem, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem } = useTreeContext()
-  const [expanded, setExpanded] = useState(() => hasActiveDescendant(node, activePath))
+  // Folders containing the active page are always expanded (derived), so
+  // navigation/search never lands inside a hidden subtree. A manual toggle
+  // overrides until the next toggle.
+  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null)
+  const expanded = manualExpanded ?? hasActiveDescendant(node, activePath)
+  const setExpanded = (next: boolean) => setManualExpanded(next)
   const { t } = useTranslation()
   const {
     isEditing,
@@ -44,6 +49,7 @@ function TreeFolderNode({
     handleKeyDown,
     startEditing,
     cancelEditing,
+    confirmDialog,
   } = useTreeNodeActions({ node, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem })
 
   const isDragging = dragState?.draggingId === node.item.id
@@ -96,7 +102,7 @@ function TreeFolderNode({
         )}
 
         {canEdit && !isEditing && (
-          <div className="hidden group-hover:flex items-center gap-0.5 shrink-0 ml-1">
+          <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 shrink-0 ml-1">
             {!node.item.isArchived && (
               <TreeCreateMenu onCreateFolder={() => handleCreate('folder')} onCreatePage={() => handleCreate('page')} />
             )}
@@ -125,6 +131,7 @@ function TreeFolderNode({
           )}
         </>
       )}
+      {confirmDialog}
     </div>
   )
 }

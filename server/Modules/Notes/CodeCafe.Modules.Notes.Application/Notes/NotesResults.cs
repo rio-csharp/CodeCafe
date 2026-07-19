@@ -1,4 +1,4 @@
-namespace CodeCafe.Application.Notes;
+namespace CodeCafe.Modules.Notes.Application.Notes;
 
 public enum NotesFailureKind
 {

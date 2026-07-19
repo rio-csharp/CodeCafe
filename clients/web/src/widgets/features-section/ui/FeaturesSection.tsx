@@ -21,7 +21,7 @@ function FeatureCard({ icon, title, description, delay, href }: FeatureCardProps
       <h3 className="mt-5 text-lg font-semibold text-text-primary">{title}</h3>
       <p className="mt-2 text-sm text-text-secondary leading-relaxed">{description}</p>
       {href ? (
-        <span className="mt-4 inline-flex items-center gap-1 rounded-full bg-brand-brown/10 px-3 py-1 text-xs font-medium text-brand-brown">
+        <span className="mt-4 inline-flex items-center gap-1 rounded-full bg-brand-brown/10 px-3 py-1 text-xs font-medium text-brand-brown-text">
           {t('features.tryIt')}
           <ArrowRight className="h-3 w-3" />
         </span>
@@ -34,7 +34,7 @@ function FeatureCard({ icon, title, description, delay, href }: FeatureCardProps
   )
 
   const className =
-    'rounded-2xl border border-border-subtle bg-surface p-8 hover:shadow-md hover:shadow-surface-active transition-shadow duration-300 block'
+    'rounded-2xl border border-border-default bg-surface p-8 hover:shadow-md hover:shadow-surface-active hover:-translate-y-0.5 transition-all duration-300 block'
 
   return (
     <motion.div

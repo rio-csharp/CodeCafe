@@ -18,6 +18,10 @@
     "user": "用户",
     "close": "关闭",
     "closeModal": "关闭弹窗",
+    "cancel": "取消",
+    "confirm": "确认",
+    "loading": "加载中…",
+    "skipToContent": "跳到主要内容",
     "dismissNotification": "关闭通知",
     "dialog": "对话框",
     "copy": "复制",
@@ -76,7 +80,9 @@
     "signInBanner": "登录以构建你自己的笔记本库",
     "signInBannerDesc": "创建私人笔记、通过链接分享，或发布你希望他人物色的笔记本。",
     "signIn": "登录",
-    "visibilityTip": "提示：笔记本可见性在设置中管理，你可以随时在私人、未列出和公开之间切换。"
+    "visibilityTip": "提示：笔记本可见性在设置中管理，你可以随时在私人、未列出和公开之间切换。",
+    "loadMore": "加载更多",
+    "loadingMore": "加载中…"
   },
   "auth": {
     "loginTitle": "欢迎回来",
@@ -229,6 +235,7 @@
     "characters": "字符",
     "words": "词",
     "titleCopied": "标题已复制到剪贴板",
+    "copyTitle": "复制标题",
     "importMarkdown": "导入 Markdown",
     "importMarkdownTitle": "导入 Markdown 文件",
     "importMarkdownDescription": "上传 Markdown 文件(.md 或 .markdown),内容将转换为笔记本中的新页面。",
@@ -275,6 +282,9 @@
   "editor": {
     "cancelEditing": "取消编辑",
     "savePage": "保存页面",
+    "placeholder": "开始写点什么 …",
+    "unsavedChanges": "有未保存的更改",
+    "discardChangesTitle": "丢弃未保存的更改？",
     "toolbar": {
       "heading1": "一级标题",
       "heading2": "二级标题",
@@ -286,7 +296,11 @@
       "strikethrough": "删除线",
       "subscript": "下标",
       "superscript": "上标",
-      "fontFamily": "字体",
+            "fontFamily": "字体",
+      "fontDefault": "默认",
+      "fontSerif": "衬线",
+      "fontSans": "无衬线",
+      "fontMono": "等宽",
       "alignLeft": "左对齐",
       "alignCenter": "居中对齐",
       "alignRight": "右对齐",
@@ -317,7 +331,8 @@
     "prompt": {
       "url": "URL",
       "imageUrl": "图片 URL",
-      "youtubeUrl": "YouTube URL"
+      "youtubeUrl": "YouTube URL",
+      "invalidUrl": "请输入有效的 URL"
     }
   },
   "layout": {
@@ -411,12 +426,16 @@
   },
   "about": {
     "title": "关于",
-    "comingSoon": "即将推出",
+    "tagline": "面向工程师的开源笔记本工作区 —— 在浏览器中书写，按需分享，并把同一套笔记本连接到 MCP 客户端。",
     "features": "功能",
     "featureNotebooks": "笔记本",
+    "featureNotebooksDesc": "支持文件夹、页面、富文本、搜索与收藏的结构化笔记本。",
     "featureSharing": "分享",
+    "featureSharingDesc": "保持私密、通过链接分享，或公开发布你的笔记本。",
     "featureMcp": "MCP",
+    "featureMcpDesc": "受 OAuth 保护的 MCP 工具、资源与提示词，供 AI 客户端使用。",
     "featureCodes": "代码",
+    "featureCodesDesc": "专注代码阅读的工作区，正在规划中。",
     "statusAvailable": "可用",
     "statusPlanned": "计划中",
     "techStack": "技术栈"
@@ -432,7 +451,14 @@
   },
   "errors": {
     "generic": "出了点问题",
-    "csrfFailed": "获取 CSRF token 失败"
+    "csrfFailed": "获取 CSRF token 失败",
+    "invalid_credentials": "邮箱或密码不正确。",
+    "invalid_csrf_token": "会话已过期，请重试。",
+    "invalid_slug": "该 URL 别名不可用。",
+    "invalid_notebook_slug": "该 URL 别名不可用。",
+    "invalid_title": "请检查标题后重试。",
+    "invalid_tiptap_document": "页面内容无效。",
+    "invalid_prompt": "请检查输入后重试。",
+    "rate_limited": "请求过于频繁，请稍后重试。"
   }
 }
-

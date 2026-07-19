@@ -23,6 +23,8 @@ spec:
         app.kubernetes.io/component: api
     spec:
       terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
+      # The app never calls the Kubernetes API — don't mount a SA token.
+      automountServiceAccountToken: false
       {{- with .Values.api.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}

@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Application\CodeCafe.Shared.Application.csproj" />
     <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Domain\CodeCafe.Shared.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Infrastructure\CodeCafe.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Identity\CodeCafe.Modules.Identity.Application\CodeCafe.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\Identity\CodeCafe.Modules.Identity.Infrastructure\CodeCafe.Modules.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Mcp\CodeCafe.Modules.Mcp.Domain\CodeCafe.Modules.Mcp.Domain.csproj" />
@@ -11,12 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.8" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.8">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
     <PackageReference Include="OpenIddict.EntityFrameworkCore" Version="7.5.0" />

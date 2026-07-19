@@ -1,5 +1,5 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Application.Notes.Queries.GetNotebookItems;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItems;
 
 namespace CodeCafe.Application.Tests;
 
@@ -98,10 +98,10 @@ public sealed class GetNotebookItemsQueryHandlerTests
 
         public bool? LastIncludeContent { get; private set; }
 
-        public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null)
+        public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null, int? offset = null)
             => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null)
+        public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null, int? offset = null)
             => throw new NotSupportedException();
 
         public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(Guid currentUserId, string search, CancellationToken cancellationToken, int? limit = null)
@@ -112,7 +112,8 @@ public sealed class GetNotebookItemsQueryHandlerTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
             => throw new NotSupportedException();
 
         public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken)
@@ -126,7 +127,8 @@ public sealed class GetNotebookItemsQueryHandlerTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
             => Task.FromResult(NotebookByIdResult);
 
         public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
@@ -134,7 +136,8 @@ public sealed class GetNotebookItemsQueryHandlerTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
             => throw new NotSupportedException();
 
         public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, bool includeContent = true, int? limit = null)

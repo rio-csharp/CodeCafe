@@ -1,4 +1,4 @@
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
 using System.Text.Json;
 using Xunit;
 

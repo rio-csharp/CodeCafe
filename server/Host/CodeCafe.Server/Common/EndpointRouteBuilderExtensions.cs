@@ -1,8 +1,8 @@
-using CodeCafe.Api.Endpoints.Auth;
-using CodeCafe.Api.Endpoints.Health;
-using CodeCafe.Api.Endpoints.Notes;
+using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
+using CodeCafe.Server.Endpoints.Health;
+using CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
-namespace CodeCafe.Api.Common;
+namespace CodeCafe.Server.Common;
 
 public static class EndpointRouteBuilderExtensions
 {

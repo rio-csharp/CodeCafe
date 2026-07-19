@@ -2,7 +2,7 @@ using MediatR;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
-namespace CodeCafe.Application.Behaviors;
+namespace CodeCafe.Shared.Application.Behaviors;
 
 public sealed class LoggingBehavior<TRequest, TResponse>(
     ILogger<LoggingBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>

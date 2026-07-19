@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
+namespace CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookFavoriteStatus;
 
 public sealed class GetNotebookFavoriteStatusQueryHandler(
     INotebookMutationStore notebookMutationStore)

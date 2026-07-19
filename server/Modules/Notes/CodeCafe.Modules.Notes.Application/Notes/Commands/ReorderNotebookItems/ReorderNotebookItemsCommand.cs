@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Commands.ReorderNotebookItems;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.ReorderNotebookItems;
 
 public sealed record ReorderNotebookItemsCommand(
     Guid NotebookId,

@@ -1,17 +1,17 @@
-using CodeCafe.Api.Configuration;
-using CodeCafe.Api.Errors;
-using CodeCafe.Api.Networking;
-using CodeCafe.Application.Auth;
-using CodeCafe.Application.Auth.Commands.AuthenticateUser;
-using CodeCafe.Application.Auth.Commands.RegisterUser;
-using CodeCafe.Application.Auth.Queries.GetCurrentUser;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
+using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Modules.Identity.Presentation.Networking;
+using CodeCafe.Modules.Identity.Application.Auth;
+using CodeCafe.Modules.Identity.Application.Auth.Commands.AuthenticateUser;
+using CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
+using CodeCafe.Modules.Identity.Application.Auth.Queries.GetCurrentUser;
+using CodeCafe.Shared.Application.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using System.Security.Claims;
 
-namespace CodeCafe.Api.Endpoints.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
 
 public static class AuthEndpoints
 {
@@ -124,10 +124,10 @@ public static class AuthEndpoints
 
     private static async Task<IResult> MeAsync(
         [FromServices] ISender sender,
-        HttpContext httpContext,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         CancellationToken cancellationToken)
     {
-        var currentUserId = GetCurrentUserId(httpContext.User);
+        var currentUserId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         var result = await sender.Send(new GetCurrentUserQuery(currentUserId), cancellationToken);
         return ToResult(result);
     }
@@ -161,15 +161,5 @@ public static class AuthEndpoints
     private static UserResponse ToUserResponse(AuthUserModel user)
     {
         return new UserResponse(user.Id, user.Email, user.DisplayName);
-    }
-
-    private static Guid GetCurrentUserId(ClaimsPrincipal user)
-    {
-        var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user.FindFirstValue("sub");
-
-        return Guid.TryParse(claimValue, out var userId)
-            ? userId
-            : Guid.Empty;
     }
 }

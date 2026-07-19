@@ -1,15 +1,17 @@
-using CodeCafe.Api.Errors;
-using CodeCafe.Application.Notes;
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Shared.Application.Configuration;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
-using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace CodeCafe.Server.Endpoints.Notes;
+namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
 public static class NotesMarkdownImportEndpoints
 {
@@ -32,13 +34,13 @@ public static class NotesMarkdownImportEndpoints
     }
 
     private static async Task<IResult> UploadMarkdownAsync(
-        HttpContext httpContext,
         HttpRequest request,
+        ICurrentUserAccessor currentUserAccessor,
         IMcpUploadStore uploadStore,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "The Notes API requires an authenticated CodeCafe user.", StatusCodes.Status401Unauthorized);
@@ -130,11 +132,11 @@ public static class NotesMarkdownImportEndpoints
 
     private static async Task<IResult> DeleteUploadAsync(
         string uploadId,
-        HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         IMcpUploadStore uploadStore,
         CancellationToken cancellationToken)
     {
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "The Notes API requires an authenticated CodeCafe user.", StatusCodes.Status401Unauthorized);
@@ -147,13 +149,13 @@ public static class NotesMarkdownImportEndpoints
     private static async Task<IResult> ImportMarkdownPageAsync(
         string notebookSlug,
         CreateMarkdownPageImportRequest request,
-        HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
-        INotebookItemMutationService notebookItemMutationService,
+        ISender sender,
         IMcpContentImportService contentImportService,
         CancellationToken cancellationToken)
     {
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "The Notes API requires an authenticated CodeCafe user.", StatusCodes.Status401Unauthorized);
@@ -200,14 +202,15 @@ public static class NotesMarkdownImportEndpoints
             return ToNotesError(sizeResult.Error!);
         }
 
-        var createResult = await notebookItemMutationService.CreateNotebookItemAsync(
-            notebookResult.Value!.Id,
-            actorId,
-            parentResult.Value?.Id,
-            "page",
-            request.Title,
-            sortOrder: 0,
-            contentResult.Value,
+        var createResult = await sender.Send(
+            new CreateNotebookItemCommand(
+                notebookResult.Value!.Id,
+                actorId,
+                parentResult.Value?.Id,
+                "page",
+                request.Title,
+                0,
+                contentResult.Value),
             cancellationToken);
         if (!createResult.Succeeded)
         {
@@ -224,9 +227,9 @@ public static class NotesMarkdownImportEndpoints
         string notebookSlug,
         string pathAndAction,
         UpdateMarkdownPageImportRequest request,
-        HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
-        INotebookItemMutationService notebookItemMutationService,
+        ISender sender,
         IMcpContentImportService contentImportService,
         CancellationToken cancellationToken)
     {
@@ -235,7 +238,7 @@ public static class NotesMarkdownImportEndpoints
             return Results.NotFound();
         }
 
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "The Notes API requires an authenticated CodeCafe user.", StatusCodes.Status401Unauthorized);
@@ -271,14 +274,15 @@ public static class NotesMarkdownImportEndpoints
             return ToNotesError(sizeResult.Error!);
         }
 
-        var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
-            pageResult.Value!.NotebookId,
-            pageResult.Value.Id,
-            actorId,
-            pageResult.Value.Title,
-            default,
-            sortOrder: null,
-            contentResult.Value,
+        var updateResult = await sender.Send(
+            new UpdateNotebookItemCommand(
+                pageResult.Value!.NotebookId,
+                pageResult.Value.Id,
+                actorId,
+                pageResult.Value.Title,
+                default,
+                null,
+                contentResult.Value),
             cancellationToken);
         if (!updateResult.Succeeded)
         {
@@ -294,9 +298,9 @@ public static class NotesMarkdownImportEndpoints
         string notebookSlug,
         string pathAndAction,
         UpdateMarkdownPageImportRequest request,
-        HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
-        INotebookItemMutationService notebookItemMutationService,
+        ISender sender,
         IMcpContentImportService contentImportService,
         CancellationToken cancellationToken)
     {
@@ -305,7 +309,7 @@ public static class NotesMarkdownImportEndpoints
             return Results.NotFound();
         }
 
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "The Notes API requires an authenticated CodeCafe user.", StatusCodes.Status401Unauthorized);
@@ -351,14 +355,15 @@ public static class NotesMarkdownImportEndpoints
             return ToNotesError(sizeResult.Error!);
         }
 
-        var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
-            pageResult.Value.NotebookId,
-            pageResult.Value.Id,
-            actorId,
-            pageResult.Value.Title,
-            default,
-            sortOrder: null,
-            nextContentJson,
+        var updateResult = await sender.Send(
+            new UpdateNotebookItemCommand(
+                pageResult.Value.NotebookId,
+                pageResult.Value.Id,
+                actorId,
+                pageResult.Value.Title,
+                default,
+                null,
+                nextContentJson),
             cancellationToken);
         if (!updateResult.Succeeded)
         {
@@ -568,15 +573,6 @@ public static class NotesMarkdownImportEndpoints
     {
         var extension = Path.GetExtension(fileName);
         return SupportedMarkdownExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static Guid GetCurrentUserId(ClaimsPrincipal user)
-    {
-        var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user.FindFirstValue("sub");
-        return Guid.TryParse(claimValue, out var userId)
-            ? userId
-            : Guid.Empty;
     }
 
     private static IResult ToNotesError(NotesError error)

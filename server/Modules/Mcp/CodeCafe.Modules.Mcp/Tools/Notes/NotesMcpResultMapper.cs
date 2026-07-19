@@ -1,8 +1,8 @@
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
 using ModelContextProtocol.Protocol;
 using System.Text.Json;
 
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 public static class NotesMcpResultMapper
 {

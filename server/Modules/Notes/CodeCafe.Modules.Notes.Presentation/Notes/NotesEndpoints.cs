@@ -1,4 +1,4 @@
-namespace CodeCafe.Api.Endpoints.Notes;
+namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
 public static partial class NotesEndpoints
 {

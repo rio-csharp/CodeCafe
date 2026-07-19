@@ -1,7 +1,7 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
-using CodeCafe.Application.Common.Interfaces;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Interfaces;
 
-namespace CodeCafe.Application.Notes.Commands.UpdateNotebook;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
 
 public sealed class UpdateNotebookCommandHandler(
     INotebookMutationStore notebookMutationStore,

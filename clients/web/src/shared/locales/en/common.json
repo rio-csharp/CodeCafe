@@ -18,6 +18,10 @@
     "user": "User",
     "close": "Close",
     "closeModal": "Close modal",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "loading": "Loading…",
+    "skipToContent": "Skip to main content",
     "dismissNotification": "Dismiss notification",
     "dialog": "Dialog",
     "copy": "Copy",
@@ -76,7 +80,9 @@
     "signInBanner": "Sign in to build your own notebook library",
     "signInBannerDesc": "Create private notes, share by link, or publish the notebooks you want others to discover.",
     "signIn": "Sign in",
-    "visibilityTip": "Tip: Notebook visibility lives in settings, so you can switch between private, unlisted, and public later."
+    "visibilityTip": "Tip: Notebook visibility lives in settings, so you can switch between private, unlisted, and public later.",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…"
   },
   "auth": {
     "loginTitle": "Welcome back",
@@ -229,6 +235,7 @@
     "characters": "characters",
     "words": "words",
     "titleCopied": "Title copied to clipboard",
+    "copyTitle": "Copy title",
     "importMarkdown": "Import Markdown",
     "importMarkdownTitle": "Import Markdown file",
     "importMarkdownDescription": "Upload a Markdown file (.md or .markdown). The contents will be converted into a new page in this notebook.",
@@ -275,6 +282,9 @@
   "editor": {
     "cancelEditing": "Cancel editing",
     "savePage": "Save page",
+    "placeholder": "Start writing something …",
+    "unsavedChanges": "Unsaved changes",
+    "discardChangesTitle": "Discard unsaved changes?",
     "toolbar": {
       "heading1": "Heading 1",
       "heading2": "Heading 2",
@@ -286,7 +296,11 @@
       "strikethrough": "Strikethrough",
       "subscript": "Subscript",
       "superscript": "Superscript",
-      "fontFamily": "Font family",
+            "fontFamily": "Font family",
+      "fontDefault": "Default",
+      "fontSerif": "Serif",
+      "fontSans": "Sans Serif",
+      "fontMono": "Monospace",
       "alignLeft": "Align left",
       "alignCenter": "Align center",
       "alignRight": "Align right",
@@ -317,7 +331,8 @@
     "prompt": {
       "url": "URL",
       "imageUrl": "Image URL",
-      "youtubeUrl": "YouTube URL"
+      "youtubeUrl": "YouTube URL",
+      "invalidUrl": "Please enter a valid URL"
     }
   },
   "layout": {
@@ -411,12 +426,16 @@
   },
   "about": {
     "title": "About",
-    "comingSoon": "Coming soon",
+    "tagline": "An open-source notebook workspace for engineers — write in the browser, share what you choose, and connect the same notebooks to MCP clients.",
     "features": "Features",
     "featureNotebooks": "Notebooks",
+    "featureNotebooksDesc": "Structured notebooks with folders, pages, rich text, search, and favorites.",
     "featureSharing": "Sharing",
+    "featureSharingDesc": "Keep notebooks private, share them by link, or publish them for everyone.",
     "featureMcp": "MCP",
+    "featureMcpDesc": "OAuth-protected MCP tools, resources, and prompts for AI clients.",
     "featureCodes": "Codes",
+    "featureCodesDesc": "A dedicated code-reading workspace is planned next.",
     "statusAvailable": "Available",
     "statusPlanned": "Planned",
     "techStack": "Tech Stack"
@@ -432,6 +451,14 @@
   },
   "errors": {
     "generic": "Something went wrong",
-    "csrfFailed": "Failed to fetch CSRF token"
+    "csrfFailed": "Failed to fetch CSRF token",
+    "invalid_credentials": "Incorrect email or password.",
+    "invalid_csrf_token": "Your session expired. Please try again.",
+    "invalid_slug": "That URL slug is not available.",
+    "invalid_notebook_slug": "That URL slug is not available.",
+    "invalid_title": "Please check the title and try again.",
+    "invalid_tiptap_document": "The page content is invalid.",
+    "invalid_prompt": "Please check your input and try again.",
+    "rate_limited": "Too many requests. Please try again later."
   }
 }

@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Shared\CodeCafe.Shared.Application\CodeCafe.Shared.Application.csproj" />
     <ProjectReference Include="..\..\Shared\CodeCafe.Shared.Domain\CodeCafe.Shared.Domain.csproj" />
+    <ProjectReference Include="..\..\Shared\CodeCafe.Shared.Infrastructure\CodeCafe.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Ai\CodeCafe.Modules.Ai\CodeCafe.Modules.Ai.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\CodeCafe.Modules.Identity.Application\CodeCafe.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\CodeCafe.Modules.Identity.Infrastructure\CodeCafe.Modules.Identity.Infrastructure.csproj" />

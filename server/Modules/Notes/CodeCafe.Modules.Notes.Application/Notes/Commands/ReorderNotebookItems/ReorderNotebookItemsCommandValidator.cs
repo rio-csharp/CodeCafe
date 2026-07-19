@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace CodeCafe.Application.Notes.Commands.ReorderNotebookItems;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.ReorderNotebookItems;
 
 public sealed class ReorderNotebookItemsCommandValidator : AbstractValidator<ReorderNotebookItemsCommand>
 {

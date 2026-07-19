@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.Json;
 
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 internal static class NotesMcpContentFormatter
 {

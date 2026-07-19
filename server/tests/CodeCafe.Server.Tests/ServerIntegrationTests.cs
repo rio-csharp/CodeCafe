@@ -1,7 +1,7 @@
-using CodeCafe.Ai.Drafts;
-using CodeCafe.Ai.Edits;
-using CodeCafe.Application.Notes;
-using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Modules.Ai.Drafts;
+using CodeCafe.Modules.Ai.Edits;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -1058,6 +1058,34 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("updatedAtUtc").GetString()));
         var firstNode = document.RootElement.GetProperty("contentJson").GetProperty("content").EnumerateArray().First();
         Assert.Equal("heading", firstNode.GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task CombinedHost_MarkdownImportRejectsTitleLongerThan160Characters()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        var csrf = await GetCsrfTokenAsync(client);
+        var uploadId = await UploadMarkdownAsync(client, csrf, "# Imported title\n\nImported body");
+
+        using var createResponse = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/notes/notebooks/architecture-notes/pages/import-markdown",
+            new
+            {
+                title = new string('a', 161),
+                uploadId,
+                includeContent = false
+            });
+
+        Assert.Equal(HttpStatusCode.BadRequest, createResponse.StatusCode);
+        using var document = JsonDocument.Parse(await createResponse.Content.ReadAsStringAsync());
+        Assert.Equal("validation_error", document.RootElement.GetProperty("code").GetString());
     }
 
     [Fact]

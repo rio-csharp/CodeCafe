@@ -1,7 +1,7 @@
-using CodeCafe.Domain.Common.Interfaces;
+using CodeCafe.Shared.Domain.Common.Interfaces;
 using Microsoft.AspNetCore.Identity;
 
-namespace CodeCafe.Infrastructure.Identity;
+namespace CodeCafe.Modules.Identity.Infrastructure.Identity;
 
 public sealed class ApplicationUser : IdentityUser<Guid>, IAuditableEntity
 {

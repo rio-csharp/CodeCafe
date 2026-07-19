@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace CodeCafe.Application.Auth.Commands.AuthenticateUser;
+namespace CodeCafe.Modules.Identity.Application.Auth.Commands.AuthenticateUser;
 
 public sealed class AuthenticateUserCommandValidator : AbstractValidator<AuthenticateUserCommand>
 {

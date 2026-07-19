@@ -29,3 +29,10 @@ EOF
 if ! grep -q '/config.js' /usr/share/nginx/html/index.html; then
   sed -i 's#<script type="module"#<script src="/config.js"></script><script type="module"#' /usr/share/nginx/html/index.html
 fi
+
+# Fail loudly if the injection anchor is missing — a silent miss would ship a
+# frontend pointing at the fallback API URL with no config at all.
+if ! grep -q '/config.js' /usr/share/nginx/html/index.html; then
+  echo "ERROR: could not inject /config.js into index.html (anchor not found)." >&2
+  exit 1
+fi

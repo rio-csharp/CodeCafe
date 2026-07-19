@@ -23,10 +23,12 @@ import { lowlight } from './lowlight'
 
 export interface TipTapExtensionOptions {
   editable?: boolean
+  /** Localized placeholder text for the empty editor. */
+  placeholder?: string
 }
 
 export function createTipTapExtensions(options: TipTapExtensionOptions = {}) {
-  const { editable = true } = options
+  const { editable = true, placeholder } = options
 
   return [
     StarterKit.configure({ codeBlock: false, link: false, underline: false }),
@@ -49,7 +51,7 @@ export function createTipTapExtensions(options: TipTapExtensionOptions = {}) {
     TableHeader,
     TableCell,
     ...(editable
-      ? [Placeholder.configure({ placeholder: 'Start writing something …' }), CharacterCount]
+      ? [Placeholder.configure({ placeholder: placeholder ?? 'Start writing something …' }), CharacterCount]
       : [CharacterCount]),
   ]
 }

@@ -18,7 +18,7 @@ export function Button({
   const base = 'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
 
   const variants = {
-    primary: 'bg-brand-brown text-text-inverse hover:opacity-90',
+    primary: 'bg-brand-brown-dark dark:bg-brand-brown text-text-inverse hover:opacity-90',
     secondary: 'border border-border-default bg-surface text-text-secondary hover:bg-surface-hover',
     danger: 'bg-status-error text-text-inverse hover:bg-status-error-hover',
     ghost: 'text-text-tertiary hover:text-text-primary hover:bg-surface-hover',

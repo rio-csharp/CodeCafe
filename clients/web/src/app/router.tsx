@@ -1,6 +1,5 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
 import PageTransition from '@/shared/ui/PageTransition'
 import { ProtectedRoute, AuthRedirect } from '@/features/authenticate'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
@@ -44,8 +43,7 @@ export function AppRouter() {
   const routeKey = useRouteKey()
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={routeKey}>
+    <Routes location={location} key={routeKey}>
         <Route
           path="/"
           element={
@@ -144,6 +142,5 @@ export function AppRouter() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </AnimatePresence>
   )
 }

@@ -1,8 +1,8 @@
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
 using System.Text;
 using System.Text.Json;
 
-namespace CodeCafe.Infrastructure.Notes;
+namespace CodeCafe.Modules.Notes.Infrastructure.Notes;
 
 public sealed class TipTapPlainTextExtractor : ITipTapPlainTextExtractor
 {
@@ -27,46 +27,56 @@ public sealed class TipTapPlainTextExtractor : ITipTapPlainTextExtractor
             return;
         }
 
-        if (node.TryGetProperty("type", out var typeElement)
-            && typeElement.ValueKind == JsonValueKind.String)
-        {
-            var type = typeElement.GetString();
-            if (string.Equals(type, "text", StringComparison.Ordinal)
-                && node.TryGetProperty("text", out var textElement)
-                && textElement.ValueKind == JsonValueKind.String)
-            {
-                builder.Append(textElement.GetString());
-            }
-            else if (string.Equals(type, "image", StringComparison.Ordinal))
-            {
-                builder.Append("[Image]");
-            }
-            else if (string.Equals(type, "youtube", StringComparison.Ordinal))
-            {
-                builder.Append("[Video]");
-            }
-            else if (string.Equals(type, "hardBreak", StringComparison.Ordinal))
-            {
-                builder.AppendLine();
-            }
-        }
+        AppendSelfText(node, builder);
 
         if (node.TryGetProperty("content", out var contentElement)
             && contentElement.ValueKind == JsonValueKind.Array)
         {
-            var childNodes = contentElement.EnumerateArray().ToArray();
-            for (var index = 0; index < childNodes.Length; index++)
+            var childCount = contentElement.GetArrayLength();
+            var index = 0;
+            foreach (var child in contentElement.EnumerateArray())
             {
-                AppendNodeText(childNodes[index], builder);
-                if (ShouldAppendSeparator(childNodes[index], index, childNodes.Length))
+                AppendNodeText(child, builder);
+                if (ShouldAppendSeparator(child, index, childCount))
                 {
                     builder.AppendLine();
                 }
+
+                index++;
             }
         }
     }
 
-    private static bool ShouldAppendSeparator(JsonElement node, int index, int totalCount)
+    internal static void AppendSelfText(JsonElement node, StringBuilder builder)
+    {
+        if (!node.TryGetProperty("type", out var typeElement)
+            || typeElement.ValueKind != JsonValueKind.String)
+        {
+            return;
+        }
+
+        var type = typeElement.GetString();
+        if (string.Equals(type, "text", StringComparison.Ordinal)
+            && node.TryGetProperty("text", out var textElement)
+            && textElement.ValueKind == JsonValueKind.String)
+        {
+            builder.Append(textElement.GetString());
+        }
+        else if (string.Equals(type, "image", StringComparison.Ordinal))
+        {
+            builder.Append("[Image]");
+        }
+        else if (string.Equals(type, "youtube", StringComparison.Ordinal))
+        {
+            builder.Append("[Video]");
+        }
+        else if (string.Equals(type, "hardBreak", StringComparison.Ordinal))
+        {
+            builder.AppendLine();
+        }
+    }
+
+    internal static bool ShouldAppendSeparator(JsonElement node, int index, int totalCount)
     {
         if (index == totalCount - 1)
         {

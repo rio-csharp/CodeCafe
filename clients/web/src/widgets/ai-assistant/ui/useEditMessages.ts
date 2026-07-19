@@ -57,11 +57,25 @@ function createThreadStore(threadKey: string) {
 
 const stores = new Map<string, ReturnType<typeof createThreadStore>>()
 
+// Cap resident stores; eviction is safe because every mutation is already
+// persisted to localStorage, so a recreated store reloads from disk.
+const MAX_RESIDENT_STORES = 20
+
 function getStore(threadKey: string) {
   let store = stores.get(threadKey)
   if (!store) {
     store = createThreadStore(threadKey)
     stores.set(threadKey, store)
+    if (stores.size > MAX_RESIDENT_STORES) {
+      // Map iteration order is insertion order — evict the oldest entry
+      // that isn't the one just accessed.
+      for (const key of stores.keys()) {
+        if (key !== threadKey) {
+          stores.delete(key)
+          break
+        }
+      }
+    }
   }
   return store
 }

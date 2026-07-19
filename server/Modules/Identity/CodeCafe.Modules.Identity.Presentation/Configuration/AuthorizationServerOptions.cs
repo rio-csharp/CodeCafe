@@ -1,4 +1,4 @@
-namespace CodeCafe.Server.Configuration;
+namespace CodeCafe.Modules.Identity.Presentation.Configuration;
 
 public sealed class AuthorizationServerOptions
 {

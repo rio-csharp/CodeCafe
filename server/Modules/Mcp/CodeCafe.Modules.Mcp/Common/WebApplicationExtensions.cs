@@ -1,8 +1,8 @@
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Mcp.Tools.Diagnostics;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Mcp.Tools.Diagnostics;
 using Microsoft.Extensions.Options;
 
-namespace CodeCafe.Mcp.Common;
+namespace CodeCafe.Modules.Mcp.Common;
 
 public static class WebApplicationExtensions
 {

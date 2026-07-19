@@ -8,7 +8,7 @@ interface MessageBubbleProps {
 export function MessageBubble({ role, text }: MessageBubbleProps) {
   const isUser = role === 'user'
   const assistantMarkdownClassName =
-    'text-inherit prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-em:text-inherit prose-li:text-inherit prose-ol:text-inherit prose-ul:text-inherit prose-blockquote:text-inherit prose-code:text-inherit prose-a:text-brand-brown'
+    'text-inherit prose-headings:text-inherit prose-p:text-inherit prose-strong:text-inherit prose-em:text-inherit prose-li:text-inherit prose-ol:text-inherit prose-ul:text-inherit prose-blockquote:text-inherit prose-code:text-inherit prose-a:text-brand-brown-text'
 
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>

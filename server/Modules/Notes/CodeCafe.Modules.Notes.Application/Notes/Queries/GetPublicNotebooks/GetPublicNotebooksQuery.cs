@@ -1,7 +1,9 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Queries.GetPublicNotebooks;
+namespace CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebooks;
 
 public sealed record GetPublicNotebooksQuery(
     string? Search,
-    Guid CurrentUserId) : IQuery<IReadOnlyList<NotebookSummaryModel>>;
+    Guid CurrentUserId,
+    int? Limit = null,
+    int? Offset = null) : IQuery<IReadOnlyList<NotebookSummaryModel>>;

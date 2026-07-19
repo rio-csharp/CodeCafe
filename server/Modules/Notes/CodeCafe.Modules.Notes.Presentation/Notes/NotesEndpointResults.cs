@@ -1,8 +1,7 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Api.Errors;
-using System.Security.Claims;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Presentation.Errors;
 
-namespace CodeCafe.Api.Endpoints.Notes;
+namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
 public static partial class NotesEndpoints
 {
@@ -75,15 +74,5 @@ public static partial class NotesEndpoints
             error.Code,
             error.Message,
             ToStatusCode(error.Kind)));
-    }
-
-    private static Guid GetCurrentUserId(ClaimsPrincipal user)
-    {
-        var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user.FindFirstValue("sub");
-
-        return Guid.TryParse(claimValue, out var userId)
-            ? userId
-            : Guid.Empty;
     }
 }

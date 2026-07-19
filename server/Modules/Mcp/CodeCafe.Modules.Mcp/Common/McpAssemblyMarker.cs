@@ -1,3 +1,3 @@
-namespace CodeCafe.Mcp.Common;
+namespace CodeCafe.Modules.Mcp.Common;
 
 public sealed class McpAssemblyMarker;

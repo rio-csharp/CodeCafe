@@ -1,7 +1,7 @@
-using CodeCafe.Ai.DependencyInjection;
-using CodeCafe.Api.DependencyInjection;
-using CodeCafe.Infrastructure;
-using CodeCafe.Mcp.DependencyInjection;
+using CodeCafe.Modules.Ai.DependencyInjection;
+using CodeCafe.Modules.Identity.Presentation.DependencyInjection;
+using CodeCafe.Modules.Notes.Infrastructure;
+using CodeCafe.Modules.Mcp.DependencyInjection;
 using CodeCafe.Modules.Identity.Application;
 using CodeCafe.Modules.Notes.Application;
 using CodeCafe.Server.Common;
@@ -12,8 +12,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddIdentityApplication();
 builder.Services.AddNotesApplication();
-builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
-builder.Services.AddCodeCafeApi();
+builder.Services.AddNotesInfrastructure(builder.Configuration, builder.Environment);
+builder.Services.AddIdentityPresentation();
 builder.Services.AddCodeCafeAi(builder.Configuration);
 builder.Services.AddCodeCafeMcp(builder.Configuration);
 builder.Services.AddCodeCafeServerHost(builder.Configuration, builder.Environment);

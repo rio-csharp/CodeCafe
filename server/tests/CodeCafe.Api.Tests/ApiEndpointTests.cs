@@ -172,13 +172,27 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync("/api/notes/public/architecture-notes");
+        using var response = await client.GetAsync("/api/notes/public/architecture-notes?includeItems=true");
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("architecture-notes", document.RootElement.GetProperty("slug").GetString());
         Assert.Equal("Refactor plan", document.RootElement.GetProperty("description").GetString());
         Assert.NotEmpty(document.RootElement.GetProperty("items").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task PublicNotebookDetail_ByDefault_ReturnsMetadataOnlyPayload()
+    {
+        using var client = _factory.CreateClient();
+
+        using var response = await client.GetAsync("/api/notes/public/architecture-notes");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("architecture-notes", document.RootElement.GetProperty("slug").GetString());
+        Assert.Equal(2, document.RootElement.GetProperty("itemCount").GetInt32());
+        Assert.Empty(document.RootElement.GetProperty("items").EnumerateArray());
     }
 
     [Fact]

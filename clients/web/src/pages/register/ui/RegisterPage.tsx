@@ -4,6 +4,7 @@ import AuthLayout from '@/widgets/auth-layout'
 import { PasswordInput } from '@/widgets/auth-form'
 import GitHubIcon from '@/shared/ui/icons/GitHubIcon'
 import { useRegisterForm, completePostAuthRedirect } from '@/features/authenticate'
+import { getDisplayErrorMessage } from '@/shared/lib/errorUtils'
 import { useTranslation } from 'react-i18next'
 
 export default function RegisterPage() {
@@ -31,7 +32,7 @@ export default function RegisterPage() {
       footer={
         <p className="text-sm text-text-secondary">
           {t('auth.hasAccount')}{' '}
-          <Link to={`/login${location.search}`} className="text-brand-brown hover:underline">
+          <Link to={`/login${location.search}`} className="text-brand-brown-text hover:underline">
             {t('auth.loginLink')}
           </Link>
         </p>
@@ -40,17 +41,18 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {isError && (
           <p className="text-sm text-status-error text-center">
-            {error instanceof Error ? error.message : t('auth.registerError')}
+            {getDisplayErrorMessage(error, t, t('auth.registerError'))}
           </p>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
+          <label htmlFor="register-display-name" className="block text-sm font-medium text-text-primary mb-2">
             {t('auth.displayName')}
           </label>
           <div className="relative">
             <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-tertiary" />
             <input
+              id="register-display-name"
               type="text"
               placeholder={t('auth.displayNamePlaceholder')}
               data-testid="register-display-name"
@@ -68,12 +70,13 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
+          <label htmlFor="register-email" className="block text-sm font-medium text-text-primary mb-2">
             {t('auth.email')}
           </label>
           <div className="relative">
             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-text-tertiary" />
             <input
+              id="register-email"
               type="email"
               placeholder={t('auth.emailPlaceholder')}
               data-testid="register-email"
@@ -89,10 +92,11 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-2">
+          <label htmlFor="register-password" className="block text-sm font-medium text-text-primary mb-2">
             {t('auth.password')}
           </label>
           <PasswordInput
+            id="register-password"
             placeholder={t('auth.passwordPlaceholder')}
             data-testid="register-password"
             error={errors.password?.message}

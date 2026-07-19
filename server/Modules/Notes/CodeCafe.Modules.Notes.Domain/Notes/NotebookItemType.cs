@@ -1,4 +1,4 @@
-namespace CodeCafe.Domain.Notes;
+namespace CodeCafe.Modules.Notes.Domain.Notes;
 
 public enum NotebookItemType
 {

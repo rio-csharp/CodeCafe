@@ -24,7 +24,7 @@ export default function NotebookEditorActions({ onSave, onCancel, isSaving }: No
         type="button"
         onClick={onSave}
         disabled={isSaving}
-        className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-4 py-2 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-4 py-2 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
       >
         <Check className="h-4 w-4" />
         {isSaving ? t('notebook.saving') : t('notebook.save')}

@@ -1,4 +1,4 @@
-using CodeCafe.Application.Behaviors;
+using CodeCafe.Shared.Application.Behaviors;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 

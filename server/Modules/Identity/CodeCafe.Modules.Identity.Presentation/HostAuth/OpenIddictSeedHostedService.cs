@@ -1,9 +1,9 @@
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Server.Configuration;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 
-namespace CodeCafe.Server.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Auth;
 
 public sealed class OpenIddictSeedHostedService(
     IServiceScopeFactory serviceScopeFactory,

@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Infrastructure.Notes;
-using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Modules.Notes.Infrastructure.Notes;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,7 +38,7 @@ internal sealed class NotesDbHarness : IDisposable
     public NotebookReadService CreateReadService(ApplicationDbContext context) => new(context);
 
     public NotebookItemMutationService CreateMutationService(ApplicationDbContext context) =>
-        new(context, DateTimeProvider, new TipTapContentService(new TipTapPlainTextExtractor()));
+        new(context, DateTimeProvider, new TipTapContentService());
 
     public void Dispose()
     {

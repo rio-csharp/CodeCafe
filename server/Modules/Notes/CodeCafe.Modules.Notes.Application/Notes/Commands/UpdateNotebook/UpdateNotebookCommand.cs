@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Commands.UpdateNotebook;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
 
 public sealed record UpdateNotebookCommand(
     Guid NotebookId,

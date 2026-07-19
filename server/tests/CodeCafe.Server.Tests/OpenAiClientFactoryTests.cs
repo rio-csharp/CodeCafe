@@ -1,4 +1,4 @@
-using CodeCafe.Ai.Configuration;
+using CodeCafe.Modules.Ai.Configuration;
 using Xunit;
 
 namespace CodeCafe.Server.Tests;

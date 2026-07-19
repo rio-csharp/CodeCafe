@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace CodeCafe.Application.Notes.Commands.UpdateNotebook;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
 
 public sealed class UpdateNotebookCommandValidator : AbstractValidator<UpdateNotebookCommand>
 {

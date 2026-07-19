@@ -1,7 +1,7 @@
 using FluentValidation;
 using MediatR;
 
-namespace CodeCafe.Application.Behaviors;
+namespace CodeCafe.Shared.Application.Behaviors;
 
 public sealed class ValidationBehavior<TRequest, TResponse>(
     IEnumerable<IValidator<TRequest>> validators) : IPipelineBehavior<TRequest, TResponse>

@@ -54,12 +54,16 @@ export default function NotebookReaderChrome({
   return (
     <div className="sticky top-0 z-10 -mx-4 sm:-mx-6 lg:-mx-12 px-4 sm:px-6 lg:px-12 flex items-start justify-between gap-4 py-1.5 bg-surface/95 backdrop-blur-sm">
       {!isEditingPage && (
-        <h1
-          className="text-xl font-semibold text-text-primary truncate min-w-0 cursor-pointer"
-          title={activePage.title}
-          onClick={handleCopyTitle}
-        >
-          {activePage.title}
+        <h1 className="text-xl font-semibold text-text-primary truncate min-w-0">
+          <button
+            type="button"
+            className="truncate max-w-full text-left"
+            title={t('notebook.copyTitle')}
+            aria-label={t('notebook.copyTitle')}
+            onClick={handleCopyTitle}
+          >
+            {activePage.title}
+          </button>
         </h1>
       )}
       <div className={`flex items-center gap-2 shrink-0 ${isEditingPage ? '' : 'mt-0.5'}`}>

@@ -1,4 +1,4 @@
-namespace CodeCafe.Api.Configuration;
+namespace CodeCafe.Modules.Identity.Presentation.Configuration;
 
 public sealed class AuthOptions
 {

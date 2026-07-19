@@ -345,10 +345,10 @@ function LoginForm() {
 
 ```tsx
 function UserListPage() {
-  const { data, isLoading, error } = useUsers()
+  const { data, isLoading, error, refetch } = useUsers()
 
   if (isLoading) return <Skeleton />            // 1. Loading
-  if (error) return <ErrorFallback error={error} />  // 2. Error
+  if (error) return <QueryError onRetry={refetch} />  // 2. Error
   if (!data || data.length === 0) return <EmptyState />  // 3. Empty
 
   return <UserList users={data} />              // 4. Success
@@ -356,6 +356,10 @@ function UserListPage() {
 ```
 
 **Never assume data always exists.**
+
+Query failures should use the shared `QueryError` component
+(`@/shared/ui/QueryError`) — icon, friendly message, and a retry button —
+instead of rendering a bare `<p>{error.message}</p>`.
 
 **Review rule of thumb**: Every `useQuery` call must have explicit handling for loading, error, empty, and success.
 
@@ -819,7 +823,13 @@ Use it:
 onError: (err) => showToast(getErrorMessage(err, 'Failed to save'), 'error')
 ```
 
-**Review rule of thumb**: If you see `err instanceof Error` more than once in a file, use the shared helper.
+For messages rendered directly in the UI (error pages, inline form errors),
+use `getDisplayErrorMessage(err, t, fallback)` from the same module instead.
+It maps known backend error codes to localized `errors.<code>` strings,
+passes through 4xx messages (authored for users), and never leaks 5xx
+ProblemDetails `detail` (internal paths/field names) into the UI.
+
+**Review rule of thumb**: If you see `err instanceof Error` more than once in a file, use the shared helper. Raw `error.message` from an API error should never be rendered directly.
 
 ---
 

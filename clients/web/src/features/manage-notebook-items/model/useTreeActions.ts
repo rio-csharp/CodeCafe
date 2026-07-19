@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { TreeNode } from '@/entities/notebook'
@@ -204,16 +204,30 @@ export default function useTreeActions(notebook: Notebook, tree: TreeNode[]) {
     setDraggingId(null)
   }, [])
 
-  const dragState = notebook.canEdit
-    ? {
-        draggingId,
-        draggedSubtreeIds,
-        onDragStart: handleDragStart,
-        onDragEnd: handleDragEnd,
-        onDropOnRoot: handleDropOnRoot,
-        onDropReorder: handleDropReorder,
-      }
-    : undefined
+  // Memoized so TreeContext consumers aren't re-rendered by a fresh object
+  // identity on every render of this hook (e.g. tree search keystrokes).
+  const dragState = useMemo(
+    () =>
+      notebook.canEdit
+        ? {
+            draggingId,
+            draggedSubtreeIds,
+            onDragStart: handleDragStart,
+            onDragEnd: handleDragEnd,
+            onDropOnRoot: handleDropOnRoot,
+            onDropReorder: handleDropReorder,
+          }
+        : undefined,
+    [
+      notebook.canEdit,
+      draggingId,
+      draggedSubtreeIds,
+      handleDragStart,
+      handleDragEnd,
+      handleDropOnRoot,
+      handleDropReorder,
+    ],
+  )
 
   return {
     handleCreateRoot,

@@ -13,11 +13,9 @@ function HomePage() {
       </div>
 
       <div className="relative z-10">
-        <main>
-          <HeroSection />
-          <FeaturesSection />
-          <CTASection />
-        </main>
+        <HeroSection />
+        <FeaturesSection />
+        <CTASection />
         <Footer />
       </div>
     </div>

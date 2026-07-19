@@ -57,6 +57,7 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+          cache: true
 
       - name: Restore backend
         run: dotnet restore server/CodeCafe.slnx

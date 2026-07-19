@@ -20,20 +20,34 @@ interface TipTapViewerProps {
   className?: string
 }
 
+// Extensions are stateless for generateHTML — share one instance across all
+// viewers instead of building ~40 extensions per mounted viewer.
+const viewerExtensions = createTipTapExtensions({ editable: false })
+
+function createCopyButton(label: string): HTMLButtonElement {
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.title = label
+  btn.setAttribute('aria-label', label)
+  btn.className =
+    'code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-surface/80 hover:bg-surface border border-border-default/60 text-text-secondary hover:text-text-primary transition-colors shadow-sm z-10 opacity-0 pointer-events-auto'
+  btn.innerHTML = COPY_ICON
+  return btn
+}
+
 export default function TipTapViewer({ content, className }: TipTapViewerProps) {
   const { t } = useTranslation()
-  const extensions = useMemo(() => createTipTapExtensions({ editable: false }), [])
 
   const html = useMemo(() => {
     const safeContent = sanitizeTipTapContent(content)
     let raw: string
     try {
-      raw = sanitizeTipTapHtml(generateHTML(safeContent as JSONContent, extensions))
+      raw = sanitizeTipTapHtml(generateHTML(safeContent as JSONContent, viewerExtensions))
     } catch {
       return ''
     }
 
-    const copyBtnHtml = `<button type="button" title="${t('common.copy')}" aria-label="${t('common.copy')}" class="code-copy-btn absolute top-2 right-2 p-1.5 rounded-md bg-surface/80 hover:bg-surface border border-border-default/60 text-text-secondary hover:text-text-primary transition-colors shadow-sm z-10 opacity-0 pointer-events-auto">${COPY_ICON}</button>`
+    const copyLabel = t('common.copy')
     const temp = document.createElement('div')
     temp.innerHTML = raw
 
@@ -53,12 +67,12 @@ export default function TipTapViewer({ content, className }: TipTapViewerProps) 
 
     temp.querySelectorAll('pre').forEach((pre) => {
       if (pre.querySelector('code') && !pre.querySelector('.code-copy-btn')) {
-        pre.insertAdjacentHTML('beforeend', copyBtnHtml)
+        pre.appendChild(createCopyButton(copyLabel))
       }
     })
 
     return temp.innerHTML
-  }, [content, extensions, t])
+  }, [content, t])
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     const btn = (e.target as HTMLElement).closest('.code-copy-btn')

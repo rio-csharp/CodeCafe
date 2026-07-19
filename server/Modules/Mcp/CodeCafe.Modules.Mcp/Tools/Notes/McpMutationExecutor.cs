@@ -1,14 +1,16 @@
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore.Storage;
 using ModelContextProtocol.Protocol;
 using System.Security.Claims;
 
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 public sealed class McpMutationExecutor(
     ApplicationDbContext dbContext,
     IMcpAuditService auditService,
+    ICurrentUserAccessor currentUserAccessor,
     ILogger<McpMutationExecutor> logger) : IMcpMutationExecutor
 {
     public async Task<CallToolResult> ExecuteAsync<T>(
@@ -26,7 +28,7 @@ public sealed class McpMutationExecutor(
         try
         {
             var result = await operation(cancellationToken);
-            var auditRecord = CreateAuditRecord(user, toolName, result);
+            var auditRecord = CreateAuditRecord(toolName, result);
 
             if (!result.Succeeded)
             {
@@ -66,13 +68,12 @@ public sealed class McpMutationExecutor(
         }
     }
 
-    private static McpAuditRecord CreateAuditRecord<T>(
-        ClaimsPrincipal user,
+    private McpAuditRecord CreateAuditRecord<T>(
         string toolName,
         McpMutationResult<T> result)
         where T : class
         => new(
-            NotesMcpSupport.GetCurrentUserId(user),
+            currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
             "user",
             toolName,
             result.NotebookId,

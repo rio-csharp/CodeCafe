@@ -5,6 +5,7 @@ import { PasswordInput } from '@/widgets/auth-form'
 import { Input } from '@/shared/ui/Input'
 import GitHubIcon from '@/shared/ui/icons/GitHubIcon'
 import { useLoginForm, completePostAuthRedirect } from '@/features/authenticate'
+import { getDisplayErrorMessage } from '@/shared/lib/errorUtils'
 import { useTranslation } from 'react-i18next'
 
 export default function LoginPage() {
@@ -32,7 +33,7 @@ export default function LoginPage() {
       footer={
         <p className="text-sm text-text-secondary">
           {t('auth.noAccount')}{' '}
-          <Link to={`/register${location.search}`} className="text-brand-brown hover:underline">
+          <Link to={`/register${location.search}`} className="text-brand-brown-text hover:underline">
             {t('auth.createAccount')}
           </Link>
         </p>
@@ -41,7 +42,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {isError && (
           <p className="text-sm text-status-error text-center">
-            {error instanceof Error ? error.message : t('auth.loginError')}
+            {getDisplayErrorMessage(error, t, t('auth.loginError'))}
           </p>
         )}
 
@@ -57,12 +58,12 @@ export default function LoginPage() {
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-text-primary">
+            <label htmlFor="login-password" className="block text-sm font-medium text-text-primary">
               {t('auth.password')}
             </label>
-            <span className="text-xs text-text-tertiary">{t('auth.forgotPassword')}</span>
           </div>
           <PasswordInput
+            id="login-password"
             placeholder={t('auth.passwordPlaceholder')}
             data-testid="login-password"
             error={errors.password?.message}

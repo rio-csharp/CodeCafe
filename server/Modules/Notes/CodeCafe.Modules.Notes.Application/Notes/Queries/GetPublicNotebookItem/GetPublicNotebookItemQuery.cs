@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Queries.GetPublicNotebookItem;
+namespace CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebookItem;
 
 public sealed record GetPublicNotebookItemQuery(
     string Slug,

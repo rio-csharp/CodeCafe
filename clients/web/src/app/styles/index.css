@@ -8,24 +8,26 @@
   --color-brand-brown: #9C7C5C;
   --color-brand-brown-light: #B8A08A;
   --color-brand-brown-dark: #7A6146;
+  /* Brand brown for text-level usage (AA contrast on surface) */
+  --color-brand-brown-text: #7A6146;
 
-  /* Semantic Colors (light default) */
+  /* Semantic Colors (light default) — warm stone neutrals to match the cafe brand */
   --color-surface: #ffffff;
-  --color-surface-elevated: #fafafa;
-  --color-border-default: #e5e7eb;
-  --color-border-subtle: #f3f4f6;
-  --color-text-primary: #111827;
-  --color-text-secondary: #6b7280;
-  --color-text-tertiary: #9ca3af;
+  --color-surface-elevated: #fafaf9;
+  --color-border-default: #e7e5e4;
+  --color-border-subtle: #f5f5f4;
+  --color-text-primary: #1c1917;
+  --color-text-secondary: #57534e;
+  --color-text-tertiary: #78716c;
   --color-text-inverse: #ffffff;
 
   /* Surface Extensions */
-  --color-surface-hover: #f9fafb;
-  --color-surface-active: #f3f4f6;
+  --color-surface-hover: #fafaf9;
+  --color-surface-active: #f5f5f4;
 
   /* Border Extensions */
-  --color-border-hover: #d1d5db;
-  --color-border-focus: #111827;
+  --color-border-hover: #d6d3d1;
+  --color-border-focus: #1c1917;
 
   /* Inverse Surface (for dark buttons on light bg) */
   --color-surface-inverse-hover: #1f2937;
@@ -74,24 +76,25 @@
 
 /* Dark mode overrides */
 .dark {
-  --color-surface: #0f0f11;
-  --color-surface-elevated: #18181b;
-  --color-border-default: #27272a;
-  --color-border-subtle: #1f1f23;
-  --color-text-primary: #f4f4f5;
-  --color-text-secondary: #a1a1aa;
-  --color-text-tertiary: #71717a;
-  --color-text-inverse: #09090b;
+  --color-surface: #121110;
+  --color-surface-elevated: #1c1917;
+  --color-border-default: #292524;
+  --color-border-subtle: #201d1b;
+  --color-text-primary: #f5f5f4;
+  --color-text-secondary: #a8a29e;
+  --color-text-tertiary: #8d8880;
+  --color-brand-brown-text: #B8A08A;
+  --color-text-inverse: #0c0a09;
   --color-glow-primary: color-mix(in srgb, #1E3A8A 20%, transparent);
   --color-glow-secondary: color-mix(in srgb, #581C87 20%, transparent);
 
-  --color-surface-hover: #1c1c1f;
-  --color-surface-active: #27272a;
+  --color-surface-hover: #201d1b;
+  --color-surface-active: #292524;
 
-  --color-border-hover: #3f3f46;
-  --color-border-focus: #f4f4f5;
+  --color-border-hover: #44403c;
+  --color-border-focus: #f5f5f4;
 
-  --color-surface-inverse-hover: #e4e4e7;
+  --color-surface-inverse-hover: #e7e5e4;
 
   --color-status-success: #22c55e;
   --color-status-success-bg: #14532d;
@@ -249,4 +252,55 @@
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
+}
+
+/* Page transition (replaces framer-motion on route change) */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-transition {
+  animation: page-enter 0.25s ease-out;
+}
+
+/* Toast animations (replaces framer-motion) */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.toast-enter {
+  animation: toast-in 0.2s ease-out;
+}
+
+.toast-leaving {
+  opacity: 0;
+  transform: translateX(24px) scale(0.96);
+  transition:
+    opacity 0.18s ease-in,
+    transform 0.18s ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition,
+  .toast-enter {
+    animation: none;
+  }
+
+  .toast-leaving {
+    transition: none;
+  }
 }

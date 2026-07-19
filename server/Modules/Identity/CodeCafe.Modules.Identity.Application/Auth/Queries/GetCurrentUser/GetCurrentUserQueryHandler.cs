@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Auth.Queries.GetCurrentUser;
+namespace CodeCafe.Modules.Identity.Application.Auth.Queries.GetCurrentUser;
 
 public sealed class GetCurrentUserQueryHandler(
     IAuthUserGateway authUserGateway)

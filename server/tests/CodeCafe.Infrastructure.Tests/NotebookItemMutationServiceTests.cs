@@ -1,5 +1,5 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Domain.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
 using System.Text.Json;
 
 namespace CodeCafe.Infrastructure.Tests;

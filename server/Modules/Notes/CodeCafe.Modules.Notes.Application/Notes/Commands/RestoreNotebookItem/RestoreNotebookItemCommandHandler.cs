@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.RestoreNotebookItem;
 
 public sealed class RestoreNotebookItemCommandHandler(
     INotebookItemMutationService notebookItemMutationService)

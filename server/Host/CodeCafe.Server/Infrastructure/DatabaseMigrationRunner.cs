@@ -1,4 +1,4 @@
-using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeCafe.Server.Infrastructure;

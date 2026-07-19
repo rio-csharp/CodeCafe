@@ -1,12 +1,12 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Mcp.Tools.Notes;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 using OpenIddict.Validation.AspNetCore;
 using System.Text;
 
-namespace CodeCafe.Mcp.Common;
+namespace CodeCafe.Modules.Mcp.Common;
 
 public static class McpHttpUploadEndpoints
 {

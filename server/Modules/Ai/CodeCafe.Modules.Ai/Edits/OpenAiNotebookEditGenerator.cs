@@ -1,13 +1,15 @@
 using System.Text;
 using System.Text.Json;
-using CodeCafe.Ai.Configuration;
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Modules.Notes.Application.Notes;
 using Microsoft.Extensions.Options;
+using OpenAI;
 using OpenAI.Chat;
 
-namespace CodeCafe.Ai.Edits;
+namespace CodeCafe.Modules.Ai.Edits;
 
 public sealed class OpenAiNotebookEditGenerator(
+    OpenAIClient openAiClient,
     IOptions<AiOptions> aiOptionsAccessor,
     ITipTapPlainTextExtractor plainTextExtractor) : IAiNotebookEditGenerator
 {
@@ -31,7 +33,7 @@ public sealed class OpenAiNotebookEditGenerator(
         AiNotebookEditGenerationContext context,
         CancellationToken cancellationToken)
     {
-        var client = OpenAiClientFactory.Create(_options).GetChatClient(_options.Model);
+        var client = openAiClient.GetChatClient(_options.Model);
         var completionResult = await client.CompleteChatAsync(
             [
                 new SystemChatMessage(EditInstructions),
@@ -185,10 +187,10 @@ public sealed class OpenAiNotebookEditGenerator(
         {
             var line = new StringBuilder();
             line.Append($"- {item.Type}: {item.Title} ({item.Path})");
-            if (!string.IsNullOrWhiteSpace(item.PlainTextContent))
+            if (!string.IsNullOrWhiteSpace(item.TextPreview))
             {
                 line.Append(" :: ");
-                line.Append(TrimForPrompt(item.PlainTextContent, ItemPreviewChars));
+                line.Append(TrimForPrompt(item.TextPreview, ItemPreviewChars));
             }
 
             if (!AppendLineWithinBudget(builder, budget, line.ToString()))

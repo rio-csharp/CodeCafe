@@ -1,11 +1,11 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Mcp.Tools.Notes;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using System.Net;
 using System.Text.Json;
 
-namespace CodeCafe.Mcp.Tests;
+namespace CodeCafe.Modules.Mcp.Tests;
 
 public sealed class McpHostTests : IClassFixture<McpTestFactory>
 {
@@ -314,5 +314,31 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
             ["replaceAll"] = false
         });
         Assert.False(replaceTextResult.IsError ?? false);
+    }
+
+    [Fact]
+    public async Task CreatePage_RejectsTitleLongerThan160Characters()
+    {
+        using var client = _factory.CreateClient();
+        client.DefaultRequestHeaders.Add(McpTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        var transport = new HttpClientTransport(
+            new HttpClientTransportOptions
+            {
+                Endpoint = new Uri(client.BaseAddress!, "/mcp"),
+                TransportMode = HttpTransportMode.StreamableHttp
+            },
+            client);
+
+        await using var mcpClient = await McpClient.CreateAsync(transport);
+
+        var createResult = await mcpClient.CallToolAsync(NotesMcpToolNames.CreatePage, new Dictionary<string, object?>
+        {
+            ["notebookSlug"] = "architecture-notes",
+            ["title"] = new string('a', 161)
+        });
+
+        Assert.True(createResult.IsError ?? false);
+        Assert.Equal("validation_error", createResult.StructuredContent!.Value.GetProperty("code").GetString());
     }
 }

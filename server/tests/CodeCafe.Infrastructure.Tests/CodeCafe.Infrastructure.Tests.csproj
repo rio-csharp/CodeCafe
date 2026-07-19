@@ -24,6 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Modules\Ai\CodeCafe.Modules.Ai\CodeCafe.Modules.Ai.csproj" />
     <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Infrastructure\CodeCafe.Modules.Notes.Infrastructure.csproj" />
   </ItemGroup>
 

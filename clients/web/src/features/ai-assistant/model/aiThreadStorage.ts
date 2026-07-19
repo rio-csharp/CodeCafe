@@ -1,6 +1,7 @@
 import type { Message } from '@ag-ui/core'
+import { AI_THREAD_STORAGE_PREFIX } from '@/shared/lib/storageKeys'
 
-export const THREAD_STORAGE_KEY_PREFIX = 'codecafe:ai-thread:'
+export const THREAD_STORAGE_KEY_PREFIX = AI_THREAD_STORAGE_PREFIX
 const CURRENT_VERSION = 1
 const TTL_MS = 7 * 24 * 60 * 60 * 1000
 const MAX_SIZE_BYTES = 4 * 1024 * 1024

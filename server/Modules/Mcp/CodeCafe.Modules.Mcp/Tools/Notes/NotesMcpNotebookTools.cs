@@ -1,9 +1,8 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Application.Notes.Commands.CreateNotebook;
-using CodeCafe.Application.Notes.Commands.DeleteNotebook;
-using CodeCafe.Application.Notes.Commands.UpdateNotebook;
-using CodeCafe.Infrastructure.Notes;
-using CodeCafe.Mcp.Configuration;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebook;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Shared.Application.Configuration;
 using MediatR;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;
@@ -11,7 +10,7 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Security.Claims;
 
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 [McpServerToolType]
 public sealed class NotesMcpNotebookTools
@@ -130,9 +129,9 @@ public sealed class NotesMcpNotebookTools
             options.UploadIdleTimeoutSeconds,
             options.MaxPageContentBytes,
             options.MaxListItemsLimit,
-            TipTapContentService.MaxDepth,
-            TipTapContentService.MaxNodeCount,
-            TipTapContentService.MaxTextLength,
+            ITipTapContentService.MaxDepth,
+            ITipTapContentService.MaxNodeCount,
+            ITipTapContentService.MaxTextLength,
             ["tiptap_json", "tiptap_blocks_json", "markdown"],
             ["text/markdown"]);
 
@@ -392,7 +391,8 @@ public sealed class NotesMcpNotebookTools
                         "Visibility must be public, unlisted, or private."));
                 }
 
-                var createResult = await sender.Send(
+                var createResult = await NotesMcpCommandSender.SendAsync(
+                    sender,
                     new CreateNotebookCommand(
                         actorResult.Value,
                         title,
@@ -478,7 +478,8 @@ public sealed class NotesMcpNotebookTools
 
                 var notebookContext = notebookContextResult.Value;
                 var notebook = notebookContext.Notebook;
-                var updateResult = await sender.Send(
+                var updateResult = await NotesMcpCommandSender.SendAsync(
+                    sender,
                     new UpdateNotebookCommand(
                         notebook.Id,
                         notebookContext.ActorId,
@@ -538,7 +539,8 @@ public sealed class NotesMcpNotebookTools
 
                 var notebookContext = notebookContextResult.Value;
                 var notebook = notebookContext.Notebook;
-                var deleteResult = await sender.Send(
+                var deleteResult = await NotesMcpCommandSender.SendAsync(
+                    sender,
                     new DeleteNotebookCommand(
                         notebook.Id,
                         notebookContext.ActorId),

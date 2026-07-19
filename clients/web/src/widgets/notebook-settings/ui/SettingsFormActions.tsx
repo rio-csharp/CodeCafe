@@ -29,7 +29,7 @@ export default function SettingsFormActions({
         <button
           type="submit"
           disabled={isPending}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
           {t('notebook.saveChanges')}

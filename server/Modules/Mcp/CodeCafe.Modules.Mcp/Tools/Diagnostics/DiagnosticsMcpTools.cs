@@ -2,7 +2,7 @@ using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 
-namespace CodeCafe.Mcp.Tools.Diagnostics;
+namespace CodeCafe.Modules.Mcp.Tools.Diagnostics;
 
 [McpServerToolType]
 public sealed class DiagnosticsMcpTools

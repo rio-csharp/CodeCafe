@@ -1,4 +1,4 @@
-using CodeCafe.Ai.Agents;
+using CodeCafe.Modules.Ai.Agents;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using System.Text.Json;

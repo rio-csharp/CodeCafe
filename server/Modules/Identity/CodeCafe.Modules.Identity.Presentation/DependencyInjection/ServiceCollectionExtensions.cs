@@ -1,10 +1,10 @@
-using CodeCafe.Api.Configuration;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
 
-namespace CodeCafe.Api.DependencyInjection;
+namespace CodeCafe.Modules.Identity.Presentation.DependencyInjection;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddCodeCafeApi(
+    public static IServiceCollection AddIdentityPresentation(
         this IServiceCollection services)
     {
         return services.AddCodeCafeAuthOptions();

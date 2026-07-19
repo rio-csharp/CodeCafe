@@ -1,7 +1,7 @@
 using System.Text.Json;
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
 
-namespace CodeCafe.Ai.Edits;
+namespace CodeCafe.Modules.Ai.Edits;
 
 public interface IAiNotebookEditGenerator
 {
@@ -15,7 +15,7 @@ public sealed record AiNotebookEditGenerationContext(
     string RequestedOperation,
     string Prompt,
     string Locale,
-    NotebookDetailModel Notebook,
+    NotebookContextModel Notebook,
     NotebookItemModel? ActivePage);
 
 public sealed record AiNotebookEditResult(

@@ -1,7 +1,7 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 using System.Text.Json;
 
-namespace CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
 
 public sealed record UpdateNotebookItemCommand(
     Guid NotebookId,

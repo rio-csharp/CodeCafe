@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Queries.GetNotebookItems;
+namespace CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItems;
 
 public sealed record GetNotebookItemsQuery(
     Guid NotebookId,

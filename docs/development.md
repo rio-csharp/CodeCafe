@@ -147,11 +147,11 @@ E2E assumes the frontend is available on `http://localhost:5173` and the backend
 
 ## EF Core And Migrations
 
-Use `CodeCafe.Modules.Notes.Infrastructure` as the current migrations project and `CodeCafe.Server` as the startup project:
+Use `CodeCafe.Shared.Infrastructure` as the current migrations project and `CodeCafe.Server` as the startup project:
 
 ```powershell
 dotnet ef database update `
-  --project server/Modules/Notes/CodeCafe.Modules.Notes.Infrastructure/CodeCafe.Modules.Notes.Infrastructure.csproj `
+  --project server/Shared/CodeCafe.Shared.Infrastructure/CodeCafe.Shared.Infrastructure.csproj `
   --startup-project server/Host/CodeCafe.Server/CodeCafe.Server.csproj `
   --context ApplicationDbContext
 ```

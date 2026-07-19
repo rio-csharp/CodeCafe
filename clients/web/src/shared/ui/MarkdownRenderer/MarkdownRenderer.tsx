@@ -33,7 +33,14 @@ const PURIFY_CONFIG: DOMPurifyConfig = {
 export function MarkdownRenderer({ className, text }: MarkdownRendererProps) {
   const html = useMemo(() => {
     const raw = marked.parse(text, { async: false, breaks: true, gfm: true })
-    return DOMPurify.sanitize(raw, PURIFY_CONFIG)
+    const sanitized = DOMPurify.sanitize(raw, PURIFY_CONFIG)
+    // target="_blank" anchors must not keep window.opener access.
+    const container = document.createElement('div')
+    container.innerHTML = sanitized
+    container.querySelectorAll<HTMLAnchorElement>('a[target="_blank"]').forEach((anchor) => {
+      anchor.rel = 'noopener noreferrer'
+    })
+    return container.innerHTML
   }, [text])
 
   return (

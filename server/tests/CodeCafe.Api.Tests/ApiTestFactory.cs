@@ -1,7 +1,7 @@
-using CodeCafe.Api.Endpoints.Auth;
-using CodeCafe.Application.Auth;
-using CodeCafe.Application.Notes;
-using CodeCafe.Domain.Notes;
+using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
+using CodeCafe.Modules.Identity.Application.Auth;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
 using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -120,7 +120,7 @@ internal sealed class TestNotebookQueryService(TestNotebookMutationStore noteboo
         DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
         Items);
 
-    public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null)
+    public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null, int? offset = null)
     {
         IReadOnlyList<NotebookSummaryModel> result =
         [
@@ -148,7 +148,7 @@ internal sealed class TestNotebookQueryService(TestNotebookMutationStore noteboo
         return Task.FromResult(result);
     }
 
-    public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null)
+    public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null, int? offset = null)
         => Task.FromResult<IReadOnlyList<NotebookSummaryModel>>(
         [
             new(
@@ -180,7 +180,8 @@ internal sealed class TestNotebookQueryService(TestNotebookMutationStore noteboo
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true)
+        bool includeItems = true,
+        bool includeContent = true)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
                 ? NotesResult<NotebookDetailModel>.Success(includeItems ? PublicNotebook : PublicNotebook with { Items = [] })
@@ -204,7 +205,8 @@ internal sealed class TestNotebookQueryService(TestNotebookMutationStore noteboo
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true)
+        bool includeItems = true,
+        bool includeContent = true)
         => Task.FromResult(
             notebookMutationStore.TryGetNotebookDetail(notebookId, currentUserId, out var notebookDetail)
                 ? NotesResult<NotebookDetailModel>.Success(notebookDetail)
@@ -215,7 +217,8 @@ internal sealed class TestNotebookQueryService(TestNotebookMutationStore noteboo
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true)
+        bool includeItems = true,
+        bool includeContent = true)
         => Task.FromResult(
             notebookMutationStore.TryGetNotebookDetailBySlug(slug, currentUserId, out var notebookDetail)
                 ? NotesResult<NotebookDetailModel>.Success(notebookDetail)

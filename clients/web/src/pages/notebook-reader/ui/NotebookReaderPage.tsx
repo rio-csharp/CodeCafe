@@ -14,7 +14,8 @@ import {
   notesKeys,
 } from '@/entities/notebook'
 import { useSaveNotebookPage } from '@/features/edit-notebook-page'
-import { getErrorMessage } from '@/shared/lib/errorUtils'
+import { getDisplayErrorMessage } from '@/shared/lib/errorUtils'
+import QueryError from '@/shared/ui/QueryError'
 import { NotebookChangePreview } from '@/widgets/notebook-change-preview'
 import { useAiEditStore, useApplyAiEditProposal, useDiscardAiEditProposal } from '@/features/ai-assistant'
 import NotebookLayout from '@/widgets/notebook-layout'
@@ -23,7 +24,7 @@ import NotebookPageContent from '@/widgets/notebook-page-content'
 import NotebookOutline from '@/widgets/notebook-outline'
 import NotebookReaderChrome from '@/widgets/notebook-reader-chrome'
 import NotebookPageEmpty from '@/widgets/notebook-page-empty'
-import NotebookPageNavigation from '@/widgets/notebook-page-navigation/ui/NotebookPageNavigation'
+import NotebookPageNavigation from '@/widgets/notebook-page-navigation'
 import { FloatingAiAssistant } from '@/widgets/ai-assistant'
 import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
 import { useTranslation } from 'react-i18next'
@@ -260,7 +261,7 @@ export default function NotebookReaderPage() {
   }
 
   if (notebookIsError || !notebook) {
-    const errMsg = getErrorMessage(notebookError, t('errors.generic'))
+    const errMsg = getDisplayErrorMessage(notebookError, t, t('errors.generic'))
     return (
       <NotebookLayout
         tree={<TreeSkeleton />}
@@ -269,8 +270,8 @@ export default function NotebookReaderPage() {
         prevPage={null}
         nextPage={null}
         content={
-          <div className="h-full flex items-center justify-center">
-            <p className="text-sm text-status-error">{errMsg}</p>
+          <div className="h-full flex items-center justify-center px-6">
+            <QueryError message={errMsg} onRetry={() => refetch()} className="w-full max-w-md" />
           </div>
         }
         rightPanel={<div className="flex-1 min-h-0 overflow-y-auto" />}

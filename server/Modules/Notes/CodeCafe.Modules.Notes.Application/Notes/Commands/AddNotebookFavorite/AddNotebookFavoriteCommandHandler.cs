@@ -1,7 +1,7 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
-using CodeCafe.Domain.Notes;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
+using CodeCafe.Modules.Notes.Domain.Notes;
 
-namespace CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.AddNotebookFavorite;
 
 public sealed class AddNotebookFavoriteCommandHandler(
     INotebookMutationStore notebookMutationStore)

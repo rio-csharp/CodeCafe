@@ -23,6 +23,12 @@ spec:
         app.kubernetes.io/component: frontend
     spec:
       terminationGracePeriodSeconds: {{ .Values.frontend.terminationGracePeriodSeconds }}
+      # The app never calls the Kubernetes API — don't mount a SA token.
+      automountServiceAccountToken: false
+      {{- with .Values.frontend.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -31,6 +37,10 @@ spec:
         - name: frontend
           image: "{{ required "frontend.image.repository is required" .Values.frontend.image.repository }}:{{ required "frontend.image.tag is required" .Values.frontend.image.tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          {{- with .Values.frontend.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: API_BASE_URL
               value: {{ .Values.frontend.env.apiBaseUrl | quote }}

@@ -1,12 +1,12 @@
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Domain.Mcp;
-using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Shared.Domain.Mcp;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Threading.Channels;
 
-namespace CodeCafe.Infrastructure.Services;
+namespace CodeCafe.Modules.Notes.Infrastructure.Services;
 
 internal interface IMcpIndependentAuditQueue
 {
@@ -18,10 +18,17 @@ internal sealed class McpIndependentAuditQueue(
     ILogger<McpIndependentAuditQueue> logger) : BackgroundService, IMcpIndependentAuditQueue
 {
     private const int MaxBatchSize = 32;
-    private readonly Channel<McpAuditRecord> queue = Channel.CreateUnbounded<McpAuditRecord>(new UnboundedChannelOptions
+    private const int MaxQueuedRecords = 1024;
+    private static readonly TimeSpan FlushRetryDelay = TimeSpan.FromSeconds(5);
+
+    // Bounded so a flush outage can't grow memory without limit; under
+    // sustained pressure the oldest audit records are dropped first (audit
+    // loss is preferable to blocking tool calls or exhausting memory).
+    private readonly Channel<McpAuditRecord> queue = Channel.CreateBounded<McpAuditRecord>(new BoundedChannelOptions(MaxQueuedRecords)
     {
         SingleReader = true,
-        SingleWriter = false
+        SingleWriter = false,
+        FullMode = BoundedChannelFullMode.DropOldest
     });
 
     public ValueTask EnqueueAsync(McpAuditRecord auditRecord, CancellationToken cancellationToken)
@@ -52,7 +59,20 @@ internal sealed class McpIndependentAuditQueue(
             }
             catch (Exception exception)
             {
-                logger.LogWarning(exception, "Failed to flush {Count} queued MCP audit record(s).", batch.Count);
+                logger.LogWarning(exception, "Failed to flush {Count} queued MCP audit record(s); retrying once after a delay.", batch.Count);
+                try
+                {
+                    await Task.Delay(FlushRetryDelay, stoppingToken);
+                    await FlushBatchAsync(batch, stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
+                catch (Exception retryException)
+                {
+                    logger.LogWarning(retryException, "Dropping {Count} MCP audit record(s) after the flush retry also failed.", batch.Count);
+                }
             }
         }
     }

@@ -23,13 +23,13 @@ function buildQueryString(params: Record<string, string | undefined>): string {
   return qs ? `?${qs}` : ''
 }
 
-export async function getPublicNotes(search?: string): Promise<Notebook[]> {
-  const params = buildQueryString({ search })
+export async function getPublicNotes(search?: string, limit = 50, offset = 0): Promise<Notebook[]> {
+  const params = buildQueryString({ search, limit: String(limit), offset: String(offset) })
   return apiFetch<Notebook[]>(`/api/notes/public${params}`)
 }
 
-export async function getMyNotes(search?: string): Promise<Notebook[]> {
-  const params = buildQueryString({ search })
+export async function getMyNotes(search?: string, limit = 50, offset = 0): Promise<Notebook[]> {
+  const params = buildQueryString({ search, limit: String(limit), offset: String(offset) })
   return apiFetch<Notebook[]>(`/api/notes/mine${params}`)
 }
 
@@ -46,7 +46,7 @@ export async function getNotebookItems(
   const params = buildQueryString({
     search,
     includeArchived: includeArchived ? 'true' : undefined,
-    includeContent: includeContent === false ? 'false' : undefined,
+    includeContent: includeContent === undefined ? undefined : String(includeContent),
   })
   return apiFetch<NotebookItem[]>(`/api/notes/${notebookId}/items${params}`)
 }

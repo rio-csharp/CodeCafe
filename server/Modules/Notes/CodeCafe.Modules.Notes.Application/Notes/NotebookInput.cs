@@ -1,7 +1,7 @@
-using CodeCafe.Domain.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
 using System.Text.Json;
 
-namespace CodeCafe.Application.Notes;
+namespace CodeCafe.Modules.Notes.Application.Notes;
 
 public static class NotebookInput
 {

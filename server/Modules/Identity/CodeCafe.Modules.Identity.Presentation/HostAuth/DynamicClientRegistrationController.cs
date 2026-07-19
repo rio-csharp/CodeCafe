@@ -1,6 +1,6 @@
-using CodeCafe.Infrastructure.Persistence;
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Server.Configuration;
+using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +11,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace CodeCafe.Server.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Auth;
 
 [ApiController]
 public sealed class DynamicClientRegistrationController(

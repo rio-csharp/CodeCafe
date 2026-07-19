@@ -1,11 +1,11 @@
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Application.Notes;
-using CodeCafe.Domain.Notes;
-using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
-namespace CodeCafe.Infrastructure.Notes;
+namespace CodeCafe.Modules.Notes.Infrastructure.Notes;
 
 public sealed class NotebookItemMutationService(
     ApplicationDbContext dbContext,
@@ -33,14 +33,9 @@ public sealed class NotebookItemMutationService(
         }
 
         var parent = await GetParentItemAsync(notebookId, parentId, cancellationToken);
-        if (parentId is not null && parent is null)
+        if (NotebookItemTree.ValidateParentCandidate(parent, parentId) is { } parentViolation)
         {
-            return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item was not found in this notebook.");
-        }
-
-        if (parent is not null && parent.Type != NotebookItemType.Folder)
-        {
-            return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item must be a folder.");
+            return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", ToParentViolationMessage(parentViolation));
         }
 
         var trimmedTitle = title.Trim();
@@ -126,14 +121,9 @@ public sealed class NotebookItemMutationService(
             }
 
             nextParent = NotebookItemTree.FindRequestedParent(notebookItems, item.Id, requestedParentId);
-            if (requestedParentId is not null && nextParent is null)
+            if (NotebookItemTree.ValidateParentCandidate(nextParent, requestedParentId) is { } parentViolation)
             {
-                return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item was not found in this notebook.");
-            }
-
-            if (nextParent is not null && nextParent.Type != NotebookItemType.Folder)
-            {
-                return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item must be a folder.");
+                return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", ToParentViolationMessage(parentViolation));
             }
 
             if (nextParent is not null && NotebookItemTree.WouldCreateCycle(notebookItems, item.Id, nextParent.Id))
@@ -204,6 +194,7 @@ public sealed class NotebookItemMutationService(
         var notebookItems = await GetNotebookStructureAsync(notebookId, includeArchived: false, cancellationToken);
         var notebookItemsById = notebookItems.ToDictionary(existingItem => existingItem.Id);
         var idsToLoad = items.Select(item => item.ItemId).ToHashSet();
+        var pendingParentOverrides = items.Select(item => (item.ItemId, item.ParentId)).ToList();
 
         foreach (var reorderItem in items)
         {
@@ -215,17 +206,12 @@ public sealed class NotebookItemMutationService(
             var parent = reorderItem.ParentId is null
                 ? null
                 : notebookItemsById.GetValueOrDefault(reorderItem.ParentId.Value);
-            if (reorderItem.ParentId is not null && parent is null)
+            if (NotebookItemTree.ValidateParentCandidate(parent, reorderItem.ParentId) is { } parentViolation)
             {
-                return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item was not found in this notebook.");
+                return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "invalid_parent", ToParentViolationMessage(parentViolation));
             }
 
-            if (parent is not null && parent.Type != NotebookItemType.Folder)
-            {
-                return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item must be a folder.");
-            }
-
-            if (parent is not null && NotebookItemTree.WouldCreateCycle(notebookItems, item.Id, parent.Id, items))
+            if (parent is not null && NotebookItemTree.WouldCreateCycle(notebookItems, item.Id, parent.Id, pendingParentOverrides))
             {
                 return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "invalid_parent", "Item cannot be moved into itself or its descendants.");
             }
@@ -407,28 +393,9 @@ public sealed class NotebookItemMutationService(
             return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.");
         }
 
-        if (!item.IsArchived)
+        if (NotebookItemTree.ValidateRestore(items, item) is { } restoreViolation)
         {
-            return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "notebook_item_not_archived", "Notebook item is not archived.");
-        }
-
-        if (item.ParentId is Guid parentId)
-        {
-            var parent = items.SingleOrDefault(existingItem => existingItem.Id == parentId);
-            if (parent is null)
-            {
-                return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent item was not found in this notebook.");
-            }
-
-            var subtreeIds = NotebookItemTree.GetDescendantIds(items, itemId);
-            subtreeIds.Add(itemId);
-            if (parent.IsArchived && !subtreeIds.Contains(parent.Id))
-            {
-                return NotesResult<NotebookItemModel>.Failure(
-                    NotesFailureKind.Validation,
-                    "parent_archived",
-                    "Restore the parent folder before restoring this item.");
-            }
+            return ToRestoreFailure(restoreViolation);
         }
 
         var idsToRestore = NotebookItemTree.GetDescendantIds(items, itemId);
@@ -570,5 +537,31 @@ public sealed class NotebookItemMutationService(
         {
             descendant.Path = newPath + descendant.Path[oldPath.Length..];
         }
+    }
+
+    private static string ToParentViolationMessage(NotebookItemParentViolation violation)
+    {
+        return violation == NotebookItemParentViolation.NotFound
+            ? "Parent item was not found in this notebook."
+            : "Parent item must be a folder.";
+    }
+
+    private static NotesResult<NotebookItemModel> ToRestoreFailure(NotebookItemRestoreViolation violation)
+    {
+        return violation switch
+        {
+            NotebookItemRestoreViolation.NotArchived => NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Validation,
+                "notebook_item_not_archived",
+                "Notebook item is not archived."),
+            NotebookItemRestoreViolation.ParentNotFound => NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Validation,
+                "invalid_parent",
+                "Parent item was not found in this notebook."),
+            _ => NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Validation,
+                "parent_archived",
+                "Restore the parent folder before restoring this item.")
+        };
     }
 }

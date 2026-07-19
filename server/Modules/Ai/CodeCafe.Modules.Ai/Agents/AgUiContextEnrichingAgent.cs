@@ -4,7 +4,7 @@ using System.Collections;
 using System.Text;
 using System.Text.Json;
 
-namespace CodeCafe.Ai.Agents;
+namespace CodeCafe.Modules.Ai.Agents;
 
 internal sealed class AgUiContextEnrichingAgent(AIAgent innerAgent) : DelegatingAIAgent(innerAgent)
 {

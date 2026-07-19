@@ -1,7 +1,7 @@
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Server.Configuration;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
 
-namespace CodeCafe.Server.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Auth;
 
 public static class McpResourceIdentifiers
 {

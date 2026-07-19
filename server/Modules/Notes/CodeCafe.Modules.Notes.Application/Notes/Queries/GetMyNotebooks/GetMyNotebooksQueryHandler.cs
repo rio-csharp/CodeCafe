@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Queries.GetMyNotebooks;
+namespace CodeCafe.Modules.Notes.Application.Notes.Queries.GetMyNotebooks;
 
 public sealed class GetMyNotebooksQueryHandler(
     INotebookReadService notebookReadService)
@@ -13,6 +13,8 @@ public sealed class GetMyNotebooksQueryHandler(
         return await notebookReadService.GetMyNotebooksAsync(
             request.CurrentUserId,
             request.Search,
-            cancellationToken);
+            cancellationToken,
+            request.Limit,
+            request.Offset);
     }
 }

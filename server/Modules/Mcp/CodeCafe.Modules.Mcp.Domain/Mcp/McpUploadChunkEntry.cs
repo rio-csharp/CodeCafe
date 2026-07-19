@@ -1,6 +1,6 @@
-using CodeCafe.Domain.Common.Interfaces;
+using CodeCafe.Shared.Domain.Common.Interfaces;
 
-namespace CodeCafe.Domain.Mcp;
+namespace CodeCafe.Shared.Domain.Mcp;
 
 public sealed class McpUploadChunkEntry : IAuditableEntity
 {

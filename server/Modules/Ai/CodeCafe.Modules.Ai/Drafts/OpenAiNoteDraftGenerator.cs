@@ -1,12 +1,15 @@
-using CodeCafe.Ai.Configuration;
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Modules.Notes.Application.Notes;
 using Microsoft.Extensions.Options;
+using OpenAI;
 using OpenAI.Chat;
 using System.Text;
 
-namespace CodeCafe.Ai.Drafts;
+namespace CodeCafe.Modules.Ai.Drafts;
 
-public sealed class OpenAiNoteDraftGenerator(IOptions<AiOptions> aiOptionsAccessor) : IAiNoteDraftGenerator
+public sealed class OpenAiNoteDraftGenerator(
+    OpenAIClient openAiClient,
+    IOptions<AiOptions> aiOptionsAccessor) : IAiNoteDraftGenerator
 {
     private const int ActivePagePreviewChars = 2400;
     private const int ItemPreviewChars = 900;
@@ -17,7 +20,7 @@ public sealed class OpenAiNoteDraftGenerator(IOptions<AiOptions> aiOptionsAccess
         AiNoteDraftGenerationContext context,
         CancellationToken cancellationToken)
     {
-        var client = OpenAiClientFactory.Create(_options).GetChatClient(_options.Model);
+        var client = openAiClient.GetChatClient(_options.Model);
         var completionResult = await client.CompleteChatAsync(
             [
                 new SystemChatMessage(DraftInstructions),
@@ -80,10 +83,10 @@ public sealed class OpenAiNoteDraftGenerator(IOptions<AiOptions> aiOptionsAccess
         {
             var itemText = new StringBuilder();
             itemText.Append($"- {item.Type}: {item.Title} ({item.Path})");
-            if (!string.IsNullOrWhiteSpace(item.PlainTextContent))
+            if (!string.IsNullOrWhiteSpace(item.TextPreview))
             {
                 itemText.AppendLine();
-                itemText.Append(TrimForPrompt(item.PlainTextContent, ItemPreviewChars));
+                itemText.Append(TrimForPrompt(item.TextPreview, ItemPreviewChars));
             }
 
             if (!AppendLineWithinBudget(builder, budget, itemText.ToString()))

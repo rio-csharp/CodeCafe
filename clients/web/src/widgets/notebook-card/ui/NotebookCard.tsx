@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { MoreHorizontal, Star, FileText as PageIcon, Folder as FolderIcon } from 'lucide-react'
 import { useLayout } from '@/shared/model/layoutContext'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
+import { useConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import VisibilityBadge from './VisibilityBadge'
 import NotebookCardMenu from './NotebookCardMenu'
 import { useDeleteNotebook } from '@/features/delete-notebook'
@@ -34,13 +35,14 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
   const deleteNotebook = useDeleteNotebook()
   const toggleFavorite = useToggleFavorite()
   const { showToast } = useToast()
+  const { requestConfirm, confirmDialog } = useConfirmDialog()
 
   useClickOutside(menuRef, () => setMenuOpen(false))
 
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!confirm(t('notebook.deleteConfirm', { title: notebook.title }))) return
+    if (!(await requestConfirm({ title: t('notebook.deleteConfirm', { title: notebook.title }), danger: true }))) return
     deleteNotebook.mutate(notebook.id, {
       onSuccess: () => { showToast(t('notebook.deleted')); setMenuOpen(false) },
       onError: (err: unknown) => {
@@ -68,7 +70,7 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
 
   return (
     <div className="group relative h-full" data-testid="notebook-card">
-      <Link to={`/notes/${notebook.slug}`} className="flex flex-col h-full rounded-xl border border-border-default bg-surface p-5 transition-all hover:border-border-hover hover:shadow-sm">
+      <Link to={`/notes/${notebook.slug}`} className="flex flex-col h-full rounded-xl border border-border-default bg-surface p-5 transition-all duration-200 hover:border-border-hover hover:shadow-md hover:-translate-y-0.5">
         <div className="flex items-start gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-active text-text-secondary">
             {createElement(iconComponent, { className: 'h-5 w-5' })}
@@ -93,7 +95,7 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
         </div>
         <div className="mt-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="h-5 w-5 rounded-full bg-brand-brown flex items-center justify-center text-text-inverse text-[10px] font-medium">{initial}</div>
+            <div className="h-5 w-5 rounded-full bg-brand-brown-dark dark:bg-brand-brown flex items-center justify-center text-text-inverse text-[10px] font-medium">{initial}</div>
             <span className="text-xs text-text-secondary">{authorName}</span>
           </div>
           <span className="text-xs text-text-tertiary">{formatTimeAgo(lastActivity, i18n.language)}</span>
@@ -104,14 +106,16 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
           type="button"
           onClick={handleToggleFavorite}
           disabled={toggleFavorite.isPending}
-          className={`p-1.5 rounded-md transition-all ${notebook.isFavoritedByMe ? 'text-status-favorite bg-status-favorite-bg opacity-100' : 'text-text-tertiary hover:text-status-favorite hover:bg-status-favorite-bg opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}
+          className={`p-1.5 rounded-md transition-all ${notebook.isFavoritedByMe ? 'text-status-favorite bg-status-favorite-bg opacity-100' : 'text-text-tertiary hover:text-status-favorite hover:bg-status-favorite-bg opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100'}`}
           title={notebook.isFavoritedByMe ? t('notebook.favoriteRemove') : t('notebook.favoriteAdd')}
+          aria-label={notebook.isFavoritedByMe ? t('notebook.favoriteRemove') : t('notebook.favoriteAdd')}
+          aria-pressed={notebook.isFavoritedByMe}
         >
           <Star className={`h-4 w-4 ${notebook.isFavoritedByMe ? 'fill-status-favorite' : ''}`} />
         </button>
         {notebook.canEdit && (
           <div ref={menuRef}>
-            <button type="button" data-testid="notebook-menu-button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(!menuOpen) }} className="p-1.5 rounded-md text-text-tertiary hover:text-text-secondary hover:bg-surface-hover opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+            <button type="button" data-testid="notebook-menu-button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMenuOpen(!menuOpen) }} className="p-1.5 rounded-md text-text-tertiary hover:text-text-secondary hover:bg-surface-hover opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-all" title={t('notebook.notebookMenu')} aria-label={t('notebook.notebookMenu')} aria-expanded={menuOpen}>
               <MoreHorizontal className="h-4 w-4" />
             </button>
             {menuOpen && (
@@ -120,6 +124,7 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
           </div>
         )}
       </div>
+      {confirmDialog}
     </div>
   )
 }

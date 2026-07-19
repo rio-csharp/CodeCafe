@@ -1,8 +1,12 @@
-using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using CodeCafe.Ai.Configuration;
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
+using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +14,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace CodeCafe.Ai.Edits;
+namespace CodeCafe.Modules.Ai.Edits;
 
 public static class AiNotebookEditEndpoints
 {
@@ -50,16 +54,16 @@ public static class AiNotebookEditEndpoints
 
     private static async Task<IResult> CreateNotebookEditProposalAsync(
         AiNotebookEditRequest request,
-        HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
-        INotebookItemMutationService notebookItemMutationService,
+        ISender sender,
         ITipTapContentService tipTapContentService,
         IAiNotebookEditGenerator editGenerator,
         IAiNotebookEditProposalStore proposalStore,
         IOptions<AiOptions> aiOptionsAccessor,
         CancellationToken cancellationToken)
     {
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "Authentication is required to generate notebook edits.", StatusCodes.Status401Unauthorized);
@@ -71,12 +75,10 @@ public static class AiNotebookEditEndpoints
             return validationError;
         }
 
-        var notebookResult = await notebookReadService.GetNotebookBySlugAsync(
+        var notebookResult = await notebookReadService.GetNotebookContextAsync(
             request.NotebookSlug.Trim(),
             actorId,
-            cancellationToken,
-            includeArchived: false,
-            includeItems: true);
+            cancellationToken);
         if (!notebookResult.Succeeded)
         {
             return ToNotesError(notebookResult.Error!);
@@ -91,10 +93,26 @@ public static class AiNotebookEditEndpoints
                 StatusCodes.Status403Forbidden);
         }
 
-        var activePage = ResolveActivePage(notebook, request.ActivePagePath);
-        if (request.ActivePagePath is not null && activePage is null)
+        var activePageItem = ResolveActivePage(notebook, request.ActivePagePath);
+        if (request.ActivePagePath is not null && activePageItem is null)
         {
             return ToError("notebook_item_not_found", "Notebook item was not found.", StatusCodes.Status404NotFound, "activePagePath");
+        }
+
+        NotebookItemModel? activePage = null;
+        if (activePageItem is not null)
+        {
+            var activePageResult = await notebookReadService.GetNotebookItemByPathAsync(
+                notebook.Slug,
+                activePageItem.Path,
+                actorId,
+                cancellationToken);
+            if (!activePageResult.Succeeded)
+            {
+                return ToNotesError(activePageResult.Error!);
+            }
+
+            activePage = activePageResult.Value;
         }
 
         var normalizedOperation = NormalizeOperation(request.Operation);
@@ -195,7 +213,7 @@ public static class AiNotebookEditEndpoints
             var appliedResult = await ApplyProposalAsync(
                 proposal,
                 notebookReadService,
-                notebookItemMutationService,
+                sender,
                 proposalStore,
                 aiOptionsAccessor.Value.EditEndpointPath,
                 actorId,
@@ -209,11 +227,12 @@ public static class AiNotebookEditEndpoints
     private static async Task<IResult> GetNotebookEditProposalAsync(
         Guid proposalId,
         HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         IAiNotebookEditProposalStore proposalStore,
         INotebookReadService notebookReadService,
         IOptions<AiOptions> aiOptionsAccessor)
     {
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "Authentication is required to preview notebook edits.", StatusCodes.Status401Unauthorized);
@@ -224,12 +243,10 @@ public static class AiNotebookEditEndpoints
             return ToError("ai_edit_proposal_not_found", "The notebook edit proposal was not found or has expired.", StatusCodes.Status404NotFound, "proposalId");
         }
 
-        var notebookResult = await notebookReadService.GetNotebookBySlugAsync(
+        var notebookResult = await notebookReadService.GetNotebookContextAsync(
             proposal.NotebookSlug,
             actorId,
-            httpContext.RequestAborted,
-            includeArchived: false,
-            includeItems: proposal.PagePath is not null);
+            httpContext.RequestAborted);
         if (!notebookResult.Succeeded)
         {
             return ToNotesError(notebookResult.Error!);
@@ -247,14 +264,14 @@ public static class AiNotebookEditEndpoints
 
     private static async Task<IResult> ApplyNotebookEditProposalAsync(
         Guid proposalId,
-        HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
-        INotebookItemMutationService notebookItemMutationService,
+        ISender sender,
         IAiNotebookEditProposalStore proposalStore,
         IOptions<AiOptions> aiOptionsAccessor,
         CancellationToken cancellationToken)
     {
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "Authentication is required to apply notebook edits.", StatusCodes.Status401Unauthorized);
@@ -268,7 +285,7 @@ public static class AiNotebookEditEndpoints
         return await ApplyProposalAsync(
             proposal,
             notebookReadService,
-            notebookItemMutationService,
+            sender,
             proposalStore,
             aiOptionsAccessor.Value.EditEndpointPath,
             actorId,
@@ -277,10 +294,10 @@ public static class AiNotebookEditEndpoints
 
     private static IResult DiscardNotebookEditProposalAsync(
         Guid proposalId,
-        HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         IAiNotebookEditProposalStore proposalStore)
     {
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "Authentication is required to discard notebook edits.", StatusCodes.Status401Unauthorized);
@@ -298,18 +315,16 @@ public static class AiNotebookEditEndpoints
     private static async Task<IResult> ApplyProposalAsync(
         AiNotebookEditProposal proposal,
         INotebookReadService notebookReadService,
-        INotebookItemMutationService notebookItemMutationService,
+        ISender sender,
         IAiNotebookEditProposalStore proposalStore,
         string editEndpointPath,
         Guid actorId,
         CancellationToken cancellationToken)
     {
-        var notebookResult = await notebookReadService.GetNotebookBySlugAsync(
+        var notebookResult = await notebookReadService.GetNotebookContextAsync(
             proposal.NotebookSlug,
             actorId,
-            cancellationToken,
-            includeArchived: false,
-            includeItems: true);
+            cancellationToken);
         if (!notebookResult.Succeeded)
         {
             return ToNotesError(notebookResult.Error!);
@@ -329,14 +344,15 @@ public static class AiNotebookEditEndpoints
                 return ToNotesError(parent.Error!);
             }
 
-            var createResult = await notebookItemMutationService.CreateNotebookItemAsync(
-                notebook.Id,
-                actorId,
-                parent.Value?.Id,
-                "page",
-                proposal.Title,
-                ResolveCreateSortOrder(notebook, parent.Value?.Id),
-                proposal.AfterContentJson,
+            var createResult = await sender.Send(
+                new CreateNotebookItemCommand(
+                    notebook.Id,
+                    actorId,
+                    parent.Value?.Id,
+                    "page",
+                    proposal.Title,
+                    ResolveCreateSortOrder(notebook, parent.Value?.Id),
+                    proposal.AfterContentJson),
                 cancellationToken);
             if (!createResult.Succeeded)
             {
@@ -356,10 +372,11 @@ public static class AiNotebookEditEndpoints
                 return ToError("active_page_required", "An active page is required for this AI edit operation.", StatusCodes.Status400BadRequest, "activePagePath");
             }
 
-            var archiveResult = await notebookItemMutationService.ArchiveNotebookItemAsync(
-                notebook.Id,
-                proposal.PageId.Value,
-                actorId,
+            var archiveResult = await sender.Send(
+                new ArchiveNotebookItemCommand(
+                    notebook.Id,
+                    proposal.PageId.Value,
+                    actorId),
                 cancellationToken);
             if (!archiveResult.Succeeded)
             {
@@ -378,16 +395,17 @@ public static class AiNotebookEditEndpoints
                 return ToError("active_page_required", "An active page is required for this AI edit operation.", StatusCodes.Status400BadRequest, "activePagePath");
             }
 
-            var updateResult = await notebookItemMutationService.UpdateNotebookItemAsync(
-                notebook.Id,
-                proposal.PageId.Value,
-                actorId,
-                proposal.Title,
-                default,
-                null,
-                proposal.AfterContentJson,
-                cancellationToken,
-                proposal.SourcePageUpdatedAtUtc);
+            var updateResult = await sender.Send(
+                new UpdateNotebookItemCommand(
+                    notebook.Id,
+                    proposal.PageId.Value,
+                    actorId,
+                    proposal.Title,
+                    default,
+                    null,
+                    proposal.AfterContentJson,
+                    proposal.SourcePageUpdatedAtUtc),
+                cancellationToken);
             if (!updateResult.Succeeded)
             {
                 return ToNotesError(updateResult.Error!);
@@ -501,7 +519,7 @@ public static class AiNotebookEditEndpoints
             : ToError("invalid_operation", "Operation must be auto, replace_current_page, append_to_current_page, create_page, or delete_page.", StatusCodes.Status400BadRequest, "operation");
     }
 
-    private static NotebookItemModel? ResolveActivePage(NotebookDetailModel notebook, string? activePagePath)
+    private static NotebookContextItemModel? ResolveActivePage(NotebookContextModel notebook, string? activePagePath)
     {
         if (string.IsNullOrWhiteSpace(activePagePath))
         {
@@ -514,8 +532,8 @@ public static class AiNotebookEditEndpoints
             && string.Equals(item.Type, "page", StringComparison.OrdinalIgnoreCase));
     }
 
-    private static NotesResult<NotebookItemModel?> ResolveParentForCreate(
-        NotebookDetailModel notebook,
+    private static NotesResult<NotebookContextItemModel?> ResolveParentForCreate(
+        NotebookContextModel notebook,
         string? parentPath,
         NotebookItemModel? activePage)
     {
@@ -527,26 +545,26 @@ public static class AiNotebookEditEndpoints
                 && string.Equals(item.Type, "folder", StringComparison.OrdinalIgnoreCase));
 
             return parent is null
-                ? NotesResult<NotebookItemModel?>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent folder was not found.")
-                : NotesResult<NotebookItemModel?>.Success(parent);
+                ? NotesResult<NotebookContextItemModel?>.Failure(NotesFailureKind.Validation, "invalid_parent", "Parent folder was not found.")
+                : NotesResult<NotebookContextItemModel?>.Success(parent);
         }
 
         if (activePage?.ParentId is Guid activeParentId)
         {
             var parent = notebook.Items.SingleOrDefault(item => item.Id == activeParentId);
-            return NotesResult<NotebookItemModel?>.Success(parent);
+            return NotesResult<NotebookContextItemModel?>.Success(parent);
         }
 
-        return NotesResult<NotebookItemModel?>.Success(null);
+        return NotesResult<NotebookContextItemModel?>.Success(null);
     }
 
-    private static int ResolveCreateSortOrder(NotebookDetailModel notebook, Guid? parentId)
+    private static int ResolveCreateSortOrder(NotebookContextModel notebook, Guid? parentId)
     {
         var siblings = notebook.Items.Where(item => item.ParentId == parentId).ToList();
         return siblings.Count == 0 ? 0 : siblings.Max(item => item.SortOrder) + 1;
     }
 
-    private static string? ResolveResponseParentPath(NotebookDetailModel notebook, NotebookItemModel? activePage, string? requestedParentPath)
+    private static string? ResolveResponseParentPath(NotebookContextModel notebook, NotebookItemModel? activePage, string? requestedParentPath)
     {
         if (!string.IsNullOrWhiteSpace(requestedParentPath))
         {
@@ -558,7 +576,7 @@ public static class AiNotebookEditEndpoints
             : ResolveParentPathFromItem(notebook, activePage.ParentId);
     }
 
-    private static string? ResolveParentPathFromItem(NotebookDetailModel notebook, Guid? parentId)
+    private static string? ResolveParentPathFromItem(NotebookContextModel notebook, Guid? parentId)
     {
         return parentId is null
             ? null
@@ -612,15 +630,6 @@ public static class AiNotebookEditEndpoints
         }
 
         return count;
-    }
-
-    private static Guid GetCurrentUserId(ClaimsPrincipal user)
-    {
-        var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user.FindFirstValue("sub");
-        return Guid.TryParse(claimValue, out var userId)
-            ? userId
-            : Guid.Empty;
     }
 
     private static IResult ToNotesError(NotesError error)

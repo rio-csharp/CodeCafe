@@ -1,7 +1,8 @@
-using CodeCafe.Api.Common;
-using CodeCafe.Ai.Common;
-using CodeCafe.Domain.Common.Interfaces;
-using CodeCafe.Mcp.Common;
+using CodeCafe.Modules.Notes.Presentation.Common;
+using CodeCafe.Modules.Ai.Common;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Shared.Domain.Common.Interfaces;
+using CodeCafe.Modules.Mcp.Common;
 using CodeCafe.Modules.Identity.Application;
 using CodeCafe.Modules.Notes.Application;
 using CodeCafe.Server.Common;
@@ -19,7 +20,6 @@ public sealed class DependencyDirectionTests
         Assert.DoesNotContain("CodeCafe.Modules.Identity.Application", references);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Application", references);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Infrastructure", references);
-        Assert.DoesNotContain("CodeCafe.WebApi", references);
         Assert.DoesNotContain("CodeCafe.Modules.Identity.Presentation", references);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Presentation", references);
         Assert.DoesNotContain("CodeCafe.Modules.Ai", references);
@@ -43,9 +43,8 @@ public sealed class DependencyDirectionTests
     [Fact]
     public void Infrastructure_DoesNotReference_Adapters()
     {
-        var references = GetReferenceNames(typeof(CodeCafe.Infrastructure.DependencyInjection).Assembly);
+        var references = GetReferenceNames(typeof(CodeCafe.Modules.Notes.Infrastructure.DependencyInjection).Assembly);
 
-        Assert.DoesNotContain("CodeCafe.WebApi", references);
         Assert.DoesNotContain("CodeCafe.Modules.Identity.Presentation", references);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Presentation", references);
         Assert.DoesNotContain("CodeCafe.Modules.Ai", references);
@@ -60,7 +59,7 @@ public sealed class DependencyDirectionTests
         var mcpReferences = GetReferenceNames(typeof(McpAssemblyMarker).Assembly);
 
         Assert.DoesNotContain("CodeCafe.Modules.Ai", apiReferences);
-        // Notes presentation currently reuses MCP import/upload helpers for markdown import.
+        Assert.DoesNotContain("CodeCafe.Modules.Mcp", apiReferences);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Presentation", aiReferences);
         Assert.DoesNotContain("CodeCafe.Modules.Mcp", aiReferences);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Presentation", mcpReferences);
@@ -79,7 +78,34 @@ public sealed class DependencyDirectionTests
         Assert.Contains("CodeCafe.Modules.Identity.Application", serverReferences);
         Assert.Contains("CodeCafe.Modules.Notes.Application", serverReferences);
         Assert.Contains("CodeCafe.Modules.Notes.Infrastructure", serverReferences);
-        Assert.DoesNotContain("CodeCafe.WebApi", serverReferences);
+    }
+
+    [Fact]
+    public void SharedInfrastructure_IsNotReferenced_By_Domain_Or_Application()
+    {
+        var referencesByAssembly = new[]
+        {
+            GetReferenceNames(typeof(IAuditableEntity).Assembly),
+            GetReferenceNames(typeof(CodeCafe.Modules.Notes.Domain.Notes.Notebook).Assembly),
+            GetReferenceNames(typeof(CodeCafe.Shared.Domain.Mcp.McpToolAuditEntry).Assembly),
+            GetReferenceNames(typeof(IDateTimeProvider).Assembly),
+            GetReferenceNames(typeof(CodeCafe.Modules.Identity.Application.DependencyInjection).Assembly),
+            GetReferenceNames(typeof(CodeCafe.Modules.Notes.Application.DependencyInjection).Assembly)
+        };
+
+        foreach (var references in referencesByAssembly)
+        {
+            Assert.DoesNotContain("CodeCafe.Shared.Infrastructure", references);
+        }
+    }
+
+    [Fact]
+    public void SharedInfrastructure_IsReferenced_By_InfrastructureLevel_And_Host()
+    {
+        Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(CodeCafe.Modules.Notes.Infrastructure.DependencyInjection).Assembly));
+        Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(McpAssemblyMarker).Assembly));
+        Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(CodeCafe.Modules.Identity.Presentation.Auth.DynamicClientRegistrationController).Assembly));
+        Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(ServerAssemblyMarker).Assembly));
     }
 
     private static IReadOnlySet<string> GetReferenceNames(Assembly assembly)

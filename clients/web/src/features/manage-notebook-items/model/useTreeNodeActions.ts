@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { TreeNode } from '@/entities/notebook'
 import { useToast } from '@/shared/ui/Toast'
+import { useConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import { getErrorMessage } from '@/shared/lib/errorUtils'
 
 interface UseTreeNodeActionsOptions {
@@ -17,6 +18,7 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState(node.item.title)
   const { showToast } = useToast()
+  const { requestConfirm, confirmDialog } = useConfirmDialog()
 
   const handleRename = useCallback(async () => {
     if (!editTitle.trim() || editTitle.trim() === node.item.title) {
@@ -33,13 +35,13 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
   }, [editTitle, node.item.id, node.item.title, node.item.sortOrder, onRenameItem, showToast, t])
 
   const handleArchive = useCallback(async () => {
-    if (!confirm(t('notebook.archiveConfirm', { title: node.item.title }))) return
+    if (!(await requestConfirm({ title: t('notebook.archiveConfirm', { title: node.item.title }) }))) return
     try {
       await onArchiveItem(node.item.id)
     } catch (err) {
       showToast(getErrorMessage(err, t('notebook.itemArchiveFailed')), 'error')
     }
-  }, [node.item.id, node.item.title, onArchiveItem, showToast, t])
+  }, [node.item.id, node.item.title, onArchiveItem, requestConfirm, showToast, t])
 
   const handleRestore = useCallback(async () => {
     try {
@@ -55,13 +57,13 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
       showToast(t('notebook.deleteAfterArchive'), 'error')
       return
     }
-    if (!confirm(t('notebook.deletePermanentlyConfirm', { title: node.item.title }))) return
+    if (!(await requestConfirm({ title: t('notebook.deletePermanentlyConfirm', { title: node.item.title }), danger: true }))) return
     try {
       await onDeleteItem(node.item.id)
     } catch (err) {
       showToast(getErrorMessage(err, t('notebook.itemDeleteFailed')), 'error')
     }
-  }, [node.item.id, node.item.title, node.item.isArchived, onDeleteItem, showToast, t])
+  }, [node.item.id, node.item.title, node.item.isArchived, onDeleteItem, requestConfirm, showToast, t])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleRename()
@@ -91,5 +93,6 @@ export default function useTreeNodeActions({ node, onRenameItem, onArchiveItem, 
     handleKeyDown,
     startEditing,
     cancelEditing,
+    confirmDialog,
   }
 }

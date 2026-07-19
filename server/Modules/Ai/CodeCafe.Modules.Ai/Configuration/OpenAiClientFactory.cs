@@ -1,7 +1,7 @@
 using OpenAI;
 using System.ClientModel;
 
-namespace CodeCafe.Ai.Configuration;
+namespace CodeCafe.Modules.Ai.Configuration;
 
 public static class OpenAiClientFactory
 {

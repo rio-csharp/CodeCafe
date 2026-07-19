@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import logoIcon from '@/shared/assets/codecafe-icon.png'
+import { LogoMark } from '@/shared/ui/icons'
 import { useLogout } from '@/features/authenticate'
 import { useLayout } from '@/shared/model/layoutContext'
 import { ThemeToggle } from '@/shared/ui/ThemeToggle'
@@ -59,7 +59,7 @@ function Navbar() {
             to="/"
             className="flex items-center gap-2 text-lg font-bold text-text-primary tracking-tight hover:opacity-70 transition-opacity"
           >
-            <img src={logoIcon} alt="CodeCafe" className="h-7 w-7" />
+            <LogoMark className="h-7 w-7 text-text-primary" />
             CodeCafe
           </Link>
 

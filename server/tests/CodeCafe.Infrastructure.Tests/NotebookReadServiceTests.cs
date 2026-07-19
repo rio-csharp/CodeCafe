@@ -1,5 +1,5 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Domain.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
 
 namespace CodeCafe.Infrastructure.Tests;
 
@@ -232,5 +232,133 @@ public sealed class NotebookReadServiceTests
         var item = Assert.Single(result.Value.Items);
         Assert.Equal(PageItemId, item.Id);
         Assert.Equal("page", item.Type);
+    }
+
+    [Fact]
+    public async Task GetNotebookItems_WithoutContent_OmitsPageBodies()
+    {
+        using var harness = CreateSeededHarness();
+        await using var context = harness.CreateContext();
+        var service = harness.CreateReadService(context);
+
+        var withoutContent = await service.GetNotebookItemsAsync(
+            PublicNotebookId,
+            OwnerId,
+            null,
+            CancellationToken.None,
+            includeContent: false);
+
+        Assert.True(withoutContent.Succeeded);
+        Assert.Equal(2, withoutContent.Value!.Count);
+        Assert.All(withoutContent.Value, item =>
+        {
+            Assert.Null(item.ContentJson);
+            Assert.Null(item.PlainTextContent);
+        });
+
+        var withContent = await service.GetNotebookItemsAsync(
+            PublicNotebookId,
+            OwnerId,
+            null,
+            CancellationToken.None);
+        Assert.Contains(withContent.Value!, item => item.PlainTextContent == "Hexagonal architecture overview");
+    }
+
+    [Fact]
+    public async Task GetNotebookById_WithoutContent_LoadsItemsWithoutPageBodies()
+    {
+        using var harness = CreateSeededHarness();
+        await using var context = harness.CreateContext();
+        var service = harness.CreateReadService(context);
+
+        var result = await service.GetNotebookByIdAsync(
+            PublicNotebookId,
+            OwnerId,
+            CancellationToken.None,
+            includeItems: true,
+            includeContent: false);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(2, result.Value!.Items.Count);
+        Assert.Equal(2, result.Value.ItemCount);
+        Assert.Equal(1, result.Value.PageCount);
+        Assert.All(result.Value.Items, item =>
+        {
+            Assert.Null(item.ContentJson);
+            Assert.Null(item.PlainTextContent);
+        });
+
+        var withContent = await service.GetNotebookByIdAsync(
+            PublicNotebookId,
+            OwnerId,
+            CancellationToken.None,
+            includeItems: true,
+            includeContent: true);
+        Assert.Contains(withContent.Value!.Items, item => item.PlainTextContent == "Hexagonal architecture overview");
+    }
+
+    [Fact]
+    public async Task GetNotebookContext_ReturnsStructureWithTruncatedPreviews()
+    {
+        using var harness = CreateSeededHarness();
+        await using (var seed = harness.CreateContext())
+        {
+            seed.AddItem(
+                Guid.NewGuid(),
+                PublicNotebookId,
+                NotebookItemType.Page,
+                "Long Page",
+                "chapters/long",
+                3,
+                parentId: FolderItemId,
+                plainTextContent: new string('x', NotebookContextModel.TextPreviewChars + 100));
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = harness.CreateContext();
+        var service = harness.CreateReadService(context);
+
+        var result = await service.GetNotebookContextAsync("architecture-notes", OwnerId, CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.True(result.Value!.CanEdit);
+        Assert.Equal("architecture-notes", result.Value.Slug);
+        Assert.Equal(3, result.Value.Items.Count);
+        var longPage = Assert.Single(result.Value.Items, item => item.Path == "chapters/long");
+        Assert.Equal(NotebookContextModel.TextPreviewChars, longPage.TextPreview!.Length);
+        var overview = Assert.Single(result.Value.Items, item => item.Path == "chapters/overview");
+        Assert.Equal("Hexagonal architecture overview", overview.TextPreview);
+
+        var forbidden = await service.GetNotebookContextAsync("secret-notes", OtherUserId, CancellationToken.None);
+        Assert.False(forbidden.Succeeded);
+        Assert.Equal(NotesFailureKind.Forbidden, forbidden.Error!.Kind);
+    }
+
+    [Fact]
+    public async Task GetPublicNotebooks_AppliesOffsetAndLimit()
+    {
+        using var harness = new NotesDbHarness();
+        await using (var seed = harness.CreateContext())
+        {
+            seed.AddUser(OwnerId, "Yao");
+            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Alpha", "alpha", NotebookVisibility.Public, true);
+            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Beta", "beta", NotebookVisibility.Public, true);
+            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Gamma", "gamma", NotebookVisibility.Public, true);
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = harness.CreateContext();
+        var service = harness.CreateReadService(context);
+
+        var all = await service.GetPublicNotebooksAsync(null, OtherUserId, CancellationToken.None);
+        Assert.Equal(3, all.Count);
+
+        var page = await service.GetPublicNotebooksAsync(null, OtherUserId, CancellationToken.None, limit: 1, offset: 1);
+        var pagedNotebook = Assert.Single(page);
+        Assert.Equal("Beta", pagedNotebook.Title);
+
+        var rest = await service.GetPublicNotebooksAsync(null, OtherUserId, CancellationToken.None, offset: 2);
+        var remainingNotebook = Assert.Single(rest);
+        Assert.Equal("Gamma", remainingNotebook.Title);
     }
 }

@@ -1,4 +1,4 @@
-namespace CodeCafe.Application.Common.Interfaces;
+namespace CodeCafe.Shared.Application.Common.Interfaces;
 
 public sealed record McpAuditRecord(
     Guid? ActorUserId,

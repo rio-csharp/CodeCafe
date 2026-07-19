@@ -1,6 +1,6 @@
 using FluentValidation;
 
-namespace CodeCafe.Application.Auth.Commands.RegisterUser;
+namespace CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
 
 public sealed class RegisterUserCommandValidator : AbstractValidator<RegisterUserCommand>
 {

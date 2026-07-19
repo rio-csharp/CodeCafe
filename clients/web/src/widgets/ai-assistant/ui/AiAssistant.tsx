@@ -46,6 +46,7 @@ export default function AiAssistant({
   const { editMessages, setEditMessages, clearEditMessages } = useEditMessages({ notebook, activePage })
   const [draft, setDraft] = useState('')
   const [dockedHeight, setDockedHeight] = useState<number | null>(null)
+  const [resizing, setResizing] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const resizeStartRef = useRef<{ pointerId: number; startY: number; startHeight: number } | null>(null)
@@ -158,10 +159,13 @@ export default function AiAssistant({
       startHeight: dockedHeight ?? rootRef.current?.getBoundingClientRect().height ?? DOCKED_MIN_HEIGHT,
     }
     ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+    setResizing(true)
   }, [dockedHeight, isFloating])
 
+  // Gated on `resizing` state (not a ref) so the listeners are actually
+  // registered when a drag starts and removed when it ends.
   useEffect(() => {
-    if (!resizeStartRef.current) return
+    if (!resizing) return
 
     function handlePointerMove(event: PointerEvent) {
       const start = resizeStartRef.current
@@ -175,6 +179,7 @@ export default function AiAssistant({
       const start = resizeStartRef.current
       if (!start || event.pointerId !== start.pointerId) return
       resizeStartRef.current = null
+      setResizing(false)
     }
 
     window.addEventListener('pointermove', handlePointerMove)
@@ -185,7 +190,7 @@ export default function AiAssistant({
       window.removeEventListener('pointerup', handlePointerEnd)
       window.removeEventListener('pointercancel', handlePointerEnd)
     }
-  }, [])
+  }, [resizing])
 
   if (isCollapsed) {
     return (

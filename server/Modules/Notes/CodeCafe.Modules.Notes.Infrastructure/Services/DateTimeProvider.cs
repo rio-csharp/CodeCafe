@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Interfaces;
+using CodeCafe.Shared.Application.Common.Interfaces;
 
-namespace CodeCafe.Infrastructure.Services;
+namespace CodeCafe.Modules.Notes.Infrastructure.Services;
 
 internal sealed class DateTimeProvider : IDateTimeProvider
 {

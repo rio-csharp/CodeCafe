@@ -1,4 +1,5 @@
-using CodeCafe.Application.Notes;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol;
 using System.Security.Claims;
@@ -8,7 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Unicode;
 
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 internal static class NotesMcpSupport
 {
@@ -23,15 +24,6 @@ internal static class NotesMcpSupport
     };
     private const string AuthenticatedActorRequiredCode = "authenticated_actor_required";
     private const string AuthenticatedActorRequiredMessage = "The MCP endpoint requires an authenticated CodeCafe user.";
-
-    public static Guid GetCurrentUserId(ClaimsPrincipal user)
-    {
-        var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user.FindFirstValue("sub");
-        return Guid.TryParse(claimValue, out var userId)
-            ? userId
-            : Guid.Empty;
-    }
 
     public static bool HasAnyScope(ClaimsPrincipal user, params string[] requiredScopes)
     {
@@ -64,13 +56,13 @@ internal static class NotesMcpSupport
             return NotesResult<Guid>.Failure(scopeResult.Error!.Kind, scopeResult.Error.Code, scopeResult.Error.Message);
         }
 
-        var currentUserId = GetCurrentUserId(user);
-        return currentUserId == Guid.Empty
+        var currentUserId = CurrentUserClaims.GetUserId(user);
+        return currentUserId is null
             ? NotesResult<Guid>.Failure(
                 NotesFailureKind.Forbidden,
                 AuthenticatedActorRequiredCode,
                 AuthenticatedActorRequiredMessage)
-            : NotesResult<Guid>.Success(currentUserId);
+            : NotesResult<Guid>.Success(currentUserId.Value);
     }
 
     public static string NormalizePath(string path) => path?.Trim().Trim('/') ?? string.Empty;
@@ -171,8 +163,8 @@ internal static class NotesMcpSupport
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken)
     {
-        var currentUserId = GetCurrentUserId(user);
-        if (currentUserId == Guid.Empty)
+        var currentUserId = CurrentUserClaims.GetUserId(user);
+        if (currentUserId is null)
         {
             return NotesResult<NotebookSummaryModel>.Failure(
                 NotesFailureKind.Forbidden,
@@ -188,7 +180,7 @@ internal static class NotesMcpSupport
                 "The notebook slug is required.");
         }
 
-        return await notebookReadService.GetNotebookSummaryBySlugAsync(notebookSlug.Trim(), currentUserId, cancellationToken);
+        return await notebookReadService.GetNotebookSummaryBySlugAsync(notebookSlug.Trim(), currentUserId.Value, cancellationToken);
     }
 
     public static async Task<NotesResult<NotebookContext>> RequireNotebookContextAsync(

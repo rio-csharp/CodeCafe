@@ -49,7 +49,7 @@ export default function DashboardCards() {
           <div className="mt-8">
             <Link
               to={to}
-              className="inline-flex w-fit items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse transition-opacity hover:opacity-90"
+              className="inline-flex w-fit items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse transition-opacity hover:opacity-90"
             >
               {btnText}
               <ArrowRight className="h-4 w-4" />

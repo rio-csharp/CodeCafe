@@ -1,4 +1,4 @@
-namespace CodeCafe.Ai.Configuration;
+namespace CodeCafe.Modules.Ai.Configuration;
 
 public sealed class AiOptions
 {

@@ -1,10 +1,11 @@
-using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
-using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
-using CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.AddNotebookFavorite;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.RemoveNotebookFavorite;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookFavoriteStatus;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CodeCafe.Api.Endpoints.Notes;
+namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
 public static partial class NotesEndpoints
 {
@@ -20,12 +21,12 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> GetFavoriteStatusAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new GetNotebookFavoriteStatusQuery(notebookId, GetCurrentUserId(httpContext.User)),
+            new GetNotebookFavoriteStatusQuery(notebookId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
             cancellationToken);
 
         return ToFavoriteResult(result);
@@ -33,12 +34,12 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> AddFavoriteAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new AddNotebookFavoriteCommand(notebookId, GetCurrentUserId(httpContext.User)),
+            new AddNotebookFavoriteCommand(notebookId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
             cancellationToken);
 
         return ToFavoriteResult(result);
@@ -46,12 +47,12 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> RemoveFavoriteAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new RemoveNotebookFavoriteCommand(notebookId, GetCurrentUserId(httpContext.User)),
+            new RemoveNotebookFavoriteCommand(notebookId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
             cancellationToken);
 
         return ToFavoriteResult(result);

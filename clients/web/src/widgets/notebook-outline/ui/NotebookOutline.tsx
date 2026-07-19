@@ -75,8 +75,8 @@ function NotebookOutlineComponent({ headings, scrollContainerRef }: NotebookOutl
                 onClick={() => handleClick(h.id)}
                 className={`text-left text-[13px] transition-colors w-full truncate ${
                   isActive
-                    ? 'text-brand-brown font-medium'
-                    : 'text-text-secondary hover:text-brand-brown'
+                    ? 'text-brand-brown-text font-medium'
+                    : 'text-text-secondary hover:text-brand-brown-text'
                 }`}
                 style={{ paddingLeft: `${(h.level - 1) * 14}px` }}
               >

@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace CodeCafe.Api.Networking;
+namespace CodeCafe.Modules.Identity.Presentation.Networking;
 
 public static class TrustedProxyNetworks
 {

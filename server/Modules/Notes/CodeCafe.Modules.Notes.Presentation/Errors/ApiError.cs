@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 
-namespace CodeCafe.Api.Errors;
+namespace CodeCafe.Modules.Notes.Presentation.Errors;
 
 public static class ApiProblems
 {

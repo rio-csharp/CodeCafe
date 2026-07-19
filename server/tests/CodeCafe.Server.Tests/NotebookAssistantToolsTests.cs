@@ -1,6 +1,7 @@
-using CodeCafe.Ai.Configuration;
-using CodeCafe.Ai.Tools;
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Modules.Ai.Tools;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -264,7 +265,7 @@ public sealed class NotebookAssistantToolsTests
 
         return new NotebookAssistantTools(
             serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            new HttpContextAccessor { HttpContext = httpContext },
+            new HttpContextCurrentUserAccessor(new HttpContextAccessor { HttpContext = httpContext }),
             Options.Create(new AiOptions
             {
                 MaxToolResults = maxToolResults,
@@ -396,7 +397,8 @@ public sealed class NotebookAssistantToolsTests
             string? search,
             Guid currentUserId,
             CancellationToken cancellationToken,
-            int? limit = null)
+            int? limit = null,
+            int? offset = null)
         {
             PublicNotebookUserIds.Add(currentUserId);
             PublicNotebookLimits.Add(limit);
@@ -407,7 +409,8 @@ public sealed class NotebookAssistantToolsTests
             Guid currentUserId,
             string? search,
             CancellationToken cancellationToken,
-            int? limit = null)
+            int? limit = null,
+            int? offset = null)
         {
             MyNotebookUserIds.Add(currentUserId);
             MyNotebookLimits.Add(limit);
@@ -431,7 +434,8 @@ public sealed class NotebookAssistantToolsTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
             => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(
                 NotesFailureKind.NotFound,
                 "notebook_not_found",
@@ -459,7 +463,8 @@ public sealed class NotebookAssistantToolsTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
             => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(
                 NotesFailureKind.NotFound,
                 "notebook_not_found",
@@ -470,7 +475,8 @@ public sealed class NotebookAssistantToolsTests
             Guid currentUserId,
             CancellationToken cancellationToken,
             bool includeArchived = false,
-            bool includeItems = true)
+            bool includeItems = true,
+            bool includeContent = true)
         {
             NotebookBySlugCalls.Add((slug, currentUserId, includeArchived, includeItems));
             return Task.FromResult(NotebookBySlugResult);

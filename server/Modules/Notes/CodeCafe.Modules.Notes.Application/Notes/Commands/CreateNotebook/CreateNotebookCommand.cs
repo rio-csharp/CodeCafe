@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Commands.CreateNotebook;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
 
 public sealed record CreateNotebookCommand(
     Guid CurrentUserId,

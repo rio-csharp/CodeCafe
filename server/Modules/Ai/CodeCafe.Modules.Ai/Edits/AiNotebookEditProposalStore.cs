@@ -1,7 +1,10 @@
 using System.Text.Json;
+using CodeCafe.Shared.Domain.Ai;
+using CodeCafe.Shared.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 
-namespace CodeCafe.Ai.Edits;
+namespace CodeCafe.Modules.Ai.Edits;
 
 public interface IAiNotebookEditProposalStore
 {
@@ -10,6 +13,73 @@ public interface IAiNotebookEditProposalStore
     bool TryGet(Guid proposalId, Guid actorId, out AiNotebookEditProposal proposal);
 
     void Remove(Guid proposalId);
+}
+
+public sealed class DatabaseAiNotebookEditProposalStore(ApplicationDbContext dbContext) : IAiNotebookEditProposalStore
+{
+    public AiNotebookEditProposal Save(AiNotebookEditProposal proposal)
+    {
+        PruneExpiredProposals();
+
+        dbContext.AiEditProposals.Add(new AiEditProposal
+        {
+            Id = proposal.ProposalId,
+            ActorUserId = proposal.ActorId,
+            NotebookId = proposal.NotebookId,
+            NotebookSlug = proposal.NotebookSlug,
+            PayloadJson = JsonSerializer.Serialize(proposal),
+            ExpiresAtUtc = proposal.ExpiresAtUtc
+        });
+        dbContext.SaveChanges();
+
+        return proposal;
+    }
+
+    public bool TryGet(Guid proposalId, Guid actorId, out AiNotebookEditProposal proposal)
+    {
+        var entry = dbContext.AiEditProposals
+            .AsNoTracking()
+            .SingleOrDefault(existingProposal => existingProposal.Id == proposalId);
+        if (entry is not null
+            && entry.ActorUserId == actorId
+            && entry.ExpiresAtUtc > DateTimeOffset.UtcNow)
+        {
+            proposal = JsonSerializer.Deserialize<AiNotebookEditProposal>(entry.PayloadJson)!;
+            return true;
+        }
+
+        proposal = default!;
+        return false;
+    }
+
+    public void Remove(Guid proposalId)
+    {
+        dbContext.AiEditProposals
+            .Where(existingProposal => existingProposal.Id == proposalId)
+            .ExecuteDelete();
+    }
+
+    private void PruneExpiredProposals()
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        // DateTimeOffset range comparisons are not translatable on every provider (e.g. SQLite),
+        // so expired rows are filtered client-side and deleted by key.
+        var expiredIds = dbContext.AiEditProposals
+            .Select(existingProposal => new { existingProposal.Id, existingProposal.ExpiresAtUtc })
+            .AsEnumerable()
+            .Where(existingProposal => existingProposal.ExpiresAtUtc <= now)
+            .Select(existingProposal => existingProposal.Id)
+            .ToList();
+        if (expiredIds.Count == 0)
+        {
+            return;
+        }
+
+        dbContext.AiEditProposals
+            .Where(existingProposal => expiredIds.Contains(existingProposal.Id))
+            .ExecuteDelete();
+    }
 }
 
 public sealed class MemoryAiNotebookEditProposalStore(IMemoryCache cache) : IAiNotebookEditProposalStore

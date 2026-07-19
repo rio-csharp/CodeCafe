@@ -79,7 +79,7 @@ export function AiAssistantForm({
             <button
               type="submit"
               disabled={!draft.trim() || !canSubmit}
-              className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-brown text-text-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-9 w-9 items-center justify-center rounded-md bg-brand-brown-dark dark:bg-brand-brown text-text-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               aria-label={t('ai.send')}
               title={t('ai.send')}
             >
@@ -108,7 +108,7 @@ function ModeButton({ active, disabled, onClick, children }: ModeButtonProps) {
       aria-pressed={active}
       className={`rounded-md px-2 py-1 text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
         active
-          ? 'bg-brand-brown text-text-inverse'
+          ? 'bg-brand-brown-dark dark:bg-brand-brown text-text-inverse'
           : 'border border-border-default bg-surface text-text-secondary hover:bg-surface-hover'
       }`}
     >

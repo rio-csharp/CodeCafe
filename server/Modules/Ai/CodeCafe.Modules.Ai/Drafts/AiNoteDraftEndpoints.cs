@@ -1,14 +1,14 @@
-using CodeCafe.Ai.Configuration;
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using System.Security.Claims;
 
-namespace CodeCafe.Ai.Drafts;
+namespace CodeCafe.Modules.Ai.Drafts;
 
 public static class AiNoteDraftEndpoints
 {
@@ -39,12 +39,12 @@ public static class AiNoteDraftEndpoints
 
     private static async Task<IResult> GenerateDraftAsync(
         AiNoteDraftRequest request,
-        HttpContext httpContext,
+        ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
         IAiNoteDraftGenerator draftGenerator,
         CancellationToken cancellationToken)
     {
-        var actorId = GetCurrentUserId(httpContext.User);
+        var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
             return ToError("authenticated_actor_required", "Authentication is required to generate note drafts.", StatusCodes.Status401Unauthorized);
@@ -56,21 +56,36 @@ public static class AiNoteDraftEndpoints
             return validationError;
         }
 
-        var notebookResult = await notebookReadService.GetNotebookBySlugAsync(
+        var notebookResult = await notebookReadService.GetNotebookContextAsync(
             request.NotebookSlug.Trim(),
             actorId,
-            cancellationToken,
-            includeArchived: false,
-            includeItems: true);
+            cancellationToken);
         if (!notebookResult.Succeeded)
         {
             return ToNotesError(notebookResult.Error!);
         }
 
-        var activePage = ResolveActivePage(notebookResult.Value!, request.ActivePagePath);
-        if (request.ActivePagePath is not null && activePage is null)
+        var notebook = notebookResult.Value!;
+        var activePageItem = ResolveActivePage(notebook, request.ActivePagePath);
+        if (request.ActivePagePath is not null && activePageItem is null)
         {
             return ToError("notebook_item_not_found", "Notebook item was not found.", StatusCodes.Status404NotFound, "activePagePath");
+        }
+
+        NotebookItemModel? activePage = null;
+        if (activePageItem is not null)
+        {
+            var activePageResult = await notebookReadService.GetNotebookItemByPathAsync(
+                notebook.Slug,
+                activePageItem.Path,
+                actorId,
+                cancellationToken);
+            if (!activePageResult.Succeeded)
+            {
+                return ToNotesError(activePageResult.Error!);
+            }
+
+            activePage = activePageResult.Value;
         }
 
         var normalizedIntent = NormalizeIntent(request.Intent);
@@ -83,7 +98,7 @@ public static class AiNoteDraftEndpoints
                     normalizedIntent,
                     request.Prompt.Trim(),
                     NormalizeLocale(request.Locale),
-                    notebookResult.Value!,
+                    notebook,
                     activePage),
                 cancellationToken);
         }
@@ -112,13 +127,13 @@ public static class AiNoteDraftEndpoints
 
         var title = ExtractTitle(markdown)
             ?? activePage?.Title
-            ?? $"{notebookResult.Value!.Title} AI draft";
+            ?? $"{notebook.Title} AI draft";
 
         return TypedResults.Ok(new AiNoteDraftResponse(
             markdown,
             title,
             normalizedIntent,
-            notebookResult.Value!.Slug,
+            notebook.Slug,
             activePage?.Path,
             DateTimeOffset.UtcNow));
     }
@@ -138,7 +153,7 @@ public static class AiNoteDraftEndpoints
         return null;
     }
 
-    private static NotebookItemModel? ResolveActivePage(NotebookDetailModel notebook, string? activePagePath)
+    private static NotebookContextItemModel? ResolveActivePage(NotebookContextModel notebook, string? activePagePath)
     {
         if (string.IsNullOrWhiteSpace(activePagePath))
         {
@@ -182,15 +197,6 @@ public static class AiNoteDraftEndpoints
         }
 
         return null;
-    }
-
-    private static Guid GetCurrentUserId(ClaimsPrincipal user)
-    {
-        var claimValue = user.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? user.FindFirstValue("sub");
-        return Guid.TryParse(claimValue, out var userId)
-            ? userId
-            : Guid.Empty;
     }
 
     private static IResult ToNotesError(NotesError error)

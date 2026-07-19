@@ -1,7 +1,7 @@
 using ModelContextProtocol.Protocol;
 using System.Security.Claims;
 
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 public interface IMcpMutationExecutor
 {

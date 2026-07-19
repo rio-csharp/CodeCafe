@@ -30,10 +30,10 @@ test.describe('Notebook lifecycle', () => {
     const card = page.getByTestId('notebook-card').filter({ hasText: notebookTitle })
     await card.getByTestId('notebook-menu-button').click()
 
-    // Set up dialog handler before triggering the delete
-    page.on('dialog', (dialog) => dialog.accept())
-
     await card.getByTestId('notebook-delete-button').click()
+
+    // Deletion is confirmed through the in-app dialog
+    await page.getByRole('dialog').getByRole('button', { name: /confirm|确认/i }).click()
 
     // Wait for delete API response
     await page.waitForResponse(

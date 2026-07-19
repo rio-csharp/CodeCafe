@@ -112,5 +112,8 @@ export function setPostAuthRedirect(path: string): void {
 export function getPostAuthRedirect(): string | null {
   const path = sessionStorage.getItem('post_auth_redirect')
   sessionStorage.removeItem('post_auth_redirect')
-  return path
+  if (!path) return null
+  // Re-validate on the way out: only same-origin relative paths (or the
+  // whitelisted authorize URL) may be navigated to.
+  return resolvePostAuthRedirect(`?returnUrl=${encodeURIComponent(path)}`)
 }

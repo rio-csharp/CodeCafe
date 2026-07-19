@@ -1,3 +1,3 @@
-namespace CodeCafe.Api.Common;
+namespace CodeCafe.Modules.Notes.Presentation.Common;
 
 public sealed class ApiAssemblyMarker;

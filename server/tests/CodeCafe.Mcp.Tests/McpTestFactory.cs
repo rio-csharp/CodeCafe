@@ -1,6 +1,7 @@
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Application.Notes;
-using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -16,7 +17,7 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace CodeCafe.Mcp.Tests;
+namespace CodeCafe.Modules.Mcp.Tests;
 
 public sealed class McpTestFactory : WebApplicationFactory<ServerAssemblyMarker>
 {
@@ -163,7 +164,7 @@ internal sealed class TestNotebookQueryService : INotebookReadService
             DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
             Items);
 
-    public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null)
+    public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null, int? offset = null)
         => Task.FromResult<IReadOnlyList<NotebookSummaryModel>>(
         [
             new(
@@ -187,7 +188,7 @@ internal sealed class TestNotebookQueryService : INotebookReadService
                 DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"))
         ]);
 
-    public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null)
+    public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null, int? offset = null)
         => Task.FromResult<IReadOnlyList<NotebookSummaryModel>>([]);
 
     public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(Guid currentUserId, string search, CancellationToken cancellationToken, int? limit = null)
@@ -198,7 +199,8 @@ internal sealed class TestNotebookQueryService : INotebookReadService
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true)
+        bool includeItems = true,
+        bool includeContent = true)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
                 ? NotesResult<NotebookDetailModel>.Success(
@@ -223,7 +225,8 @@ internal sealed class TestNotebookQueryService : INotebookReadService
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true)
+        bool includeItems = true,
+        bool includeContent = true)
         => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
 
     public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
@@ -231,7 +234,8 @@ internal sealed class TestNotebookQueryService : INotebookReadService
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true)
+        bool includeItems = true,
+        bool includeContent = true)
         => Task.FromResult(
             string.Equals(slug, "architecture-notes", StringComparison.Ordinal)
                 ? NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail(currentUserId))

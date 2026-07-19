@@ -3,7 +3,6 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useCreateNotebookForm } from '@/features/create-notebook'
 import { useToast } from '@/shared/ui/Toast'
 import { Input } from '@/shared/ui/Input'
-import { getErrorMessage } from '@/shared/lib/errorUtils'
 import { VisibilityField } from '@/widgets/notebook-settings'
 import { useTranslation } from 'react-i18next'
 
@@ -17,8 +16,10 @@ export default function CreateNotebookPage() {
     navigate(`/notes/${slug}`)
   }
 
+  // useCreateNotebookForm already converts the error to a display string;
+  // show it as-is so server messages (e.g. slug conflicts) reach the user.
   const handleError = (message: string) => {
-    showToast(getErrorMessage(message, t('notebook.createFailed')), 'error')
+    showToast(message, 'error')
   }
 
   const {
@@ -79,7 +80,7 @@ export default function CreateNotebookPage() {
               type="submit"
               data-testid="create-notebook-submit"
               disabled={isPending}
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               {t('notebook.createSubmit')}

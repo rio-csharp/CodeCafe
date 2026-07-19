@@ -1,4 +1,4 @@
-namespace CodeCafe.Api.Networking;
+namespace CodeCafe.Modules.Identity.Presentation.Networking;
 
 public interface IClientIpAddressAccessor
 {

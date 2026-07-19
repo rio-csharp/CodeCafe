@@ -1,9 +1,9 @@
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Server.Configuration;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
-namespace CodeCafe.Server.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Auth;
 
 public static class OpenIddictClientRegistration
 {

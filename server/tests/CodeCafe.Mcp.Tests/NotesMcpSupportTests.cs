@@ -1,7 +1,7 @@
-using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Modules.Mcp.Tools.Notes;
 using System.Text.Json;
 
-namespace CodeCafe.Mcp.Tests;
+namespace CodeCafe.Modules.Mcp.Tests;
 
 public sealed class NotesMcpSupportTests
 {

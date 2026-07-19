@@ -1,9 +1,9 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Domain.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
-namespace CodeCafe.Infrastructure.Notes;
+namespace CodeCafe.Modules.Notes.Infrastructure.Notes;
 
 internal static class NotesSupport
 {
@@ -59,6 +59,27 @@ internal static class NotesSupport
             item.UpdatedAtUtc);
     }
 
+    public static NotebookItemModel ToItemModel(NotebookItemRow row, bool includeContent)
+    {
+        return new NotebookItemModel(
+            row.Id,
+            row.NotebookId,
+            row.ParentId,
+            row.Type.ToString().ToLowerInvariant(),
+            row.Title,
+            row.Slug,
+            row.Path,
+            row.SortOrder,
+            row.ContentFormat,
+            includeContent ? ParseContent(row.ContentJson) : null,
+            includeContent ? row.PlainTextContent : null,
+            row.IsArchived,
+            row.ArchivedAtUtc,
+            row.ArchivedByUserId,
+            row.CreatedAtUtc,
+            row.UpdatedAtUtc);
+    }
+
     public static NotebookSummaryModel ToSummaryModel(
         Notebook notebook,
         string authorDisplayName,
@@ -90,15 +111,9 @@ internal static class NotesSupport
         Notebook notebook,
         string authorDisplayName,
         NotebookMetadata metadata,
-        Guid currentUserId)
+        Guid currentUserId,
+        IReadOnlyList<NotebookItemModel> items)
     {
-        var items = notebook.Items
-            .OrderBy(item => item.ParentId)
-            .ThenBy(item => item.SortOrder)
-            .ThenBy(item => item.Title)
-            .Select(ToItemModel)
-            .ToList();
-
         return new NotebookDetailModel(
             notebook.Id,
             notebook.OwnerId,
@@ -139,6 +154,24 @@ internal static class NotesSupport
                        || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)));
     }
 }
+
+internal sealed record NotebookItemRow(
+    Guid Id,
+    Guid NotebookId,
+    Guid? ParentId,
+    NotebookItemType Type,
+    string Title,
+    string Slug,
+    string Path,
+    int SortOrder,
+    string? ContentFormat,
+    string? ContentJson,
+    string? PlainTextContent,
+    bool IsArchived,
+    DateTimeOffset? ArchivedAtUtc,
+    Guid? ArchivedByUserId,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset? UpdatedAtUtc);
 
 internal sealed record NotebookMetadata(
     int ItemCount,

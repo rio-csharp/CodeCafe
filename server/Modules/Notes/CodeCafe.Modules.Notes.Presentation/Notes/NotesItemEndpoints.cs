@@ -1,16 +1,17 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
-using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
-using CodeCafe.Application.Notes.Commands.DeleteNotebookItem;
-using CodeCafe.Application.Notes.Commands.ReorderNotebookItems;
-using CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
-using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
-using CodeCafe.Application.Notes.Queries.GetNotebookItemById;
-using CodeCafe.Application.Notes.Queries.GetNotebookItems;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.ReorderNotebookItems;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.RestoreNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItemById;
+using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItems;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CodeCafe.Api.Endpoints.Notes;
+namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
 public static partial class NotesEndpoints
 {
@@ -36,20 +37,20 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> GetNotebookItemsAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         [FromQuery] string? search,
         [FromQuery] bool? includeArchived,
         [FromQuery] bool? includeContent,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new GetNotebookItemsQuery(
                 notebookId,
-                GetCurrentUserId(httpContext.User),
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 search,
                 includeArchived ?? false,
-                includeContent ?? true),
+                includeContent ?? false),
             cancellationToken);
 
         return ToListResult(result);
@@ -57,17 +58,17 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> GetNotebookItemByIdAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         Guid itemId,
         [FromQuery] bool? includeArchived,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new GetNotebookItemByIdQuery(
                 notebookId,
                 itemId,
-                GetCurrentUserId(httpContext.User),
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 includeArchived ?? false),
             cancellationToken);
 
@@ -76,15 +77,15 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> CreateNotebookItemAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         CreateNotebookItemRequest request,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new CreateNotebookItemCommand(
                 notebookId,
-                GetCurrentUserId(httpContext.User),
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 request.ParentId,
                 request.Type,
                 request.Title,
@@ -104,17 +105,17 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> UpdateNotebookItemAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         Guid itemId,
         UpdateNotebookItemRequest request,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new UpdateNotebookItemCommand(
                 notebookId,
                 itemId,
-                GetCurrentUserId(httpContext.User),
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 request.Title,
                 request.ParentId,
                 request.SortOrder,
@@ -127,15 +128,15 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> ReorderNotebookItemsAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         ReorderNotebookItemsRequest request,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
             new ReorderNotebookItemsCommand(
                 notebookId,
-                GetCurrentUserId(httpContext.User),
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 request.Items.Select(item => new ReorderNotebookItemModel(item.ItemId, item.ParentId, item.SortOrder)).ToList()),
             cancellationToken);
 
@@ -150,13 +151,13 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> ArchiveNotebookItemAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         Guid itemId,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new ArchiveNotebookItemCommand(notebookId, itemId, GetCurrentUserId(httpContext.User)),
+            new ArchiveNotebookItemCommand(notebookId, itemId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
             cancellationToken);
 
         return ToItemResult(result);
@@ -164,13 +165,13 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> RestoreNotebookItemAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         Guid itemId,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new RestoreNotebookItemCommand(notebookId, itemId, GetCurrentUserId(httpContext.User)),
+            new RestoreNotebookItemCommand(notebookId, itemId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
             cancellationToken);
 
         return ToItemResult(result);
@@ -178,13 +179,13 @@ public static partial class NotesEndpoints
 
     private static async Task<IResult> DeleteNotebookItemAsync(
         [FromServices] ISender sender,
+        [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         Guid itemId,
-        HttpContext httpContext,
         CancellationToken cancellationToken)
     {
         var result = await sender.Send(
-            new DeleteNotebookItemCommand(notebookId, itemId, GetCurrentUserId(httpContext.User)),
+            new DeleteNotebookItemCommand(notebookId, itemId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
             cancellationToken);
 
         return ToCommandResult(result);

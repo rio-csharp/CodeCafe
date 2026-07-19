@@ -1,8 +1,8 @@
-using CodeCafe.Ai.Agents;
-using CodeCafe.Ai.Configuration;
-using CodeCafe.Ai.Drafts;
-using CodeCafe.Ai.Edits;
-using CodeCafe.Ai.Tools;
+using CodeCafe.Modules.Ai.Agents;
+using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Modules.Ai.Drafts;
+using CodeCafe.Modules.Ai.Edits;
+using CodeCafe.Modules.Ai.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Hosting;
 using Microsoft.AspNetCore.Http.Json;
@@ -15,7 +15,7 @@ using Microsoft.Extensions.Options;
 using OpenAI;
 using OpenAI.Chat;
 
-namespace CodeCafe.Ai.DependencyInjection;
+namespace CodeCafe.Modules.Ai.DependencyInjection;
 
 public static class ServiceCollectionExtensions
 {
@@ -68,9 +68,12 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         services.AddSingleton<NotebookAssistantTools>();
-        services.TryAddSingleton<IAiNotebookEditProposalStore, MemoryAiNotebookEditProposalStore>();
+        services.TryAddSingleton(serviceProvider =>
+            OpenAiClientFactory.Create(serviceProvider.GetRequiredService<IOptions<AiOptions>>().Value));
+        services.TryAddScoped<IAiNotebookEditProposalStore, DatabaseAiNotebookEditProposalStore>();
         services.TryAddScoped<IAiNotebookEditGenerator, OpenAiNotebookEditGenerator>();
         services.TryAddScoped<IAiNoteDraftGenerator, OpenAiNoteDraftGenerator>();
+        services.AddHostedService<AiNotebookEditProposalCleanupService>();
 
         var configuredOptions = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
         services.AddAIAgent(
@@ -117,7 +120,7 @@ public static class ServiceCollectionExtensions
                 serializerOptions: jsonOptions.SerializerOptions)
         ];
 
-        var agent = OpenAiClientFactory.Create(options)
+        var agent = serviceProvider.GetRequiredService<OpenAIClient>()
             .GetChatClient(options.Model)
             .AsAIAgent(
                 name: agentName,

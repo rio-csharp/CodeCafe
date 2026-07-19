@@ -1,9 +1,13 @@
 using System.Text.Json;
 
-namespace CodeCafe.Application.Notes;
+namespace CodeCafe.Modules.Notes.Application.Notes;
 
 public interface ITipTapContentService
 {
+    const int MaxDepth = 64;
+    const int MaxNodeCount = 5000;
+    const int MaxTextLength = 200_000;
+
     NotesResult<TipTapContentModel> NormalizePageContent(JsonElement? contentJson);
 }
 

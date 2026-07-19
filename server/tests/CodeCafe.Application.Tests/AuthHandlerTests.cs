@@ -1,7 +1,7 @@
-using CodeCafe.Application.Auth;
-using CodeCafe.Application.Auth.Commands.AuthenticateUser;
-using CodeCafe.Application.Auth.Commands.RegisterUser;
-using CodeCafe.Application.Auth.Queries.GetCurrentUser;
+using CodeCafe.Modules.Identity.Application.Auth;
+using CodeCafe.Modules.Identity.Application.Auth.Commands.AuthenticateUser;
+using CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
+using CodeCafe.Modules.Identity.Application.Auth.Queries.GetCurrentUser;
 
 namespace CodeCafe.Application.Tests;
 

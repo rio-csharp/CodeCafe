@@ -1,6 +1,6 @@
-using CodeCafe.Infrastructure.Identity;
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Server.Configuration;
+using CodeCafe.Modules.Identity.Infrastructure.Identity;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +12,7 @@ using OpenIddict.Server.AspNetCore;
 using System.Security.Claims;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
-namespace CodeCafe.Server.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Auth;
 
 [ApiController]
 public sealed class AuthorizationController(

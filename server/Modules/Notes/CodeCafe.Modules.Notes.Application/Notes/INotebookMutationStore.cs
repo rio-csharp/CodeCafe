@@ -1,6 +1,6 @@
-using CodeCafe.Domain.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
 
-namespace CodeCafe.Application.Notes;
+namespace CodeCafe.Modules.Notes.Application.Notes;
 
 public interface INotebookMutationStore
 {

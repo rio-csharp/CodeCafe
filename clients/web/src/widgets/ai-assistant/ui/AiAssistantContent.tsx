@@ -131,7 +131,7 @@ function EditMessageRow({ message, onReopenProposal }: { message: EditMessage; o
           <button
             type="button"
             onClick={onReopenProposal}
-            className="mt-2 text-left text-xs font-medium text-brand-brown hover:underline"
+            className="mt-2 text-left text-xs font-medium text-brand-brown-text hover:underline"
           >
             {t('ai.edit.review')}
           </button>

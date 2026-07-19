@@ -1,6 +1,6 @@
-using CodeCafe.Ai.Configuration;
-using CodeCafe.Ai.Drafts;
-using CodeCafe.Ai.Edits;
+using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Modules.Ai.Drafts;
+using CodeCafe.Modules.Ai.Edits;
 using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace CodeCafe.Ai.Common;
+namespace CodeCafe.Modules.Ai.Common;
 
 public static class WebApplicationExtensions
 {

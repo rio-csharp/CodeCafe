@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Queries.GetNotebookById;
+namespace CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookById;
 
 public sealed class GetNotebookByIdQueryHandler(
     INotebookReadService notebookReadService)
@@ -15,6 +15,7 @@ public sealed class GetNotebookByIdQueryHandler(
             request.CurrentUserId,
             cancellationToken,
             request.IncludeArchived,
-            request.IncludeItems);
+            request.IncludeItems,
+            request.IncludeContent);
     }
 }

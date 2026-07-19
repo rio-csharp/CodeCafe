@@ -1,8 +1,8 @@
-using CodeCafe.Api.Endpoints.Auth;
-using CodeCafe.Infrastructure.Identity;
+using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
+using CodeCafe.Modules.Identity.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 
-namespace CodeCafe.Server.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Auth;
 
 public sealed class IdentityAuthSessionService(
     UserManager<ApplicationUser> userManager,

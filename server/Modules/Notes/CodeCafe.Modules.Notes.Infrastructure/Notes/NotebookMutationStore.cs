@@ -1,9 +1,9 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Domain.Notes;
-using CodeCafe.Infrastructure.Persistence;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
-namespace CodeCafe.Infrastructure.Notes;
+namespace CodeCafe.Modules.Notes.Infrastructure.Notes;
 
 public sealed class NotebookMutationStore(ApplicationDbContext dbContext) : INotebookMutationStore
 {

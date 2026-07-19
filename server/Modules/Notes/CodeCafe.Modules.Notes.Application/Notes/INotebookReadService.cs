@@ -1,4 +1,4 @@
-namespace CodeCafe.Application.Notes;
+namespace CodeCafe.Modules.Notes.Application.Notes;
 
 public interface INotebookReadService
 {
@@ -6,13 +6,15 @@ public interface INotebookReadService
         string? search,
         Guid currentUserId,
         CancellationToken cancellationToken,
-        int? limit = null);
+        int? limit = null,
+        int? offset = null);
 
     Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(
         Guid currentUserId,
         string? search,
         CancellationToken cancellationToken,
-        int? limit = null);
+        int? limit = null,
+        int? offset = null);
 
     Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(
         Guid currentUserId,
@@ -25,7 +27,8 @@ public interface INotebookReadService
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true);
+        bool includeItems = true,
+        bool includeContent = true);
 
     Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken);
 
@@ -36,14 +39,16 @@ public interface INotebookReadService
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true);
+        bool includeItems = true,
+        bool includeContent = true);
 
     Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
         string slug,
         Guid currentUserId,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        bool includeItems = true);
+        bool includeItems = true,
+        bool includeContent = true);
 
     Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(
         Guid notebookId,
@@ -133,6 +138,54 @@ public interface INotebookReadService
                 "notebook_item_not_found",
                 "Notebook item was not found.")
             : NotesResult<NotebookItemModel>.Success(item);
+    }
+
+    async Task<NotesResult<NotebookContextModel>> GetNotebookContextAsync(
+        string slug,
+        Guid currentUserId,
+        CancellationToken cancellationToken)
+    {
+        var notebookResult = await GetNotebookBySlugAsync(
+            slug,
+            currentUserId,
+            cancellationToken,
+            includeArchived: false,
+            includeItems: true);
+        if (!notebookResult.Succeeded)
+        {
+            return NotesResult<NotebookContextModel>.Failure(
+                notebookResult.Error!.Kind,
+                notebookResult.Error.Code,
+                notebookResult.Error.Message);
+        }
+
+        var notebook = notebookResult.Value!;
+        var items = notebook.Items
+            .Select(item => new NotebookContextItemModel(
+                item.Id,
+                item.ParentId,
+                item.Type,
+                item.Title,
+                item.Path,
+                item.SortOrder,
+                TruncateTextPreview(item.PlainTextContent)))
+            .ToList();
+
+        return NotesResult<NotebookContextModel>.Success(new NotebookContextModel(
+            notebook.Id,
+            notebook.OwnerId,
+            notebook.Title,
+            notebook.Slug,
+            notebook.Description,
+            notebook.CanEdit,
+            items));
+    }
+
+    private static string? TruncateTextPreview(string? value)
+    {
+        return value is not null && value.Length > NotebookContextModel.TextPreviewChars
+            ? value[..NotebookContextModel.TextPreviewChars]
+            : value;
     }
 
     async Task<NotesResult<NotebookItemsPageModel>> GetNotebookItemsPageAsync(

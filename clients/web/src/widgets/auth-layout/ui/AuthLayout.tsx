@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import logoIcon from '@/shared/assets/codecafe-icon.png'
+import { LogoMark } from '@/shared/ui/icons'
 
 interface AuthLayoutProps {
   title: string
@@ -13,7 +13,7 @@ export default function AuthLayout({ title, subtitle, children, footer }: AuthLa
     <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-10">
-          <img src={logoIcon} alt="CodeCafe" className="h-12 w-12 mb-3" />
+          <LogoMark className="h-12 w-12 mb-3 text-text-primary" />
           <h1 className="text-2xl font-bold text-text-primary tracking-tight">CodeCafe</h1>
           <p className="text-xs text-text-tertiary mt-0.5">codes.cafe</p>
         </div>

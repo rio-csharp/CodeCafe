@@ -1,7 +1,7 @@
 using OpenIddict.Server;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
-namespace CodeCafe.Server.Auth;
+namespace CodeCafe.Modules.Identity.Presentation.Auth;
 
 public sealed class OpenIddictDiscoveryMetadataHandler : IOpenIddictServerHandler<OpenIddictServerEvents.HandleConfigurationRequestContext>
 {

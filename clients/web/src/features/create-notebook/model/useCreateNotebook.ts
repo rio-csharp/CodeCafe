@@ -1,12 +1,24 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import { createNotebook, notesKeys } from '@/entities/notebook'
-import type { CreateNotebookRequest } from '@/entities/notebook'
+import type { CreateNotebookRequest, Notebook } from '@/entities/notebook'
 
 export function useCreateNotebook() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (data: CreateNotebookRequest) => createNotebook(data),
-    onSuccess: () => {
+    onSuccess: (createdNotebook) => {
+      // Keep the first page responsive while the invalidated server query
+      // refetches. This also makes a newly created notebook visible when the
+      // user returns from the editor immediately after creation.
+      queryClient.setQueriesData<InfiniteData<Notebook[]>>(
+        { queryKey: notesKeys.mineRoot() },
+        (old) => {
+          if (!old || old.pages.length === 0) return old
+          const firstPage = old.pages[0]
+          if (firstPage.some((notebook) => notebook.id === createdNotebook.id)) return old
+          return { ...old, pages: [[createdNotebook, ...firstPage], ...old.pages.slice(1)] }
+        },
+      )
       queryClient.invalidateQueries({ queryKey: notesKeys.all })
     },
   })

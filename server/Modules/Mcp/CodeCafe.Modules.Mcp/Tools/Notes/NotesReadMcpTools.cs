@@ -1,9 +1,9 @@
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 [McpServerToolType]
 public sealed class NotesReadMcpTools

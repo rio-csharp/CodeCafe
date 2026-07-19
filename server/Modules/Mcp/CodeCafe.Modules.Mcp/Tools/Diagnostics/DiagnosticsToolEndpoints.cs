@@ -1,4 +1,4 @@
-namespace CodeCafe.Mcp.Tools.Diagnostics;
+namespace CodeCafe.Modules.Mcp.Tools.Diagnostics;
 
 public static class DiagnosticsToolEndpoints
 {

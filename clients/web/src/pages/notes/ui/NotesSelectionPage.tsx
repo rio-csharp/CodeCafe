@@ -7,6 +7,7 @@ import { useDebounce } from '@/shared/hooks/useDebounce'
 import { usePublicNotes, useMyNotes } from '@/features/search-notebooks'
 import NotebookCard, { SkeletonGrid } from '@/widgets/notebook-card'
 import SectionHeader from '@/widgets/section-header'
+import QueryError from '@/shared/ui/QueryError'
 import { useTranslation } from 'react-i18next'
 
 
@@ -17,17 +18,43 @@ interface NotebookGridProps {
   errorMessage: string
   emptyMessage: string
   showVisibility?: boolean
+  onRetry?: () => void
 }
 
-function NotebookGrid({ notebooks, isPending, isError, errorMessage, emptyMessage, showVisibility }: NotebookGridProps) {
+function NotebookGrid({ notebooks, isPending, isError, errorMessage, emptyMessage, showVisibility, onRetry }: NotebookGridProps) {
   if (isPending) return <SkeletonGrid />
-  if (isError) return <p className="text-sm text-status-error">{errorMessage}</p>
+  if (isError) return <QueryError message={errorMessage} onRetry={onRetry} />
   if (!notebooks?.length) return <p className="text-sm text-text-tertiary">{emptyMessage}</p>
   return (
     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {notebooks.map((nb) => (
         <NotebookCard key={nb.id} notebook={nb} showVisibility={showVisibility} />
       ))}
+    </div>
+  )
+}
+
+function LoadMoreButton({
+  hasNextPage,
+  isFetchingNextPage,
+  onClick,
+}: {
+  hasNextPage: boolean
+  isFetchingNextPage: boolean
+  onClick: () => void
+}) {
+  const { t } = useTranslation()
+  if (!hasNextPage) return null
+  return (
+    <div className="mt-6 flex justify-center">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={isFetchingNextPage}
+        className="rounded-lg border border-border-default px-4 py-2 text-sm text-text-secondary hover:text-text-primary disabled:opacity-50"
+      >
+        {isFetchingNextPage ? t('notes.loadingMore') : t('notes.loadMore')}
+      </button>
     </div>
   )
 }
@@ -43,12 +70,20 @@ export default function NotesSelectionPage() {
     data: publicNotes,
     isPending: publicPending,
     isError: publicError,
+    refetch: refetchPublic,
+    hasNextPage: hasMorePublic,
+    isFetchingNextPage: fetchingMorePublic,
+    fetchNextPage: fetchMorePublic,
   } = usePublicNotes(debouncedSearch)
 
   const {
     data: myNotes,
     isPending: myPending,
     isError: myError,
+    refetch: refetchMine,
+    hasNextPage: hasMoreMine,
+    isFetchingNextPage: fetchingMoreMine,
+    fetchNextPage: fetchMoreMine,
   } = useMyNotes(debouncedSearch, isAuthenticated)
 
   return (
@@ -84,12 +119,14 @@ export default function NotesSelectionPage() {
               </Link>
             }
           />
+          <LoadMoreButton hasNextPage={!!hasMorePublic} isFetchingNextPage={fetchingMorePublic} onClick={() => void fetchMorePublic()} />
           <NotebookGrid
             notebooks={publicNotes}
             isPending={publicPending}
             isError={publicError}
             errorMessage={t('notes.loadPublicError')}
             emptyMessage={t('notes.noPublic')}
+            onRetry={() => refetchPublic()}
           />
         </section>
 
@@ -104,7 +141,7 @@ export default function NotesSelectionPage() {
             </div>
             <Link
               to="/login"
-              className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-5 py-2 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity shrink-0"
+              className="inline-flex items-center gap-1 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-5 py-2 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity shrink-0"
             >
               {t('notes.signIn')} <ArrowRight className="h-4 w-4" />
             </Link>
@@ -120,13 +157,14 @@ export default function NotesSelectionPage() {
                 <Link
                   to="/notes/new"
                   data-testid="new-notebook-button"
-                  className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-4 py-2 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center gap-1 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-4 py-2 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity"
                 >
                   <Plus className="h-4 w-4" />
                   {t('notes.newNotebook')}
                 </Link>
               }
             />
+            <LoadMoreButton hasNextPage={!!hasMoreMine} isFetchingNextPage={fetchingMoreMine} onClick={() => void fetchMoreMine()} />
             <NotebookGrid
               notebooks={myNotes}
               isPending={myPending}
@@ -134,6 +172,7 @@ export default function NotesSelectionPage() {
               errorMessage={t('notes.loadMyError')}
               emptyMessage={t('notes.noMine')}
               showVisibility
+              onRetry={() => refetchMine()}
             />
 
             <div className="mt-8 flex items-center justify-center gap-2 text-xs text-text-tertiary">

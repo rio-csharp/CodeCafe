@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace CodeCafe.Application.Notes;
+namespace CodeCafe.Modules.Notes.Application.Notes;
 
 public sealed record NotebookSummaryModel(
     Guid Id,
@@ -82,6 +82,27 @@ public sealed record NotebookItemSearchModel(
 public sealed record NotebookItemsPageModel(
     int TotalCount,
     IReadOnlyList<NotebookItemModel> Items);
+
+public sealed record NotebookContextItemModel(
+    Guid Id,
+    Guid? ParentId,
+    string Type,
+    string Title,
+    string Path,
+    int SortOrder,
+    string? TextPreview);
+
+public sealed record NotebookContextModel(
+    Guid Id,
+    Guid OwnerId,
+    string Title,
+    string Slug,
+    string? Description,
+    bool CanEdit,
+    IReadOnlyList<NotebookContextItemModel> Items)
+{
+    public const int TextPreviewChars = 1000;
+}
 
 public sealed record ReorderNotebookItemModel(
     Guid ItemId,

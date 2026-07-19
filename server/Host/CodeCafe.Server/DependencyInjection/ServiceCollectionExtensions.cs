@@ -1,11 +1,12 @@
-using CodeCafe.Api.Configuration;
-using CodeCafe.Api.Endpoints.Auth;
-using CodeCafe.Api.Errors;
-using CodeCafe.Api.Networking;
-using CodeCafe.Infrastructure.Identity;
-using CodeCafe.Infrastructure.Persistence;
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Server.Auth;
+using CodeCafe.Modules.Identity.Presentation.Configuration;
+using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
+using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Modules.Identity.Presentation.Networking;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Identity.Infrastructure.Identity;
+using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Identity.Presentation.Auth;
 using CodeCafe.Server.Configuration;
 using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.DataProtection;
@@ -31,20 +32,32 @@ public static class ServiceCollectionExtensions
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddCors();
+        // JSON payloads are large; Brotli/Gzip cut them to a fraction.
+        // text/event-stream (AG-UI SSE) is not in the default mime list.
+        services.AddResponseCompression(options =>
+        {
+            options.EnableForHttps = true;
+        });
         services.AddCodeCafeCorsOptions(configuration, environment);
         services.AddCodeCafeForwardedHeaders();
         services.AddCodeCafeAntiforgery(environment);
-        services.AddCodeCafeDataProtection(environment);
+        services.AddCodeCafeDataProtection(configuration, environment);
         services.AddCodeCafeAuthentication();
         services.AddCodeCafeRateLimiting();
         services.AddCodeCafeIdentity();
         services.AddScoped<IAuthSessionService, IdentityAuthSessionService>();
-        services.AddCodeCafeApplicationCookie();
+        services.AddCodeCafeApplicationCookie(environment);
         services.AddCodeCafeShutdownOptions(configuration);
         services.AddCodeCafeHealthChecks(environment);
         services.AddSingleton<ServerDrainState>();
         services.AddHostedService<ServerDrainHostedService>();
+        if (!environment.IsEnvironment("Testing"))
+        {
+            services.AddHostedService<DynamicClientCleanupHostedService>();
+        }
         services.AddSingleton<IClientIpAddressAccessor, ClientIpAddressAccessor>();
+        services.AddHttpContextAccessor();
+        services.AddSingleton<ICurrentUserAccessor, HttpContextCurrentUserAccessor>();
         services.AddSingleton<DatabaseMigrationRunner>();
         services.AddOptions<AuthorizationServerOptions>()
             .Bind(configuration.GetSection(AuthorizationServerOptions.SectionName))
@@ -80,10 +93,14 @@ public static class ServiceCollectionExtensions
                 options.SetIssuer(new Uri(authOptions.Issuer, UriKind.Absolute));
                 options.SetAuthorizationEndpointUris("/connect/authorize");
                 options.SetTokenEndpointUris("/connect/token");
+                options.SetRevocationEndpointUris("/connect/revoke");
 
                 options.AllowAuthorizationCodeFlow();
                 options.AllowRefreshTokenFlow();
                 options.RequireProofKeyForCodeExchange();
+                // Bounded token lifetimes (previously OpenIddict defaults).
+                options.SetAccessTokenLifetime(TimeSpan.FromMinutes(30));
+                options.SetRefreshTokenLifetime(TimeSpan.FromDays(7));
                 options.RegisterScopes("notes.read", "notes.write");
                 options.RegisterAudiences(McpResourceIdentifiers.GetAudienceValues(mcpOptions, authOptions));
                 options.RegisterResources(McpResourceIdentifiers.GetResourceValues(mcpOptions, authOptions));
@@ -235,14 +252,35 @@ public static class ServiceCollectionExtensions
 
     private static IServiceCollection AddCodeCafeDataProtection(
         this IServiceCollection services,
+        IConfiguration configuration,
         IHostEnvironment environment)
     {
         var dataProtectionBuilder = services.AddDataProtection()
             .SetApplicationName("CodeCafe");
 
-        if (!environment.IsEnvironment("Testing"))
+        if (environment.IsEnvironment("Testing"))
+        {
+            // Tests must not consume the developer's persisted DPAPI key ring.
+            // Stale keys can be encrypted for another process identity and make
+            // antiforgery token generation fail before the endpoint runs.
+            dataProtectionBuilder.UseEphemeralDataProtectionProvider();
+        }
+        else
         {
             dataProtectionBuilder.PersistKeysToDbContext<ApplicationDbContext>();
+
+            // Encrypt the key ring at rest with the OAuth encryption certificate
+            // (production requires it via startup validation, so it always exists
+            // outside Development/Testing).
+            if (!environment.IsDevelopment())
+            {
+                var authOptions = GetAuthorizationServerOptions(configuration, environment);
+                var certificate = LoadCertificate(
+                    authOptions.EncryptionCertificatePath,
+                    authOptions.EncryptionCertificateBase64,
+                    authOptions.EncryptionCertificatePassword);
+                dataProtectionBuilder.ProtectKeysWithCertificate(certificate);
+            }
         }
 
         return services;
@@ -335,14 +373,19 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddCodeCafeApplicationCookie(this IServiceCollection services)
+    private static IServiceCollection AddCodeCafeApplicationCookie(
+        this IServiceCollection services,
+        IHostEnvironment environment)
     {
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.Name = "CodeCafe.Auth";
             options.Cookie.HttpOnly = true;
             options.Cookie.SameSite = SameSiteMode.Lax;
-            options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+            // Always require HTTPS in production (matches the antiforgery cookie).
+            options.Cookie.SecurePolicy = environment.IsProduction()
+                ? CookieSecurePolicy.Always
+                : CookieSecurePolicy.SameAsRequest;
             options.Cookie.Path = "/";
             options.ExpireTimeSpan = TimeSpan.FromDays(7);
             options.SlidingExpiration = true;

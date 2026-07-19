@@ -1,12 +1,13 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Mcp.Configuration;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Shared.Application.Configuration;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Security.Claims;
 
-namespace CodeCafe.Mcp.Tools.Notes;
+namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
 [McpServerPromptType]
 public sealed class NotesMcpPrompts
@@ -29,7 +30,7 @@ public sealed class NotesMcpPrompts
             NotesMcpSupport.EnsureMcpSuccess(await NotesMcpSupport.GetNotebookItemByMcpPathAsync(
                 notebook.Slug,
                 path,
-                NotesMcpSupport.GetCurrentUserId(user),
+                CurrentUserClaims.GetUserId(user) ?? Guid.Empty,
                 notebookReadService,
                 cancellationToken,
                 itemType: "page"))));
@@ -76,7 +77,7 @@ public sealed class NotesMcpPrompts
             NotesMcpSupport.EnsureMcpSuccess(await NotesMcpSupport.GetNotebookItemByMcpPathAsync(
                 notebook.Slug,
                 path,
-                NotesMcpSupport.GetCurrentUserId(user),
+                CurrentUserClaims.GetUserId(user) ?? Guid.Empty,
                 notebookReadService,
                 cancellationToken,
                 itemType: "page"))));

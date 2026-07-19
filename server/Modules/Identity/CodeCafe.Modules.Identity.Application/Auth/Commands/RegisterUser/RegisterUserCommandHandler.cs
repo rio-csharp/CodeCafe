@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Auth.Commands.RegisterUser;
+namespace CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
 
 public sealed class RegisterUserCommandHandler(
     IAuthUserGateway authUserGateway)

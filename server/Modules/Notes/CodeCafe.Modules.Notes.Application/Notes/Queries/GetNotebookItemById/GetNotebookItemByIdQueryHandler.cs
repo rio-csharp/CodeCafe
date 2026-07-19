@@ -1,6 +1,6 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
-namespace CodeCafe.Application.Notes.Queries.GetNotebookItemById;
+namespace CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItemById;
 
 public sealed class GetNotebookItemByIdQueryHandler(
     INotebookReadService notebookReadService)

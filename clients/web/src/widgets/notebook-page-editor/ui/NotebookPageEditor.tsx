@@ -12,6 +12,7 @@ import { CodeBlockCopyButton } from '@/shared/ui/CodeBlockCopyButton'
 import ErrorBoundary from '@/shared/ui/ErrorBoundary'
 import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import { NotebookChangePreview } from '@/widgets/notebook-change-preview'
+import { useConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
 import '@/shared/styles/codeHighlight.css'
 
@@ -50,11 +51,15 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
     contentJson: Record<string, unknown>
     text: string
   } | null>(null)
+  // True once the user edits the document; cleared on save/discard and when
+  // external content is re-synced into the editor.
+  const [dirty, setDirty] = useState(false)
+  const { requestConfirm, confirmDialog } = useConfirmDialog()
   const hoveredPreRef = useRef(hoveredPre)
   useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
 
   const editor = useEditor({
-    extensions: createTipTapExtensions({ editable: true }),
+    extensions: createTipTapExtensions({ editable: true, placeholder: t('editor.placeholder') }),
     content: safeContent,
     autofocus: 'end',
     editorProps: {
@@ -80,11 +85,25 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
   // Keep React in sync with editor updates (actual document changes only)
   useEffect(() => {
     if (!editor) return
-    editor.on('update', forceUpdate)
+    const onUpdate = () => {
+      forceUpdate()
+      setDirty(true)
+    }
+    editor.on('update', onUpdate)
     return () => {
-      editor.off('update', forceUpdate)
+      editor.off('update', onUpdate)
     }
   }, [editor])
+
+  // Warn before closing/reloading the tab with unsaved edits.
+  useEffect(() => {
+    if (!dirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
 
   // Track hovered code blocks for copy-button visibility
   useEffect(() => {
@@ -125,8 +144,23 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
 
   const handleConfirmSave = useCallback(() => {
     if (!pendingPreview) return
+    setDirty(false)
     onSave(pendingPreview.contentJson)
   }, [onSave, pendingPreview])
+
+  // Cancel discards edits — confirm first when there are unsaved changes.
+  const handleCancelRequest = useCallback(async () => {
+    if (dirty) {
+      const ok = await requestConfirm({
+        title: t('editor.discardChangesTitle'),
+        danger: true,
+      })
+      if (!ok) return
+    }
+    setDirty(false)
+    setPendingPreview(null)
+    onCancel()
+  }, [dirty, onCancel, requestConfirm, t])
 
   const originalText = useMemo(() => getTipTapText(safeContent), [safeContent])
   const hasJsonChanges = pendingPreview
@@ -148,16 +182,19 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
 
   if (pendingPreview) {
     return (
-      <NotebookChangePreview
-        afterText={pendingPreview.text}
-        beforeText={originalText}
-        canSave={hasJsonChanges}
-        isSaving={isSaving}
-        onCancel={onCancel}
-        onEdit={() => setPendingPreview(null)}
-        onSave={handleConfirmSave}
-        title={page.title}
-      />
+      <>
+        <NotebookChangePreview
+          afterText={pendingPreview.text}
+          beforeText={originalText}
+          canSave={hasJsonChanges}
+          isSaving={isSaving}
+          onCancel={handleCancelRequest}
+          onEdit={() => setPendingPreview(null)}
+          onSave={handleConfirmSave}
+          title={page.title}
+        />
+        {confirmDialog}
+      </>
     )
   }
 
@@ -170,7 +207,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
         <div className="flex items-center gap-2 px-3 py-2 shrink-0 border-l border-border-subtle">
           <button
             type="button"
-            onClick={onCancel}
+            onClick={handleCancelRequest}
             disabled={isSaving}
             aria-label={t('editor.cancelEditing')}
             className="inline-flex items-center gap-1 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary hover:bg-surface-hover transition-colors disabled:opacity-50"
@@ -183,7 +220,7 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
             onClick={handleSave}
             disabled={isSaving}
             aria-label={t('editor.savePage')}
-            className="inline-flex items-center gap-1 rounded-lg bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="inline-flex items-center gap-1 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             <Check className="h-3.5 w-3.5" />
             {isSaving ? t('notebook.saving') : t('notebook.save')}
@@ -194,11 +231,15 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
         <EditorContent editor={editor} />
         {hoveredPre && <CodeBlockCopyButton pre={hoveredPre} />}
       </div>
-      <div className="px-6 py-2 lg:px-10 border-t border-border-subtle flex justify-end">
+      <div className="px-6 py-2 lg:px-10 border-t border-border-subtle flex items-center justify-between">
+        <span className={`text-xs ${dirty ? 'text-status-warning font-medium' : 'text-text-tertiary'}`}>
+          {dirty ? t('editor.unsavedChanges') : ''}
+        </span>
         <span className="text-xs text-text-tertiary">
           {editor.storage.characterCount.characters()} {t('notebook.characters')} · {editor.storage.characterCount.words()} {t('notebook.words')}
         </span>
       </div>
+      {confirmDialog}
     </div>
   )
 }

@@ -35,6 +35,7 @@ function TreePageNode({
     handleKeyDown,
     startEditing,
     cancelEditing,
+    confirmDialog,
   } = useTreeNodeActions({ node, onRenameItem, onArchiveItem, onRestoreItem, onDeleteItem })
 
   const isActive = node.item.path === activePath
@@ -100,6 +101,7 @@ function TreePageNode({
         onRestore={(e) => { e.preventDefault(); handleRestore() }}
         onDelete={(e) => { e.preventDefault(); handleDelete() }}
       />
+      {confirmDialog}
     </div>
   )
 }

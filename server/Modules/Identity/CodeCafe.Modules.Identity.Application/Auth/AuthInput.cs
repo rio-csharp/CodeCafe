@@ -1,4 +1,4 @@
-namespace CodeCafe.Application.Auth;
+namespace CodeCafe.Modules.Identity.Application.Auth;
 
 public static class AuthInput
 {

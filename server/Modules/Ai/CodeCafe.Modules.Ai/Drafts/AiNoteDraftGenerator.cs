@@ -1,6 +1,6 @@
-using CodeCafe.Application.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
 
-namespace CodeCafe.Ai.Drafts;
+namespace CodeCafe.Modules.Ai.Drafts;
 
 public interface IAiNoteDraftGenerator
 {
@@ -14,7 +14,7 @@ public sealed record AiNoteDraftGenerationContext(
     string Intent,
     string Prompt,
     string Locale,
-    NotebookDetailModel Notebook,
+    NotebookContextModel Notebook,
     NotebookItemModel? ActivePage);
 
 public sealed record AiNoteDraftResult(

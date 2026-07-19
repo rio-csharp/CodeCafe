@@ -1,8 +1,9 @@
-using CodeCafe.Mcp.Configuration;
-using CodeCafe.Mcp.Tools.Diagnostics;
-using CodeCafe.Mcp.Tools.Notes;
+using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Modules.Mcp.Tools.Diagnostics;
+using CodeCafe.Modules.Mcp.Tools.Notes;
 
-namespace CodeCafe.Mcp.DependencyInjection;
+namespace CodeCafe.Modules.Mcp.DependencyInjection;
 
 public static class ServiceCollectionExtensions
 {

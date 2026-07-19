@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Notes\CodeCafe.Modules.Notes.Application\CodeCafe.Modules.Notes.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Infrastructure\CodeCafe.Shared.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace CodeCafe.Ai.Edits;
+namespace CodeCafe.Modules.Ai.Edits;
 
 public sealed record AiNotebookEditResponse(
     Guid ProposalId,

@@ -1,8 +1,8 @@
-using CodeCafe.Application.Common.Abstractions.Messaging;
-using CodeCafe.Application.Common.Interfaces;
-using CodeCafe.Domain.Notes;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Modules.Notes.Domain.Notes;
 
-namespace CodeCafe.Application.Notes.Commands.CreateNotebook;
+namespace CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
 
 public sealed class CreateNotebookCommandHandler(
     INotebookMutationStore notebookMutationStore,

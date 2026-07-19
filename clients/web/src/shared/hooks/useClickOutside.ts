@@ -1,9 +1,13 @@
 import { useEffect, useCallback, type RefObject } from 'react'
 
+// Hoisted so the default doesn't create a new array (and re-run the effect)
+// on every render of the caller.
+const DEFAULT_EVENTS: Array<keyof DocumentEventMap> = ['mousedown', 'touchstart']
+
 export function useClickOutside(
   ref: RefObject<HTMLElement | null>,
   callback: () => void,
-  events: Array<keyof DocumentEventMap> = ['mousedown', 'touchstart'],
+  events: Array<keyof DocumentEventMap> = DEFAULT_EVENTS,
 ) {
   const handler = useCallback(
     (event: Event) => {

@@ -1,5 +1,5 @@
-using CodeCafe.Application.Auth.Commands.RegisterUser;
-using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
+using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
 using CodeCafe.Modules.Identity.Application;
 using CodeCafe.Modules.Notes.Application;
 using FluentValidation;
