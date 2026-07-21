@@ -10,6 +10,7 @@ deploy/cloudflare/*.private.*
 .local-keys/
 .artifacts/
 .tmp/
+tmp/
 .dotnet-user/
 clients/web/e2e/.auth/
 

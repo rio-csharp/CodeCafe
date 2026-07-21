@@ -12,6 +12,8 @@ public interface IAiNotebookEditProposalStore
 
     bool TryGet(Guid proposalId, Guid actorId, out AiNotebookEditProposal proposal);
 
+    Task<AiNotebookEditProposal?> TryConsumeAsync(Guid proposalId, Guid actorId, CancellationToken cancellationToken);
+
     void Remove(Guid proposalId);
 }
 
@@ -52,6 +54,32 @@ public sealed class DatabaseAiNotebookEditProposalStore(ApplicationDbContext dbC
         return false;
     }
 
+    public async Task<AiNotebookEditProposal?> TryConsumeAsync(
+        Guid proposalId,
+        Guid actorId,
+        CancellationToken cancellationToken)
+    {
+        var entry = await dbContext.AiEditProposals
+            .AsNoTracking()
+            .SingleOrDefaultAsync(existingProposal => existingProposal.Id == proposalId, cancellationToken);
+        if (entry is null
+            || entry.ActorUserId != actorId
+            || entry.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+        {
+            return null;
+        }
+
+        // The conditional delete is the atomic claim: when two applies race, exactly one
+        // deletes a row and wins; the loser observes 0 deleted rows and gets null.
+        var deleted = await dbContext.AiEditProposals
+            .Where(existingProposal => existingProposal.Id == proposalId)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        return deleted == 1
+            ? JsonSerializer.Deserialize<AiNotebookEditProposal>(entry.PayloadJson)
+            : null;
+    }
+
     public void Remove(Guid proposalId)
     {
         dbContext.AiEditProposals
@@ -63,8 +91,16 @@ public sealed class DatabaseAiNotebookEditProposalStore(ApplicationDbContext dbC
     {
         var now = DateTimeOffset.UtcNow;
 
+        if (string.Equals(dbContext.Database.ProviderName, DatabaseProviderNames.Npgsql, StringComparison.Ordinal))
+        {
+            dbContext.AiEditProposals
+                .Where(existingProposal => existingProposal.ExpiresAtUtc <= now)
+                .ExecuteDelete();
+            return;
+        }
+
         // DateTimeOffset range comparisons are not translatable on every provider (e.g. SQLite),
-        // so expired rows are filtered client-side and deleted by key.
+        // so expired rows are filtered client-side and deleted by key there.
         var expiredIds = dbContext.AiEditProposals
             .Select(existingProposal => new { existingProposal.Id, existingProposal.ExpiresAtUtc })
             .AsEnumerable()
@@ -112,6 +148,25 @@ public sealed class MemoryAiNotebookEditProposalStore(IMemoryCache cache) : IAiN
 
         proposal = default!;
         return false;
+    }
+
+    public Task<AiNotebookEditProposal?> TryConsumeAsync(
+        Guid proposalId,
+        Guid actorId,
+        CancellationToken cancellationToken)
+    {
+        // Test-only store (registered by ServerTestFactory): TryGetValue + Remove is a deliberate
+        // check-then-act, not an atomic claim; do not copy this pattern into a production path.
+        if (cache.TryGetValue<AiNotebookEditProposal>(BuildKey(proposalId), out var cached)
+            && cached is not null
+            && cached.ActorId == actorId
+            && cached.ExpiresAtUtc > DateTimeOffset.UtcNow)
+        {
+            cache.Remove(BuildKey(proposalId));
+            return Task.FromResult<AiNotebookEditProposal?>(cached);
+        }
+
+        return Task.FromResult<AiNotebookEditProposal?>(null);
     }
 
     public void Remove(Guid proposalId)

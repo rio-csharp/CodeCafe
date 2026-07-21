@@ -1,5 +1,6 @@
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeCafe.Modules.Notes.Infrastructure.Notes;
@@ -87,7 +88,7 @@ public sealed partial class NotebookReadService
 
     private bool UsesPostgresProvider()
     {
-        return string.Equals(dbContext.Database.ProviderName, "Npgsql.EntityFrameworkCore.PostgreSQL", StringComparison.Ordinal);
+        return string.Equals(dbContext.Database.ProviderName, DatabaseProviderNames.Npgsql, StringComparison.Ordinal);
     }
 
     private static IQueryable<NotebookItemRow> BuildItemRowQuery(IQueryable<NotebookItem> query, bool includeContent)

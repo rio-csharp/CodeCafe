@@ -14,7 +14,7 @@ builder.Services.AddIdentityApplication();
 builder.Services.AddNotesApplication();
 builder.Services.AddNotesInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddIdentityPresentation();
-builder.Services.AddCodeCafeAi(builder.Configuration);
+builder.Services.AddCodeCafeAi(builder.Configuration, builder.Environment);
 builder.Services.AddCodeCafeMcp(builder.Configuration);
 builder.Services.AddCodeCafeServerHost(builder.Configuration, builder.Environment);
 

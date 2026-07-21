@@ -10,8 +10,11 @@ export function useCreateNotebook() {
       // Keep the first page responsive while the invalidated server query
       // refetches. This also makes a newly created notebook visible when the
       // user returns from the editor immediately after creation.
+      // mine() with no search term IS the unfiltered list key, so prefix
+      // matching on it targets exactly that variant — filtered lists encode
+      // the term at key[2] and a new notebook may not match an active filter.
       queryClient.setQueriesData<InfiniteData<Notebook[]>>(
-        { queryKey: notesKeys.mineRoot() },
+        { queryKey: notesKeys.mine() },
         (old) => {
           if (!old || old.pages.length === 0) return old
           const firstPage = old.pages[0]

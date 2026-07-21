@@ -1,27 +1,18 @@
-import { useMutation, useQueryClient, type Query } from '@tanstack/react-query'
+import { useMutation, useQueryClient, type InfiniteData, type Query } from '@tanstack/react-query'
 import { addFavorite, removeFavorite, notesKeys, type Notebook } from '@/entities/notebook'
+import { applyFavoriteToNotebookLists } from './applyFavoriteToNotebookLists'
 
-function isNotebookListKey(query: Query): boolean {
+// Notebook lists are cached as useInfiniteQuery data ({ pages, pageParams });
+// other notes keys hold details, item arrays, or favorite status objects.
+// The key check keeps future infinite queries under notesKeys (e.g. items)
+// from having notebook fields grafted on just because their data has pages.
+function isNotebookListQuery(query: Query): boolean {
   const key = query.queryKey
-  return (
-    Array.isArray(key) &&
-    key[0] === 'notes' &&
-    (key[1] === 'public' || key[1] === 'mine') &&
-    Array.isArray(query.state.data)
-  )
-}
-
-function toggleInList(notebooks: Notebook[] | undefined, notebookId: string): Notebook[] | undefined {
-  if (!notebooks) return notebooks
-  return notebooks.map((notebook) =>
-    notebook.id === notebookId
-      ? {
-          ...notebook,
-          isFavoritedByMe: !notebook.isFavoritedByMe,
-          favoriteCount: notebook.favoriteCount + (notebook.isFavoritedByMe ? -1 : 1),
-        }
-      : notebook,
-  )
+  const isNotebookListKey =
+    key[0] === notesKeys.all[0] && (key[1] === notesKeys.public()[1] || key[1] === notesKeys.mine()[1])
+  if (!isNotebookListKey) return false
+  const data = query.state.data as InfiniteData<Notebook[]> | undefined
+  return Array.isArray(data?.pages)
 }
 
 export function useToggleFavorite() {
@@ -35,11 +26,11 @@ export function useToggleFavorite() {
     },
     onMutate: async ({ notebookId }) => {
       await queryClient.cancelQueries({ queryKey: notesKeys.all })
-      const snapshots = queryClient.getQueriesData<Notebook[]>({ queryKey: notesKeys.all })
+      const snapshots = queryClient.getQueriesData<InfiniteData<Notebook[]>>({ queryKey: notesKeys.all })
       // Optimistic toggle so the star responds instantly on slow networks.
-      queryClient.setQueriesData<Notebook[]>(
-        { queryKey: notesKeys.all, predicate: isNotebookListKey },
-        (old) => toggleInList(old, notebookId),
+      queryClient.setQueriesData<InfiniteData<Notebook[]>>(
+        { queryKey: notesKeys.all, predicate: isNotebookListQuery },
+        (old) => applyFavoriteToNotebookLists(old, notebookId),
       )
       return { snapshots }
     },

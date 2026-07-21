@@ -119,7 +119,6 @@ export default function NotesSelectionPage() {
               </Link>
             }
           />
-          <LoadMoreButton hasNextPage={!!hasMorePublic} isFetchingNextPage={fetchingMorePublic} onClick={() => void fetchMorePublic()} />
           <NotebookGrid
             notebooks={publicNotes}
             isPending={publicPending}
@@ -128,6 +127,7 @@ export default function NotesSelectionPage() {
             emptyMessage={t('notes.noPublic')}
             onRetry={() => refetchPublic()}
           />
+          <LoadMoreButton hasNextPage={!!hasMorePublic} isFetchingNextPage={fetchingMorePublic} onClick={() => void fetchMorePublic()} />
         </section>
 
         {!isAuthenticated && (
@@ -164,7 +164,6 @@ export default function NotesSelectionPage() {
                 </Link>
               }
             />
-            <LoadMoreButton hasNextPage={!!hasMoreMine} isFetchingNextPage={fetchingMoreMine} onClick={() => void fetchMoreMine()} />
             <NotebookGrid
               notebooks={myNotes}
               isPending={myPending}
@@ -174,6 +173,7 @@ export default function NotesSelectionPage() {
               showVisibility
               onRetry={() => refetchMine()}
             />
+            <LoadMoreButton hasNextPage={!!hasMoreMine} isFetchingNextPage={fetchingMoreMine} onClick={() => void fetchMoreMine()} />
 
             <div className="mt-8 flex items-center justify-center gap-2 text-xs text-text-tertiary">
               <span className="inline-block h-4 w-4 rounded-full border border-border-hover text-center leading-4">i</span>

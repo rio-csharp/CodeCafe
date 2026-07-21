@@ -1,6 +1,7 @@
 using CodeCafe.Shared.Infrastructure.Persistence;
 using CodeCafe.Modules.Identity.Presentation.Auth;
 using Microsoft.EntityFrameworkCore;
+using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
 
 namespace CodeCafe.Server.Infrastructure;
@@ -39,10 +40,11 @@ public sealed class DynamicClientCleanupHostedService(
         while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
-    private async Task CleanupAsync(CancellationToken cancellationToken)
+    internal async Task CleanupAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var applicationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
         var registeredClients = await dbContext.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
             .AsNoTracking()
@@ -60,30 +62,43 @@ public sealed class DynamicClientCleanupHostedService(
             return;
         }
 
-        var cutoff = DateTimeOffset.UtcNow - StaleAfter;
-
-        var tokenStates = await dbContext.Set<OpenIddictEntityFrameworkCoreToken<Guid>>()
-            .AsNoTracking()
-            .Where(token => token.Application != null && dynamicClientIds.Contains(token.Application.Id))
-            .Select(token => new { ApplicationId = token.Application!.Id, token.ExpirationDate })
-            .ToListAsync(cancellationToken);
+        var cutoff = (DateTimeOffset.UtcNow - StaleAfter).UtcDateTime;
 
         // Stale = has tokens and none of them is still valid (or never expires).
-        var staleIds = tokenStates
-            .GroupBy(token => token.ApplicationId)
-            .Where(group => group.All(token => token.ExpirationDate != null && token.ExpirationDate < cutoff))
+        var staleIds = await dbContext.Set<OpenIddictEntityFrameworkCoreToken<Guid>>()
+            .Where(token => token.Application != null && dynamicClientIds.Contains(token.Application.Id))
+            .GroupBy(token => token.Application!.Id)
+            .Where(group => !group.Any(token => token.ExpirationDate == null)
+                && group.Max(token => token.ExpirationDate) < cutoff)
             .Select(group => group.Key)
-            .ToArray();
+            .ToListAsync(cancellationToken);
 
-        if (staleIds.Length == 0)
+        var deleted = 0;
+        var failed = 0;
+        foreach (var staleId in staleIds)
         {
-            return;
+            // Isolate failures per client: one poisoned client must not block the rest of
+            // the sweep (and every run after it, since it would stay first in line forever).
+            try
+            {
+                var application = await applicationManager.FindByIdAsync(staleId.ToString(), cancellationToken);
+                if (application is null)
+                {
+                    continue;
+                }
+
+                // The token/authorization foreign keys are NO ACTION, so a bare row delete would
+                // violate them; the OpenIddict store removes the dependent rows itself.
+                await applicationManager.DeleteAsync(application, cancellationToken);
+                deleted++;
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                failed++;
+                logger.LogWarning(exception, "Failed to remove stale dynamically registered OAuth client {ApplicationId}; continuing with the remaining clients.", staleId);
+            }
         }
 
-        var deleted = await dbContext.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
-            .Where(application => staleIds.Contains(application.Id))
-            .ExecuteDeleteAsync(cancellationToken);
-
-        logger.LogInformation("Removed {Count} stale dynamically registered OAuth clients.", deleted);
+        logger.LogInformation("Removed {DeletedCount} stale dynamically registered OAuth clients ({FailedCount} failed).", deleted, failed);
     }
 }

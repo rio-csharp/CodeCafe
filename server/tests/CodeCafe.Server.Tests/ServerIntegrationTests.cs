@@ -545,6 +545,74 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
     }
 
     [Fact]
+    public async Task CombinedHost_AiEditApplyEndpoint_RestoresProposal_WhenApplyFails()
+    {
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureAppConfiguration((_, configuration) =>
+            {
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Ai:Enabled"] = "true",
+                    ["Ai:ApiKey"] = "test-key",
+                    ["Ai:Model"] = "test-model"
+                });
+            });
+
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IAiNotebookEditGenerator>();
+                services.AddSingleton<IAiNotebookEditGenerator, RecordingEditGenerator>();
+            });
+        });
+
+        using var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            HandleCookies = true
+        });
+        client.DefaultRequestHeaders.Add(ServerTestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
+        using var createResponse = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/ai/edits",
+            new
+            {
+                notebookSlug = "architecture-notes",
+                activePagePath = "guides/overview",
+                prompt = "Rewrite this page as a clearer checklist.",
+                operation = "replace_current_page",
+                locale = "en",
+                apply = false
+            });
+
+        var createBody = await createResponse.Content.ReadAsStringAsync();
+        Assert.True(createResponse.IsSuccessStatusCode, createBody);
+        using var createDocument = JsonDocument.Parse(createBody);
+        var proposalId = Guid.Parse(createDocument.RootElement.GetProperty("proposalId").GetString()!);
+
+        // Make the apply fail by deleting the target notebook after the proposal was created.
+        using var deleteResponse = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Delete,
+            "/api/notes/11111111-1111-1111-1111-111111111111",
+            new { });
+        Assert.True(deleteResponse.IsSuccessStatusCode, await deleteResponse.Content.ReadAsStringAsync());
+
+        using var applyResponse = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            $"/api/ai/edits/proposals/{proposalId}/apply",
+            new { });
+
+        Assert.Equal(HttpStatusCode.NotFound, applyResponse.StatusCode);
+
+        // The failed apply must have restored the consumed proposal so the user can retry.
+        var proposalStore = factory.Services.GetRequiredService<IAiNotebookEditProposalStore>();
+        Assert.True(proposalStore.TryGet(proposalId, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), out _));
+    }
+
+    [Fact]
     public async Task CombinedHost_AiEditEndpoint_CanCreatePageWhenApplying()
     {
         using var factory = _factory.WithWebHostBuilder(builder =>

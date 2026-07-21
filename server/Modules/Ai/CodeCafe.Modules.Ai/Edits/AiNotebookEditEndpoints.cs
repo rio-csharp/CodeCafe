@@ -9,6 +9,7 @@ using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -210,15 +211,14 @@ public static class AiNotebookEditEndpoints
 
         if (request.Apply)
         {
-            var appliedResult = await ApplyProposalAsync(
-                proposal,
+            return await ConsumeAndApplyProposalAsync(
+                proposal.ProposalId,
+                actorId,
                 notebookReadService,
                 sender,
                 proposalStore,
                 aiOptionsAccessor.Value.EditEndpointPath,
-                actorId,
                 cancellationToken);
-            return appliedResult;
         }
 
         return TypedResults.Ok(ToResponse(proposal, aiOptionsAccessor.Value.EditEndpointPath, applied: false, savedAtUtc: null));
@@ -226,11 +226,11 @@ public static class AiNotebookEditEndpoints
 
     private static async Task<IResult> GetNotebookEditProposalAsync(
         Guid proposalId,
-        HttpContext httpContext,
         ICurrentUserAccessor currentUserAccessor,
         IAiNotebookEditProposalStore proposalStore,
         INotebookReadService notebookReadService,
-        IOptions<AiOptions> aiOptionsAccessor)
+        IOptions<AiOptions> aiOptionsAccessor,
+        CancellationToken cancellationToken)
     {
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
@@ -246,7 +246,7 @@ public static class AiNotebookEditEndpoints
         var notebookResult = await notebookReadService.GetNotebookContextAsync(
             proposal.NotebookSlug,
             actorId,
-            httpContext.RequestAborted);
+            cancellationToken);
         if (!notebookResult.Succeeded)
         {
             return ToNotesError(notebookResult.Error!);
@@ -277,19 +277,56 @@ public static class AiNotebookEditEndpoints
             return ToError("authenticated_actor_required", "Authentication is required to apply notebook edits.", StatusCodes.Status401Unauthorized);
         }
 
-        if (!proposalStore.TryGet(proposalId, actorId, out var proposal))
-        {
-            return ToError("ai_edit_proposal_not_found", "The notebook edit proposal was not found or has expired.", StatusCodes.Status404NotFound, "proposalId");
-        }
-
-        return await ApplyProposalAsync(
-            proposal,
+        return await ConsumeAndApplyProposalAsync(
+            proposalId,
+            actorId,
             notebookReadService,
             sender,
             proposalStore,
             aiOptionsAccessor.Value.EditEndpointPath,
+            cancellationToken);
+    }
+
+    private static async Task<IResult> ConsumeAndApplyProposalAsync(
+        Guid proposalId,
+        Guid actorId,
+        INotebookReadService notebookReadService,
+        ISender sender,
+        IAiNotebookEditProposalStore proposalStore,
+        string editEndpointPath,
+        CancellationToken cancellationToken)
+    {
+        // Consuming is the atomic claim on the proposal: a racing apply observes the row
+        // already deleted and gets the same 404 as a missing proposal.
+        var proposal = await proposalStore.TryConsumeAsync(proposalId, actorId, cancellationToken);
+        if (proposal is null)
+        {
+            return ToError("ai_edit_proposal_not_found", "The notebook edit proposal was not found or has expired.", StatusCodes.Status404NotFound, "proposalId");
+        }
+
+        var result = await ApplyProposalAsync(
+            proposal,
+            notebookReadService,
+            sender,
+            editEndpointPath,
             actorId,
             cancellationToken);
+        if (result is not Ok<AiNotebookEditResponse>)
+        {
+            // The proposal was consumed but could not be applied; restore it so the user can retry.
+            // Only typed error Results reach this path: commands return Results by convention,
+            // so a thrown exception means a bug and deliberately skips the restore.
+            try
+            {
+                proposalStore.Save(proposal);
+            }
+            catch
+            {
+                // Best effort only: when the restore fails the proposal is lost, same as a crash.
+            }
+        }
+
+        return result;
     }
 
     private static IResult DiscardNotebookEditProposalAsync(
@@ -316,7 +353,6 @@ public static class AiNotebookEditEndpoints
         AiNotebookEditProposal proposal,
         INotebookReadService notebookReadService,
         ISender sender,
-        IAiNotebookEditProposalStore proposalStore,
         string editEndpointPath,
         Guid actorId,
         CancellationToken cancellationToken)
@@ -417,7 +453,6 @@ public static class AiNotebookEditEndpoints
             savedAtUtc = updatedPage.UpdatedAtUtc ?? updatedPage.CreatedAtUtc;
         }
 
-        proposalStore.Remove(proposal.ProposalId);
         var appliedProposal = proposal with
         {
             PageId = pageId,

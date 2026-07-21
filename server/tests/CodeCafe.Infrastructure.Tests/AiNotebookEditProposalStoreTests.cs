@@ -103,6 +103,74 @@ public sealed class AiNotebookEditProposalStoreTests
     }
 
     [Fact]
+    public async Task TryConsumeAsync_ReturnsNull_ForExpiredProposal_And_KeepsIt()
+    {
+        using var harness = new NotesDbHarness();
+        using var context = harness.CreateContext();
+        var store = new DatabaseAiNotebookEditProposalStore(context);
+        var actorId = Guid.NewGuid();
+        var proposal = CreateProposal(actorId, DateTimeOffset.UtcNow.AddMinutes(-1));
+        store.Save(proposal);
+
+        var consumed = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
+
+        Assert.Null(consumed);
+        Assert.Contains(context.AiEditProposals, entry => entry.Id == proposal.ProposalId);
+    }
+
+    [Fact]
+    public async Task TryConsumeAsync_ReturnsProposal_And_RemovesItFromStore()
+    {
+        using var harness = new NotesDbHarness();
+        using var context = harness.CreateContext();
+        var store = new DatabaseAiNotebookEditProposalStore(context);
+        var actorId = Guid.NewGuid();
+        var proposal = CreateProposal(actorId);
+        store.Save(proposal);
+
+        var consumed = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
+
+        Assert.NotNull(consumed);
+        Assert.Equal(proposal.ProposalId, consumed.ProposalId);
+        Assert.Equal(proposal.Summary, consumed.Summary);
+        Assert.False(store.TryGet(proposal.ProposalId, actorId, out _));
+        Assert.DoesNotContain(context.AiEditProposals, entry => entry.Id == proposal.ProposalId);
+    }
+
+    [Fact]
+    public async Task TryConsumeAsync_CalledTwice_SecondCallReturnsNull()
+    {
+        using var harness = new NotesDbHarness();
+        using var context = harness.CreateContext();
+        var store = new DatabaseAiNotebookEditProposalStore(context);
+        var actorId = Guid.NewGuid();
+        var proposal = CreateProposal(actorId);
+        store.Save(proposal);
+
+        var first = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
+        var second = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
+
+        Assert.NotNull(first);
+        Assert.Null(second);
+    }
+
+    [Fact]
+    public async Task TryConsumeAsync_ReturnsNull_ForDifferentActor_And_KeepsProposal()
+    {
+        using var harness = new NotesDbHarness();
+        using var context = harness.CreateContext();
+        var store = new DatabaseAiNotebookEditProposalStore(context);
+        var actorId = Guid.NewGuid();
+        var proposal = CreateProposal(actorId);
+        store.Save(proposal);
+
+        var consumed = await store.TryConsumeAsync(proposal.ProposalId, Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Null(consumed);
+        Assert.True(store.TryGet(proposal.ProposalId, actorId, out _));
+    }
+
+    [Fact]
     public void Remove_DeletesProposal()
     {
         using var harness = new NotesDbHarness();

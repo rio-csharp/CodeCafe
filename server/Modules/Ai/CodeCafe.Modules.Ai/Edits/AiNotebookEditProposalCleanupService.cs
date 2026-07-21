@@ -11,7 +11,6 @@ namespace CodeCafe.Modules.Ai.Edits;
 /// </summary>
 public sealed class AiNotebookEditProposalCleanupService(
     IServiceScopeFactory scopeFactory,
-    IHostEnvironment environment,
     ILogger<AiNotebookEditProposalCleanupService> logger) : BackgroundService
 {
     private static readonly TimeSpan InitialDelay = TimeSpan.FromMinutes(15);
@@ -19,11 +18,6 @@ public sealed class AiNotebookEditProposalCleanupService(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (environment.IsEnvironment("Testing"))
-        {
-            return;
-        }
-
         await Task.Delay(InitialDelay, stoppingToken);
         using var timer = new PeriodicTimer(Interval);
         do

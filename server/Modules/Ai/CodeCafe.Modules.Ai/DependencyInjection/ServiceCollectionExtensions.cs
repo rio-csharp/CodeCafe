@@ -10,6 +10,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenAI;
@@ -21,7 +22,8 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddCodeCafeAi(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         services.AddHttpContextAccessor();
         services.AddAGUI();
@@ -73,7 +75,10 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IAiNotebookEditProposalStore, DatabaseAiNotebookEditProposalStore>();
         services.TryAddScoped<IAiNotebookEditGenerator, OpenAiNotebookEditGenerator>();
         services.TryAddScoped<IAiNoteDraftGenerator, OpenAiNoteDraftGenerator>();
-        services.AddHostedService<AiNotebookEditProposalCleanupService>();
+        if (!environment.IsEnvironment("Testing"))
+        {
+            services.AddHostedService<AiNotebookEditProposalCleanupService>();
+        }
 
         var configuredOptions = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
         services.AddAIAgent(

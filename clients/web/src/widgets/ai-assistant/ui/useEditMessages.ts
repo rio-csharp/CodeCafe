@@ -59,6 +59,11 @@ const stores = new Map<string, ReturnType<typeof createThreadStore>>()
 
 // Cap resident stores; eviction is safe because every mutation is already
 // persisted to localStorage, so a recreated store reloads from disk.
+// Tradeoff: eviction can drop a store a mounted component still holds (the
+// instance is memoized per threadKey below), so a later getStore() for that
+// thread creates a second live store. Both read/write the same localStorage
+// key, so they converge on the next load() — and the window is bounded by
+// MAX_RESIDENT_STORES, which is far above realistic open-thread counts.
 const MAX_RESIDENT_STORES = 20
 
 function getStore(threadKey: string) {

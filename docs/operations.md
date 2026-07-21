@@ -184,6 +184,8 @@ dotnet CodeCafe.Server.dll migrate
 
 Development startup applies migrations automatically. Helm also includes an API migration job template.
 
+Migration `20260718224927_AddNotebookTrigramIndexes` enables the `pg_trgm` extension and creates GIN trigram indexes on `Notebooks.Title`, `NotebookItems.Title`, and `NotebookItems.PlainTextContent`. Enabling the extension requires a database role with `CREATE EXTENSION` privilege. The indexes are created non-concurrently, so the migration holds a write lock on `NotebookItems` while it runs. This only matters for large installs; small databases finish in milliseconds. For large installs, run the migration in a low-traffic window.
+
 ## Database Maintenance
 
 The maintained database helper lives in:

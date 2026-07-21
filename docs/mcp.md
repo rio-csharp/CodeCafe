@@ -230,6 +230,8 @@ Use the content mutation tools this way:
 
 Write tools default to lightweight responses: `contentJson` and `plainTextContent` are omitted, while `contentJsonBytes`, `plainTextLength`, `tipTapNodeCount`, and page identifiers are still returned. Pass `includeContent: true` only when the client explicitly needs the full updated document in the mutation response. Use `notes_get_page` for normal full-content reads.
 
+Stored content is normalized before persistence. URLs on links and media are filtered by `ContentUrlPolicy` (`server/Modules/Notes/CodeCafe.Modules.Notes.Application/Notes/ContentUrlPolicy.cs`): only http(s), `mailto:`/`tel:` link URLs, and root-relative paths survive. Plain relative URLs (`docs/page`) and `#fragment` links are stripped at normalize time; use root-relative paths (`/docs/page`) or absolute http(s) URLs instead.
+
 ## Query Semantics
 
 - `notes_list_notebooks` supports `scope=all|mine|public`.
