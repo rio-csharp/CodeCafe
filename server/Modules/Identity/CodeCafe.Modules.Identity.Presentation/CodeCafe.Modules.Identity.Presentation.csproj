@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.8" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="OpenIddict.AspNetCore" Version="7.5.0" />
     <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Infrastructure\CodeCafe.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\CodeCafe.Modules.Identity.Application\CodeCafe.Modules.Identity.Application.csproj" />

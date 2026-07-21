@@ -5,6 +5,9 @@ imagePullSecrets: []
 
 frontend:
   replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
   terminationGracePeriodSeconds: 30
   podSecurityContext:
     runAsNonRoot: true
@@ -63,6 +66,9 @@ frontend:
 
 api:
   replicaCount: 2
+  pdb:
+    enabled: true
+    minAvailable: 1
   terminationGracePeriodSeconds: 60
   preStopSleepSeconds: 15
   podSecurityContext:
