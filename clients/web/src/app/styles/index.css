@@ -252,6 +252,18 @@
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
+  color-scheme: light;
+  /* Paint the surface color before React mounts; .dark swaps the variable. */
+  background-color: var(--color-surface);
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
 }
 
 /* Page transition (replaces framer-motion on route change) */

@@ -23,6 +23,9 @@ function applyTheme(theme: Theme) {
   } else {
     root.classList.remove('dark')
   }
+  // Keep native UI (scrollbars, form controls) in sync; mirrors the inline
+  // bootstrap script in index.html.
+  root.style.colorScheme = resolved
   return resolved
 }
 
