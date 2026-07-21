@@ -181,10 +181,12 @@ jobs:
 
       - name: Validate Helm chart
         run: |
-          helm lint deploy/helm/codecafe
-          helm template codecafe deploy/helm/codecafe
-          helm template codecafe-test deploy/helm/codecafe --values deploy/helm/codecafe/values-test.yaml
-          helm template codecafe-prod deploy/helm/codecafe --values deploy/helm/codecafe/values-prod.yaml
+          # The chart intentionally requires explicit image tags; pass dummy
+          # tags here since CI validation does not deploy.
+          helm lint deploy/helm/codecafe --set frontend.image.tag=ci --set api.image.tag=ci
+          helm template codecafe deploy/helm/codecafe --set frontend.image.tag=ci --set api.image.tag=ci
+          helm template codecafe-test deploy/helm/codecafe --values deploy/helm/codecafe/values-test.yaml --set frontend.image.tag=ci --set api.image.tag=ci
+          helm template codecafe-prod deploy/helm/codecafe --values deploy/helm/codecafe/values-prod.yaml --set frontend.image.tag=ci --set api.image.tag=ci
 
       - name: Upload Helm chart artifact
         uses: actions/upload-artifact@v7
