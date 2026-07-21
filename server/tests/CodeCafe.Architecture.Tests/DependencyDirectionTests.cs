@@ -1,11 +1,9 @@
-using CodeCafe.Modules.Notes.Presentation.Common;
 using CodeCafe.Modules.Ai.Common;
+using CodeCafe.Modules.Mcp.Common;
+using CodeCafe.Modules.Notes.Presentation.Common;
+using CodeCafe.Server.Common;
 using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Shared.Domain.Common.Interfaces;
-using CodeCafe.Modules.Mcp.Common;
-using CodeCafe.Modules.Identity.Application;
-using CodeCafe.Modules.Notes.Application;
-using CodeCafe.Server.Common;
 using System.Reflection;
 
 namespace CodeCafe.Architecture.Tests;

@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
-using CodeCafe.Server.Endpoints.Health;
 using CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
+using CodeCafe.Server.Endpoints.Health;
 
 namespace CodeCafe.Server.Common;
 

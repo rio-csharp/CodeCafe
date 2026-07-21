@@ -1,10 +1,10 @@
 using CodeCafe.Modules.Identity.Application.Auth;
-using CodeCafe.Shared.Application.Common.Interfaces;
-using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Identity.Infrastructure.Identity;
+using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Infrastructure.Notes;
-using CodeCafe.Shared.Infrastructure.Persistence;
 using CodeCafe.Modules.Notes.Infrastructure.Services;
+using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

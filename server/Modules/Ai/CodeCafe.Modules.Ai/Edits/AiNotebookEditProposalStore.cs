@@ -1,8 +1,8 @@
-using System.Text.Json;
 using CodeCafe.Shared.Domain.Ai;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using System.Text.Json;
 
 namespace CodeCafe.Modules.Ai.Edits;
 

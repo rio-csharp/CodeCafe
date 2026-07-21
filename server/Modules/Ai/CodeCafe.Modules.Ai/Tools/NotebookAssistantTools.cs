@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Ai.Configuration;
-using CodeCafe.Shared.Application.Identity;
 using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Shared.Application.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.ComponentModel;

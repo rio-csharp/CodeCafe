@@ -1,4 +1,3 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
 using CodeCafe.Shared.Application.Configuration;

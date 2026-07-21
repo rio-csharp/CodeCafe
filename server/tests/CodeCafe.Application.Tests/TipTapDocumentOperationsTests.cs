@@ -1,6 +1,5 @@
 using CodeCafe.Modules.Notes.Application.Notes;
 using System.Text.Json;
-using Xunit;
 
 namespace CodeCafe.Application.Tests;
 

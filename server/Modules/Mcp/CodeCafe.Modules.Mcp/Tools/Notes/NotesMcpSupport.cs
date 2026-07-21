@@ -1,12 +1,11 @@
-using CodeCafe.Shared.Application.Identity;
 using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Shared.Application.Identity;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Unicode;
 
 namespace CodeCafe.Modules.Mcp.Tools.Notes;

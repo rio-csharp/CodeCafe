@@ -1,5 +1,5 @@
-using System.Text.Json;
 using CodeCafe.Modules.Notes.Application.Notes;
+using System.Text.Json;
 
 namespace CodeCafe.Modules.Ai.Edits;
 

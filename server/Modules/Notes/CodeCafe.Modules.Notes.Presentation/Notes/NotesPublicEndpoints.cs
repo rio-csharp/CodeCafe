@@ -1,8 +1,8 @@
-using CodeCafe.Shared.Application.Identity;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebook;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebookItem;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebookItems;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetPublicNotebooks;
+using CodeCafe.Shared.Application.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

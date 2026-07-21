@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Shared.Application.Configuration;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;

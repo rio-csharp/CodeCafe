@@ -1,4 +1,3 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.AddNotebookFavorite;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
@@ -7,6 +6,7 @@ using CodeCafe.Modules.Notes.Application.Notes.Commands.RemoveNotebookFavorite;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookFavoriteStatus;
 using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Shared.Application.Common.Interfaces;
 
 namespace CodeCafe.Application.Tests;
 

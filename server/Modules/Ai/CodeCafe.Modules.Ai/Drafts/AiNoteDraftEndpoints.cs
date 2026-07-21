@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Ai.Configuration;
-using CodeCafe.Shared.Application.Identity;
 using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Shared.Application.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

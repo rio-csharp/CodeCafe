@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Application.Configuration;
 using CodeCafe.Modules.Mcp.Tools.Diagnostics;
+using CodeCafe.Shared.Application.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Modules.Mcp.Common;

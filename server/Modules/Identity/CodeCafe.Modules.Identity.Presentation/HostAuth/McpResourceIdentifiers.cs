@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Application.Configuration;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
+using CodeCafe.Shared.Application.Configuration;
 
 namespace CodeCafe.Modules.Identity.Presentation.Auth;
 

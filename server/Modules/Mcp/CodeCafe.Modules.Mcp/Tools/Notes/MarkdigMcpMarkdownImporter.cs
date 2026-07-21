@@ -1,7 +1,7 @@
 using CodeCafe.Modules.Notes.Application.Notes;
 using Markdig;
-using Markdig.Extensions.TaskLists;
 using Markdig.Extensions.Tables;
+using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 using System.Text;

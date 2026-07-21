@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Infrastructure.Persistence;
 using CodeCafe.Modules.Identity.Presentation.Auth;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;

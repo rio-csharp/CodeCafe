@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Identity.Infrastructure.Identity;
-using CodeCafe.Shared.Application.Configuration;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
+using CodeCafe.Shared.Application.Configuration;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;

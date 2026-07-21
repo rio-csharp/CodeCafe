@@ -1,10 +1,10 @@
-using System.Text;
-using System.Text.Json;
 using CodeCafe.Modules.Ai.Configuration;
 using CodeCafe.Modules.Notes.Application.Notes;
 using Microsoft.Extensions.Options;
 using OpenAI;
 using OpenAI.Chat;
+using System.Text;
+using System.Text.Json;
 
 namespace CodeCafe.Modules.Ai.Edits;
 

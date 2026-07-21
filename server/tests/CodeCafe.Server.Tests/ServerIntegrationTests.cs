@@ -1,6 +1,5 @@
 using CodeCafe.Modules.Ai.Drafts;
 using CodeCafe.Modules.Ai.Edits;
-using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -821,7 +820,7 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         Assert.Equal("ai_edit_generation_failed", document.RootElement.GetProperty("code").GetString());
     }
 
-        [Fact]
+    [Fact]
     public async Task CombinedHost_AiEditEndpoint_CanDeletePageWhenApplying()
     {
         using var factory = _factory.WithWebHostBuilder(builder =>
@@ -939,7 +938,7 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         Assert.False(overview.GetProperty("isArchived").GetBoolean());
     }
 
-[Fact]
+    [Fact]
     public async Task CombinedHost_ExposesApiNotesAndAuthEndpoints()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions

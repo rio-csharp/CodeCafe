@@ -1,4 +1,3 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebookItem;

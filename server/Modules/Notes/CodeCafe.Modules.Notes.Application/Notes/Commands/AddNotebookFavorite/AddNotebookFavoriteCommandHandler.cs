@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 
 namespace CodeCafe.Modules.Notes.Application.Notes.Commands.AddNotebookFavorite;
 

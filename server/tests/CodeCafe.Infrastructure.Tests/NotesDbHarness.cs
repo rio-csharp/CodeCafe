@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Modules.Notes.Infrastructure.Notes;
+using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

@@ -1,6 +1,6 @@
+using CodeCafe.Modules.Notes.Domain.Notes;
 using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 using CodeCafe.Shared.Application.Common.Interfaces;
-using CodeCafe.Modules.Notes.Domain.Notes;
 
 namespace CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
 

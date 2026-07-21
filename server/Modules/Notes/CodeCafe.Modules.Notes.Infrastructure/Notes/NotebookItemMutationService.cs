@@ -1,6 +1,6 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;

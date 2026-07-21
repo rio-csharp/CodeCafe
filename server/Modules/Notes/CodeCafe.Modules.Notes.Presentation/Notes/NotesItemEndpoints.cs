@@ -1,4 +1,3 @@
-using CodeCafe.Shared.Application.Identity;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
@@ -8,6 +7,7 @@ using CodeCafe.Modules.Notes.Application.Notes.Commands.RestoreNotebookItem;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItemById;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItems;
+using CodeCafe.Shared.Application.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

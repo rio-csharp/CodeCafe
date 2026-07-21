@@ -1,8 +1,8 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Domain.Notes;
-using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Server.Common;
+using CodeCafe.Shared.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;

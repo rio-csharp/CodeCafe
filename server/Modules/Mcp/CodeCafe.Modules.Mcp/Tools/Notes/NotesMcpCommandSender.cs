@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 using FluentValidation;
 using MediatR;
 

@@ -2,7 +2,6 @@ using FluentValidation;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CodeCafe.Modules.Notes.Presentation.Errors;
 

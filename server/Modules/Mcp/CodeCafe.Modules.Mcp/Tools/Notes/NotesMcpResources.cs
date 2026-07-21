@@ -1,6 +1,6 @@
-using CodeCafe.Shared.Application.Identity;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Shared.Application.Identity;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;

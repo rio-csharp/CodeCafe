@@ -1,11 +1,10 @@
 using CodeCafe.Modules.Ai.Common;
-using CodeCafe.Modules.Notes.Presentation.Common;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
-using CodeCafe.Modules.Notes.Presentation.Errors;
 using CodeCafe.Modules.Mcp.Common;
-using CodeCafe.Shared.Application.Configuration;
 using CodeCafe.Modules.Mcp.Tools.Diagnostics;
 using CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
+using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Shared.Application.Configuration;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;

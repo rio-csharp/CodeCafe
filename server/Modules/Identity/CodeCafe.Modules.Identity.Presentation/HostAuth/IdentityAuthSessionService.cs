@@ -1,5 +1,5 @@
-using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
 using CodeCafe.Modules.Identity.Infrastructure.Identity;
+using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
 using Microsoft.AspNetCore.Identity;
 
 namespace CodeCafe.Modules.Identity.Presentation.Auth;

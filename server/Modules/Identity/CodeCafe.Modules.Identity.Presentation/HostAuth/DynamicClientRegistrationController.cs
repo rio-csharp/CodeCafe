@@ -1,6 +1,6 @@
-using CodeCafe.Shared.Infrastructure.Persistence;
-using CodeCafe.Shared.Application.Configuration;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
+using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;

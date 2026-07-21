@@ -1,11 +1,9 @@
-using System.Text;
-using System.Text.Json;
 using CodeCafe.Modules.Ai.Configuration;
-using CodeCafe.Shared.Application.Identity;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Shared.Application.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -14,6 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Text;
+using System.Text.Json;
 
 namespace CodeCafe.Modules.Ai.Edits;
 

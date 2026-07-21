@@ -1,5 +1,4 @@
 using CodeCafe.Modules.Ai.Configuration;
-using CodeCafe.Modules.Notes.Application.Notes;
 using Microsoft.Extensions.Options;
 using OpenAI;
 using OpenAI.Chat;
