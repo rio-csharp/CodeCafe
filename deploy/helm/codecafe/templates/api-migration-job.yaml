@@ -13,6 +13,7 @@ metadata:
 spec:
   backoffLimit: {{ .Values.api.migration.backoffLimit }}
   ttlSecondsAfterFinished: {{ .Values.api.migration.ttlSecondsAfterFinished }}
+  activeDeadlineSeconds: {{ .Values.api.migration.activeDeadlineSeconds | default 600 }}
   template:
     metadata:
       labels:
@@ -20,6 +21,11 @@ spec:
         app.kubernetes.io/component: api-migration
     spec:
       restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- with .Values.api.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -32,6 +38,9 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           {{- with .Values.api.envFromSecrets }}
           envFrom:
             {{- range . }}
@@ -70,4 +79,7 @@ spec:
               value: {{ .Values.api.ai.maxDraftOutputTokens | quote }}
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
 {{- end }}

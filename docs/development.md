@@ -20,7 +20,7 @@ GRANT ALL PRIVILEGES ON DATABASE codecafe TO codecafe;
 
 ### 2. Configure The Backend
 
-Create `src/CodeCafe.Server/appsettings.Development.json`:
+Create `server/Host/CodeCafe.Server/appsettings.Development.json`:
 
 ```json
 {
@@ -62,7 +62,7 @@ New AI write work should not treat Markdown drafts as the long-term write format
 
 ### 3. Configure The Frontend
 
-Create `frontend/.env` from `frontend/.env.example`.
+Create `clients/web/.env` from `clients/web/.env.example`.
 
 Default direct-to-backend mode:
 
@@ -84,8 +84,8 @@ VITE_API_BASE_URL=
 Restore and run the combined backend host:
 
 ```powershell
-dotnet restore CodeCafe.slnx
-dotnet run --project src/CodeCafe.Server
+dotnet restore server/CodeCafe.slnx
+dotnet run --project server/Host/CodeCafe.Server
 ```
 
 The checked-in development launch profile uses:
@@ -105,7 +105,7 @@ In Development, migrations run automatically at startup.
 ### Frontend
 
 ```powershell
-cd frontend
+cd clients/web
 npm ci
 npm run dev
 ```
@@ -121,8 +121,8 @@ For OpenAI-compatible routers, set `Ai:BaseUrl` to the provider base URL; root U
 ### Backend
 
 ```powershell
-dotnet build CodeCafe.slnx --configuration Release
-dotnet test CodeCafe.slnx --configuration Release --no-build
+dotnet build server/CodeCafe.slnx --configuration Release
+dotnet test server/CodeCafe.slnx --configuration Release --no-build
 ```
 
 On Windows, if multiple backend test projects compete for `obj` files, prefer running test projects serially instead of in parallel.
@@ -130,7 +130,7 @@ On Windows, if multiple backend test projects compete for `obj` files, prefer ru
 ### Frontend
 
 ```powershell
-cd frontend
+cd clients/web
 npm run test
 npm run lint
 npm run build
@@ -139,7 +139,7 @@ npm run build
 For browser automation:
 
 ```powershell
-cd frontend
+cd clients/web
 npm run e2e
 ```
 
@@ -147,12 +147,12 @@ E2E assumes the frontend is available on `http://localhost:5173` and the backend
 
 ## EF Core And Migrations
 
-Use `CodeCafe.Infrastructure` as the migrations project and `CodeCafe.Server` as the startup project:
+Use `CodeCafe.Shared.Infrastructure` as the current migrations project and `CodeCafe.Server` as the startup project:
 
 ```powershell
 dotnet ef database update `
-  --project src/CodeCafe.Infrastructure/CodeCafe.Infrastructure.csproj `
-  --startup-project src/CodeCafe.Server/CodeCafe.Server.csproj `
+  --project server/Shared/CodeCafe.Shared.Infrastructure/CodeCafe.Shared.Infrastructure.csproj `
+  --startup-project server/Host/CodeCafe.Server/CodeCafe.Server.csproj `
   --context ApplicationDbContext
 ```
 
@@ -170,4 +170,4 @@ dotnet CodeCafe.Server.dll migrate
 - AI is disabled by default. Set `Ai:Enabled`, `Ai:Model`, and `Ai:ApiKey` only in local user secrets, environment variables, or deployment secrets.
 - Current AI configuration still includes `Ai:DraftEndpointPath`, `Ai:MaxDraftPromptChars`, `Ai:MaxDraftContextChars`, and `Ai:MaxDraftOutputTokens` for the transitional draft flow.
 - Notebook page content is stored as TipTap JSON. Markdown is allowed only as an import/upload input that is converted before persistence.
-- `scripts/README.md` documents the maintained database-sync helper in `tools/CodeCafe.DbSync`.
+- `scripts/README.md` documents the maintained database-sync helper in `server/tools/CodeCafe.DbSync`.

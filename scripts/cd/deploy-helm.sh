@@ -40,6 +40,7 @@ AI_API_KEY="${AI_API_KEY:-}"
 OAUTH_SECRET_NAME="${OAUTH_SECRET_NAME:-codecafe-oauth-secret}"
 OAUTH_SECRET_NAMESPACE="${OAUTH_SECRET_NAMESPACE:-$NAMESPACE}"
 OAUTH_ENV_FILE="${OAUTH_ENV_FILE:-}"
+AI_ENV_FILE="${AI_ENV_FILE:-}"
 tls_cert_file=""
 tls_key_file=""
 frontend_pid=""
@@ -82,6 +83,11 @@ trap 'on_signal HUP' HUP
 if [ -n "$OAUTH_ENV_FILE" ]; then
   # shellcheck disable=SC1090
   . "$OAUTH_ENV_FILE"
+fi
+
+if [ -n "$AI_ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$AI_ENV_FILE"
 fi
 
 case "$AI_ENABLED" in
@@ -256,7 +262,17 @@ case "$release_status" in
     ;;
 esac
 
-$HELM_BIN "${helm_args[@]}"
+if ! $HELM_BIN "${helm_args[@]}"; then
+  echo "Helm deployment failed; collecting migration job diagnostics." >&2
+  $KUBECTL_BIN get pods --namespace "$NAMESPACE" \
+    -l "app.kubernetes.io/instance=$RELEASE" -o wide >&2 || true
+  $KUBECTL_BIN logs --namespace "$NAMESPACE" \
+    -l "app.kubernetes.io/component=api-migration" \
+    --all-containers --tail=-1 >&2 || true
+  $KUBECTL_BIN describe job "${RELEASE}-api-migrate" \
+    --namespace "$NAMESPACE" >&2 || true
+  exit 1
+fi
 
 $KUBECTL_BIN rollout status deployment \
   --selector "app.kubernetes.io/instance=$RELEASE,app.kubernetes.io/component=frontend" \

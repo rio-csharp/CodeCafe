@@ -1,0 +1,100 @@
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, Loader2 } from 'lucide-react'
+import { useCreateNotebookForm } from '@/features/create-notebook'
+import { useToast } from '@/shared/ui/Toast'
+import { Input } from '@/shared/ui/Input'
+import { VisibilityField } from '@/widgets/notebook-settings'
+import { useTranslation } from 'react-i18next'
+
+export default function CreateNotebookPage() {
+  const navigate = useNavigate()
+  const { showToast } = useToast()
+  const { t } = useTranslation()
+
+  const handleSuccess = (slug: string) => {
+    showToast(t('notebook.created'))
+    navigate(`/notes/${slug}`)
+  }
+
+  // useCreateNotebookForm already converts the error to a display string;
+  // show it as-is so server messages (e.g. slug conflicts) reach the user.
+  const handleError = (message: string) => {
+    showToast(message, 'error')
+  }
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    errors,
+    isPending,
+  } = useCreateNotebookForm(handleSuccess, handleError)
+
+  return (
+    <div className="pt-24 pb-20 lg:pt-32 lg:pb-24">
+      <div className="mx-auto max-w-xl px-6 lg:px-8">
+        <button
+          type="button"
+          onClick={() => navigate('/notes')}
+          className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary transition-colors mb-6"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t('notebook.backToNotes')}
+        </button>
+
+        <h1 className="text-2xl font-bold text-text-primary">{t('notebook.createTitle')}</h1>
+        <p className="mt-2 text-sm text-text-secondary">
+          {t('notebook.createDescription')}
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <Input
+            id="notebook-title"
+            type="text"
+            label={t('notebook.title')}
+            data-testid="create-notebook-title"
+            {...register('title')}
+            placeholder={t('notebook.titlePlaceholder')}
+            error={errors.title?.message}
+            autoFocus
+          />
+
+          <div>
+            <label htmlFor="notebook-description" className="block text-sm font-medium text-text-primary mb-1">
+              {t('notebook.description')}
+            </label>
+            <textarea
+              id="notebook-description"
+              data-testid="create-notebook-description"
+              {...register('description')}
+              placeholder={t('notebook.descriptionPlaceholder')}
+              rows={3}
+              className="w-full rounded-lg border border-border-default bg-surface text-text-primary px-4 py-2.5 text-sm outline-none focus:border-border-hover resize-none"
+            />
+          </div>
+
+          <VisibilityField control={control} />
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="submit"
+              data-testid="create-notebook-submit"
+              disabled={isPending}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-6 py-2.5 text-sm font-medium text-text-inverse hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              {t('notebook.createSubmit')}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/notes')}
+              className="rounded-lg border border-border-default px-6 py-2.5 text-sm font-medium text-text-secondary hover:bg-surface-hover transition-colors"
+            >
+              {t('notebook.cancel')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}

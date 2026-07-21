@@ -5,19 +5,19 @@
 Backend deploy target:
 
 ```text
-src/CodeCafe.Server/CodeCafe.Server.csproj
+server/Host/CodeCafe.Server/CodeCafe.Server.csproj
 ```
 
 Frontend deploy target:
 
 ```text
-frontend/
+clients/web/
 ```
 
 Container images are built from:
 
-- `src/CodeCafe.Server/Dockerfile`
-- `frontend/Dockerfile`
+- `server/Host/CodeCafe.Server/Dockerfile`
+- `clients/web/Dockerfile`
 
 ## GitHub Workflow
 
@@ -169,7 +169,7 @@ Current deployments may still expose draft-specific variables because the transi
 The frontend image writes `window.__CODECAFE_CONFIG__` at container startup through:
 
 ```text
-frontend/docker-entrypoint.d/10-write-runtime-config.sh
+clients/web/docker-entrypoint.d/10-write-runtime-config.sh
 ```
 
 That runtime config provides `apiBaseUrl` and `aiStatusEndpointPath` without rebuilding the frontend image per environment.
@@ -184,12 +184,14 @@ dotnet CodeCafe.Server.dll migrate
 
 Development startup applies migrations automatically. Helm also includes an API migration job template.
 
+Migration `20260718224927_AddNotebookTrigramIndexes` enables the `pg_trgm` extension and creates GIN trigram indexes on `Notebooks.Title`, `NotebookItems.Title`, and `NotebookItems.PlainTextContent`. Enabling the extension requires a database role with `CREATE EXTENSION` privilege. The indexes are created non-concurrently, so the migration holds a write lock on `NotebookItems` while it runs. This only matters for large installs; small databases finish in milliseconds. For large installs, run the migration in a low-traffic window.
+
 ## Database Maintenance
 
 The maintained database helper lives in:
 
 ```text
-tools/CodeCafe.DbSync
+server/tools/CodeCafe.DbSync
 ```
 
 Supported commands:

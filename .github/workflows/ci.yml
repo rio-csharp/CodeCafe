@@ -59,18 +59,18 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore backend
-        run: dotnet restore CodeCafe.slnx
+        run: dotnet restore server/CodeCafe.slnx
 
       - name: Build backend
-        run: dotnet build CodeCafe.slnx --configuration Release --no-restore
+        run: dotnet build server/CodeCafe.slnx --configuration Release --no-restore
 
       - name: Test backend
-        run: dotnet test CodeCafe.slnx --configuration Release --no-build
+        run: dotnet test server/CodeCafe.slnx --configuration Release --no-build
 
       - name: Publish API image input
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
         run: >
-          dotnet publish src/CodeCafe.Server/CodeCafe.Server.csproj
+          dotnet publish server/Host/CodeCafe.Server/CodeCafe.Server.csproj
           --configuration Release
           --output .artifacts/api
           --no-build
@@ -93,7 +93,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: src/CodeCafe.Server/Dockerfile
+          file: server/Host/CodeCafe.Server/Dockerfile
           push: true
           tags: ghcr.io/${{ vars.IMAGE_NAMESPACE }}/api:${{ needs.artifact-policy.outputs.image_tag }}
           cache-from: type=gha,scope=codecafe-api
@@ -113,14 +113,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: clients/web/package-lock.json
 
       - name: Install frontend dependencies
-        working-directory: frontend
+        working-directory: clients/web
         run: npm ci
 
       - name: Test frontend
-        working-directory: frontend
+        working-directory: clients/web
         run: |
           if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then
             npm run test
@@ -129,19 +129,19 @@ jobs:
           fi
 
       - name: Lint frontend
-        working-directory: frontend
+        working-directory: clients/web
         run: npm run lint
 
       - name: Build frontend
-        working-directory: frontend
+        working-directory: clients/web
         run: npm run build
 
       - name: Prepare frontend image input
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
-        working-directory: frontend
+        working-directory: clients/web
         run: |
-          mkdir -p ../.artifacts/frontend
-          cp -R dist/. ../.artifacts/frontend/
+          mkdir -p ../../.artifacts/frontend
+          cp -R dist/. ../../.artifacts/frontend/
 
       - name: Login to GHCR
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
@@ -160,7 +160,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: frontend/Dockerfile
+          file: clients/web/Dockerfile
           push: true
           tags: ghcr.io/${{ vars.IMAGE_NAMESPACE }}/frontend:${{ needs.artifact-policy.outputs.image_tag }}
           cache-from: type=gha,scope=codecafe-frontend
@@ -181,10 +181,12 @@ jobs:
 
       - name: Validate Helm chart
         run: |
-          helm lint deploy/helm/codecafe
-          helm template codecafe deploy/helm/codecafe
-          helm template codecafe-test deploy/helm/codecafe --values deploy/helm/codecafe/values-test.yaml
-          helm template codecafe-prod deploy/helm/codecafe --values deploy/helm/codecafe/values-prod.yaml
+          # The chart intentionally requires explicit image tags; pass dummy
+          # tags here since CI validation does not deploy.
+          helm lint deploy/helm/codecafe --set frontend.image.tag=ci --set api.image.tag=ci
+          helm template codecafe deploy/helm/codecafe --set frontend.image.tag=ci --set api.image.tag=ci
+          helm template codecafe-test deploy/helm/codecafe --values deploy/helm/codecafe/values-test.yaml --set frontend.image.tag=ci --set api.image.tag=ci
+          helm template codecafe-prod deploy/helm/codecafe --values deploy/helm/codecafe/values-prod.yaml --set frontend.image.tag=ci --set api.image.tag=ci
 
       - name: Upload Helm chart artifact
         uses: actions/upload-artifact@v7

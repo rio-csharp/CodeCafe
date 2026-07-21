@@ -25,6 +25,7 @@ done
 helm_artifact_dir="${HELM_ARTIFACT_DIR:-.artifacts/helm}"
 cd_scripts_dir="${CD_SCRIPTS_DIR:-.artifacts/scripts}"
 oauth_env_file="${OAUTH_ENV_FILE:-.artifacts/deployment/oauth.env}"
+ai_env_file="${AI_ENV_FILE:-.artifacts/deployment/ai.env}"
 deploy_helm_script="${cd_scripts_dir}/deploy-helm.sh"
 
 for path in "$helm_artifact_dir" "$deploy_helm_script" "$oauth_env_file"; do
@@ -38,6 +39,7 @@ chart_archive="${CHART_ARCHIVE:-codecafe-chart-${GITHUB_RUN_ID}-${GITHUB_RUN_ATT
 remote_dir="${REMOTE_DIR:-/tmp/codecafe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}}"
 remote_dir_created=false
 remote_deploy_started=false
+ai_env_file_written=false
 
 ssh_target="${DEPLOY_SSH_USER}@${DEPLOY_SSH_HOST}"
 ssh_options=(
@@ -48,6 +50,10 @@ ssh_options=(
 
 cleanup() {
   rm -f "$chart_archive"
+
+  if [ "$ai_env_file_written" = true ]; then
+    rm -f "$ai_env_file"
+  fi
 
   if [ "$remote_dir_created" = true ] && [ "$remote_deploy_started" != true ]; then
     ssh "${ssh_options[@]}" "$ssh_target" "rm -rf $(shell_quote "$remote_dir")" >/dev/null 2>&1 || true
@@ -84,6 +90,17 @@ scp -P "$DEPLOY_SSH_PORT" \
   -o StrictHostKeyChecking=yes \
   "$oauth_env_file" "$ssh_target:$remote_dir/oauth.env"
 
+# Ship AI_API_KEY as a file (like oauth.env) instead of on the remote command
+# line, where it would be visible to ps and sshd/sudo audit logs.
+if [ -n "${AI_API_KEY:-}" ]; then
+  (umask 077; printf 'AI_API_KEY=%s\n' "$AI_API_KEY" > "$ai_env_file")
+  ai_env_file_written=true
+  scp -P "$DEPLOY_SSH_PORT" \
+    -o "UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE" \
+    -o StrictHostKeyChecking=yes \
+    "$ai_env_file" "$ssh_target:$remote_dir/ai.env"
+fi
+
 remote_command="REMOTE_DIR=$(shell_quote "$remote_dir")"
 remote_command+=" NAMESPACE=$(shell_quote "$NAMESPACE")"
 remote_command+=" RELEASE=$(shell_quote "$RELEASE")"
@@ -99,11 +116,15 @@ remote_command+=" OAUTH_ENV_FILE=$(shell_quote "$remote_dir/oauth.env")"
 for optional_name in \
   VALUES_FILE KUBECTL_BIN HELM_BIN \
   HELM_TIMEOUT FRONTEND_REPLICA_COUNT API_REPLICA_COUNT API_MIGRATION_ENABLED \
-  AI_ENABLED AI_MODEL AI_BASE_URL AI_API_KEY; do
+  AI_ENABLED AI_MODEL AI_BASE_URL; do
   if [ -n "${!optional_name:-}" ]; then
     remote_command+=" $optional_name=$(shell_quote "${!optional_name}")"
   fi
 done
+
+if [ "$ai_env_file_written" = true ]; then
+  remote_command+=" AI_ENV_FILE=$(shell_quote "$remote_dir/ai.env")"
+fi
 
 remote_command+=" bash $(shell_quote "$remote_dir/deploy-helm.sh")"
 

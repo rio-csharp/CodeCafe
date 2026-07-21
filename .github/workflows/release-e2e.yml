@@ -45,21 +45,21 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: clients/web/package-lock.json
 
       - name: Publish API
         run: >
-          dotnet publish src/CodeCafe.Server/CodeCafe.Server.csproj
+          dotnet publish server/Host/CodeCafe.Server/CodeCafe.Server.csproj
           --configuration Release
           --output .artifacts/api
           /p:UseAppHost=false
 
       - name: Install frontend dependencies
-        working-directory: frontend
+        working-directory: clients/web
         run: npm ci
 
       - name: Install Playwright browsers
-        working-directory: frontend
+        working-directory: clients/web
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
@@ -72,5 +72,5 @@ jobs:
           name: release-e2e-diagnostics
           path: |
             .artifacts/e2e/backend.log
-            frontend/playwright-report/
+            clients/web/playwright-report/
           if-no-files-found: ignore

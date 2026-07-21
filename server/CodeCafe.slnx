@@ -1,0 +1,40 @@
+<Solution>
+  <Folder Name="/Shared/">
+    <Project Path="Shared/CodeCafe.Shared.Domain/CodeCafe.Shared.Domain.csproj" />
+    <Project Path="Shared/CodeCafe.Shared.Application/CodeCafe.Shared.Application.csproj" />
+    <Project Path="Shared/CodeCafe.Shared.Infrastructure/CodeCafe.Shared.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Identity/">
+    <Project Path="Modules/Identity/CodeCafe.Modules.Identity.Application/CodeCafe.Modules.Identity.Application.csproj" />
+    <Project Path="Modules/Identity/CodeCafe.Modules.Identity.Infrastructure/CodeCafe.Modules.Identity.Infrastructure.csproj" />
+    <Project Path="Modules/Identity/CodeCafe.Modules.Identity.Presentation/CodeCafe.Modules.Identity.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Notes/">
+    <Project Path="Modules/Notes/CodeCafe.Modules.Notes.Domain/CodeCafe.Modules.Notes.Domain.csproj" />
+    <Project Path="Modules/Notes/CodeCafe.Modules.Notes.Application/CodeCafe.Modules.Notes.Application.csproj" />
+    <Project Path="Modules/Notes/CodeCafe.Modules.Notes.Infrastructure/CodeCafe.Modules.Notes.Infrastructure.csproj" />
+    <Project Path="Modules/Notes/CodeCafe.Modules.Notes.Presentation/CodeCafe.Modules.Notes.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Mcp/">
+    <Project Path="Modules/Mcp/CodeCafe.Modules.Mcp.Domain/CodeCafe.Modules.Mcp.Domain.csproj" />
+    <Project Path="Modules/Mcp/CodeCafe.Modules.Mcp/CodeCafe.Modules.Mcp.csproj" />
+  </Folder>
+  <Folder Name="/Modules/Ai/">
+    <Project Path="Modules/Ai/CodeCafe.Modules.Ai/CodeCafe.Modules.Ai.csproj" />
+  </Folder>
+  <Folder Name="/Host/">
+    <Project Path="Host/CodeCafe.Server/CodeCafe.Server.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/CodeCafe.Api.Tests/CodeCafe.Api.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Application.Tests/CodeCafe.Application.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Architecture.Tests/CodeCafe.Architecture.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Domain.Tests/CodeCafe.Domain.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Infrastructure.Tests/CodeCafe.Infrastructure.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Mcp.Tests/CodeCafe.Mcp.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Server.Tests/CodeCafe.Server.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tools/">
+    <Project Path="tools/CodeCafe.DbSync/CodeCafe.DbSync.csproj" />
+  </Folder>
+</Solution>

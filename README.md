@@ -17,36 +17,35 @@ CodeCafe is an open-source notebook workspace for engineers. It combines a React
 
 ```text
 CodeCafe/
-├─ src/
-│  ├─ CodeCafe.Domain/
-│  ├─ CodeCafe.Application/
-│  ├─ CodeCafe.Infrastructure/
-│  ├─ CodeCafe.Api/
-│  ├─ CodeCafe.Ai/
-│  ├─ CodeCafe.Mcp/
-│  └─ CodeCafe.Server/
-├─ tests/
-│  ├─ CodeCafe.Api.Tests/
-│  ├─ CodeCafe.Application.Tests/
-│  ├─ CodeCafe.Architecture.Tests/
-│  ├─ CodeCafe.Infrastructure.Tests/
-│  ├─ CodeCafe.Mcp.Tests/
-│  └─ CodeCafe.Server.Tests/
-├─ frontend/
+├─ clients/
+│  └─ web/
+├─ server/
+│  ├─ Host/
+│  │  └─ CodeCafe.Server/
+│  ├─ Shared/
+│  │  ├─ CodeCafe.Shared.Domain/
+│  │  └─ CodeCafe.Shared.Application/
+│  ├─ Modules/
+│  │  ├─ Identity/
+│  │  ├─ Notes/
+│  │  ├─ Mcp/
+│  │  └─ Ai/
+│  ├─ tests/
+│  ├─ tools/
+│  └─ CodeCafe.slnx
 ├─ deploy/
-├─ scripts/
-└─ tools/
+└─ scripts/
 ```
 
-`CodeCafe.Server` is the only runnable backend host. `CodeCafe.Api`, `CodeCafe.Ai`, and `CodeCafe.Mcp` are adapter libraries composed by that host.
+`CodeCafe.Server` is the only runnable backend host. Identity, Notes, MCP, and AI live as modular-monolith backend modules composed by that host.
 
 ## Quick Start
 
 1. Install .NET 10, Node 24, and PostgreSQL 16+.
 2. Create a local `codecafe` database and user.
-3. Add `src/CodeCafe.Server/appsettings.Development.json` with your local connection string.
-4. Run `dotnet run --project src/CodeCafe.Server`.
-5. Run `npm ci` and `npm run dev` inside `frontend/`.
+3. Add `server/Host/CodeCafe.Server/appsettings.Development.json` with your local connection string.
+4. Run `dotnet run --project server/Host/CodeCafe.Server`.
+5. Run `npm ci` and `npm run dev` inside `clients/web/`.
 
 The detailed setup, testing, and migration flow lives in [docs/development.md](docs/development.md).
 
@@ -63,15 +62,15 @@ The detailed setup, testing, and migration flow lives in [docs/development.md](d
 Backend:
 
 ```powershell
-dotnet restore CodeCafe.slnx
-dotnet build CodeCafe.slnx --configuration Release
-dotnet test CodeCafe.slnx --configuration Release --no-build
+dotnet restore server/CodeCafe.slnx
+dotnet build server/CodeCafe.slnx --configuration Release
+dotnet test server/CodeCafe.slnx --configuration Release --no-build
 ```
 
 Frontend:
 
 ```powershell
-cd frontend
+cd clients/web
 npm ci
 npm run test
 npm run lint
