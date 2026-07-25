@@ -204,7 +204,8 @@ public interface INotebookReadService
             currentUserId,
             search,
             cancellationToken,
-            includeArchived);
+            includeArchived,
+            includeContent: false);
         if (!itemsResult.Succeeded)
         {
             return NotesResult<NotebookItemsPageModel>.Failure(

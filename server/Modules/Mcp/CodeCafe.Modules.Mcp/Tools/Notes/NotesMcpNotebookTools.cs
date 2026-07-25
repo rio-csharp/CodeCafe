@@ -418,7 +418,7 @@ public sealed class NotesMcpNotebookTools
         Name = NotesMcpToolNames.UpdateNotebook,
         Title = "Update Notebook",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(GetNotebookToolResponse))]

@@ -18,7 +18,7 @@ public sealed partial class NotesMcpItemTools
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(ListNotebookItemsToolResponse))]
-    [Description("List folder and page items visible to the authenticated actor, with optional parent, type, archive, and pagination filters.")]
+    [Description("List folder and page metadata visible to the authenticated actor, with optional parent, type, archive, and pagination filters. Page bodies are omitted; use notes_get_page to read full content.")]
     public async Task<CallToolResult> ListItemsAsync(
         [Description("The notebook slug.")] string notebookSlug,
         ClaimsPrincipal user,
@@ -100,7 +100,7 @@ public sealed partial class NotesMcpItemTools
         }
 
         var pagedItems = itemsPageResult.Value!.Items
-            .Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebook, item))
+            .Select(item => NotesMcpSupport.ToNotebookItemSummaryToolResponse(notebook, item))
             .ToList();
 
         var response = new ListNotebookItemsToolResponse(

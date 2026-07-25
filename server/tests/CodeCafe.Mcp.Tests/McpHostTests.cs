@@ -3,6 +3,7 @@ using CodeCafe.Modules.Notes.Application.Notes;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
 using System.Net;
+using System.Text;
 using System.Text.Json;
 
 namespace CodeCafe.Modules.Mcp.Tests;
@@ -69,6 +70,9 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         var createPageTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.CreatePage);
         var updatePageTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.UpdatePageContent);
         var renameItemTool = Assert.Single(tools, tool => tool.Name == NotesMcpToolNames.RenameItem);
+        Assert.False(createPageTool.ProtocolTool.Annotations?.DestructiveHint ?? true);
+        Assert.True(updatePageTool.ProtocolTool.Annotations?.DestructiveHint ?? false);
+        Assert.True(renameItemTool.ProtocolTool.Annotations?.DestructiveHint ?? false);
         Assert.Contains("maxPageContentBytes", createPageTool.Description ?? string.Empty, StringComparison.Ordinal);
         Assert.Contains("maxTipTapNodeCount", updatePageTool.Description ?? string.Empty, StringComparison.Ordinal);
         Assert.Contains("maxTipTapDepth", updatePageTool.Description ?? string.Empty, StringComparison.Ordinal);
@@ -85,6 +89,21 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.False(diagnosticsResult.IsError ?? false);
         Assert.Equal("ok", diagnosticsResult.StructuredContent!.Value.GetProperty("status").GetString());
         Assert.Equal("mcp", diagnosticsResult.StructuredContent!.Value.GetProperty("adapter").GetString());
+        Assert.False(diagnosticsResult.StructuredContent.Value.TryGetProperty("Status", out _));
+        Assert.False(diagnosticsResult.StructuredContent.Value.TryGetProperty("Adapter", out _));
+
+        var itemsResult = await mcpClient.CallToolAsync(
+            NotesMcpToolNames.ListItems,
+            new Dictionary<string, object?>
+            {
+                ["notebookSlug"] = "architecture-notes",
+                ["limit"] = 1
+            });
+        var itemsPayload = itemsResult.StructuredContent!.Value;
+        var listedItem = itemsPayload.GetProperty("items").EnumerateArray().First();
+        Assert.False(listedItem.TryGetProperty("contentJson", out _));
+        Assert.False(listedItem.TryGetProperty("plainTextContent", out _));
+        Assert.True(Encoding.UTF8.GetByteCount(itemsPayload.GetRawText()) < 5_000);
 
         var limitsResult = await mcpClient.CallToolAsync(NotesMcpToolNames.GetLimits, new Dictionary<string, object?>());
         Assert.Equal(131072, limitsResult.StructuredContent!.Value.GetProperty("maxInlineContentBytes").GetInt32());

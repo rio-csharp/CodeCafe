@@ -215,11 +215,15 @@ public sealed partial class NotebookReadService
         var totalCount = await query.CountAsync(cancellationToken);
         var normalizedOffset = Math.Max(0, offset ?? 0);
         var normalizedLimit = limit.HasValue ? Math.Max(1, limit.Value) : totalCount;
-        var items = await OrderNotebookItems(query)
-            .Skip(normalizedOffset)
-            .Take(normalizedLimit)
-            .Select(item => NotesSupport.ToItemModel(item))
+        var rows = await BuildItemRowQuery(
+                OrderNotebookItems(query)
+                    .Skip(normalizedOffset)
+                    .Take(normalizedLimit),
+                includeContent: false)
             .ToListAsync(cancellationToken);
+        var items = rows
+            .Select(row => NotesSupport.ToItemModel(row, includeContent: false))
+            .ToList();
 
         return NotesResult<NotebookItemsPageModel>.Success(new NotebookItemsPageModel(totalCount, items));
     }

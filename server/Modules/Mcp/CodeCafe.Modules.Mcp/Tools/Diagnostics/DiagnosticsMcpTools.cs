@@ -1,15 +1,13 @@
+using CodeCafe.Modules.Mcp.Common;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
-using System.Text.Json;
 
 namespace CodeCafe.Modules.Mcp.Tools.Diagnostics;
 
 [McpServerToolType]
 public sealed class DiagnosticsMcpTools
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
-
     [McpServerTool(
         Name = "diagnostics_status",
         Title = "Diagnostics Status",
@@ -31,7 +29,7 @@ public sealed class DiagnosticsMcpTools
                     Text = "CodeCafe MCP adapter is healthy."
                 }
             ],
-            StructuredContent = JsonSerializer.SerializeToElement(payload, SerializerOptions)
+            StructuredContent = McpJson.SerializeToElement(payload)
         };
     }
 }

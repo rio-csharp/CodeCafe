@@ -264,10 +264,26 @@ internal sealed class TestNotebookQueryService : INotebookReadService
         string? type = null,
         int? offset = null,
         int? limit = null)
-        => Task.FromResult(
-            notebookId == NotebookId
-                ? NotesResult<NotebookItemsPageModel>.Success(new NotebookItemsPageModel(Items.Length, Items))
-                : NotesResult<NotebookItemsPageModel>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found."));
+    {
+        if (notebookId != NotebookId)
+        {
+            return Task.FromResult(NotesResult<NotebookItemsPageModel>.Failure(
+                NotesFailureKind.NotFound,
+                "notebook_not_found",
+                "Notebook was not found."));
+        }
+
+        var filteredItems = Items
+            .Where(item => parentId is null || item.ParentId == parentId)
+            .Where(item => string.IsNullOrWhiteSpace(type) || string.Equals(item.Type, type, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var pagedItems = filteredItems
+            .Skip(Math.Max(0, offset ?? 0))
+            .Take(Math.Max(1, limit ?? filteredItems.Count))
+            .ToList();
+        return Task.FromResult(NotesResult<NotebookItemsPageModel>.Success(
+            new NotebookItemsPageModel(filteredItems.Count, pagedItems)));
+    }
 
     public Task<NotesResult<NotebookItemModel>> GetNotebookItemByPathAsync(
         string notebookSlug,

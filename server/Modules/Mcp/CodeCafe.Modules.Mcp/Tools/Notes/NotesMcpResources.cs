@@ -141,7 +141,8 @@ public sealed class NotesMcpResources
             notebook.Id,
             CurrentUserClaims.GetUserId(user) ?? Guid.Empty,
             null,
-            cancellationToken);
+            cancellationToken,
+            includeContent: false);
         var items = NotesMcpSupport.EnsureMcpSuccess(itemsResult);
 
         var payload = new ListNotebookItemsToolResponse(
@@ -152,7 +153,7 @@ public sealed class NotesMcpResources
             items.Count,
             0,
             items.Count,
-            items.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebook, item)).ToList());
+            items.Select(item => NotesMcpSupport.ToNotebookItemSummaryToolResponse(notebook, item)).ToList());
 
         return new TextResourceContents
         {

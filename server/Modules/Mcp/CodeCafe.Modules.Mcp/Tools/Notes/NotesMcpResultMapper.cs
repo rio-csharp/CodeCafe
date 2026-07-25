@@ -1,6 +1,6 @@
+using CodeCafe.Modules.Mcp.Common;
 using CodeCafe.Modules.Notes.Application.Notes;
 using ModelContextProtocol.Protocol;
-using System.Text.Json;
 
 namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
@@ -11,7 +11,7 @@ public static class NotesMcpResultMapper
         return new CallToolResult
         {
             Content = [new TextContentBlock { Text = NotesMcpContentFormatter.Format(value, text) }],
-            StructuredContent = JsonSerializer.SerializeToElement(value, NotesMcpSupport.SerializerOptions)
+            StructuredContent = McpJson.SerializeToElement(value)
         };
     }
 
@@ -29,7 +29,7 @@ public static class NotesMcpResultMapper
         {
             IsError = true,
             Content = [new TextContentBlock { Text = NotesMcpContentFormatter.FormatError(response) }],
-            StructuredContent = JsonSerializer.SerializeToElement(response, NotesMcpSupport.SerializerOptions)
+            StructuredContent = McpJson.SerializeToElement(response)
         };
     }
 }
