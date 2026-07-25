@@ -81,6 +81,11 @@ public sealed class McpHostTests : IClassFixture<McpTestFactory>
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.DeleteBlockAtIndex);
         Assert.Contains(tools, tool => tool.Name == NotesMcpToolNames.ReplaceText);
 
+        var diagnosticsResult = await mcpClient.CallToolAsync("diagnostics_status", new Dictionary<string, object?>());
+        Assert.False(diagnosticsResult.IsError ?? false);
+        Assert.Equal("ok", diagnosticsResult.StructuredContent!.Value.GetProperty("status").GetString());
+        Assert.Equal("mcp", diagnosticsResult.StructuredContent!.Value.GetProperty("adapter").GetString());
+
         var limitsResult = await mcpClient.CallToolAsync(NotesMcpToolNames.GetLimits, new Dictionary<string, object?>());
         Assert.Equal(131072, limitsResult.StructuredContent!.Value.GetProperty("maxInlineContentBytes").GetInt32());
         Assert.Equal(4194304, limitsResult.StructuredContent!.Value.GetProperty("maxHttpUploadBytes").GetInt32());
