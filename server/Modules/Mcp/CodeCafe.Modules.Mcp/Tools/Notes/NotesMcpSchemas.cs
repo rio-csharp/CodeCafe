@@ -33,9 +33,9 @@ public sealed record ListNotebookItemsToolResponse(
     int TotalCount,
     int Offset,
     int ReturnedCount,
-    IReadOnlyList<NotebookItemToolResponse> Items);
+    IReadOnlyList<NotebookItemSummaryToolResponse> Items);
 
-public sealed record NotebookItemToolResponse(
+public sealed record NotebookItemSummaryToolResponse(
     Guid Id,
     Guid NotebookId,
     string NotebookSlug,
@@ -47,8 +47,6 @@ public sealed record NotebookItemToolResponse(
     string? ResourceUri,
     int SortOrder,
     string? ContentFormat,
-    string? ContentJson,
-    string? PlainTextContent,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc);
 
@@ -161,7 +159,7 @@ public sealed record MoveItemToolResponse(
 public sealed record ReorderItemsToolResponse(
     Guid NotebookId,
     string NotebookSlug,
-    IReadOnlyList<NotebookItemToolResponse> Items);
+    IReadOnlyList<NotebookItemSummaryToolResponse> Items);
 
 public sealed record DeleteItemToolResponse(
     Guid NotebookId,

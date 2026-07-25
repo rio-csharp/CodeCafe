@@ -222,7 +222,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.UpdatePageContent,
         Title = "Update Page Content",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]

@@ -20,7 +20,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.RenameItem,
         Title = "Rename Item",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(MoveItemToolResponse))]
@@ -101,7 +101,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.MoveItem,
         Title = "Move Item",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(MoveItemToolResponse))]
@@ -186,7 +186,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.ReorderItems,
         Title = "Reorder Items",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(ReorderItemsToolResponse))]
@@ -272,7 +272,7 @@ public sealed partial class NotesMcpItemTools
                 var response = new ReorderItemsToolResponse(
                     notebookContext.Notebook.Id,
                     notebookContext.Notebook.Slug,
-                    reorderResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemToolResponse(notebookContext.Notebook, item)).ToList());
+                    reorderResult.Value!.Select(item => NotesMcpSupport.ToNotebookItemSummaryToolResponse(notebookContext.Notebook, item)).ToList());
 
                 return McpMutationResult<ReorderItemsToolResponse>.Success(
                     response,
@@ -357,7 +357,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.ArchiveItem,
         Title = "Archive Item",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(MoveItemToolResponse))]

@@ -143,7 +143,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.DiscardUpload,
         Title = "Discard Upload",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(DiscardUploadToolResponse))]

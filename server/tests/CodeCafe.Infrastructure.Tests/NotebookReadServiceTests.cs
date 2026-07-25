@@ -232,6 +232,8 @@ public sealed class NotebookReadServiceTests
         var item = Assert.Single(result.Value.Items);
         Assert.Equal(PageItemId, item.Id);
         Assert.Equal("page", item.Type);
+        Assert.Null(item.ContentJson);
+        Assert.Null(item.PlainTextContent);
     }
 
     [Fact]

@@ -161,7 +161,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.ReplaceBlockAtIndex,
         Title = "Replace Block At Index",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
@@ -367,7 +367,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.DeleteBlockAtIndex,
         Title = "Delete Block At Index",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
@@ -464,7 +464,7 @@ public sealed partial class NotesMcpItemTools
         Name = NotesMcpToolNames.ReplaceText,
         Title = "Replace Text",
         ReadOnly = false,
-        Destructive = false,
+        Destructive = true,
         OpenWorld = false,
         UseStructuredContent = true,
         OutputSchemaType = typeof(UpdatePageContentToolResponse))]
