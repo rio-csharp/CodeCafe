@@ -72,7 +72,7 @@ When authorization is enabled:
 
 - callers authenticate through the built-in OpenIddict server
 - MCP clients use bearer access tokens obtained from the CodeCafe OAuth flow
-- the MCP endpoint adds `WWW-Authenticate` metadata hints on `401` responses
+- the MCP endpoint returns `WWW-Authenticate: Bearer resource_metadata="..."` on `401` responses for RFC 9728 discovery
 - optional origin allowlists are enforced for MCP requests
 
 ### Dynamic Client Registration
@@ -236,7 +236,7 @@ Stored content is normalized before persistence. URLs on links and media are fil
 
 - `notes_list_notebooks` supports `scope=all|mine|public`.
 - `notes_search` supports `scope=all|notebooks|items` and optional `notebookSlug` narrowing.
-- `notes_list_items` supports `search`, `parentPath`, `type=all|page|folder`, `includeArchived`, `offset`, and `limit`.
+- `notes_list_items` supports `search`, `parentPath`, `type=all|page|folder`, `includeArchived`, `offset`, and `limit`. It returns tree metadata only; use `notes_get_page` to read full page content.
 - `includeArchived=true` is owner-only.
 - Resource-style `page/<path>` and `folder/<path>` values are accepted on path-based item/page tools for clients that derive paths from MCP resource URIs.
 
@@ -256,6 +256,12 @@ From `server/Host/CodeCafe.Server/appsettings.json`:
 - Upload idle timeout: `900` seconds
 
 Clients should treat these values as runtime configuration, not hard-coded constants.
+
+## Tool Annotation Policy
+
+- Read-only tools set `readOnlyHint=true` and `destructiveHint=false`.
+- Additive write tools, such as create, append, insert, and restore operations, set `destructiveHint=false`.
+- Tools that replace, remove, archive, discard, rename, move, or reorder existing state set `destructiveHint=true`, even when a separate recovery path exists.
 
 ## Operational Notes
 

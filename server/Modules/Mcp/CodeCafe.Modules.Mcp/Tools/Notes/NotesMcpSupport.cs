@@ -1,12 +1,11 @@
+using CodeCafe.Modules.Mcp.Common;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Shared.Application.Identity;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
-using System.Text.Unicode;
 
 namespace CodeCafe.Modules.Mcp.Tools.Notes;
 
@@ -17,10 +16,7 @@ internal static class NotesMcpSupport
     internal readonly record struct NotebookSummaryContext(Guid ActorId, NotebookSummaryModel Notebook);
     internal readonly record struct ItemSummaryContext(Guid ActorId, NotebookSummaryModel Notebook, NotebookItemModel Item);
 
-    internal static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
-    };
+    internal static JsonSerializerOptions SerializerOptions => McpJson.SerializerOptions;
     private const string AuthenticatedActorRequiredCode = "authenticated_actor_required";
     private const string AuthenticatedActorRequiredMessage = "The MCP endpoint requires an authenticated CodeCafe user.";
 
@@ -538,20 +534,20 @@ internal static class NotesMcpSupport
 
     public static JsonElement SerializeToElement<T>(T value)
     {
-        return JsonSerializer.SerializeToElement(value, SerializerOptions);
+        return McpJson.SerializeToElement(value);
     }
 
     public static string SerializeToJson<T>(T value)
     {
-        return JsonSerializer.Serialize(value, SerializerOptions);
+        return McpJson.Serialize(value);
     }
 
-    public static NotebookItemToolResponse ToNotebookItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
-        => ToNotebookItemToolResponse(ToSummaryModel(notebook), item);
+    public static NotebookItemSummaryToolResponse ToNotebookItemSummaryToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
+        => ToNotebookItemSummaryToolResponse(ToSummaryModel(notebook), item);
 
-    public static NotebookItemToolResponse ToNotebookItemToolResponse(NotebookSummaryModel notebook, NotebookItemModel item)
+    public static NotebookItemSummaryToolResponse ToNotebookItemSummaryToolResponse(NotebookSummaryModel notebook, NotebookItemModel item)
     {
-        return new NotebookItemToolResponse(
+        return new NotebookItemSummaryToolResponse(
             item.Id,
             item.NotebookId,
             notebook.Slug,
@@ -563,8 +559,6 @@ internal static class NotesMcpSupport
             BuildItemResourceUri(notebook.Slug, item),
             item.SortOrder,
             item.ContentFormat,
-            SerializeJsonElement(item.ContentJson),
-            item.PlainTextContent,
             item.CreatedAtUtc,
             item.UpdatedAtUtc);
     }

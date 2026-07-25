@@ -988,6 +988,35 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
     }
 
     [Fact]
+    public async Task CombinedHost_UnauthenticatedMcpChallengeIncludesProtectedResourceMetadata()
+    {
+        using var client = _factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/mcp")
+        {
+            Content = JsonContent.Create(new
+            {
+                jsonrpc = "2.0",
+                id = 1,
+                method = "initialize",
+                @params = new
+                {
+                    protocolVersion = "2025-03-26",
+                    capabilities = new { },
+                    clientInfo = new { name = "test", version = "1.0" }
+                }
+            })
+        };
+
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var challenge = response.Headers.WwwAuthenticate.ToString();
+        Assert.Contains("Bearer", challenge, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("resource_metadata=", challenge, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/.well-known/oauth-protected-resource/mcp", challenge, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task CombinedHost_ExposesAuthenticatedNotesMcpSurface()
     {
         using var client = _factory.CreateClient();
@@ -1028,9 +1057,13 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
         var itemsResult = await mcpClient.CallToolAsync(
             NotesMcpToolNames.ListItems,
             new Dictionary<string, object?> { ["notebookSlug"] = "architecture-notes" });
-        Assert.Contains(
-            itemsResult.StructuredContent!.Value.GetProperty("items").EnumerateArray(),
-            item => item.GetProperty("path").GetString() == "guides/overview");
+        var listedItems = itemsResult.StructuredContent!.Value.GetProperty("items").EnumerateArray().ToList();
+        Assert.Contains(listedItems, item => item.GetProperty("path").GetString() == "guides/overview");
+        Assert.All(listedItems, item =>
+        {
+            Assert.False(item.TryGetProperty("contentJson", out _));
+            Assert.False(item.TryGetProperty("plainTextContent", out _));
+        });
 
         var guideResult = await mcpClient.ReadResourceAsync("notes://guide");
         var guide = Assert.IsType<TextResourceContents>(Assert.Single(guideResult.Contents));

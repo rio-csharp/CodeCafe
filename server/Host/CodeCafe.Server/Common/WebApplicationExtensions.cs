@@ -28,8 +28,8 @@ public static class WebApplicationExtensions
         app.UseAuthentication();
         app.UseRateLimiter();
         app.UseCodeCafeApiAntiforgery();
-        app.UseAuthorization();
         app.UseCodeCafeMcpOriginValidation();
+        app.UseAuthorization();
         app.MapCodeCafeApi();
         app.MapCodeCafeAi();
         app.MapNotesMarkdownImportEndpoints();
@@ -92,16 +92,51 @@ public static class WebApplicationExtensions
                 return;
             }
 
-            await next(httpContext);
-
-            if (httpContext.Response.StatusCode == StatusCodes.Status401Unauthorized && options.RequireAuthorization)
+            if (options.RequireAuthorization)
             {
                 var resourceMetadataUri = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{options.ProtectedResourceMetadataPath}";
-                httpContext.Response.Headers.Append(
-                    "WWW-Authenticate",
-                    $"Bearer resource_metadata=\"{resourceMetadataUri}\"");
+                httpContext.Response.OnStarting(() =>
+                {
+                    if (httpContext.Response.StatusCode == StatusCodes.Status401Unauthorized)
+                    {
+                        EnsureMcpResourceMetadataChallenge(httpContext.Response, resourceMetadataUri);
+                    }
+
+                    return Task.CompletedTask;
+                });
             }
+
+            await next(httpContext);
         });
+    }
+
+    private static void EnsureMcpResourceMetadataChallenge(HttpResponse response, string resourceMetadataUri)
+    {
+        var challenges = response.Headers.WWWAuthenticate
+            .Where(challenge => !string.IsNullOrWhiteSpace(challenge))
+            .Select(challenge => challenge!)
+            .ToList();
+        if (challenges.Any(challenge => challenge!.Contains("resource_metadata=", StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        var metadataParameter = $"resource_metadata=\"{resourceMetadataUri}\"";
+        var bearerIndex = challenges.FindIndex(challenge =>
+            challenge.Equals("Bearer", StringComparison.OrdinalIgnoreCase)
+            || challenge.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase));
+        if (bearerIndex >= 0)
+        {
+            challenges[bearerIndex] = challenges[bearerIndex].Equals("Bearer", StringComparison.OrdinalIgnoreCase)
+                ? $"Bearer {metadataParameter}"
+                : $"{challenges[bearerIndex]}, {metadataParameter}";
+        }
+        else
+        {
+            challenges.Add($"Bearer {metadataParameter}");
+        }
+
+        response.Headers.WWWAuthenticate = challenges.ToArray();
     }
 
     public static IEndpointRouteBuilder MapCodeCafeMcp(this IEndpointRouteBuilder endpoints)
