@@ -64,15 +64,6 @@ public sealed partial class NotesMcpItemTools
                     return McpMutationResult<CreateItemToolResponse>.Failure(parentResult.Error!, notebookContext.Notebook.Id);
                 }
 
-                if (string.IsNullOrWhiteSpace(title))
-                {
-                    return McpMutationResult<CreateItemToolResponse>.Failure(new NotesError(
-                        NotesFailureKind.Validation,
-                        "invalid_title",
-                        "Folder title is required and cannot be empty or whitespace."),
-                        notebookContext.Notebook.Id);
-                }
-
                 var createResult = await NotesMcpCommandSender.SendAsync(
                     sender,
                     new CreateNotebookItemCommand(
@@ -155,15 +146,6 @@ public sealed partial class NotesMcpItemTools
                 if (!parentResult.Succeeded)
                 {
                     return McpMutationResult<CreatePageToolResponse>.Failure(parentResult.Error!, notebookContext.Notebook.Id);
-                }
-
-                if (string.IsNullOrWhiteSpace(title))
-                {
-                    return McpMutationResult<CreatePageToolResponse>.Failure(new NotesError(
-                        NotesFailureKind.Validation,
-                        "invalid_title",
-                        "Page title is required and cannot be empty or whitespace."),
-                        notebookContext.Notebook.Id);
                 }
 
                 var contentJsonResult = await contentImportService.ResolveOptionalPageContentAsync(

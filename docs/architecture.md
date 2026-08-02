@@ -5,9 +5,9 @@
 CodeCafe's production-ready surface today is a structured notebook system for engineers. The same notebook data is available through:
 
 - a React web application in `clients/web/`
-- a cookie-authenticated REST API in `CodeCafe.Api`
-- an OAuth-protected MCP adapter in `CodeCafe.Mcp`
-- an optional in-app AI assistant in `CodeCafe.Ai`
+- a cookie-authenticated REST API served by the module Presentation projects (`CodeCafe.Modules.Notes.Presentation` for notebooks, `CodeCafe.Modules.Identity.Presentation` for auth)
+- an OAuth-protected MCP adapter in `CodeCafe.Modules.Mcp`
+- an optional in-app AI assistant in `CodeCafe.Modules.Ai`
 
 All of that is composed by `CodeCafe.Server`, which is the only runnable backend host.
 
@@ -16,92 +16,108 @@ Browser
   -> React app
   -> /api/*
   -> CodeCafe.Server
-       -> CodeCafe.Api
-       -> CodeCafe.Ai
-       -> CodeCafe.Application
-       -> CodeCafe.Domain
-       -> CodeCafe.Infrastructure
+       -> CodeCafe.Modules.Notes.Presentation / Identity.Presentation
+       -> CodeCafe.Modules.Ai
+       -> module Application layers
+       -> module Domain layers
+       -> module Infrastructure + CodeCafe.Shared.Infrastructure
        -> PostgreSQL
 
 MCP client
   -> /connect/* for OAuth/OIDC
   -> /mcp
   -> CodeCafe.Server
-       -> CodeCafe.Mcp
-       -> CodeCafe.Application / Infrastructure
+       -> CodeCafe.Modules.Mcp
+       -> module Application / Infrastructure layers
        -> PostgreSQL
 ```
 
 ## Solution Shape
 
-```text
-src/
-├─ CodeCafe.Domain/          # Entities, invariants, domain rules
-├─ CodeCafe.Application/     # Commands, queries, validators, abstractions
-├─ CodeCafe.Infrastructure/  # EF Core, identity, persistence implementations
-├─ CodeCafe.Api/             # HTTP endpoints and transport models
-├─ CodeCafe.Ai/              # AG-UI assistant, AI tools, and notebook editing AI
-├─ CodeCafe.Mcp/             # MCP tools, resources, prompts, upload support
-└─ CodeCafe.Server/          # Host, middleware, auth, OpenIddict, composition root
+The backend is a modular monolith under `server/`. `CodeCafe.Server` is the only runnable host; Identity, Notes, MCP, and AI are modules composed by that host.
 
-tests/
-├─ CodeCafe.Api.Tests/
-├─ CodeCafe.Application.Tests/
-├─ CodeCafe.Architecture.Tests/
-├─ CodeCafe.Infrastructure.Tests/
-├─ CodeCafe.Mcp.Tests/
-└─ CodeCafe.Server.Tests/
+```text
+server/
+├─ Host/
+│  └─ CodeCafe.Server/                 # Host, middleware, auth, OpenIddict, composition root
+├─ Shared/
+│  ├─ CodeCafe.Shared.Domain/          # Shared kernel: base types and primitives
+│  ├─ CodeCafe.Shared.Application/     # Shared application abstractions and behaviors
+│  └─ CodeCafe.Shared.Infrastructure/  # Shared ApplicationDbContext, entity configurations, EF Core migrations
+├─ Modules/
+│  ├─ Identity/                        # Application / Infrastructure / Presentation (no Domain project)
+│  ├─ Notes/                           # Domain / Application / Infrastructure / Presentation
+│  ├─ Mcp/                             # CodeCafe.Modules.Mcp.Domain + CodeCafe.Modules.Mcp (mixed project)
+│  └─ Ai/                              # CodeCafe.Modules.Ai (single project)
+├─ tests/
+│  ├─ CodeCafe.Api.Tests/
+│  ├─ CodeCafe.Application.Tests/
+│  ├─ CodeCafe.Architecture.Tests/
+│  ├─ CodeCafe.Domain.Tests/
+│  ├─ CodeCafe.Infrastructure.Tests/
+│  ├─ CodeCafe.Mcp.Tests/
+│  └─ CodeCafe.Server.Tests/
+└─ CodeCafe.slnx
 ```
 
-Dependency direction:
+Not every module needs all four projects — but the dependency direction is always:
 
 ```text
 Domain <- Application <- Infrastructure
-                      <- Api
-                      <- Ai
-                      <- Mcp
+                      <- Presentation (endpoints/adapters)
 
-Server -> Api + Ai + Mcp + Application + Infrastructure
+Server -> everything (composition only)
 ```
+
+`CodeCafe.Shared.Infrastructure` is the only sanctioned shared-persistence reference; it is referenced by module Infrastructure-level projects and the host, never by Domain or Application.
+
+These rules are enforced by `server/tests/CodeCafe.Architecture.Tests/DependencyDirectionTests.cs`.
 
 ## Backend Responsibilities
 
-### `CodeCafe.Domain`
+### `CodeCafe.Shared.Domain`
 
-- Owns notebook entities, note-item rules, and core business invariants.
+- Owns shared-kernel base types and primitives used across modules.
 - Must not depend on HTTP, MCP, EF Core, or configuration concerns.
 
-### `CodeCafe.Application`
+### `CodeCafe.Shared.Application`
 
-- Owns commands, queries, validators, MediatR handlers, and shared abstractions.
-- Defines use-case behavior that both REST and MCP call into.
+- Owns shared application abstractions, interfaces, and MediatR pipeline behaviors.
 
-### `CodeCafe.Infrastructure`
+### `CodeCafe.Shared.Infrastructure`
 
-- Owns EF Core persistence, Identity integrations, and concrete service implementations.
-- Supplies the database-backed behavior used by application handlers and read services.
+- Owns the shared `ApplicationDbContext`, its entity configurations, and EF Core migrations.
+- Is referenced only by module Infrastructure-level projects, the MCP adapter, and the host.
 
-### `CodeCafe.Api`
+### `CodeCafe.Modules.Identity.*`
 
-- Owns minimal API endpoint registration, request/response models, and HTTP-specific mapping.
-- Keeps business logic out of the transport layer.
+- Owns users, registration/login behavior, and the controller-based OpenIddict/OIDC endpoints (`/connect/*`, dynamic client registration) in its Presentation project.
+- Has Application, Infrastructure, and Presentation projects; it has no Domain project.
 
-### `CodeCafe.Ai`
+### `CodeCafe.Modules.Notes.*`
+
+- Owns notebooks, folders, pages, and sharing. It is the reference module shape with all four projects:
+  - `Domain`: notebook entities, note-item rules, and core business invariants; depends on nothing outside itself.
+  - `Application`: commands, queries, validators, and MediatR handlers; the use-case behavior that REST, MCP, and AI call into.
+  - `Infrastructure`: EF Core persistence and concrete service implementations behind application abstractions.
+  - `Presentation`: minimal API endpoint registration, request/response models, and HTTP-specific mapping; keeps business logic out of the transport layer.
+
+### `CodeCafe.Modules.Mcp` / `CodeCafe.Modules.Mcp.Domain`
+
+- Owns MCP tools, resources, prompts, upload handling, and MCP result mapping.
+- Shares notebook behavior with the REST API through the same application use cases instead of creating a parallel write path.
+
+### `CodeCafe.Modules.Ai`
 
 - Owns the in-app notebook assistant, AG-UI integration, and AI-specific tools.
 - Reads and writes notebooks through shared application services instead of direct persistence.
 - Treats TipTap JSON as the canonical notebook content format for AI editing work.
 - Does not own long-term chat history or a separate AI persistence model.
 
-### `CodeCafe.Mcp`
-
-- Owns MCP tools, resources, prompts, upload handling, and MCP result mapping.
-- Shares notebook behavior with the REST API instead of creating a parallel write path.
-
 ### `CodeCafe.Server`
 
-- Owns middleware, OpenIddict/OAuth endpoints, rate limiting, CORS, antiforgery, readiness, and host policy.
-- Is the publish, deploy, migration, and local-run backend target.
+- Owns middleware, OpenIddict server configuration, rate limiting, CORS, antiforgery, readiness, and host policy.
+- Is the only composition root and the publish, deploy, migration, and local-run backend target.
 
 ## Auth Model
 
@@ -152,6 +168,7 @@ Typical MCP request path:
 The current test split mirrors the architecture:
 
 - `CodeCafe.Application.Tests` covers command/query behavior and validators.
+- `CodeCafe.Domain.Tests` covers domain rules and invariants.
 - `CodeCafe.Api.Tests` covers HTTP contracts and endpoint behavior.
 - `CodeCafe.Mcp.Tests` covers MCP tools, resources, and prompts.
 - `CodeCafe.Infrastructure.Tests` covers persistence behavior.

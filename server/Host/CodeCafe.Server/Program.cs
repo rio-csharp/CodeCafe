@@ -1,5 +1,6 @@
 using CodeCafe.Modules.Ai.DependencyInjection;
 using CodeCafe.Modules.Identity.Application;
+using CodeCafe.Modules.Identity.Infrastructure;
 using CodeCafe.Modules.Identity.Presentation.DependencyInjection;
 using CodeCafe.Modules.Mcp.DependencyInjection;
 using CodeCafe.Modules.Notes.Application;
@@ -11,6 +12,7 @@ using CodeCafe.Server.Infrastructure;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddIdentityApplication();
+builder.Services.AddIdentityInfrastructure();
 builder.Services.AddNotesApplication();
 builder.Services.AddNotesInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddIdentityPresentation();

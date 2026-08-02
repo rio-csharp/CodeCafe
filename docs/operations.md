@@ -36,7 +36,7 @@ Container images are built from:
 | `check-pr-base.yml` | PRs to `main` or `release/*` | Requires the PR branch to be based on the latest target branch head. |
 | `enforce-branch-protection.yml` | PRs to `main` | Rejects anything except same-repository `release/* -> main` PRs. |
 | `ci.yml` | Pushes to `main`, `release/*`, `feature/*`; PRs to `main` or `release/*`; manual | Runs backend/frontend verification and publishes deployment inputs when the ref qualifies. |
-| `release-e2e.yml` | Pushes to `release/*`; manual | Runs Playwright E2E against a locally published API and Postgres service. |
+| `release-e2e.yml` | Pushes to `release/*`; PRs to `release/*`; manual | Runs Playwright E2E against a locally published API and Postgres service. |
 | `deploy-pr.yml` | Successful CI runs from `feature/*`; manual | Deploys PR preview environments for open same-repository PRs targeting `release/*`. |
 | `cleanup-pr.yml` | Closed PRs to `release/*`; weekly schedule; manual | Deletes a specific PR preview namespace or stale preview namespaces. |
 | `deploy-test.yml` | Successful CI runs from `release/*`; manual | Deploys the shared test environment. |
@@ -151,6 +151,8 @@ Important backend runtime settings come from environment variables or secrets:
   - optional limits such as `Ai__MaxToolResults`, `Ai__MaxToolContentChars`, `Ai__MaxDraftPromptChars`, `Ai__MaxDraftContextChars`, and `Ai__MaxDraftOutputTokens`
 
 The Helm chart exposes non-sensitive AI values under `api.ai`. Keep `Ai__ApiKey` in a Kubernetes secret or pass it to `scripts/cd/deploy-helm.sh` through `AI_API_KEY`; do not commit it to values files.
+
+The MCP adapter is enabled by default (`Mcp:Enabled` is `true` in `appsettings.json`). The Helm chart exposes `api.mcp.enabled` (default `true`, preserving that behavior) and `api.mcp.allowedOrigins`; set `api.mcp.enabled=false` — or `Mcp__Enabled=false` outside Helm — to turn the `/mcp` endpoint and its OAuth protected-resource metadata off. Allowed origins are passed through as `Mcp__AllowedOrigins__<index>` and must be absolute HTTP or HTTPS origins.
 
 `scripts/cd/deploy-helm.sh` supports:
 

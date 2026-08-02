@@ -7,6 +7,7 @@ using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,15 @@ public sealed class ServerTestFactory : WebApplicationFactory<ServerAssemblyMark
     {
         builder.UseEnvironment("Testing");
         builder.ConfigureLogging(logging => logging.ClearProviders());
+        builder.ConfigureAppConfiguration((_, configurationBuilder) =>
+        {
+            // Registration defaults to disabled; endpoint tests exercise the
+            // register flow, so enable it explicitly for the test host.
+            configurationBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Auth:RegistrationEnabled"] = "true"
+            });
+        });
         builder.ConfigureServices(services =>
         {
             services.AddAuthentication(ServerTestAuthHandler.SchemeName)

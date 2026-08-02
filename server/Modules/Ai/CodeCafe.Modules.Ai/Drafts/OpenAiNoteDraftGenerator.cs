@@ -1,7 +1,7 @@
+using CodeCafe.Modules.Ai.Common;
 using CodeCafe.Modules.Ai.Configuration;
 using Microsoft.Extensions.Options;
 using OpenAI;
-using OpenAI.Chat;
 using System.Text;
 
 namespace CodeCafe.Modules.Ai.Drafts;
@@ -19,23 +19,13 @@ public sealed class OpenAiNoteDraftGenerator(
         AiNoteDraftGenerationContext context,
         CancellationToken cancellationToken)
     {
-        var client = openAiClient.GetChatClient(_options.Model);
-        var completionResult = await client.CompleteChatAsync(
-            [
-                new SystemChatMessage(DraftInstructions),
-                new UserChatMessage(BuildUserPrompt(context))
-            ],
-            new ChatCompletionOptions
-            {
-                MaxOutputTokenCount = Math.Max(1, _options.MaxDraftOutputTokens),
-                EndUserId = context.CurrentUserId.ToString("N")
-            },
+        var markdown = await OpenAiTextCompletion.CompleteAsync(
+            openAiClient,
+            _options,
+            DraftInstructions,
+            BuildUserPrompt(context),
+            context.CurrentUserId.ToString("N"),
             cancellationToken);
-
-        var markdown = string.Concat(
-            completionResult.Value.Content
-                .Where(part => !string.IsNullOrEmpty(part.Text))
-                .Select(part => part.Text));
 
         return new AiNoteDraftResult(CleanMarkdown(markdown));
     }
@@ -48,7 +38,7 @@ public sealed class OpenAiNoteDraftGenerator(
         prompt.AppendLine($"Intent: {context.Intent}");
         prompt.AppendLine();
         prompt.AppendLine("User request:");
-        prompt.AppendLine(TrimForPrompt(context.Prompt, Math.Max(1, _options.MaxDraftPromptChars)));
+        prompt.AppendLine(AiHelpers.TrimForPrompt(context.Prompt, Math.Max(1, _options.MaxDraftPromptChars)));
         prompt.AppendLine();
         prompt.AppendLine("Notebook context:");
         prompt.AppendLine(BuildNotebookContext(context));
@@ -60,24 +50,24 @@ public sealed class OpenAiNoteDraftGenerator(
         var budget = Math.Max(1, _options.MaxDraftContextChars);
         var builder = new StringBuilder();
 
-        AppendLineWithinBudget(builder, budget, $"Notebook: {context.Notebook.Title} ({context.Notebook.Slug})");
+        AiHelpers.AppendLineWithinBudget(builder, budget, $"Notebook: {context.Notebook.Title} ({context.Notebook.Slug})");
         if (!string.IsNullOrWhiteSpace(context.Notebook.Description))
         {
-            AppendLineWithinBudget(builder, budget, $"Description: {context.Notebook.Description}");
+            AiHelpers.AppendLineWithinBudget(builder, budget, $"Description: {context.Notebook.Description}");
         }
 
         if (context.ActivePage is not null)
         {
-            AppendLineWithinBudget(builder, budget, "");
-            AppendLineWithinBudget(builder, budget, $"Active page: {context.ActivePage.Title} ({context.ActivePage.Path})");
-            AppendLineWithinBudget(
+            AiHelpers.AppendLineWithinBudget(builder, budget, "");
+            AiHelpers.AppendLineWithinBudget(builder, budget, $"Active page: {context.ActivePage.Title} ({context.ActivePage.Path})");
+            AiHelpers.AppendLineWithinBudget(
                 builder,
                 budget,
-                TrimForPrompt(context.ActivePage.PlainTextContent ?? string.Empty, ActivePagePreviewChars));
+                AiHelpers.TrimForPrompt(context.ActivePage.PlainTextContent ?? string.Empty, ActivePagePreviewChars));
         }
 
-        AppendLineWithinBudget(builder, budget, "");
-        AppendLineWithinBudget(builder, budget, "Visible notebook items:");
+        AiHelpers.AppendLineWithinBudget(builder, budget, "");
+        AiHelpers.AppendLineWithinBudget(builder, budget, "Visible notebook items:");
         foreach (var item in context.Notebook.Items.OrderBy(item => item.Path))
         {
             var itemText = new StringBuilder();
@@ -85,53 +75,17 @@ public sealed class OpenAiNoteDraftGenerator(
             if (!string.IsNullOrWhiteSpace(item.TextPreview))
             {
                 itemText.AppendLine();
-                itemText.Append(TrimForPrompt(item.TextPreview, ItemPreviewChars));
+                itemText.Append(AiHelpers.TrimForPrompt(item.TextPreview, ItemPreviewChars));
             }
 
-            if (!AppendLineWithinBudget(builder, budget, itemText.ToString()))
+            if (!AiHelpers.AppendLineWithinBudget(builder, budget, itemText.ToString()))
             {
-                AppendLineWithinBudget(builder, budget, "[context truncated]");
+                AiHelpers.AppendLineWithinBudget(builder, budget, "[context truncated]");
                 break;
             }
         }
 
         return builder.ToString();
-    }
-
-    private static bool AppendLineWithinBudget(StringBuilder builder, int budget, string value)
-    {
-        var remaining = budget - builder.Length;
-        if (remaining <= 0)
-        {
-            return false;
-        }
-
-        if (value.Length + Environment.NewLine.Length <= remaining)
-        {
-            builder.AppendLine(value);
-            return true;
-        }
-
-        if (remaining > "[truncated]".Length + Environment.NewLine.Length)
-        {
-            builder.Append(value.AsSpan(0, remaining - "[truncated]".Length - Environment.NewLine.Length));
-            builder.AppendLine("[truncated]");
-        }
-
-        return false;
-    }
-
-    private static string TrimForPrompt(string value, int maxChars)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
-
-        var normalized = value.Trim();
-        return normalized.Length <= maxChars
-            ? normalized
-            : string.Concat(normalized.AsSpan(0, maxChars), "\n[truncated]");
     }
 
     private static string CleanMarkdown(string markdown)

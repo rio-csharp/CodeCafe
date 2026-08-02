@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Plus, Folder, FileText } from 'lucide-react'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +14,15 @@ export default function TreeCreateMenu({ onCreateFolder, onCreatePage }: TreeCre
   const { t } = useTranslation()
   useClickOutside(menuRef, () => setShow(false))
 
+  useEffect(() => {
+    if (!show) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShow(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [show])
+
   return (
     <div className="relative" ref={menuRef}>
       <button
@@ -21,6 +30,9 @@ export default function TreeCreateMenu({ onCreateFolder, onCreatePage }: TreeCre
         onClick={(e) => { e.stopPropagation(); setShow(!show) }}
         className="p-0.5 text-text-tertiary hover:text-brand-brown rounded transition-colors"
         title={t('notebook.addItem')}
+        aria-label={t('notebook.addItem')}
+        aria-haspopup="menu"
+        aria-expanded={show}
       >
         <Plus className="h-3.5 w-3.5" />
       </button>

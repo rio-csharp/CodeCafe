@@ -27,7 +27,7 @@ export function CodeBlockCopyButton({ pre }: CodeBlockCopyButtonProps) {
       setCopied(true)
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
       timeoutRef.current = window.setTimeout(() => setCopied(false), 2000)
-    })
+    }).catch(() => {})
   }, [pre])
 
   return createPortal(

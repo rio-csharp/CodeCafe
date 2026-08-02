@@ -17,9 +17,8 @@ function useCreateNotebookSchema() {
 
 export function useCreateNotebookForm(
   onSuccess: (slug: string) => void,
-  onError: (message: string) => void,
+  onError: (error: unknown) => void,
 ) {
-  const { t } = useTranslation()
   const schema = useCreateNotebookSchema()
   const create = useCreateNotebook()
 
@@ -46,7 +45,7 @@ export function useCreateNotebookForm(
       },
       {
         onSuccess: (responseData) => onSuccess(responseData.slug),
-        onError: (err: unknown) => onError(err instanceof Error ? err.message : t('notebook.createFailed')),
+        onError: (err: unknown) => onError(err),
       },
     )
   }

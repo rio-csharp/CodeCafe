@@ -608,7 +608,7 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
 
         // The failed apply must have restored the consumed proposal so the user can retry.
         var proposalStore = factory.Services.GetRequiredService<IAiNotebookEditProposalStore>();
-        Assert.True(proposalStore.TryGet(proposalId, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), out _));
+        Assert.NotNull(await proposalStore.TryGetAsync(proposalId, Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), CancellationToken.None));
     }
 
     [Fact]

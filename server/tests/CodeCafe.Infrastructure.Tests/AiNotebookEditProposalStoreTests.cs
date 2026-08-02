@@ -6,7 +6,7 @@ namespace CodeCafe.Infrastructure.Tests;
 public sealed class AiNotebookEditProposalStoreTests
 {
     [Fact]
-    public void Save_Then_TryGet_ReturnsProposalWithSamePayload()
+    public async Task Save_Then_TryGet_ReturnsProposalWithSamePayload()
     {
         using var harness = new NotesDbHarness();
         using var context = harness.CreateContext();
@@ -14,10 +14,10 @@ public sealed class AiNotebookEditProposalStoreTests
         var actorId = Guid.NewGuid();
         var proposal = CreateProposal(actorId);
 
-        store.Save(proposal);
+        await store.SaveAsync(proposal, CancellationToken.None);
 
-        var found = store.TryGet(proposal.ProposalId, actorId, out var loaded);
-        Assert.True(found);
+        var loaded = await store.TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None);
+        Assert.NotNull(loaded);
         Assert.Equal(proposal.ProposalId, loaded.ProposalId);
         Assert.Equal(proposal.ActorId, loaded.ActorId);
         Assert.Equal(proposal.RequestedOperation, loaded.RequestedOperation);
@@ -42,7 +42,7 @@ public sealed class AiNotebookEditProposalStoreTests
     }
 
     [Fact]
-    public void TryGet_UsesSeparatePersistenceScope_SoOtherReplicasSeeTheProposal()
+    public async Task TryGet_UsesSeparatePersistenceScope_SoOtherReplicasSeeTheProposal()
     {
         using var harness = new NotesDbHarness();
         var actorId = Guid.NewGuid();
@@ -50,56 +50,56 @@ public sealed class AiNotebookEditProposalStoreTests
 
         using (var createContext = harness.CreateContext())
         {
-            new DatabaseAiNotebookEditProposalStore(createContext).Save(proposal);
+            await new DatabaseAiNotebookEditProposalStore(createContext).SaveAsync(proposal, CancellationToken.None);
         }
 
         using (var readContext = harness.CreateContext())
         {
-            var found = new DatabaseAiNotebookEditProposalStore(readContext).TryGet(proposal.ProposalId, actorId, out var loaded);
-            Assert.True(found);
+            var loaded = await new DatabaseAiNotebookEditProposalStore(readContext).TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None);
+            Assert.NotNull(loaded);
             Assert.Equal(proposal.ProposalId, loaded.ProposalId);
         }
     }
 
     [Fact]
-    public void TryGet_ReturnsFalse_ForDifferentActor()
+    public async Task TryGet_ReturnsFalse_ForDifferentActor()
     {
         using var harness = new NotesDbHarness();
         using var context = harness.CreateContext();
         var store = new DatabaseAiNotebookEditProposalStore(context);
         var proposal = CreateProposal(Guid.NewGuid());
-        store.Save(proposal);
+        await store.SaveAsync(proposal, CancellationToken.None);
 
-        var found = store.TryGet(proposal.ProposalId, Guid.NewGuid(), out _);
+        var loaded = await store.TryGetAsync(proposal.ProposalId, Guid.NewGuid(), CancellationToken.None);
 
-        Assert.False(found);
+        Assert.Null(loaded);
     }
 
     [Fact]
-    public void TryGet_ReturnsFalse_ForUnknownProposal()
+    public async Task TryGet_ReturnsFalse_ForUnknownProposal()
     {
         using var harness = new NotesDbHarness();
         using var context = harness.CreateContext();
         var store = new DatabaseAiNotebookEditProposalStore(context);
 
-        var found = store.TryGet(Guid.NewGuid(), Guid.NewGuid(), out _);
+        var loaded = await store.TryGetAsync(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
 
-        Assert.False(found);
+        Assert.Null(loaded);
     }
 
     [Fact]
-    public void TryGet_ReturnsFalse_ForExpiredProposal()
+    public async Task TryGet_ReturnsFalse_ForExpiredProposal()
     {
         using var harness = new NotesDbHarness();
         using var context = harness.CreateContext();
         var store = new DatabaseAiNotebookEditProposalStore(context);
         var actorId = Guid.NewGuid();
         var proposal = CreateProposal(actorId, DateTimeOffset.UtcNow.AddMinutes(-1));
-        store.Save(proposal);
+        await store.SaveAsync(proposal, CancellationToken.None);
 
-        var found = store.TryGet(proposal.ProposalId, actorId, out _);
+        var loaded = await store.TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None);
 
-        Assert.False(found);
+        Assert.Null(loaded);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public sealed class AiNotebookEditProposalStoreTests
         var store = new DatabaseAiNotebookEditProposalStore(context);
         var actorId = Guid.NewGuid();
         var proposal = CreateProposal(actorId, DateTimeOffset.UtcNow.AddMinutes(-1));
-        store.Save(proposal);
+        await store.SaveAsync(proposal, CancellationToken.None);
 
         var consumed = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
 
@@ -126,14 +126,14 @@ public sealed class AiNotebookEditProposalStoreTests
         var store = new DatabaseAiNotebookEditProposalStore(context);
         var actorId = Guid.NewGuid();
         var proposal = CreateProposal(actorId);
-        store.Save(proposal);
+        await store.SaveAsync(proposal, CancellationToken.None);
 
         var consumed = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
 
         Assert.NotNull(consumed);
         Assert.Equal(proposal.ProposalId, consumed.ProposalId);
         Assert.Equal(proposal.Summary, consumed.Summary);
-        Assert.False(store.TryGet(proposal.ProposalId, actorId, out _));
+        Assert.Null(await store.TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None));
         Assert.DoesNotContain(context.AiEditProposals, entry => entry.Id == proposal.ProposalId);
     }
 
@@ -145,7 +145,7 @@ public sealed class AiNotebookEditProposalStoreTests
         var store = new DatabaseAiNotebookEditProposalStore(context);
         var actorId = Guid.NewGuid();
         var proposal = CreateProposal(actorId);
-        store.Save(proposal);
+        await store.SaveAsync(proposal, CancellationToken.None);
 
         var first = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
         var second = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
@@ -162,57 +162,57 @@ public sealed class AiNotebookEditProposalStoreTests
         var store = new DatabaseAiNotebookEditProposalStore(context);
         var actorId = Guid.NewGuid();
         var proposal = CreateProposal(actorId);
-        store.Save(proposal);
+        await store.SaveAsync(proposal, CancellationToken.None);
 
         var consumed = await store.TryConsumeAsync(proposal.ProposalId, Guid.NewGuid(), CancellationToken.None);
 
         Assert.Null(consumed);
-        Assert.True(store.TryGet(proposal.ProposalId, actorId, out _));
+        Assert.NotNull(await store.TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None));
     }
 
     [Fact]
-    public void Remove_DeletesProposal()
+    public async Task Remove_DeletesProposal()
     {
         using var harness = new NotesDbHarness();
         using var context = harness.CreateContext();
         var store = new DatabaseAiNotebookEditProposalStore(context);
         var actorId = Guid.NewGuid();
         var proposal = CreateProposal(actorId);
-        store.Save(proposal);
+        await store.SaveAsync(proposal, CancellationToken.None);
 
-        store.Remove(proposal.ProposalId);
+        await store.RemoveAsync(proposal.ProposalId, CancellationToken.None);
 
-        Assert.False(store.TryGet(proposal.ProposalId, actorId, out _));
+        Assert.Null(await store.TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None));
     }
 
     [Fact]
-    public void Remove_IsIdempotent_WhenProposalIsAbsent()
+    public async Task Remove_IsIdempotent_WhenProposalIsAbsent()
     {
         using var harness = new NotesDbHarness();
         using var context = harness.CreateContext();
         var store = new DatabaseAiNotebookEditProposalStore(context);
 
-        store.Remove(Guid.NewGuid());
+        await store.RemoveAsync(Guid.NewGuid(), CancellationToken.None);
     }
 
     [Fact]
-    public void Save_PrunesExpiredProposals()
+    public async Task Save_PrunesExpiredProposals()
     {
         using var harness = new NotesDbHarness();
         using var context = harness.CreateContext();
         var store = new DatabaseAiNotebookEditProposalStore(context);
         var expired = CreateProposal(Guid.NewGuid(), DateTimeOffset.UtcNow.AddMinutes(-1));
-        store.Save(expired);
+        await store.SaveAsync(expired, CancellationToken.None);
 
         var valid = CreateProposal(Guid.NewGuid());
-        store.Save(valid);
+        await store.SaveAsync(valid, CancellationToken.None);
 
         Assert.DoesNotContain(context.AiEditProposals, entry => entry.Id == expired.ProposalId);
         Assert.Contains(context.AiEditProposals, entry => entry.Id == valid.ProposalId);
     }
 
     [Fact]
-    public void Create_Get_Discard_Flow_WorksAcrossScopes()
+    public async Task Create_Get_Discard_Flow_WorksAcrossScopes()
     {
         using var harness = new NotesDbHarness();
         var actorId = Guid.NewGuid();
@@ -220,22 +220,22 @@ public sealed class AiNotebookEditProposalStoreTests
 
         using (var createContext = harness.CreateContext())
         {
-            new DatabaseAiNotebookEditProposalStore(createContext).Save(proposal);
+            await new DatabaseAiNotebookEditProposalStore(createContext).SaveAsync(proposal, CancellationToken.None);
         }
 
         using (var readContext = harness.CreateContext())
         {
-            Assert.True(new DatabaseAiNotebookEditProposalStore(readContext).TryGet(proposal.ProposalId, actorId, out _));
+            Assert.NotNull(await new DatabaseAiNotebookEditProposalStore(readContext).TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None));
         }
 
         using (var discardContext = harness.CreateContext())
         {
-            new DatabaseAiNotebookEditProposalStore(discardContext).Remove(proposal.ProposalId);
+            await new DatabaseAiNotebookEditProposalStore(discardContext).RemoveAsync(proposal.ProposalId, CancellationToken.None);
         }
 
         using (var verifyContext = harness.CreateContext())
         {
-            Assert.False(new DatabaseAiNotebookEditProposalStore(verifyContext).TryGet(proposal.ProposalId, actorId, out _));
+            Assert.Null(await new DatabaseAiNotebookEditProposalStore(verifyContext).TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None));
         }
     }
 

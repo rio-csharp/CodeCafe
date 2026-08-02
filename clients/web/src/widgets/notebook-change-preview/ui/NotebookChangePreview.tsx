@@ -61,7 +61,7 @@ export function NotebookChangePreview({
 
   const isDelete = operation === 'delete_page'
   const hasChanges = diff.summary.added > 0 || diff.summary.removed > 0
-  const saveEnabled = canSave ?? isDelete ?? hasChanges
+  const saveEnabled = canSave ?? (isDelete || hasChanges)
   const hasJson = Boolean(afterContentJson) && !isDelete
 
   return (

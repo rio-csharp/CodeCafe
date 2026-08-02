@@ -245,6 +245,8 @@
     "importMarkdownFileRequired": "Pick a Markdown file to import",
     "importMarkdownFileUnsupported": "Only Markdown files (.md, .markdown) are supported",
     "importMarkdownTitleLabel": "Page title",
+    "importMarkdownTitleRequired": "Enter a page title",
+    "importMarkdownTitleTooLong": "Page title is too long",
     "importMarkdownParentLabel": "Parent folder",
     "importMarkdownParentRoot": "Notebook root",
     "importMarkdownSubmit": "Import",

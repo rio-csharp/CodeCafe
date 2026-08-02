@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useEditorStore } from '@/widgets/notebook-page-editor/store'
-import { useParams, Navigate, useNavigate } from 'react-router-dom'
+import { useParams, Navigate } from 'react-router-dom'
 import {
   useNotebook,
   useNotebookItems,
@@ -11,13 +10,12 @@ import {
   findPageByPath,
   extractOutline,
   findAdjacentPage,
-  notesKeys,
 } from '@/entities/notebook'
 import { useSaveNotebookPage } from '@/features/edit-notebook-page'
 import { getDisplayErrorMessage } from '@/shared/lib/errorUtils'
 import QueryError from '@/shared/ui/QueryError'
 import { NotebookChangePreview } from '@/widgets/notebook-change-preview'
-import { useAiEditStore, useApplyAiEditProposal, useDiscardAiEditProposal } from '@/features/ai-assistant'
+import { useAiEditProposalActions } from '@/features/ai-assistant'
 import NotebookLayout from '@/widgets/notebook-layout'
 import NotebookTree from '@/widgets/notebook-tree'
 import NotebookPageContent from '@/widgets/notebook-page-content'
@@ -65,22 +63,6 @@ export default function NotebookReaderPage() {
   const mainRef = useRef<HTMLElement>(null)
   const isEditingPage = editClickedForPath === pagePath
   const { t } = useTranslation()
-  const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const proposal = useAiEditStore((s) => s.proposal)
-  const previewOpen = useAiEditStore((s) => s.previewOpen)
-  const closePreview = useAiEditStore((s) => s.closePreview)
-  const discardProposal = useDiscardAiEditProposal()
-  const isAiEditPreviewActive =
-    previewOpen &&
-    proposal !== null &&
-    proposal.notebookSlug === notebookSlug &&
-    (proposal.operation === 'create_page' || proposal.pagePath === pagePath)
-  const aiEditInitialContent = useMemo(() => {
-    if (!isEditingPage || !proposal) return undefined
-    if (proposal.pagePath && editClickedForPath === proposal.pagePath) return proposal.afterContentJson
-    return undefined
-  }, [isEditingPage, proposal, editClickedForPath])
 
   const {
     data: notebook,
@@ -93,7 +75,26 @@ export default function NotebookReaderPage() {
 
   const notebookId = notebook?.id ?? ''
 
-  const applyProposal = useApplyAiEditProposal(notebookId)
+  const {
+    proposal,
+    isAiEditPreviewActive,
+    isProcessing: isAiEditProcessing,
+    handleApplyAiEdit,
+    handleCloseAiEditPreview,
+    handleDiscardAiEdit,
+    handleContinueAiEdit,
+  } = useAiEditProposalActions({
+    notebookSlug,
+    notebookId,
+    pagePath,
+    onEnterEditMode: setEditClickedForPath,
+  })
+
+  const aiEditInitialContent = useMemo(() => {
+    if (!isEditingPage || !proposal) return undefined
+    if (proposal.pagePath && editClickedForPath === proposal.pagePath) return proposal.afterContentJson
+    return undefined
+  }, [isEditingPage, proposal, editClickedForPath])
 
   const {
     data: notebookItems,
@@ -176,54 +177,6 @@ export default function NotebookReaderPage() {
     }
   }
   const handleEdit = () => setEditClickedForPath(pagePath)
-
-  const handleApplyAiEdit = () => {
-    if (!proposal) return
-    applyProposal.mutate(
-      { applyPath: proposal.applyPath },
-      {
-        onSuccess: async (result) => {
-          await queryClient.refetchQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
-          if (result.operation === 'delete_page') {
-            navigate(`/notes/${notebookSlug}`)
-            return
-          }
-          if (result.pagePath && result.pagePath !== pagePath) {
-            navigate(`/notes/${notebookSlug}/${result.pagePath}`)
-          }
-        },
-      },
-    )
-  }
-
-  const handleCloseAiEditPreview = () => {
-    closePreview()
-  }
-
-  const handleDiscardAiEdit = () => {
-    if (proposal) discardProposal.mutate({ discardPath: proposal.discardPath })
-  }
-
-  const handleContinueAiEdit = () => {
-    if (!proposal) return
-    if (proposal.operation === 'create_page') {
-      applyProposal.mutate(
-        { applyPath: proposal.applyPath },
-        {
-          onSuccess: async (result) => {
-            await queryClient.refetchQueries({ queryKey: notesKeys.itemsRoot(notebookId) })
-            if (result.pagePath) {
-              setEditClickedForPath(result.pagePath)
-              navigate(`/notes/${notebookSlug}/${result.pagePath}`)
-            }
-          },
-        },
-      )
-    } else if (proposal.pagePath) {
-      closePreview()
-      setEditClickedForPath(proposal.pagePath)
-    }
-  }
 
   const { prev, next } = useMemo(() => {
     if (!activePage) return { prev: null, next: null }
@@ -385,7 +338,7 @@ export default function NotebookReaderPage() {
           onDiscard={handleDiscardAiEdit}
           onEdit={handleContinueAiEdit}
           disableEdit={!proposal.pagePath && proposal.operation !== 'create_page'}
-          isSaving={applyProposal.isPending || discardProposal.isPending}
+          isSaving={isAiEditProcessing}
         />
       )}
       <NotebookLayout

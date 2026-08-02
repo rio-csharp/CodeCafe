@@ -8,20 +8,22 @@ namespace CodeCafe.Modules.Ai.Edits;
 
 public interface IAiNotebookEditProposalStore
 {
-    AiNotebookEditProposal Save(AiNotebookEditProposal proposal);
+    Task<AiNotebookEditProposal> SaveAsync(AiNotebookEditProposal proposal, CancellationToken cancellationToken);
 
-    bool TryGet(Guid proposalId, Guid actorId, out AiNotebookEditProposal proposal);
+    Task<AiNotebookEditProposal?> TryGetAsync(Guid proposalId, Guid actorId, CancellationToken cancellationToken);
 
     Task<AiNotebookEditProposal?> TryConsumeAsync(Guid proposalId, Guid actorId, CancellationToken cancellationToken);
 
-    void Remove(Guid proposalId);
+    Task RemoveAsync(Guid proposalId, CancellationToken cancellationToken);
 }
 
 public sealed class DatabaseAiNotebookEditProposalStore(ApplicationDbContext dbContext) : IAiNotebookEditProposalStore
 {
-    public AiNotebookEditProposal Save(AiNotebookEditProposal proposal)
+    public async Task<AiNotebookEditProposal> SaveAsync(
+        AiNotebookEditProposal proposal,
+        CancellationToken cancellationToken)
     {
-        PruneExpiredProposals();
+        await PruneExpiredProposalsAsync(cancellationToken);
 
         dbContext.AiEditProposals.Add(new AiEditProposal
         {
@@ -32,26 +34,27 @@ public sealed class DatabaseAiNotebookEditProposalStore(ApplicationDbContext dbC
             PayloadJson = JsonSerializer.Serialize(proposal),
             ExpiresAtUtc = proposal.ExpiresAtUtc
         });
-        dbContext.SaveChanges();
+        await dbContext.SaveChangesAsync(cancellationToken);
 
         return proposal;
     }
 
-    public bool TryGet(Guid proposalId, Guid actorId, out AiNotebookEditProposal proposal)
+    public async Task<AiNotebookEditProposal?> TryGetAsync(
+        Guid proposalId,
+        Guid actorId,
+        CancellationToken cancellationToken)
     {
-        var entry = dbContext.AiEditProposals
+        var entry = await dbContext.AiEditProposals
             .AsNoTracking()
-            .SingleOrDefault(existingProposal => existingProposal.Id == proposalId);
+            .SingleOrDefaultAsync(existingProposal => existingProposal.Id == proposalId, cancellationToken);
         if (entry is not null
             && entry.ActorUserId == actorId
             && entry.ExpiresAtUtc > DateTimeOffset.UtcNow)
         {
-            proposal = JsonSerializer.Deserialize<AiNotebookEditProposal>(entry.PayloadJson)!;
-            return true;
+            return JsonSerializer.Deserialize<AiNotebookEditProposal>(entry.PayloadJson)!;
         }
 
-        proposal = default!;
-        return false;
+        return null;
     }
 
     public async Task<AiNotebookEditProposal?> TryConsumeAsync(
@@ -80,30 +83,31 @@ public sealed class DatabaseAiNotebookEditProposalStore(ApplicationDbContext dbC
             : null;
     }
 
-    public void Remove(Guid proposalId)
+    public async Task RemoveAsync(Guid proposalId, CancellationToken cancellationToken)
     {
-        dbContext.AiEditProposals
+        await dbContext.AiEditProposals
             .Where(existingProposal => existingProposal.Id == proposalId)
-            .ExecuteDelete();
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
-    private void PruneExpiredProposals()
+    private async Task PruneExpiredProposalsAsync(CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
 
         if (string.Equals(dbContext.Database.ProviderName, DatabaseProviderNames.Npgsql, StringComparison.Ordinal))
         {
-            dbContext.AiEditProposals
+            await dbContext.AiEditProposals
                 .Where(existingProposal => existingProposal.ExpiresAtUtc <= now)
-                .ExecuteDelete();
+                .ExecuteDeleteAsync(cancellationToken);
             return;
         }
 
         // DateTimeOffset range comparisons are not translatable on every provider (e.g. SQLite),
         // so expired rows are filtered client-side and deleted by key there.
-        var expiredIds = dbContext.AiEditProposals
+        var candidates = await dbContext.AiEditProposals
             .Select(existingProposal => new { existingProposal.Id, existingProposal.ExpiresAtUtc })
-            .AsEnumerable()
+            .ToListAsync(cancellationToken);
+        var expiredIds = candidates
             .Where(existingProposal => existingProposal.ExpiresAtUtc <= now)
             .Select(existingProposal => existingProposal.Id)
             .ToList();
@@ -112,9 +116,9 @@ public sealed class DatabaseAiNotebookEditProposalStore(ApplicationDbContext dbC
             return;
         }
 
-        dbContext.AiEditProposals
+        await dbContext.AiEditProposals
             .Where(existingProposal => expiredIds.Contains(existingProposal.Id))
-            .ExecuteDelete();
+            .ExecuteDeleteAsync(cancellationToken);
     }
 }
 
@@ -122,7 +126,9 @@ public sealed class MemoryAiNotebookEditProposalStore(IMemoryCache cache) : IAiN
 {
     private const string CacheKeyPrefix = "ai-note-edit-proposal:";
 
-    public AiNotebookEditProposal Save(AiNotebookEditProposal proposal)
+    public Task<AiNotebookEditProposal> SaveAsync(
+        AiNotebookEditProposal proposal,
+        CancellationToken cancellationToken)
     {
         cache.Set(
             BuildKey(proposal.ProposalId),
@@ -132,22 +138,23 @@ public sealed class MemoryAiNotebookEditProposalStore(IMemoryCache cache) : IAiN
                 AbsoluteExpiration = proposal.ExpiresAtUtc
             });
 
-        return proposal;
+        return Task.FromResult(proposal);
     }
 
-    public bool TryGet(Guid proposalId, Guid actorId, out AiNotebookEditProposal proposal)
+    public Task<AiNotebookEditProposal?> TryGetAsync(
+        Guid proposalId,
+        Guid actorId,
+        CancellationToken cancellationToken)
     {
         if (cache.TryGetValue<AiNotebookEditProposal>(BuildKey(proposalId), out var cached)
             && cached is not null
             && cached.ActorId == actorId
             && cached.ExpiresAtUtc > DateTimeOffset.UtcNow)
         {
-            proposal = cached;
-            return true;
+            return Task.FromResult<AiNotebookEditProposal?>(cached);
         }
 
-        proposal = default!;
-        return false;
+        return Task.FromResult<AiNotebookEditProposal?>(null);
     }
 
     public Task<AiNotebookEditProposal?> TryConsumeAsync(
@@ -169,8 +176,11 @@ public sealed class MemoryAiNotebookEditProposalStore(IMemoryCache cache) : IAiN
         return Task.FromResult<AiNotebookEditProposal?>(null);
     }
 
-    public void Remove(Guid proposalId)
-        => cache.Remove(BuildKey(proposalId));
+    public Task RemoveAsync(Guid proposalId, CancellationToken cancellationToken)
+    {
+        cache.Remove(BuildKey(proposalId));
+        return Task.CompletedTask;
+    }
 
     private static string BuildKey(Guid proposalId)
         => CacheKeyPrefix + proposalId.ToString("N");

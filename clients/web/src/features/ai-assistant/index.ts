@@ -6,6 +6,7 @@ export {
   useCreateAiEditProposal,
   useDiscardAiEditProposal,
 } from './model/useAiEdit'
+export { useAiEditProposalActions } from './model/useAiEditProposalActions'
 export { getMessageText } from './model/aiAssistantUtils'
 export {
   clearEditThread,

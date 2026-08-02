@@ -14,9 +14,6 @@ namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
 public static class NotesMarkdownImportEndpoints
 {
-    private static readonly string[] SupportedMarkdownMediaTypes = ["text/markdown"];
-    private static readonly string[] SupportedMarkdownExtensions = [".md", ".markdown"];
-
     public static IEndpointRouteBuilder MapNotesMarkdownImportEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/notes")
@@ -45,64 +42,36 @@ public static class NotesMarkdownImportEndpoints
             return ToError("authenticated_actor_required", "The Notes API requires an authenticated CodeCafe user.", StatusCodes.Status401Unauthorized);
         }
 
-        if (!request.HasFormContentType)
+        IFormFile? file = null;
+        string? requestedFileName = null;
+        if (request.HasFormContentType)
         {
-            return ToError("invalid_upload_request", "Expected multipart/form-data.", StatusCodes.Status400BadRequest, field: "file");
-        }
-
-        var form = await request.ReadFormAsync(cancellationToken);
-        var file = form.Files.GetFile("file");
-        if (file is null)
-        {
-            return ToError("invalid_upload_request", "Form field 'file' is required.", StatusCodes.Status400BadRequest, field: "file");
-        }
-
-        var effectiveFileName = string.IsNullOrWhiteSpace(form["fileName"])
-            ? file.FileName
-            : form["fileName"].ToString().Trim();
-        if (string.IsNullOrWhiteSpace(effectiveFileName))
-        {
-            return ToError("invalid_upload_file", "A file name is required.", StatusCodes.Status400BadRequest, field: "fileName");
-        }
-
-        if (file.Length <= 0)
-        {
-            return ToError("invalid_upload_file", "Uploaded file is empty.", StatusCodes.Status400BadRequest, field: "file");
+            var form = await request.ReadFormAsync(cancellationToken);
+            file = form.Files.GetFile("file");
+            requestedFileName = form["fileName"].ToString();
         }
 
         var options = mcpOptionsAccessor.Value;
-        if (file.Length > options.MaxUploadBytes)
+        var validationError = MarkdownUploadValidation.Validate(
+            request.HasFormContentType,
+            file is null ? null : new MarkdownUploadFile(file.ContentType, file.FileName, file.Length),
+            requestedFileName,
+            options.MaxUploadBytes,
+            "Upload exceeds maxUploadBytes.",
+            "Only Markdown uploads are supported.",
+            out var validatedUpload);
+        if (validationError is not null)
         {
             return ToError(
-                "upload_too_large",
-                "Upload exceeds maxUploadBytes.",
+                validationError.Code,
+                validationError.Message,
                 StatusCodes.Status400BadRequest,
-                field: "file",
-                details: new Dictionary<string, object?>
-                {
-                    ["maxUploadBytes"] = options.MaxUploadBytes,
-                    ["actualUploadBytes"] = file.Length
-                });
-        }
-
-        var mediaType = NormalizeMediaType(file.ContentType, effectiveFileName);
-        if (!IsSupportedMarkdownUpload(mediaType, effectiveFileName))
-        {
-            return ToError(
-                "unsupported_upload_media_type",
-                "Only Markdown uploads are supported.",
-                StatusCodes.Status400BadRequest,
-                field: "file",
-                details: new Dictionary<string, object?>
-                {
-                    ["supportedMediaTypes"] = SupportedMarkdownMediaTypes,
-                    ["supportedFileExtensions"] = SupportedMarkdownExtensions,
-                    ["receivedMediaType"] = file.ContentType
-                });
+                field: validationError.Field,
+                details: validationError.Details);
         }
 
         string contentText;
-        await using (var stream = file.OpenReadStream())
+        await using (var stream = file!.OpenReadStream())
         using (var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true))
         {
             contentText = await reader.ReadToEndAsync(cancellationToken);
@@ -110,8 +79,8 @@ public static class NotesMarkdownImportEndpoints
 
         var uploadResult = await uploadStore.CreateTextAsync(
             actorId,
-            effectiveFileName,
-            mediaType,
+            validatedUpload!.FileName,
+            validatedUpload.MediaType,
             contentText,
             options.MaxUploadBytes,
             cancellationToken);
@@ -528,17 +497,6 @@ public static class NotesMarkdownImportEndpoints
         return count;
     }
 
-    private static string NormalizeMediaType(string? contentType, string fileName)
-    {
-        if (!string.IsNullOrWhiteSpace(contentType)
-            && !string.Equals(contentType, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
-        {
-            return contentType.Trim();
-        }
-
-        return HasSupportedMarkdownExtension(fileName) ? "text/markdown" : "text/plain";
-    }
-
     private static bool TryExtractPagePath(string pathAndAction, string actionSegment, out string pagePath)
     {
         pagePath = string.Empty;
@@ -562,16 +520,6 @@ public static class NotesMarkdownImportEndpoints
 
         pagePath = Uri.UnescapeDataString(rawPath);
         return true;
-    }
-
-    private static bool IsSupportedMarkdownUpload(string mediaType, string fileName)
-        => SupportedMarkdownMediaTypes.Contains(mediaType, StringComparer.OrdinalIgnoreCase)
-           || HasSupportedMarkdownExtension(fileName);
-
-    private static bool HasSupportedMarkdownExtension(string fileName)
-    {
-        var extension = Path.GetExtension(fileName);
-        return SupportedMarkdownExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
     }
 
     private static IResult ToNotesError(NotesError error)

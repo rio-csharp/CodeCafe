@@ -243,6 +243,8 @@
     "importMarkdownFileRequired": "请选择要导入的 Markdown 文件",
     "importMarkdownFileUnsupported": "仅支持 Markdown 文件(.md、.markdown)",
     "importMarkdownTitleLabel": "页面标题",
+    "importMarkdownTitleRequired": "请输入页面标题",
+    "importMarkdownTitleTooLong": "页面标题过长",
     "importMarkdownParentLabel": "父文件夹",
     "importMarkdownParentRoot": "笔记本根目录",
     "importMarkdownSubmit": "导入",

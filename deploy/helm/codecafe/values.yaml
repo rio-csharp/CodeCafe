@@ -98,15 +98,28 @@ api:
     backoffLimit: 1
     ttlSecondsAfterFinished: 300
   auth:
-    registrationEnabled: true
+    # Open user registration is disabled by default. Enable only for
+    # deployments that should accept self-service sign-ups.
+    registrationEnabled: false
+  forwardedHeaders:
+    # Single-proxy topology: exactly one forwarding hop is trusted.
+    forwardLimit: 1
+    # CIDR ranges whose X-Forwarded-For headers are trusted (the egress
+    # networks of the reverse proxy / ingress controller in front of the API).
+    # Empty means the server default (loopback only), which ignores
+    # client-supplied X-Forwarded-For and keeps IP-partitioned rate limits
+    # spoof-proof. Set your ingress pod/node CIDRs in real deployments.
+    knownNetworks: []
   ai:
     enabled: false
     endpointPath: /api/ai/assistant
     statusEndpointPath: /api/ai/status
+    editEndpointPath: /api/ai/edits
     draftEndpointPath: /api/ai/drafts
     agentName: CodeCafeAssistant
     model: ""
     baseUrl: ""
+    wireFormat: ChatCompletions # ChatCompletions or Responses
     apiKeySecretName: ""
     apiKeySecretKey: "Ai__ApiKey"
     maxToolResults: 10
@@ -114,6 +127,10 @@ api:
     maxDraftPromptChars: 2000
     maxDraftContextChars: 200000
     maxDraftOutputTokens: 1600
+  mcp:
+    enabled: true
+    # Absolute HTTP/HTTPS origins allowed to call the MCP endpoint cross-origin.
+    allowedOrigins: []
   cors:
     allowedOrigins:
       - https://frontend.example.local

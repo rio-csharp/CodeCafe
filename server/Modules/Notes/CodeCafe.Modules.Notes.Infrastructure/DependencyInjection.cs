@@ -1,5 +1,3 @@
-using CodeCafe.Modules.Identity.Application.Auth;
-using CodeCafe.Modules.Identity.Infrastructure.Identity;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Infrastructure.Notes;
 using CodeCafe.Modules.Notes.Infrastructure.Services;
@@ -33,7 +31,6 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString);
             options.UseOpenIddict<Guid>();
         });
-        services.AddScoped<IAuthUserGateway, IdentityAuthUserGateway>();
         services.AddScoped<INotebookReadService, NotebookReadService>();
         services.AddScoped<INotebookMutationStore, NotebookMutationStore>();
         services.AddScoped<INotebookItemMutationService, NotebookItemMutationService>();

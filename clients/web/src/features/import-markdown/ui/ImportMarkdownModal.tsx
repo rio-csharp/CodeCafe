@@ -120,11 +120,11 @@ export function ImportMarkdownModal({
       return
     }
     if (!title.trim()) {
-      setLocalError(t('notebook.importMarkdownFileRequired'))
+      setLocalError(t('notebook.importMarkdownTitleRequired'))
       return
     }
     if (title.length > MAX_TITLE) {
-      setLocalError(t('notebook.importMarkdownErrorGeneric'))
+      setLocalError(t('notebook.importMarkdownTitleTooLong'))
       return
     }
     setLocalError(null)

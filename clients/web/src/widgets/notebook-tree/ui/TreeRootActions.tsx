@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Plus, Folder, FileText } from 'lucide-react'
 import { useClickOutside } from '@/shared/hooks/useClickOutside'
 import { useTranslation } from 'react-i18next'
@@ -13,12 +13,23 @@ export default function TreeRootActions({ onCreateRoot }: TreeRootActionsProps) 
   const { t } = useTranslation()
   useClickOutside(rootMenuRef, () => setShowRootCreate(false))
 
+  useEffect(() => {
+    if (!showRootCreate) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowRootCreate(false)
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [showRootCreate])
+
   return (
     <div className="relative" ref={rootMenuRef}>
       <button
         type="button"
         onClick={() => setShowRootCreate(!showRootCreate)}
         className="w-full flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-border-default px-3 py-1.5 text-xs text-text-secondary hover:border-border-hover hover:text-text-secondary hover:bg-surface-hover transition-colors"
+        aria-haspopup="menu"
+        aria-expanded={showRootCreate}
       >
         <Plus className="h-3.5 w-3.5" />
         {t('notebook.addFolderOrPage')}

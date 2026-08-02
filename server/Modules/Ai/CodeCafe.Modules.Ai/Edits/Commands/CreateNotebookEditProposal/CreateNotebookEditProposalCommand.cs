@@ -1,0 +1,14 @@
+using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
+
+namespace CodeCafe.Modules.Ai.Edits.Commands.CreateNotebookEditProposal;
+
+public sealed record CreateNotebookEditProposalCommand(
+    Guid ActorId,
+    string NotebookSlug,
+    string? ActivePagePath,
+    string Prompt,
+    string? Operation,
+    string? Locale,
+    bool Apply,
+    string? ParentPath,
+    DateTimeOffset? ExpectedUpdatedAtUtc) : ICommand<AiEditProposalFlowResult>;

@@ -18,9 +18,11 @@ const DashboardPage = lazy(() => import('@/pages/dashboard'))
 
 function LazyWrapper({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={<RouteGuardSpinner />}>
-      {children}
-    </Suspense>
+    <ErrorBoundary>
+      <Suspense fallback={<RouteGuardSpinner />}>
+        {children}
+      </Suspense>
+    </ErrorBoundary>
   )
 }
 
@@ -65,9 +67,7 @@ export function AppRouter() {
           element={
             <PageTransition>
               <ProtectedRoute>
-                <ErrorBoundary>
-                  <LazyWrapper><CreateNotebookPage /></LazyWrapper>
-                </ErrorBoundary>
+                <LazyWrapper><CreateNotebookPage /></LazyWrapper>
               </ProtectedRoute>
             </PageTransition>
           }
@@ -77,9 +77,7 @@ export function AppRouter() {
           element={
             <PageTransition>
               <ProtectedRoute>
-                <ErrorBoundary>
-                  <LazyWrapper><EditNotebookPage /></LazyWrapper>
-                </ErrorBoundary>
+                <LazyWrapper><EditNotebookPage /></LazyWrapper>
               </ProtectedRoute>
             </PageTransition>
           }
@@ -88,9 +86,7 @@ export function AppRouter() {
           path="/notes/:notebookSlug/*"
           element={
             <PageTransition>
-              <ErrorBoundary>
-                <LazyWrapper><NotebookReaderPage /></LazyWrapper>
-              </ErrorBoundary>
+              <LazyWrapper><NotebookReaderPage /></LazyWrapper>
             </PageTransition>
           }
         />

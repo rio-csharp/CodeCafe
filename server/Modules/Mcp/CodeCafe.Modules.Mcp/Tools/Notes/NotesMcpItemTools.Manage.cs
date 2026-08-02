@@ -56,16 +56,6 @@ public sealed partial class NotesMcpItemTools
                     return McpMutationResult<MoveItemToolResponse>.Failure(itemContextResult.Error!);
                 }
 
-                if (string.IsNullOrWhiteSpace(title))
-                {
-                    return McpMutationResult<MoveItemToolResponse>.Failure(new NotesError(
-                        NotesFailureKind.Validation,
-                        "invalid_title",
-                        "Title cannot be empty or whitespace."),
-                        itemContextResult.Value.Notebook.Id,
-                        itemContextResult.Value.Item.Id);
-                }
-
                 var itemContext = itemContextResult.Value;
                 var renameResult = await NotesMcpCommandSender.SendAsync(
                     sender,

@@ -25,13 +25,14 @@ export default function TreeNodeActions({
   if (!canEdit || isEditing) return null
 
   return (
-    <div className="hidden group-hover:flex items-center gap-0.5 shrink-0 ml-1">
+    <div className="hidden group-hover:flex group-focus-within:flex items-center gap-0.5 shrink-0 ml-1">
       {!isArchived && (
         <button
           type="button"
           onClick={onRename}
           className="p-0.5 text-text-tertiary hover:text-brand-brown rounded transition-colors"
           title={t('notebook.rename')}
+          aria-label={t('notebook.rename')}
         >
           <Pencil className="h-3 w-3" />
         </button>
@@ -43,6 +44,7 @@ export default function TreeNodeActions({
             onClick={onRestore}
             className="p-0.5 text-text-tertiary hover:text-brand-brown rounded transition-colors"
             title={t('notebook.restore')}
+            aria-label={t('notebook.restore')}
           >
             <ArchiveRestore className="h-3 w-3" />
           </button>
@@ -51,6 +53,7 @@ export default function TreeNodeActions({
             onClick={onDelete}
             className="p-0.5 text-text-tertiary hover:text-status-error rounded transition-colors"
             title={t('notebook.deletePermanently')}
+            aria-label={t('notebook.deletePermanently')}
           >
             <Trash2 className="h-3 w-3" />
           </button>
@@ -62,6 +65,7 @@ export default function TreeNodeActions({
             onClick={onArchive}
             className="p-0.5 text-text-tertiary hover:text-status-favorite rounded transition-colors"
             title={t('notebook.archive')}
+            aria-label={t('notebook.archive')}
           >
             <Archive className="h-3 w-3" />
           </button>
@@ -70,6 +74,7 @@ export default function TreeNodeActions({
             onClick={onDelete}
             className="p-0.5 text-text-tertiary hover:text-status-error rounded transition-colors"
             title={t('notebook.deleteAfterArchiveTitle')}
+            aria-label={t('notebook.deleteAfterArchiveTitle')}
           >
             <Trash2 className="h-3 w-3" />
           </button>

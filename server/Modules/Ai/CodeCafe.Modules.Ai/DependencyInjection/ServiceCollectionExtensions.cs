@@ -1,4 +1,5 @@
 using CodeCafe.Modules.Ai.Agents;
+using CodeCafe.Modules.Ai.Common;
 using CodeCafe.Modules.Ai.Configuration;
 using CodeCafe.Modules.Ai.Drafts;
 using CodeCafe.Modules.Ai.Edits;
@@ -14,7 +15,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenAI;
-using OpenAI.Chat;
 
 namespace CodeCafe.Modules.Ai.DependencyInjection;
 
@@ -28,6 +28,11 @@ public static class ServiceCollectionExtensions
         services.AddHttpContextAccessor();
         services.AddAGUI();
         services.AddMemoryCache();
+
+        // Ai use-case handlers run through the same MediatR pipeline (logging,
+        // validation) that Notes.Application registers for the host.
+        services.AddMediatR(configuration =>
+            configuration.RegisterServicesFromAssembly(typeof(AiAssemblyMarker).Assembly));
 
         services.AddOptions<AiOptions>()
             .Bind(configuration.GetSection(AiOptions.SectionName))
@@ -82,17 +87,12 @@ public static class ServiceCollectionExtensions
 
         var configuredOptions = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
         services.AddAIAgent(
-            NormalizeAgentName(configuredOptions.AgentName),
+            AiHelpers.NormalizeAgentName(configuredOptions.AgentName),
             CreateAssistantAgent,
             ServiceLifetime.Singleton);
 
         return services;
     }
-
-    private static string NormalizeAgentName(string agentName)
-        => string.IsNullOrWhiteSpace(agentName)
-            ? new AiOptions().AgentName
-            : agentName.Trim();
 
     private static AIAgent CreateAssistantAgent(IServiceProvider serviceProvider, string agentName)
     {
@@ -125,9 +125,13 @@ public static class ServiceCollectionExtensions
                 serializerOptions: jsonOptions.SerializerOptions)
         ];
 
-        var agent = serviceProvider.GetRequiredService<OpenAIClient>()
-            .GetChatClient(options.Model)
-            .AsAIAgent(
+        var openAiClient = serviceProvider.GetRequiredService<OpenAIClient>();
+        IChatClient chatClient = options.WireFormat == AiWireFormat.Responses
+            ? openAiClient.GetResponsesClient().AsIChatClient(options.Model)
+            : openAiClient.GetChatClient(options.Model).AsIChatClient();
+        chatClient = new AgUiCompatChatClient(chatClient);
+
+        var agent = chatClient.AsAIAgent(
                 name: agentName,
                 instructions: AssistantInstructions,
                 description: "A CodeCafe assistant that answers questions using the current user's notebooks.",

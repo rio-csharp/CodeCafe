@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Search,
@@ -56,6 +56,18 @@ export default function NotebookTreeHeader({
     setShowDeleteConfirm(false)
   })
 
+  useEffect(() => {
+    if (!menuOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+        setShowDeleteConfirm(false)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [menuOpen])
+
   const handleCopyLink = useCallback(() => {
     const url = `${window.location.origin}/notes/${notebook.slug}`
     navigator.clipboard.writeText(url).then(() => {
@@ -112,6 +124,8 @@ export default function NotebookTreeHeader({
                     onClick={() => setMenuOpen(!menuOpen)}
                     className="p-1 text-text-secondary hover:bg-surface-hover rounded-md transition-colors"
                     aria-label={t('notebook.notebookMenu')}
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpen}
                   >
                     <MoreHorizontal className="h-3.5 w-3.5" />
                   </button>

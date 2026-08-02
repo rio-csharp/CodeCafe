@@ -1,5 +1,11 @@
 namespace CodeCafe.Modules.Ai.Configuration;
 
+public enum AiWireFormat
+{
+    ChatCompletions,
+    Responses
+}
+
 public sealed class AiOptions
 {
     public const string SectionName = "Ai";
@@ -21,6 +27,8 @@ public sealed class AiOptions
     public string ApiKey { get; set; } = string.Empty;
 
     public string BaseUrl { get; set; } = string.Empty;
+
+    public AiWireFormat WireFormat { get; set; } = AiWireFormat.ChatCompletions;
 
     public int MaxToolResults { get; set; } = 10;
 

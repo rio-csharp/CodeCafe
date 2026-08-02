@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Loader2 } from 'lucide-react'
 import { useCreateNotebookForm } from '@/features/create-notebook'
 import { useToast } from '@/shared/ui/Toast'
+import { getDisplayErrorMessage } from '@/shared/lib/errorUtils'
 import { Input } from '@/shared/ui/Input'
 import { VisibilityField } from '@/widgets/notebook-settings'
 import { useTranslation } from 'react-i18next'
@@ -16,10 +17,10 @@ export default function CreateNotebookPage() {
     navigate(`/notes/${slug}`)
   }
 
-  // useCreateNotebookForm already converts the error to a display string;
-  // show it as-is so server messages (e.g. slug conflicts) reach the user.
-  const handleError = (message: string) => {
-    showToast(message, 'error')
+  // Map known backend error codes and 5xx details to a localized message;
+  // user-authored 4xx messages (e.g. slug conflicts) pass through as-is.
+  const handleError = (error: unknown) => {
+    showToast(getDisplayErrorMessage(error, t, t('notebook.createFailed')), 'error')
   }
 
   const {

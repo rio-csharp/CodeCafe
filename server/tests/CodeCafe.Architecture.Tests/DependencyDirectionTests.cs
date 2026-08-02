@@ -50,6 +50,20 @@ public sealed class DependencyDirectionTests
     }
 
     [Fact]
+    public void NotesInfrastructure_DoesNotReference_IdentityModule()
+    {
+        // Cross-module composition happens in the host (Program.cs), not by
+        // one module reaching into another module's projects.
+        // Note: CodeCafe.Modules.Identity.Infrastructure still appears in the
+        // referenced-assembly metadata because the shared ApplicationDbContext
+        // (Shared.Infrastructure) derives from IdentityDbContext<ApplicationUser>;
+        // that transitive base-type reference is expected and not asserted here.
+        var references = GetReferenceNames(typeof(CodeCafe.Modules.Notes.Infrastructure.DependencyInjection).Assembly);
+
+        Assert.DoesNotContain("CodeCafe.Modules.Identity.Application", references);
+    }
+
+    [Fact]
     public void Adapters_DoNotReference_EachOther()
     {
         var apiReferences = GetReferenceNames(typeof(ApiAssemblyMarker).Assembly);
@@ -74,6 +88,7 @@ public sealed class DependencyDirectionTests
         Assert.Contains("CodeCafe.Modules.Ai", serverReferences);
         Assert.Contains("CodeCafe.Modules.Mcp", serverReferences);
         Assert.Contains("CodeCafe.Modules.Identity.Application", serverReferences);
+        Assert.Contains("CodeCafe.Modules.Identity.Infrastructure", serverReferences);
         Assert.Contains("CodeCafe.Modules.Notes.Application", serverReferences);
         Assert.Contains("CodeCafe.Modules.Notes.Infrastructure", serverReferences);
     }

@@ -9,6 +9,9 @@ interface NotebookOutlineProps {
   scrollContainerRef?: RefObject<HTMLElement | null>
 }
 
+/** Pixel indentation per heading level below h1. */
+const OUTLINE_INDENT_PER_LEVEL = 14
+
 function NotebookOutlineComponent({ headings, scrollContainerRef }: NotebookOutlineProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const { t } = useTranslation()
@@ -78,7 +81,7 @@ function NotebookOutlineComponent({ headings, scrollContainerRef }: NotebookOutl
                     ? 'text-brand-brown-text font-medium'
                     : 'text-text-secondary hover:text-brand-brown-text'
                 }`}
-                style={{ paddingLeft: `${(h.level - 1) * 14}px` }}
+                style={{ paddingLeft: `${(h.level - 1) * OUTLINE_INDENT_PER_LEVEL}px` }}
               >
                 {h.text}
               </button>

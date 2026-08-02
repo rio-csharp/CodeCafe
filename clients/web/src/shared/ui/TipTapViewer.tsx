@@ -83,7 +83,7 @@ export default function TipTapViewer({ content, className }: TipTapViewerProps) 
     navigator.clipboard.writeText(code.textContent ?? '').then(() => {
       btn.innerHTML = CHECK_ICON
       window.setTimeout(() => { btn.innerHTML = COPY_ICON }, 2000)
-    })
+    }).catch(() => {})
   }, [])
 
   return (

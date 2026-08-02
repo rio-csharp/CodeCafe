@@ -1,8 +1,8 @@
+using CodeCafe.Modules.Ai.Common;
 using CodeCafe.Modules.Ai.Configuration;
 using CodeCafe.Modules.Notes.Application.Notes;
 using Microsoft.Extensions.Options;
 using OpenAI;
-using OpenAI.Chat;
 using System.Text;
 using System.Text.Json;
 
@@ -33,23 +33,13 @@ public sealed class OpenAiNotebookEditGenerator(
         AiNotebookEditGenerationContext context,
         CancellationToken cancellationToken)
     {
-        var client = openAiClient.GetChatClient(_options.Model);
-        var completionResult = await client.CompleteChatAsync(
-            [
-                new SystemChatMessage(EditInstructions),
-                new UserChatMessage(BuildUserPrompt(context))
-            ],
-            new ChatCompletionOptions
-            {
-                MaxOutputTokenCount = Math.Max(1, _options.MaxDraftOutputTokens),
-                EndUserId = context.CurrentUserId.ToString("N")
-            },
+        var responseText = await OpenAiTextCompletion.CompleteAsync(
+            openAiClient,
+            _options,
+            EditInstructions,
+            BuildUserPrompt(context),
+            context.CurrentUserId.ToString("N"),
             cancellationToken);
-
-        var responseText = string.Concat(
-            completionResult.Value.Content
-                .Where(part => !string.IsNullOrEmpty(part.Text))
-                .Select(part => part.Text));
 
         return ParseResponse(responseText, context);
     }
@@ -139,7 +129,7 @@ public sealed class OpenAiNotebookEditGenerator(
         prompt.AppendLine($"Requested operation: {context.RequestedOperation}");
         prompt.AppendLine();
         prompt.AppendLine("User request:");
-        prompt.AppendLine(TrimForPrompt(context.Prompt, Math.Max(1, _options.MaxDraftPromptChars)));
+        prompt.AppendLine(AiHelpers.TrimForPrompt(context.Prompt, Math.Max(1, _options.MaxDraftPromptChars)));
         prompt.AppendLine();
         prompt.AppendLine("Notebook context:");
         prompt.AppendLine(BuildNotebookContext(context));
@@ -151,38 +141,38 @@ public sealed class OpenAiNotebookEditGenerator(
         var budget = Math.Max(1, _options.MaxDraftContextChars);
         var builder = new StringBuilder();
 
-        AppendLineWithinBudget(builder, budget, $"Notebook: {context.Notebook.Title} ({context.Notebook.Slug})");
+        AiHelpers.AppendLineWithinBudget(builder, budget, $"Notebook: {context.Notebook.Title} ({context.Notebook.Slug})");
         if (!string.IsNullOrWhiteSpace(context.Notebook.Description))
         {
-            AppendLineWithinBudget(builder, budget, $"Description: {context.Notebook.Description}");
+            AiHelpers.AppendLineWithinBudget(builder, budget, $"Description: {context.Notebook.Description}");
         }
 
         if (context.ActivePage is not null)
         {
-            AppendLineWithinBudget(builder, budget, string.Empty);
-            AppendLineWithinBudget(builder, budget, $"Active page: {context.ActivePage.Title} ({context.ActivePage.Path})");
-            AppendLineWithinBudget(builder, budget, "Active page plain text:");
-            AppendLineWithinBudget(
+            AiHelpers.AppendLineWithinBudget(builder, budget, string.Empty);
+            AiHelpers.AppendLineWithinBudget(builder, budget, $"Active page: {context.ActivePage.Title} ({context.ActivePage.Path})");
+            AiHelpers.AppendLineWithinBudget(builder, budget, "Active page plain text:");
+            AiHelpers.AppendLineWithinBudget(
                 builder,
                 budget,
-                TrimForPrompt(context.ActivePage.PlainTextContent ?? string.Empty, ActivePagePreviewChars));
+                AiHelpers.TrimForPrompt(context.ActivePage.PlainTextContent ?? string.Empty, ActivePagePreviewChars));
 
             var contentJson = context.ActivePage.ContentJson?.GetRawText();
             if (!string.IsNullOrWhiteSpace(contentJson) && contentJson.Length <= ActivePageJsonChars)
             {
-                AppendLineWithinBudget(builder, budget, "Active page TipTap JSON:");
-                AppendLineWithinBudget(builder, budget, TrimForPrompt(contentJson, ActivePageJsonChars));
+                AiHelpers.AppendLineWithinBudget(builder, budget, "Active page TipTap JSON:");
+                AiHelpers.AppendLineWithinBudget(builder, budget, AiHelpers.TrimForPrompt(contentJson, ActivePageJsonChars));
             }
             else if (context.ActivePage.ContentJson is JsonElement activePageContentJson)
             {
-                AppendLineWithinBudget(builder, budget, "Active page top-level block outline:");
+                AiHelpers.AppendLineWithinBudget(builder, budget, "Active page top-level block outline:");
                 AppendBlockOutline(builder, budget, activePageContentJson);
-                AppendLineWithinBudget(builder, budget, "Use block index operations or replace_text when possible for large pages.");
+                AiHelpers.AppendLineWithinBudget(builder, budget, "Use block index operations or replace_text when possible for large pages.");
             }
         }
 
-        AppendLineWithinBudget(builder, budget, string.Empty);
-        AppendLineWithinBudget(builder, budget, "Visible notebook items:");
+        AiHelpers.AppendLineWithinBudget(builder, budget, string.Empty);
+        AiHelpers.AppendLineWithinBudget(builder, budget, "Visible notebook items:");
         foreach (var item in context.Notebook.Items.OrderBy(item => item.Path))
         {
             var line = new StringBuilder();
@@ -190,12 +180,12 @@ public sealed class OpenAiNotebookEditGenerator(
             if (!string.IsNullOrWhiteSpace(item.TextPreview))
             {
                 line.Append(" :: ");
-                line.Append(TrimForPrompt(item.TextPreview, ItemPreviewChars));
+                line.Append(AiHelpers.TrimForPrompt(item.TextPreview, ItemPreviewChars));
             }
 
-            if (!AppendLineWithinBudget(builder, budget, line.ToString()))
+            if (!AiHelpers.AppendLineWithinBudget(builder, budget, line.ToString()))
             {
-                AppendLineWithinBudget(builder, budget, "[context truncated]");
+                AiHelpers.AppendLineWithinBudget(builder, budget, "[context truncated]");
                 break;
             }
         }
@@ -241,42 +231,6 @@ public sealed class OpenAiNotebookEditGenerator(
         return trimmed;
     }
 
-    private static bool AppendLineWithinBudget(StringBuilder builder, int budget, string value)
-    {
-        var remaining = budget - builder.Length;
-        if (remaining <= 0)
-        {
-            return false;
-        }
-
-        if (value.Length + Environment.NewLine.Length <= remaining)
-        {
-            builder.AppendLine(value);
-            return true;
-        }
-
-        if (remaining > "[truncated]".Length + Environment.NewLine.Length)
-        {
-            builder.Append(value.AsSpan(0, remaining - "[truncated]".Length - Environment.NewLine.Length));
-            builder.AppendLine("[truncated]");
-        }
-
-        return false;
-    }
-
-    private static string TrimForPrompt(string value, int maxChars)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
-
-        var normalized = value.Trim();
-        return normalized.Length <= maxChars
-            ? normalized
-            : string.Concat(normalized.AsSpan(0, maxChars), "\n[truncated]");
-    }
-
     private void AppendBlockOutline(StringBuilder builder, int budget, JsonElement contentJson)
     {
         if (!contentJson.TryGetProperty("content", out var blocks)
@@ -291,10 +245,10 @@ public sealed class OpenAiNotebookEditGenerator(
             var blockType = block.TryGetProperty("type", out var typeProperty) && typeProperty.ValueKind == JsonValueKind.String
                 ? typeProperty.GetString()
                 : "unknown";
-            var snippet = TrimForPrompt(plainTextExtractor.Extract(block) ?? string.Empty, BlockSnippetChars);
-            if (!AppendLineWithinBudget(builder, budget, $"- block[{index}] {blockType}: {snippet}"))
+            var snippet = AiHelpers.TrimForPrompt(plainTextExtractor.Extract(block) ?? string.Empty, BlockSnippetChars);
+            if (!AiHelpers.AppendLineWithinBudget(builder, budget, $"- block[{index}] {blockType}: {snippet}"))
             {
-                AppendLineWithinBudget(builder, budget, "[block outline truncated]");
+                AiHelpers.AppendLineWithinBudget(builder, budget, "[block outline truncated]");
                 break;
             }
 

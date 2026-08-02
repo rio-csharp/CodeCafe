@@ -51,6 +51,7 @@ export function AiAssistantForm({
           onChange={(event) => setDraft(event.target.value)}
           disabled={!canSubmit || isRunning}
           placeholder={placeholder}
+          aria-label={placeholder}
           rows={2}
           className="min-h-[42px] flex-1 resize-none rounded-md border border-border-default bg-surface px-2.5 py-2 text-xs leading-5 text-text-primary outline-none transition-colors placeholder:text-text-tertiary focus:border-brand-brown disabled:opacity-60"
         />

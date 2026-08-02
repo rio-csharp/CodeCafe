@@ -24,7 +24,8 @@ CodeCafe/
 │  │  └─ CodeCafe.Server/
 │  ├─ Shared/
 │  │  ├─ CodeCafe.Shared.Domain/
-│  │  └─ CodeCafe.Shared.Application/
+│  │  ├─ CodeCafe.Shared.Application/
+│  │  └─ CodeCafe.Shared.Infrastructure/
 │  ├─ Modules/
 │  │  ├─ Identity/
 │  │  ├─ Notes/

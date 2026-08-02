@@ -51,6 +51,12 @@ spec:
           env:
             - name: Auth__RegistrationEnabled
               value: {{ .Values.api.auth.registrationEnabled | quote }}
+            - name: ForwardedHeaders__ForwardLimit
+              value: {{ .Values.api.forwardedHeaders.forwardLimit | quote }}
+            {{- range $index, $network := .Values.api.forwardedHeaders.knownNetworks }}
+            - name: ForwardedHeaders__KnownNetworks__{{ $index }}
+              value: {{ $network | quote }}
+            {{- end }}
             - name: Shutdown__TimeoutSeconds
               value: {{ max 1 (sub .Values.api.terminationGracePeriodSeconds .Values.api.preStopSleepSeconds) | quote }}
             {{- if .Values.api.ai.apiKeySecretName }}
@@ -66,6 +72,8 @@ spec:
               value: {{ .Values.api.ai.endpointPath | quote }}
             - name: Ai__StatusEndpointPath
               value: {{ .Values.api.ai.statusEndpointPath | quote }}
+            - name: Ai__EditEndpointPath
+              value: {{ .Values.api.ai.editEndpointPath | quote }}
             - name: Ai__DraftEndpointPath
               value: {{ .Values.api.ai.draftEndpointPath | quote }}
             - name: Ai__AgentName
@@ -74,6 +82,8 @@ spec:
               value: {{ .Values.api.ai.model | quote }}
             - name: Ai__BaseUrl
               value: {{ .Values.api.ai.baseUrl | quote }}
+            - name: Ai__WireFormat
+              value: {{ .Values.api.ai.wireFormat | quote }}
             - name: Ai__MaxToolResults
               value: {{ .Values.api.ai.maxToolResults | quote }}
             - name: Ai__MaxToolContentChars
@@ -84,6 +94,12 @@ spec:
               value: {{ .Values.api.ai.maxDraftContextChars | quote }}
             - name: Ai__MaxDraftOutputTokens
               value: {{ .Values.api.ai.maxDraftOutputTokens | quote }}
+            - name: Mcp__Enabled
+              value: {{ .Values.api.mcp.enabled | quote }}
+            {{- range $index, $origin := .Values.api.mcp.allowedOrigins }}
+            - name: Mcp__AllowedOrigins__{{ $index }}
+              value: {{ $origin | quote }}
+            {{- end }}
             {{- range $index, $origin := .Values.api.cors.allowedOrigins }}
             - name: Cors__AllowedOrigins__{{ $index }}
               value: {{ $origin | quote }}

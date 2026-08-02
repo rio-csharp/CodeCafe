@@ -39,7 +39,7 @@ public static class ServiceCollectionExtensions
             options.EnableForHttps = true;
         });
         services.AddCodeCafeCorsOptions(configuration, environment);
-        services.AddCodeCafeForwardedHeaders();
+        services.AddCodeCafeForwardedHeaders(configuration);
         services.AddCodeCafeAntiforgery(environment);
         services.AddCodeCafeDataProtection(configuration, environment);
         services.AddCodeCafeAuthentication();
@@ -213,23 +213,37 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static IServiceCollection AddCodeCafeForwardedHeaders(this IServiceCollection services)
+    private static IServiceCollection AddCodeCafeForwardedHeaders(
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        services.Configure<ForwardedHeadersOptions>(options =>
-        {
-            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-            options.ForwardLimit = 2;
-            options.KnownIPNetworks.Clear();
-            options.KnownProxies.Clear();
+        services.AddOptions<ForwardedHeadersSettings>()
+            .Bind(configuration.GetSection(ForwardedHeadersSettings.SectionName))
+            .Validate(settings => settings.ForwardLimit > 0,
+                "ForwardedHeaders:ForwardLimit must be greater than zero.")
+            .Validate(settings => settings.KnownNetworks.All(IsValidNetwork),
+                "ForwardedHeaders:KnownNetworks entries must be valid CIDR ranges (e.g. \"10.0.0.0/8\").")
+            .ValidateOnStart();
 
-            foreach (var network in TrustedProxyNetworks.All)
+        services.AddOptions<ForwardedHeadersOptions>()
+            .Configure<IOptions<ForwardedHeadersSettings>>((options, settingsAccessor) =>
             {
-                options.KnownIPNetworks.Add(network);
-            }
-        });
+                var settings = settingsAccessor.Value;
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.ForwardLimit = settings.ForwardLimit;
+                options.KnownIPNetworks.Clear();
+                options.KnownProxies.Clear();
+
+                foreach (var network in settings.KnownNetworks)
+                {
+                    options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+                }
+            });
 
         return services;
     }
+
+    private static bool IsValidNetwork(string network) => System.Net.IPNetwork.TryParse(network, out _);
 
     private static IServiceCollection AddCodeCafeAntiforgery(
         this IServiceCollection services,

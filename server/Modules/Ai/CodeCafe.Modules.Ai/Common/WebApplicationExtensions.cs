@@ -30,17 +30,12 @@ public static class WebApplicationExtensions
         endpoints.MapAiNotebookEditEndpoints();
         endpoints.MapAiNoteDraftEndpoints();
 
-        endpoints.MapAGUI(NormalizeAgentName(options.AgentName), options.EndpointPath)
+        endpoints.MapAGUI(AiHelpers.NormalizeAgentName(options.AgentName), options.EndpointPath)
             .RequireAuthorization()
             .RequireRateLimiting("ai");
 
         return endpoints;
     }
-
-    private static string NormalizeAgentName(string agentName)
-        => string.IsNullOrWhiteSpace(agentName)
-            ? new AiOptions().AgentName
-            : agentName.Trim();
 
     private sealed record AiStatusResponse(
         bool Enabled,

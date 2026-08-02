@@ -375,14 +375,6 @@ public sealed class NotesMcpNotebookTools
                     return McpMutationResult<GetNotebookToolResponse>.Failure(actorResult.Error!);
                 }
 
-                if (string.IsNullOrWhiteSpace(title))
-                {
-                    return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
-                        NotesFailureKind.Validation,
-                        "invalid_title",
-                        "Notebook title is required and cannot be empty or whitespace."));
-                }
-
                 if (!string.IsNullOrWhiteSpace(visibility) && visibility is not ("public" or "unlisted" or "private"))
                 {
                     return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
@@ -460,14 +452,6 @@ public sealed class NotesMcpNotebookTools
                         "Specify at least one notebook field to update."));
                 }
 
-                if (title is not null && string.IsNullOrWhiteSpace(title))
-                {
-                    return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
-                        NotesFailureKind.Validation,
-                        "invalid_title",
-                        "Notebook title cannot be empty or whitespace."));
-                }
-
                 if (!string.IsNullOrWhiteSpace(visibility) && visibility is not ("public" or "unlisted" or "private"))
                 {
                     return McpMutationResult<GetNotebookToolResponse>.Failure(new NotesError(
@@ -483,7 +467,7 @@ public sealed class NotesMcpNotebookTools
                     new UpdateNotebookCommand(
                         notebook.Id,
                         notebookContext.ActorId,
-                        string.IsNullOrWhiteSpace(title) ? notebook.Title : title,
+                        title ?? notebook.Title,
                         description is null ? notebook.Description : description,
                         string.IsNullOrWhiteSpace(visibility) ? notebook.Visibility : visibility),
                     ct);
