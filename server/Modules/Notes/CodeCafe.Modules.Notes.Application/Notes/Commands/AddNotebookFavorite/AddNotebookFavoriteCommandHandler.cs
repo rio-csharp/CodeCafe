@@ -28,13 +28,14 @@ public sealed class AddNotebookFavoriteCommandHandler(
             cancellationToken);
         if (existingFavorite is null)
         {
-            notebookMutationStore.AddFavorite(new NotebookFavorite
-            {
-                Id = Guid.NewGuid(),
-                NotebookId = request.NotebookId,
-                UserId = request.CurrentUserId
-            });
-            await notebookMutationStore.SaveChangesAsync(cancellationToken);
+            await notebookMutationStore.AddFavoriteAsync(
+                new NotebookFavorite
+                {
+                    Id = Guid.NewGuid(),
+                    NotebookId = request.NotebookId,
+                    UserId = request.CurrentUserId
+                },
+                cancellationToken);
         }
 
         return await BuildFavoriteResultAsync(notebookMutationStore, request.NotebookId, request.CurrentUserId, cancellationToken);

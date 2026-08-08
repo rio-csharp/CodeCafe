@@ -106,7 +106,38 @@ public sealed class NotebookMutationHandlerTests
 
         Assert.True(result.Succeeded);
         Assert.NotNull(store.AddedFavorite);
-        Assert.True(store.SaveChangesCalled);
+        Assert.True(store.AddFavoritePersisted);
+    }
+
+    [Fact]
+    public async Task AddFavoriteHandler_Succeeds_When_Favorite_Already_Exists()
+    {
+        // Favoriting is idempotent: an already-favorited notebook reports success without a second
+        // insert, which is also the outcome the store produces when it absorbs a duplicate-key race.
+        var notebook = CreateNotebook(Guid.NewGuid(), NotebookVisibility.Public, isPublished: true);
+        var currentUserId = Guid.NewGuid();
+        var store = new StubNotebookMutationStore
+        {
+            LookupNotebook = notebook,
+            ExistingFavorite = new NotebookFavorite
+            {
+                Id = Guid.NewGuid(),
+                NotebookId = notebook.Id,
+                UserId = currentUserId
+            },
+            FavoriteCount = 1,
+            FavoritedByCurrentUser = true
+        };
+        var handler = new AddNotebookFavoriteCommandHandler(store);
+
+        var result = await handler.Handle(
+            new AddNotebookFavoriteCommand(notebook.Id, currentUserId),
+            CancellationToken.None);
+
+        Assert.True(result.Succeeded);
+        Assert.True(result.Value!.IsFavorited);
+        Assert.Null(store.AddedFavorite);
+        Assert.False(store.AddFavoritePersisted);
     }
 
     [Fact]
@@ -237,6 +268,12 @@ public sealed class NotebookMutationHandlerTests
         public Notebook? AddedNotebook { get; private set; }
         public Notebook? RemovedNotebook { get; private set; }
         public NotebookFavorite? AddedFavorite { get; private set; }
+
+        /// <summary>
+        /// AddFavoriteAsync owns its own persistence (so it can absorb a duplicate-key race), so the
+        /// add path no longer goes through <see cref="SaveChangesAsync"/>.
+        /// </summary>
+        public bool AddFavoritePersisted { get; private set; }
         public NotebookFavorite? RemovedFavorite { get; private set; }
         public bool SaveChangesCalled { get; private set; }
         public Notebook? ExistingNotebook { get; init; }
@@ -274,9 +311,11 @@ public sealed class NotebookMutationHandlerTests
         public Task<NotebookFavorite?> GetFavoriteAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
             => Task.FromResult(ExistingFavorite);
 
-        public void AddFavorite(NotebookFavorite favorite)
+        public Task AddFavoriteAsync(NotebookFavorite favorite, CancellationToken cancellationToken)
         {
             AddedFavorite = favorite;
+            AddFavoritePersisted = true;
+            return Task.CompletedTask;
         }
 
         public void RemoveFavorite(NotebookFavorite favorite)

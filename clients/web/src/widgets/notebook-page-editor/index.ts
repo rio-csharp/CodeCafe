@@ -1,6 +1,4 @@
+// Only the lazily loaded editor component. useEditorStore is exported from ./model instead: a
+// static import of the store through this barrel would also pull in the editor component, so the
+// lazy import in NotebookReaderPage would stop producing a separate chunk.
 export { default } from './ui/NotebookPageEditor'
-export { default as NotebookEditorToolbar } from './ui/NotebookEditorToolbar'
-export { default as ToolbarButton } from './ui/ToolbarButton'
-export { default as ToolbarColorControls } from './ui/ToolbarColorControls'
-export { default as ToolbarGroup } from './ui/ToolbarGroup'
-export { default as ToolbarLanguageSelect } from './ui/ToolbarLanguageSelect'

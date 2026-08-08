@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, lazy, Suspense } from 'react'
-import { useEditorStore } from '@/widgets/notebook-page-editor/store'
+import { useEditorStore } from '@/widgets/notebook-page-editor/model'
 import { useParams, Navigate } from 'react-router-dom'
 import {
   useNotebook,
@@ -12,7 +12,7 @@ import {
   findAdjacentPage,
 } from '@/entities/notebook'
 import { useSaveNotebookPage } from '@/features/edit-notebook-page'
-import { getDisplayErrorMessage } from '@/shared/lib/errorUtils'
+import { getDisplayErrorMessage } from '@/shared/lib'
 import QueryError from '@/shared/ui/QueryError'
 import { NotebookChangePreview } from '@/widgets/notebook-change-preview'
 import { useAiEditProposalActions } from '@/features/ai-assistant'
@@ -99,6 +99,7 @@ export default function NotebookReaderPage() {
   const {
     data: notebookItems,
     isPending: notebookItemsPending,
+    isFetching: notebookItemsFetching,
     refetch: refetchItems,
   } = useNotebookItems(notebookId, undefined, showArchived, !!notebook, false)
 
@@ -124,6 +125,8 @@ export default function NotebookReaderPage() {
   const {
     data: activePageContent,
     isPending: contentPending,
+    isError: contentIsError,
+    error: contentError,
     refetch: refetchContent,
   } = useNotebookItem(notebookId, activePage?.id ?? null, !!activePage)
 
@@ -232,8 +235,11 @@ export default function NotebookReaderPage() {
     )
   }
 
-  // Redirect to first page when no path is specified and the tree has loaded.
-  if (!pagePath && activePage && !notebookItemsPending) {
+  // Point the URL at the page that is actually shown: either no path was
+  // given, or the path is stale (renamed/deleted elsewhere) and we fell
+  // back to the first page. Skip while items are (re)fetching so a rename's
+  // own URL rewrite isn't fought by a stale cache mid-refetch.
+  if (activePage && !notebookItemsPending && !notebookItemsFetching && activePage.path !== pagePath) {
     return <Navigate to={`/notes/${notebookSlug}/${activePage.path}`} replace />
   }
 
@@ -267,6 +273,11 @@ export default function NotebookReaderPage() {
           />
           {contentPending ? (
             <ContentSkeleton />
+          ) : contentIsError ? (
+            <QueryError
+              message={getDisplayErrorMessage(contentError, t, t('errors.generic'))}
+              onRetry={() => refetchContent()}
+            />
           ) : isEditingPage ? (
             <Suspense
               fallback={

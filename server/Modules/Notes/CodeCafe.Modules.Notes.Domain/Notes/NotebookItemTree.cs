@@ -72,16 +72,30 @@ public static class NotebookItemTree
         return false;
     }
 
+    /// <summary>
+    /// Generates a sibling-unique path. The slug is budgeted against the remaining
+    /// <see cref="NotebookItemPath.MaxPathLength"/> space so neither the slug nor the path can
+    /// overflow its column; callers must check <see cref="NotebookItemPath.HasRoomForChild"/> first,
+    /// since a parent with no room left is a validation failure rather than a naming problem.
+    /// </summary>
     public static string GeneratePath(
         IReadOnlyList<NotebookItem> notebookItems,
         string? parentPath,
         string title,
         Guid currentItemId)
     {
-        var baseSlug = NotebookSlugGenerator.FromTitle(title, "page");
+        var slugBudget = NotebookItemPath.GetSlugBudget(parentPath);
+        if (slugBudget <= 0)
+        {
+            throw new ArgumentException(
+                "Parent path leaves no room for a child slug; check NotebookItemPath.HasRoomForChild first.",
+                nameof(parentPath));
+        }
+
+        var baseSlug = NotebookSlugGenerator.FromTitle(title, "page", slugBudget);
         for (var attempt = 0; attempt < 10; attempt++)
         {
-            var slug = NotebookSlugGenerator.WithSuffix(baseSlug, attempt);
+            var slug = NotebookSlugGenerator.WithSuffix(baseSlug, attempt, slugBudget);
             var path = string.IsNullOrWhiteSpace(parentPath) ? slug : $"{parentPath}/{slug}";
             var exists = notebookItems.Any(item => item.Id != currentItemId && item.Path == path);
             if (!exists)
@@ -90,7 +104,7 @@ public static class NotebookItemTree
             }
         }
 
-        var finalSlug = $"{baseSlug}-{Guid.NewGuid():N}";
+        var finalSlug = NotebookSlugGenerator.WithUniqueSuffix(baseSlug, slugBudget);
         return string.IsNullOrWhiteSpace(parentPath) ? finalSlug : $"{parentPath}/{finalSlug}";
     }
 

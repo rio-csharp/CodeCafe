@@ -43,15 +43,29 @@ public sealed class IdentityAuthUserGateway(
             : AuthCreateUserResult.Failure(result.Errors.Select(error => error.Code).ToArray());
     }
 
+    // Placeholder user for hashing work that is never persisted; the hasher only
+    // needs an instance, none of its properties feed into the hash.
+    private static ApplicationUser TimingPaddingUser => new() { DisplayName = string.Empty };
+
+    // Precomputed PBKDF2 hash used only to equalize login timing: verifying a
+    // password against it costs roughly the same as verifying against a real
+    // account's hash, so unknown accounts do not answer measurably faster.
+    private static readonly string TimingPaddingPasswordHash =
+        new PasswordHasher<ApplicationUser>().HashPassword(TimingPaddingUser, "TimingPadding123!");
+
     public async Task<AuthPasswordVerificationResult> VerifyPasswordAsync(
-        Guid userId,
+        string normalizedEmail,
         string password,
         bool lockoutOnFailure,
         CancellationToken cancellationToken)
     {
-        var user = await userManager.FindByIdAsync(userId.ToString());
+        var user = await userManager.FindByEmailAsync(normalizedEmail);
         if (user is null)
         {
+            _ = userManager.PasswordHasher.VerifyHashedPassword(
+                TimingPaddingUser,
+                TimingPaddingPasswordHash,
+                password);
             return AuthPasswordVerificationResult.Failure(isLockedOut: false);
         }
 
@@ -67,7 +81,7 @@ public sealed class IdentityAuthUserGateway(
                 await userManager.ResetAccessFailedCountAsync(user);
             }
 
-            return AuthPasswordVerificationResult.Success();
+            return AuthPasswordVerificationResult.Success(ToModel(user)!);
         }
 
         if (lockoutOnFailure && userManager.SupportsUserLockout)
@@ -75,7 +89,12 @@ public sealed class IdentityAuthUserGateway(
             await userManager.AccessFailedAsync(user);
         }
 
-        var isLockedOut = userManager.SupportsUserLockout && await userManager.IsLockedOutAsync(user);
+        // AccessFailedAsync updates LockoutEnd on the tracked entity when the
+        // failure threshold is reached, so the lockout state can be read off
+        // the entity without querying the store again.
+        var isLockedOut = userManager.SupportsUserLockout
+            && user.LockoutEnd.HasValue
+            && user.LockoutEnd.Value > DateTimeOffset.UtcNow;
         return AuthPasswordVerificationResult.Failure(isLockedOut);
     }
 

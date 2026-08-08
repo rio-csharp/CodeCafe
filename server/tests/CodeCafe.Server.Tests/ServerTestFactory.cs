@@ -458,9 +458,7 @@ internal sealed class ServerTestNotebookMutationStore : INotebookMutationStore
 
     public Task<bool> IsFavoritedAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken) => Task.FromResult(false);
 
-    public void AddFavorite(NotebookFavorite favorite)
-    {
-    }
+    public Task AddFavoriteAsync(NotebookFavorite favorite, CancellationToken cancellationToken) => Task.CompletedTask;
 
     public void RemoveFavorite(NotebookFavorite favorite)
     {
@@ -567,16 +565,16 @@ internal sealed class ServerTestAuthUserGateway : IAuthUserGateway
                 : AuthCreateUserResult.Success(new AuthUserModel(DefaultUserId, normalizedEmail, displayName)));
     }
 
-    public Task<AuthPasswordVerificationResult> VerifyPasswordAsync(
-        Guid userId,
+    public async Task<AuthPasswordVerificationResult> VerifyPasswordAsync(
+        string normalizedEmail,
         string password,
         bool lockoutOnFailure,
         CancellationToken cancellationToken)
     {
-        return Task.FromResult(
-            password == "Password123!"
-                ? AuthPasswordVerificationResult.Success()
-                : AuthPasswordVerificationResult.Failure(isLockedOut: false));
+        var user = await FindByEmailAsync(normalizedEmail, cancellationToken);
+        return user is not null && password == "Password123!"
+            ? AuthPasswordVerificationResult.Success(user)
+            : AuthPasswordVerificationResult.Failure(isLockedOut: false);
     }
 }
 

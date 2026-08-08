@@ -23,7 +23,12 @@ public interface INotebookMutationStore
 
     Task<NotebookFavorite?> GetFavoriteAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken);
 
-    void AddFavorite(NotebookFavorite favorite);
+    /// <summary>
+    /// Adds a favorite and persists it. Favoriting is idempotent: a concurrent request that already
+    /// inserted the same (NotebookId, UserId) pair is absorbed rather than surfaced as an error,
+    /// because the caller's desired end state is already satisfied.
+    /// </summary>
+    Task AddFavoriteAsync(NotebookFavorite favorite, CancellationToken cancellationToken);
 
     void RemoveFavorite(NotebookFavorite favorite);
 

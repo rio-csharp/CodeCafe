@@ -1,7 +1,7 @@
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
 using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
-using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Shared.Presentation.Errors;
 using CodeCafe.Shared.Application.Configuration;
 using CodeCafe.Shared.Application.Identity;
 using MediatR;
@@ -250,7 +250,11 @@ public static class NotesMarkdownImportEndpoints
                 pageResult.Value.Title,
                 default,
                 null,
-                contentResult.Value),
+                contentResult.Value,
+                // Replacing content is a read-modify-write over the page loaded above; passing the
+                // timestamp that was read turns a concurrent edit into a 409 instead of silently
+                // discarding it.
+                pageResult.Value.UpdatedAtUtc),
             cancellationToken);
         if (!updateResult.Succeeded)
         {
@@ -331,7 +335,10 @@ public static class NotesMarkdownImportEndpoints
                 pageResult.Value.Title,
                 default,
                 null,
-                nextContentJson),
+                nextContentJson,
+                // The appended content was computed from the ContentJson read above, so the write
+                // must be conditional on that timestamp or a concurrent edit is silently dropped.
+                pageResult.Value.UpdatedAtUtc),
             cancellationToken);
         if (!updateResult.Succeeded)
         {

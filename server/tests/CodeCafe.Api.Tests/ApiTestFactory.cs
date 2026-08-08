@@ -429,7 +429,11 @@ internal sealed class TestNotebookMutationStore : INotebookMutationStore
     public Task<bool> IsFavoritedAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
         => Task.FromResult(_favorites.Any(favorite => favorite.NotebookId == notebookId && favorite.UserId == currentUserId));
 
-    public void AddFavorite(NotebookFavorite favorite) => _favorites.Add(favorite);
+    public Task AddFavoriteAsync(NotebookFavorite favorite, CancellationToken cancellationToken)
+    {
+        _favorites.Add(favorite);
+        return Task.CompletedTask;
+    }
 
     public void RemoveFavorite(NotebookFavorite favorite) => _favorites.Remove(favorite);
 
@@ -521,16 +525,16 @@ internal sealed class TestAuthUserGateway : IAuthUserGateway
                 : AuthCreateUserResult.Success(new AuthUserModel(DefaultUserId, normalizedEmail, displayName)));
     }
 
-    public Task<AuthPasswordVerificationResult> VerifyPasswordAsync(
-        Guid userId,
+    public async Task<AuthPasswordVerificationResult> VerifyPasswordAsync(
+        string normalizedEmail,
         string password,
         bool lockoutOnFailure,
         CancellationToken cancellationToken)
     {
-        return Task.FromResult(
-            password == "Password123!"
-                ? AuthPasswordVerificationResult.Success()
-                : AuthPasswordVerificationResult.Failure(isLockedOut: false));
+        var user = await FindByEmailAsync(normalizedEmail, cancellationToken);
+        return user is not null && password == "Password123!"
+            ? AuthPasswordVerificationResult.Success(user)
+            : AuthPasswordVerificationResult.Failure(isLockedOut: false);
     }
 }
 

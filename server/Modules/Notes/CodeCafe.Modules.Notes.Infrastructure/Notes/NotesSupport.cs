@@ -144,6 +144,20 @@ internal static class NotesSupport
                 || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Detects a violation of the unique (NotebookId, Path) index on NotebookItems, which is how a
+    /// concurrent create/rename of the same title surfaces.
+    /// </summary>
+    public static bool IsDuplicateItemPathException(DbUpdateException exception)
+    {
+        var message = exception.InnerException?.Message ?? exception.Message;
+        return message.Contains("IX_NotebookItems_NotebookId_Path", StringComparison.OrdinalIgnoreCase)
+               || (message.Contains("NotebookItems", StringComparison.OrdinalIgnoreCase)
+                   && message.Contains("Path", StringComparison.OrdinalIgnoreCase)
+                   && (message.Contains("unique", StringComparison.OrdinalIgnoreCase)
+                       || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)));
+    }
+
     public static bool IsDuplicateNotebookSlugException(DbUpdateException exception)
     {
         var message = exception.InnerException?.Message ?? exception.Message;

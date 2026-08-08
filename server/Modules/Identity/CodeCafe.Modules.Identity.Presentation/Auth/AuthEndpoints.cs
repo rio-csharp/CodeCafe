@@ -4,7 +4,7 @@ using CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
 using CodeCafe.Modules.Identity.Application.Auth.Queries.GetCurrentUser;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
 using CodeCafe.Modules.Identity.Presentation.Networking;
-using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Shared.Presentation.Errors;
 using CodeCafe.Shared.Application.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Antiforgery;
@@ -95,7 +95,7 @@ public static class AuthEndpoints
         var clientIp = clientIpAddressAccessor.GetClientIpAddress(httpContext);
         var logger = loggerFactory.CreateLogger("CodeCafe.Api.Auth");
         var result = await sender.Send(
-            new AuthenticateUserCommand(request.Email, request.Password),
+            new AuthenticateUserCommand(request.Email, request.Password, clientIp),
             cancellationToken);
 
         if (!result.Succeeded)

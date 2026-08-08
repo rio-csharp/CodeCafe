@@ -2,6 +2,7 @@ using CodeCafe.Modules.Identity.Application.Auth;
 using CodeCafe.Modules.Identity.Application.Auth.Commands.AuthenticateUser;
 using CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
 using CodeCafe.Modules.Identity.Application.Auth.Queries.GetCurrentUser;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace CodeCafe.Application.Tests;
 
@@ -47,12 +48,14 @@ public sealed class AuthHandlerTests
         var gateway = new StubAuthUserGateway
         {
             ExistingUser = existingUser,
-            PasswordVerificationResult = AuthPasswordVerificationResult.Success()
+            PasswordVerificationResult = AuthPasswordVerificationResult.Success(existingUser)
         };
-        var handler = new AuthenticateUserCommandHandler(gateway);
+        var handler = new AuthenticateUserCommandHandler(
+            gateway,
+            NullLogger<AuthenticateUserCommandHandler>.Instance);
 
         var result = await handler.Handle(
-            new AuthenticateUserCommand("yao@example.com", "Password123!"),
+            new AuthenticateUserCommand("yao@example.com", "Password123!", ClientIp: null),
             CancellationToken.None);
 
         Assert.True(result.Succeeded);
@@ -106,7 +109,7 @@ public sealed class AuthHandlerTests
         }
 
         public Task<AuthPasswordVerificationResult> VerifyPasswordAsync(
-            Guid userId,
+            string normalizedEmail,
             string password,
             bool lockoutOnFailure,
             CancellationToken cancellationToken)

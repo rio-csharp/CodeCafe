@@ -38,6 +38,14 @@ public sealed class NotebookItemMutationService(
             return NotesResult<NotebookItemModel>.Failure(NotesFailureKind.Validation, "invalid_parent", ToParentViolationMessage(parentViolation));
         }
 
+        if (!NotebookItemPath.HasRoomForChild(parent?.Path))
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Validation,
+                "path_too_long",
+                "The parent folder is nested too deeply to hold another item. Move it higher in the tree or shorten the folder names.");
+        }
+
         var trimmedTitle = title.Trim();
         var path = await GenerateItemPathAsync(notebookId, parent?.Path, trimmedTitle, null, cancellationToken);
         var normalizedContent = NotesResult<TipTapContentModel>.Success(new TipTapContentModel(null, null));
@@ -71,7 +79,33 @@ public sealed class NotebookItemMutationService(
         };
 
         dbContext.NotebookItems.Add(item);
-        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // (NotebookId, Path) is unique and the path was picked by a check-then-insert, so two
+        // concurrent creates with the same title race. Regenerate against the now-committed row
+        // and retry, mirroring the notebook-slug retry in NotebookMutationStore.SaveNotebookAsync.
+        const int maxAttempts = 5;
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                break;
+            }
+            catch (DbUpdateException exception) when (NotesSupport.IsDuplicateItemPathException(exception))
+            {
+                if (attempt >= maxAttempts)
+                {
+                    return NotesResult<NotebookItemModel>.Failure(
+                        NotesFailureKind.Conflict,
+                        "notebook_item_conflict",
+                        "Another item with the same name was created at the same time. Try again.");
+                }
+
+                var retryPath = await GenerateItemPathAsync(notebookId, parent?.Path, trimmedTitle, item.Id, cancellationToken);
+                item.Path = retryPath;
+                item.Slug = retryPath.Split('/')[^1];
+            }
+        }
 
         return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
     }
@@ -134,8 +168,27 @@ public sealed class NotebookItemMutationService(
 
         var oldPath = item.Path;
         var parentPath = nextParent?.Path;
+        if (!NotebookItemPath.HasRoomForChild(parentPath))
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Validation,
+                "path_too_long",
+                "The target folder is nested too deeply to hold this item. Move it higher in the tree or shorten the folder names.");
+        }
+
         var trimmedTitle = title.Trim();
         var nextPath = NotebookItemTree.GeneratePath(notebookItems, parentPath, trimmedTitle, item.Id);
+
+        // Renaming or moving a folder rewrites every descendant path; reject the request when that
+        // rewrite would push a descendant past the column budget instead of failing mid-save.
+        if (!NotebookItemPath.DescendantsFitAfterMove(notebookItems, item.Id, oldPath, nextPath))
+        {
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Validation,
+                "path_too_long",
+                "This change would make the paths of nested items too long. Use a shorter name or move the item higher in the tree.");
+        }
+
         item.UpdateStructure(requestedParentId, trimmedTitle, nextPath, sortOrder);
 
         if (item.Type == NotebookItemType.Page)
@@ -176,6 +229,16 @@ public sealed class NotebookItemMutationService(
                 "notebook_item_conflict",
                 "The notebook item changed while the update was being applied.");
         }
+        catch (DbUpdateException exception) when (NotesSupport.IsDuplicateItemPathException(exception))
+        {
+            // A concurrent create/rename took this path between the uniqueness check and the save.
+            // Retrying is not safe here because descendant paths were already rewritten in-context,
+            // so surface the conflict and let the caller refresh.
+            return NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.Conflict,
+                "notebook_item_conflict",
+                "Another item with the same name was created at the same time. Refresh and try again.");
+        }
 
         return NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
     }
@@ -215,6 +278,14 @@ public sealed class NotebookItemMutationService(
             {
                 return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(NotesFailureKind.Validation, "invalid_parent", "Item cannot be moved into itself or its descendants.");
             }
+
+            if (!NotebookItemPath.HasRoomForChild(parent?.Path))
+            {
+                return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
+                    NotesFailureKind.Validation,
+                    "path_too_long",
+                    "The target folder is nested too deeply to hold this item. Move it higher in the tree or shorten the folder names.");
+            }
         }
 
         try
@@ -232,6 +303,14 @@ public sealed class NotebookItemMutationService(
                     ? null
                     : notebookItemsById[reorderItem.ParentId.Value].Path;
                 var nextPath = NotebookItemTree.GeneratePath(notebookItems, parentPath, item.Title, item.Id);
+                if (!NotebookItemPath.DescendantsFitAfterMove(notebookItems, item.Id, oldPath, nextPath))
+                {
+                    return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
+                        NotesFailureKind.Validation,
+                        "path_too_long",
+                        "This move would make the paths of nested items too long. Move the item higher in the tree or shorten the folder names.");
+                }
+
                 item.UpdateStructure(reorderItem.ParentId, item.Title, nextPath, reorderItem.SortOrder);
 
                 if (!string.Equals(oldPath, item.Path, StringComparison.Ordinal))
@@ -267,6 +346,13 @@ public sealed class NotebookItemMutationService(
                 NotesFailureKind.Conflict,
                 "notebook_item_conflict",
                 "One or more notebook items changed while the reorder was being applied.");
+        }
+        catch (DbUpdateException exception) when (NotesSupport.IsDuplicateItemPathException(exception))
+        {
+            return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
+                NotesFailureKind.Conflict,
+                "notebook_item_conflict",
+                "Another item took the same path while the reorder was being applied. Refresh and try again.");
         }
 
         var orderedItems = await dbContext.NotebookItems
@@ -455,6 +541,12 @@ public sealed class NotebookItemMutationService(
         return await dbContext.Notebooks.AnyAsync(notebook => notebook.Id == notebookId, cancellationToken);
     }
 
+    /// <summary>
+    /// Generates a path that is unique within the notebook. The slug is budgeted against the
+    /// remaining path space (see <see cref="NotebookItemPath"/>) so long titles and deep nesting
+    /// cannot overflow the Slug/Path columns. Callers must have verified
+    /// <see cref="NotebookItemPath.HasRoomForChild"/> for the parent.
+    /// </summary>
     private async Task<string> GenerateItemPathAsync(
         Guid notebookId,
         string? parentPath,
@@ -462,10 +554,11 @@ public sealed class NotebookItemMutationService(
         Guid? currentItemId,
         CancellationToken cancellationToken)
     {
-        var baseSlug = NotebookSlugGenerator.FromTitle(title, "page");
+        var slugBudget = NotebookItemPath.GetSlugBudget(parentPath);
+        var baseSlug = NotebookSlugGenerator.FromTitle(title, "page", slugBudget);
         for (var attempt = 0; attempt < 10; attempt++)
         {
-            var slug = NotebookSlugGenerator.WithSuffix(baseSlug, attempt);
+            var slug = NotebookSlugGenerator.WithSuffix(baseSlug, attempt, slugBudget);
             var path = string.IsNullOrWhiteSpace(parentPath) ? slug : $"{parentPath}/{slug}";
             var exists = await dbContext.NotebookItems.AnyAsync(
                 item => item.NotebookId == notebookId
@@ -478,7 +571,7 @@ public sealed class NotebookItemMutationService(
             }
         }
 
-        var finalSlug = $"{baseSlug}-{Guid.NewGuid():N}";
+        var finalSlug = NotebookSlugGenerator.WithUniqueSuffix(baseSlug, slugBudget);
         return string.IsNullOrWhiteSpace(parentPath) ? finalSlug : $"{parentPath}/{finalSlug}";
     }
 

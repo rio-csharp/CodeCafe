@@ -10,7 +10,6 @@ namespace CodeCafe.Modules.Mcp.Tools.Notes;
 public sealed class McpMutationExecutor(
     ApplicationDbContext dbContext,
     IMcpAuditService auditService,
-    ICurrentUserAccessor currentUserAccessor,
     ILogger<McpMutationExecutor> logger) : IMcpMutationExecutor
 {
     public async Task<CallToolResult> ExecuteAsync<T>(
@@ -28,17 +27,20 @@ public sealed class McpMutationExecutor(
         try
         {
             var result = await operation(cancellationToken);
-            var auditRecord = CreateAuditRecord(toolName, result);
+            var auditRecord = CreateAuditRecord(user, toolName, result);
 
             if (!result.Succeeded)
             {
                 if (transaction is not null)
                 {
-                    transaction = await RollbackAndDisposeAsync(transaction, cancellationToken);
+                    // Roll back without the request token: when the client disconnects
+                    // mid-mutation the rollback must still run so the failure response
+                    // and the failure audit entry below are not lost.
+                    transaction = await RollbackAndDisposeAsync(transaction, CancellationToken.None);
                 }
 
                 dbContext.ChangeTracker.Clear();
-                await TryWriteFailureAuditAsync(auditRecord, cancellationToken);
+                await TryWriteFailureAuditAsync(auditRecord, CancellationToken.None);
                 return NotesMcpResultMapper.Failure(result.Error!);
             }
 
@@ -68,12 +70,19 @@ public sealed class McpMutationExecutor(
         }
     }
 
-    private McpAuditRecord CreateAuditRecord<T>(
+    /// <summary>
+    /// Builds the audit record for a mutation. The actor is read from the tool's own
+    /// <see cref="ClaimsPrincipal"/> rather than an ambient accessor: the MCP transport is what
+    /// authenticated this call, and the calling tool has already gone through
+    /// <c>NotesMcpSupport.RequireActor</c>, so the principal is the authoritative actor here.
+    /// </summary>
+    private static McpAuditRecord CreateAuditRecord<T>(
+        ClaimsPrincipal user,
         string toolName,
         McpMutationResult<T> result)
         where T : class
         => new(
-            currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
+            CurrentUserClaims.GetUserId(user) ?? Guid.Empty,
             "user",
             toolName,
             result.NotebookId,
