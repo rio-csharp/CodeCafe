@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using CodeCafe.Server.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;

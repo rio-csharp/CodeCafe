@@ -1,5 +1,5 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItems;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Queries.GetNotebookItems;
 
 namespace CodeCafe.Application.Tests;
 

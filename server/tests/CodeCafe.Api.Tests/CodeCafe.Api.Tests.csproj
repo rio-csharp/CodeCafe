@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Presentation\CodeCafe.Modules.Notes.Presentation.csproj" />
-    <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Application\CodeCafe.Modules.Notes.Application.csproj" />
+    <ProjectReference Include="..\..\src\CodeCafe.Application\CodeCafe.Application.csproj" />
     <ProjectReference Include="..\..\Host\CodeCafe.Server\CodeCafe.Server.csproj" />
   </ItemGroup>
 

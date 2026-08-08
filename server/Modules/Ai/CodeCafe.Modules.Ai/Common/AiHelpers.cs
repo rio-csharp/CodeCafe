@@ -1,5 +1,5 @@
 using CodeCafe.Modules.Ai.Configuration;
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;

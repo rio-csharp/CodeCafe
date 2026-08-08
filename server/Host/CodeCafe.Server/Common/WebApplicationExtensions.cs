@@ -4,7 +4,7 @@ using CodeCafe.Modules.Mcp.Common;
 using CodeCafe.Modules.Mcp.Tools.Diagnostics;
 using CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 using CodeCafe.Server.Configuration;
-using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Application.Common.Configuration;
 using CodeCafe.Shared.Presentation.Errors;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;

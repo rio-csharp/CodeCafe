@@ -1,11 +1,11 @@
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Queries.GetMyNotebooks;
-using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookById;
-using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookBySlug;
+using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Notes.Commands.DeleteNotebook;
+using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Application.Notes.Queries.GetMyNotebooks;
+using CodeCafe.Application.Notes.Queries.GetNotebookById;
+using CodeCafe.Application.Notes.Queries.GetNotebookBySlug;
 using CodeCafe.Shared.Presentation.Errors;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

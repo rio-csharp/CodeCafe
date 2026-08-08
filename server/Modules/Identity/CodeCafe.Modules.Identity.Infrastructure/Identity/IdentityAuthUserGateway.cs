@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Identity.Application.Auth;
+using CodeCafe.Application.Identity;
 using Microsoft.AspNetCore.Identity;
 
 namespace CodeCafe.Modules.Identity.Infrastructure.Identity;

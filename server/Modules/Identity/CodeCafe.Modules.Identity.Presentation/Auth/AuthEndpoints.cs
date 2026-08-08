@@ -1,11 +1,11 @@
-using CodeCafe.Modules.Identity.Application.Auth;
-using CodeCafe.Modules.Identity.Application.Auth.Commands.AuthenticateUser;
-using CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
-using CodeCafe.Modules.Identity.Application.Auth.Queries.GetCurrentUser;
+using CodeCafe.Application.Identity;
+using CodeCafe.Application.Identity.Commands.AuthenticateUser;
+using CodeCafe.Application.Identity.Commands.RegisterUser;
+using CodeCafe.Application.Identity.Queries.GetCurrentUser;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
 using CodeCafe.Modules.Identity.Presentation.Networking;
 using CodeCafe.Shared.Presentation.Errors;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;

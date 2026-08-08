@@ -1,8 +1,8 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
+using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
 using System.Text.Json;
 
 namespace CodeCafe.Application.Tests;

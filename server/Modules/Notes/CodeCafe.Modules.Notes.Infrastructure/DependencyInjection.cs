@@ -1,7 +1,7 @@
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using CodeCafe.Modules.Notes.Infrastructure.Notes;
 using CodeCafe.Modules.Notes.Infrastructure.Services;
-using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Application.Common;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;

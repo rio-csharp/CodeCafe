@@ -1,7 +1,7 @@
 using CodeCafe.Modules.Mcp.Tools.Diagnostics;
 using CodeCafe.Modules.Mcp.Tools.Notes;
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Common.Configuration;
 
 namespace CodeCafe.Modules.Mcp.DependencyInjection;
 

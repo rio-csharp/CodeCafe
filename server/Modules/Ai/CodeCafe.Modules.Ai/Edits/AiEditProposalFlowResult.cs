@@ -1,5 +1,5 @@
 using CodeCafe.Modules.Ai.Common;
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Modules.Ai.Edits;
 

@@ -1,5 +1,5 @@
 using CodeCafe.Modules.Identity.Presentation.Configuration;
-using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Application.Common.Configuration;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 

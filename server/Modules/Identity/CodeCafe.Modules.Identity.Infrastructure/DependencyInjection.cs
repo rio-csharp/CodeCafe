@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Identity.Application.Auth;
+using CodeCafe.Application.Identity;
 using CodeCafe.Modules.Identity.Infrastructure.Identity;
 using Microsoft.Extensions.DependencyInjection;
 

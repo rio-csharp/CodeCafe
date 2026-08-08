@@ -2,7 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\CodeCafe.Domain\CodeCafe.Domain.csproj" />
-    <ProjectReference Include="..\CodeCafe.Modules.Identity.Application\CodeCafe.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\..\src\CodeCafe.Application\CodeCafe.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

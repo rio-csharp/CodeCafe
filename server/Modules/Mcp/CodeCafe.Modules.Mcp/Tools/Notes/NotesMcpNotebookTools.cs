@@ -1,8 +1,8 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
-using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Notes.Commands.DeleteNotebook;
+using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Application.Common.Configuration;
 using MediatR;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;

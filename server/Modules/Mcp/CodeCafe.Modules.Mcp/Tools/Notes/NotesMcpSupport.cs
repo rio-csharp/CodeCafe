@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Mcp.Common;
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Common.Identity;
 using Microsoft.Extensions.AI;
 using ModelContextProtocol;
 using System.Security.Claims;

@@ -1,5 +1,5 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Common.Configuration;
 using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;

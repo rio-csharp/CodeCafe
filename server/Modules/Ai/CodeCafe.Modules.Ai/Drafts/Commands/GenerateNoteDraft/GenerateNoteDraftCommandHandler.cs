@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Ai.Common;
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Common.Messaging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 

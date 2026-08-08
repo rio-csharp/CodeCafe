@@ -1,7 +1,7 @@
-using CodeCafe.Modules.Identity.Application;
-using CodeCafe.Modules.Identity.Application.Auth.Commands.RegisterUser;
-using CodeCafe.Modules.Notes.Application;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Identity;
+using CodeCafe.Application.Identity.Commands.RegisterUser;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.CreateNotebook;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;

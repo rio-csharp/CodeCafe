@@ -1,5 +1,5 @@
 using CodeCafe.Modules.Ai.Common;
-using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
+using CodeCafe.Application.Common.Messaging;
 using Microsoft.AspNetCore.Http;
 
 namespace CodeCafe.Modules.Ai.Edits.Commands.DiscardNotebookEditProposal;

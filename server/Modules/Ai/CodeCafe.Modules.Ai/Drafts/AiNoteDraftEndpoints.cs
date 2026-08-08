@@ -1,7 +1,7 @@
 using CodeCafe.Modules.Ai.Common;
 using CodeCafe.Modules.Ai.Configuration;
 using CodeCafe.Modules.Ai.Drafts.Commands.GenerateNoteDraft;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

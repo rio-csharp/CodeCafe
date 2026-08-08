@@ -1,4 +1,4 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Application.Common;
 using CodeCafe.Domain.Mcp;
 using CodeCafe.Shared.Infrastructure.Persistence;
 

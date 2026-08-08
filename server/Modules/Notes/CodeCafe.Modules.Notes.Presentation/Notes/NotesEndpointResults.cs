@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using CodeCafe.Shared.Presentation.Errors;
 
 namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;

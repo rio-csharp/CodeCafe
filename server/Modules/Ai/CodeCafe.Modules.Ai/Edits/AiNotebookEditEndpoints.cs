@@ -4,7 +4,7 @@ using CodeCafe.Modules.Ai.Edits.Commands.ApplyNotebookEditProposal;
 using CodeCafe.Modules.Ai.Edits.Commands.CreateNotebookEditProposal;
 using CodeCafe.Modules.Ai.Edits.Commands.DiscardNotebookEditProposal;
 using CodeCafe.Modules.Ai.Edits.Queries.GetNotebookEditProposal;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

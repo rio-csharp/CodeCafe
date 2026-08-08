@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Identity.Presentation.Auth;
 using CodeCafe.Server.Infrastructure;
-using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Application.Common;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;

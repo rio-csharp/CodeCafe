@@ -1,12 +1,12 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.AddNotebookFavorite;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.RemoveNotebookFavorite;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
-using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookFavoriteStatus;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
+using CodeCafe.Application.Notes.Commands.CreateNotebook;
+using CodeCafe.Application.Notes.Commands.DeleteNotebook;
+using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
+using CodeCafe.Application.Notes.Commands.UpdateNotebook;
+using CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
 using CodeCafe.Domain.Notes;
-using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Application.Common;
 
 namespace CodeCafe.Application.Tests;
 

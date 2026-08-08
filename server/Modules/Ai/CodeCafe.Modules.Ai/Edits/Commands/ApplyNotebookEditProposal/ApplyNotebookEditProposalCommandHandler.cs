@@ -1,9 +1,9 @@
 using CodeCafe.Modules.Ai.Common;
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
-using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
+using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
+using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Application.Common.Messaging;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 

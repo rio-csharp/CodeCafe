@@ -1,9 +1,9 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
+using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
 using CodeCafe.Shared.Presentation.Errors;
-using CodeCafe.Shared.Application.Configuration;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.Extensions.Options;
 using System.Text;

@@ -13,10 +13,9 @@
     </PackageReference>
     <PackageReference Include="OpenIddict.AspNetCore" Version="7.5.0" />
     <ProjectReference Include="..\..\Modules\Ai\CodeCafe.Modules.Ai\CodeCafe.Modules.Ai.csproj" />
-    <ProjectReference Include="..\..\Modules\Identity\CodeCafe.Modules.Identity.Application\CodeCafe.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\CodeCafe.Modules.Identity.Presentation\CodeCafe.Modules.Identity.Presentation.csproj" />
     <ProjectReference Include="..\..\Modules\Mcp\CodeCafe.Modules.Mcp\CodeCafe.Modules.Mcp.csproj" />
-    <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Application\CodeCafe.Modules.Notes.Application.csproj" />
+    <ProjectReference Include="..\..\src\CodeCafe.Application\CodeCafe.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Infrastructure\CodeCafe.Modules.Notes.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Presentation\CodeCafe.Modules.Notes.Presentation.csproj" />
     <ProjectReference Include="..\..\Shared\CodeCafe.Shared.Infrastructure\CodeCafe.Shared.Infrastructure.csproj" />

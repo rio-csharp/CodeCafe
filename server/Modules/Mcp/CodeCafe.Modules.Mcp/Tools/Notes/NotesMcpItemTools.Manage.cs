@@ -1,10 +1,10 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.ReorderNotebookItems;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.RestoreNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
-using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
+using CodeCafe.Application.Notes.Commands.DeleteNotebookItem;
+using CodeCafe.Application.Notes.Commands.ReorderNotebookItems;
+using CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
+using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Application.Common.Configuration;
 using MediatR;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;

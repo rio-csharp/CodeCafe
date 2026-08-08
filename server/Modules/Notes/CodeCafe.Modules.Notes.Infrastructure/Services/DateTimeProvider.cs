@@ -1,4 +1,4 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Application.Common;
 
 namespace CodeCafe.Modules.Notes.Infrastructure.Services;
 

@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Application.Common.Interfaces;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Common;
+using CodeCafe.Application.Common.Identity;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore.Storage;
 using ModelContextProtocol.Protocol;

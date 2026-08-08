@@ -1,10 +1,10 @@
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Unicode;
-using static CodeCafe.Modules.Notes.Application.Notes.ITipTapContentService;
+using static CodeCafe.Application.Notes.ITipTapContentService;
 
 namespace CodeCafe.Modules.Notes.Infrastructure.Notes;
 

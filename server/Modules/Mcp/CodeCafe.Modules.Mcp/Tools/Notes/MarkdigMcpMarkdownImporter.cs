@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using Markdig;
 using Markdig.Extensions.Abbreviations;
 using Markdig.Extensions.Footnotes;

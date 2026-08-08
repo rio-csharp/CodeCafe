@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Modules.Mcp.Tools.Notes;
 

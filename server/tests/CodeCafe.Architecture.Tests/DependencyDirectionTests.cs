@@ -2,7 +2,7 @@ using CodeCafe.Modules.Ai.Common;
 using CodeCafe.Modules.Mcp.Common;
 using CodeCafe.Modules.Notes.Presentation.Common;
 using CodeCafe.Server.Common;
-using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Application.Common;
 using CodeCafe.Domain.Common;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using System.Reflection;
@@ -16,8 +16,7 @@ public sealed class DependencyDirectionTests
     {
         var references = GetReferenceNames(typeof(IAuditableEntity).Assembly);
 
-        Assert.DoesNotContain("CodeCafe.Modules.Identity.Application", references);
-        Assert.DoesNotContain("CodeCafe.Modules.Notes.Application", references);
+        Assert.DoesNotContain("CodeCafe.Application", references);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Infrastructure", references);
         Assert.DoesNotContain("CodeCafe.Modules.Identity.Presentation", references);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Presentation", references);
@@ -28,8 +27,8 @@ public sealed class DependencyDirectionTests
     [Fact]
     public void Application_Modules_DoNotReference_Presentation_Or_Infrastructure()
     {
-        var identityReferences = GetReferenceNames(typeof(CodeCafe.Modules.Identity.Application.DependencyInjection).Assembly);
-        var notesReferences = GetReferenceNames(typeof(CodeCafe.Modules.Notes.Application.DependencyInjection).Assembly);
+        var identityReferences = GetReferenceNames(typeof(CodeCafe.Application.Identity.DependencyInjection).Assembly);
+        var notesReferences = GetReferenceNames(typeof(CodeCafe.Application.Notes.DependencyInjection).Assembly);
 
         Assert.DoesNotContain("CodeCafe.Modules.Identity.Infrastructure", identityReferences);
         Assert.DoesNotContain("CodeCafe.Modules.Identity.Presentation", identityReferences);
@@ -51,17 +50,45 @@ public sealed class DependencyDirectionTests
     }
 
     [Fact]
-    public void NotesInfrastructure_DoesNotReference_IdentityModule()
+    public void Notes_And_Identity_Slices_DoNotReference_EachOther()
     {
-        // Cross-module composition happens in the host (Program.cs), not by
-        // one module reaching into another module's projects.
-        // Note: CodeCafe.Modules.Identity.Infrastructure still appears in the
-        // referenced-assembly metadata because the shared ApplicationDbContext
-        // (Shared.Infrastructure) derives from IdentityDbContext<ApplicationUser>;
-        // that transitive base-type reference is expected and not asserted here.
-        var references = GetReferenceNames(typeof(CodeCafe.Modules.Notes.Infrastructure.DependencyInjection).Assembly);
+        // Feature slices now share the CodeCafe.Application assembly, so this invariant can no longer
+        // be expressed as an assembly reference. It is checked on namespaces instead: a Notes use case
+        // must not reach into the Identity slice or vice versa. Cross-slice work belongs in the host.
+        AssertSliceDoesNotImport("Notes", "CodeCafe.Application.Identity");
+        AssertSliceDoesNotImport("Identity", "CodeCafe.Application.Notes");
+    }
 
-        Assert.DoesNotContain("CodeCafe.Modules.Identity.Application", references);
+    private static void AssertSliceDoesNotImport(string slice, string forbiddenNamespace)
+    {
+        var sliceDirectory = Path.Combine(FindApplicationProjectDirectory(), slice);
+        var offenders = Directory
+            .EnumerateFiles(sliceDirectory, "*.cs", SearchOption.AllDirectories)
+            .Where(file => File.ReadAllText(file).Contains(forbiddenNamespace, StringComparison.Ordinal))
+            .Select(Path.GetFileName)
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            $"Application/{slice} must not depend on {forbiddenNamespace}, but these files do: "
+            + string.Join(", ", offenders));
+    }
+
+    private static string FindApplicationProjectDirectory()
+    {
+        var current = new DirectoryInfo(AppContext.BaseDirectory);
+        while (current is not null)
+        {
+            var candidate = Path.Combine(current.FullName, "server", "src", "CodeCafe.Application");
+            if (Directory.Exists(candidate))
+            {
+                return candidate;
+            }
+
+            current = current.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate CodeCafe.Application from the test output path.");
     }
 
     [Fact]
@@ -102,9 +129,8 @@ public sealed class DependencyDirectionTests
         Assert.Contains("CodeCafe.Modules.Notes.Presentation", serverReferences);
         Assert.Contains("CodeCafe.Modules.Ai", serverReferences);
         Assert.Contains("CodeCafe.Modules.Mcp", serverReferences);
-        Assert.Contains("CodeCafe.Modules.Identity.Application", serverReferences);
+        Assert.Contains("CodeCafe.Application", serverReferences);
         Assert.Contains("CodeCafe.Modules.Identity.Infrastructure", serverReferences);
-        Assert.Contains("CodeCafe.Modules.Notes.Application", serverReferences);
         Assert.Contains("CodeCafe.Modules.Notes.Infrastructure", serverReferences);
     }
 
@@ -118,8 +144,8 @@ public sealed class DependencyDirectionTests
             GetReferenceNames(typeof(IAuditableEntity).Assembly),
             GetReferenceNames(typeof(CodeCafe.Domain.Notes.Notebook).Assembly),
             GetReferenceNames(typeof(IDateTimeProvider).Assembly),
-            GetReferenceNames(typeof(CodeCafe.Modules.Identity.Application.DependencyInjection).Assembly),
-            GetReferenceNames(typeof(CodeCafe.Modules.Notes.Application.DependencyInjection).Assembly)
+            GetReferenceNames(typeof(CodeCafe.Application.Identity.DependencyInjection).Assembly),
+            GetReferenceNames(typeof(CodeCafe.Application.Notes.DependencyInjection).Assembly)
         };
 
         foreach (var references in referencesByAssembly)

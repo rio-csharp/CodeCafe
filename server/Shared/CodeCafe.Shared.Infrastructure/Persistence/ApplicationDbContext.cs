@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Identity.Infrastructure.Identity;
 using CodeCafe.Domain.Notes;
-using CodeCafe.Shared.Application.Common.Interfaces;
+using CodeCafe.Application.Common;
 using CodeCafe.Domain.Ai;
 using CodeCafe.Domain.Common;
 using CodeCafe.Domain.Mcp;

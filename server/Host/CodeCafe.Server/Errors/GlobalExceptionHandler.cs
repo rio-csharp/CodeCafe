@@ -1,5 +1,5 @@
-using CodeCafe.Shared.Application.Common;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Common;
+using CodeCafe.Application.Common.Identity;
 using CodeCafe.Shared.Presentation.Errors;
 using FluentValidation;
 using Microsoft.AspNetCore.Antiforgery;

@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Identity.Presentation.Auth;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
-using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Application.Common.Configuration;
 using OpenIddict.Abstractions;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;

@@ -1,4 +1,4 @@
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Common.Identity;
 
 namespace CodeCafe.Server.Infrastructure;
 

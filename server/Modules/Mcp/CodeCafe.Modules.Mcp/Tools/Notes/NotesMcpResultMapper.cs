@@ -1,5 +1,5 @@
 using CodeCafe.Modules.Mcp.Common;
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using ModelContextProtocol.Protocol;
 
 namespace CodeCafe.Modules.Mcp.Tools.Notes;

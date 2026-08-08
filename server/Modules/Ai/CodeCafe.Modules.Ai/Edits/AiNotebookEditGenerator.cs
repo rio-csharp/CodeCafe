@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using System.Text.Json;
 
 namespace CodeCafe.Modules.Ai.Edits;

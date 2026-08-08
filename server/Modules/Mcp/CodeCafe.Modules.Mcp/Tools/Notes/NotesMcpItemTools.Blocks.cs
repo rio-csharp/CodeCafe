@@ -1,6 +1,6 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
-using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Application.Common.Configuration;
 using MediatR;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;

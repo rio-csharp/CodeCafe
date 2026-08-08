@@ -1,5 +1,5 @@
 using CodeCafe.Modules.Ai.Common;
-using CodeCafe.Modules.Notes.Application.Notes;
+using CodeCafe.Application.Notes;
 using Microsoft.AspNetCore.Http;
 using Xunit;
 

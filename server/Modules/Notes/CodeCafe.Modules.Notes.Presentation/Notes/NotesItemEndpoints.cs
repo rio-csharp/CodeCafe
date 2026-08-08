@@ -1,13 +1,13 @@
-using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.ArchiveNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.CreateNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.DeleteNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.ReorderNotebookItems;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.RestoreNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebookItem;
-using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItemById;
-using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookItems;
-using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Application.Notes;
+using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
+using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
+using CodeCafe.Application.Notes.Commands.DeleteNotebookItem;
+using CodeCafe.Application.Notes.Commands.ReorderNotebookItems;
+using CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
+using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
+using CodeCafe.Application.Notes.Queries.GetNotebookItemById;
+using CodeCafe.Application.Notes.Queries.GetNotebookItems;
+using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
