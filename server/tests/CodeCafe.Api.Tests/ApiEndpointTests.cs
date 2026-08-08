@@ -381,6 +381,26 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Fact]
+    public async Task DeletingTheSeededNotebook_DoesNotLeakIntoLaterReads()
+    {
+        // The mutation-store double used to be a singleton, so this delete removed the seeded
+        // notebook for every test that ran after it and the suite depended on declaration order.
+        using var deleteClient = CreateCookieClient();
+        deleteClient.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        using var deleteResponse = await SendWithCsrfAsync(
+            deleteClient,
+            HttpMethod.Delete,
+            "/api/notes/11111111-1111-1111-1111-111111111111",
+            new { });
+        Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
+
+        using var readClient = _factory.CreateClient();
+        using var readResponse = await readClient.GetAsync("/api/notes/architecture-notes");
+
+        readResponse.EnsureSuccessStatusCode();
+    }
+
     private HttpClient CreateCookieClient()
     {
         return _factory.CreateClient(new WebApplicationFactoryClientOptions

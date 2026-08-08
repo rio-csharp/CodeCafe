@@ -21,6 +21,13 @@ public sealed class ApiTestFactory : WebApplicationFactory<ServerAssemblyMarker>
     {
         builder.UseEnvironment("Testing");
         builder.ConfigureLogging(logging => logging.ClearProviders());
+        // A singleton that captures a scoped service silently reads stale state instead of failing,
+        // which is how the read-service double ended up unable to see writes from the current request.
+        builder.UseDefaultServiceProvider(options =>
+        {
+            options.ValidateScopes = true;
+            options.ValidateOnBuild = true;
+        });
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
             // Registration defaults to disabled; endpoint tests exercise the
@@ -43,9 +50,16 @@ public sealed class ApiTestFactory : WebApplicationFactory<ServerAssemblyMarker>
                 options.DefaultChallengeScheme = TestAuthHandler.SchemeName;
             });
 
-            services.AddSingleton<TestNotebookMutationStore>();
-            services.AddSingleton<INotebookMutationStore>(serviceProvider => serviceProvider.GetRequiredService<TestNotebookMutationStore>());
-            services.AddSingleton<INotebookReadService, TestNotebookQueryService>();
+            // Scoped, not singleton: this double holds mutable seed data, and the delete tests really
+            // remove the seeded notebook. As a singleton it leaked that mutation into every later test
+            // in the class fixture, so the suite only passed because the destructive tests happened to
+            // be declared last. Per-request scope restores the seed for each test.
+            services.AddScoped<TestNotebookMutationStore>();
+            services.AddScoped<INotebookMutationStore>(serviceProvider => serviceProvider.GetRequiredService<TestNotebookMutationStore>());
+            // Scoped as well: this double reads through TestNotebookMutationStore, so as a singleton it
+            // captured one scope's store and could not see writes made in the current request's scope.
+            services.AddScoped<INotebookReadService, TestNotebookQueryService>();
+            // Stateless and store-independent, so a singleton is fine here.
             services.AddSingleton<INotebookItemMutationService, TestNotebookCommandService>();
             services.AddSingleton<IAuthUserGateway, TestAuthUserGateway>();
             services.AddSingleton<IAuthSessionService, TestAuthSessionService>();

@@ -26,6 +26,12 @@ public sealed class ServerTestFactory : WebApplicationFactory<ServerAssemblyMark
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        // Catch singleton-captures-scoped at build time rather than letting it surface as stale reads.
+        builder.UseDefaultServiceProvider(options =>
+        {
+            options.ValidateScopes = true;
+            options.ValidateOnBuild = true;
+        });
         builder.ConfigureLogging(logging => logging.ClearProviders());
         builder.ConfigureAppConfiguration((_, configurationBuilder) =>
         {
