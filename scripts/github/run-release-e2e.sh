@@ -51,9 +51,13 @@ trap 'on_signal INT' INT
 trap 'on_signal TERM' TERM
 trap 'on_signal HUP' HUP
 
+# Registration is disabled by default in appsettings.json. Locally it is turned
+# back on in appsettings.Development.json, but that file is gitignored, so on CI
+# the flag has to be supplied here or auth.setup.ts cannot create its account.
 ConnectionStrings__DefaultConnection="$connection_string" \
 ASPNETCORE_URLS="$backend_url" \
 ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}" \
+Auth__RegistrationEnabled=true \
 dotnet "$api_dll" > "$backend_log" 2>&1 &
 backend_pid=$!
 
