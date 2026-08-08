@@ -1,9 +1,11 @@
-import { Check, Pencil, Trash2, X } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { AiEditOperation } from '@/features/ai-assistant'
-import { diffTextByLine, type TextDiffSegment } from '@/shared/lib/textDiff'
+import { diffTextByLine } from '@/shared/lib/textDiff'
 import TipTapViewer from '@/shared/ui/TipTapViewer'
+import { ChangePreviewHeader } from './ChangePreviewHeader'
+import { DiffSegment } from './DiffSegment'
 
 interface NotebookChangePreviewProps {
   afterContentJson?: Record<string, unknown> | null
@@ -21,6 +23,9 @@ interface NotebookChangePreviewProps {
   onSave: () => void
   title: string
 }
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 export function NotebookChangePreview({
   afterContentJson,
@@ -52,6 +57,28 @@ export function NotebookChangePreview({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !isSaving) {
         onCancel()
+        return
+      }
+
+      // aria-modal dialog: keep Tab cycling inside the container so focus
+      // cannot escape to the background layer.
+      if (event.key !== 'Tab') return
+      const container = containerRef.current
+      if (!container) return
+      const focusable = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
+      if (focusable.length === 0) {
+        event.preventDefault()
+        return
+      }
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement as HTMLElement | null
+      if (event.shiftKey && (active === first || !container.contains(active))) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && (active === last || !container.contains(active))) {
+        event.preventDefault()
+        first.focus()
       }
     }
 
@@ -74,63 +101,19 @@ export function NotebookChangePreview({
       className="fixed inset-0 z-50 bg-surface outline-none"
     >
       <div className="flex h-full flex-col">
-        <header className="border-b border-border-subtle bg-surface px-4 py-3 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
-                {t('notebook.changePreview.label')}
-              </p>
-              <h2 id={titleId} className="truncate text-lg font-semibold text-text-primary">{title}</h2>
-              {summary && <p className="mt-0.5 text-xs text-text-secondary">{summary}</p>}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {!isDelete && (
-                <button
-                  type="button"
-                  onClick={onEdit}
-                  disabled={isSaving || disableEdit}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  {t('notebook.changePreview.edit')}
-                </button>
-              )}
-              {onDiscard && !isDelete && (
-                <button
-                  type="button"
-                  onClick={onDiscard}
-                  disabled={isSaving}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-status-error-border px-3 py-1.5 text-xs font-medium text-status-error transition-colors hover:bg-status-error-bg disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  {t('notebook.changePreview.discard')}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onCancel}
-                disabled={isSaving}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border-default px-3 py-1.5 text-xs font-medium text-text-secondary transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <X className="h-3.5 w-3.5" />
-                {t('notebook.cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={onSave}
-                disabled={isSaving || !saveEnabled}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-brown-dark dark:bg-brand-brown px-3 py-1.5 text-xs font-medium text-text-inverse transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Check className="h-3.5 w-3.5" />
-                {isSaving
-                  ? t('notebook.saving')
-                  : isDelete
-                    ? t('notebook.changePreview.delete')
-                    : t('notebook.changePreview.save')}
-              </button>
-            </div>
-          </div>
-        </header>
+        <ChangePreviewHeader
+          titleId={titleId}
+          title={title}
+          summary={summary}
+          isDelete={isDelete}
+          isSaving={isSaving}
+          disableEdit={disableEdit}
+          saveEnabled={saveEnabled}
+          onCancel={onCancel}
+          onDiscard={onDiscard}
+          onEdit={onEdit}
+          onSave={onSave}
+        />
 
         <main className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 lg:px-8">
           <div>
@@ -191,26 +174,6 @@ export function NotebookChangePreview({
           </div>
         </main>
       </div>
-    </div>
-  )
-}
-
-function DiffSegment({ segment }: { segment: TextDiffSegment }) {
-  const className = segment.type === 'added'
-    ? 'bg-status-success-bg text-text-primary'
-    : segment.type === 'removed'
-      ? 'bg-status-error-bg text-text-primary'
-      : 'bg-surface text-text-secondary'
-  const prefix = segment.type === 'added' ? '+' : segment.type === 'removed' ? '-' : ' '
-
-  return (
-    <div className={className}>
-      {segment.lines.map((line, index) => (
-        <div key={index} className="grid grid-cols-[2rem_1fr] gap-2 px-3 py-0.5">
-          <span className="select-none text-right text-text-tertiary">{prefix}</span>
-          <span className="whitespace-pre-wrap break-words">{line || ' '}</span>
-        </div>
-      ))}
     </div>
   )
 }

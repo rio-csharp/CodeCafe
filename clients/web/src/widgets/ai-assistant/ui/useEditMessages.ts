@@ -13,8 +13,12 @@ interface UseEditMessagesOptions {
   activePage: NotebookItem | null
 }
 
+// Module-level constant: getServerSnapshot must return a stable reference,
+// otherwise useSyncExternalStore would loop forever under SSR/hydration.
+const EMPTY_MESSAGES: EditMessage[] = []
+
 function getServerSnapshot(): EditMessage[] {
-  return []
+  return EMPTY_MESSAGES
 }
 
 function createThreadStore(threadKey: string) {

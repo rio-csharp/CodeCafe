@@ -24,22 +24,6 @@ internal static class Program
             ICommand command = args[0] switch
             {
                 "check" => new CheckCommand(config, console, processRunner, sshFactory),
-                "migrate-prod" => new MigrateEnvironmentCommand(
-                    config.Production,
-                    config,
-                    "codecafe-prod",
-                    15440,
-                    console,
-                    processRunner,
-                    sshFactory),
-                "migrate-test" => new MigrateEnvironmentCommand(
-                    config.Test,
-                    config,
-                    "codecafe-test",
-                    15441,
-                    console,
-                    processRunner,
-                    sshFactory),
                 "prod-to-local" => new ProdToLocalCommand(config, options, console, processRunner, sshFactory),
                 "local-to-test" => new LocalToTestCommand(config, options, console, processRunner, sshFactory),
                 _ => throw new CommandException($"Unknown command '{args[0]}'.")

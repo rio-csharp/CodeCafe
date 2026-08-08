@@ -3,8 +3,9 @@ using CodeCafe.Modules.Identity.Presentation.Configuration;
 using CodeCafe.Modules.Mcp.Common;
 using CodeCafe.Modules.Mcp.Tools.Diagnostics;
 using CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
-using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Server.Configuration;
 using CodeCafe.Shared.Application.Configuration;
+using CodeCafe.Shared.Presentation.Errors;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,7 @@ public static class WebApplicationExtensions
             app.UseHsts();
         }
         app.UseForwardedHeaders();
+        LogForwardedHeadersConfigurationWarnings(app);
         app.UseCodeCafeSecurityHeaders();
         app.UseCodeCafeCors();
         app.UseResponseCompression();
@@ -209,6 +211,34 @@ public static class WebApplicationExtensions
         });
     }
 
+    private static void LogForwardedHeadersConfigurationWarnings(WebApplication app)
+    {
+        if (!app.Environment.IsProduction())
+        {
+            return;
+        }
+
+        var settings = app.Services.GetRequiredService<IOptions<ForwardedHeadersSettings>>().Value;
+        var trustsOnlyLoopback = settings.KnownNetworks.Length > 0
+            && settings.KnownNetworks.All(IsLoopbackNetwork);
+        if (settings.KnownNetworks.Length == 0 || trustsOnlyLoopback)
+        {
+            // With no real proxy network trusted, X-Forwarded-For is ignored and
+            // every request gets the ingress IP as RemoteIpAddress — collapsing
+            // all IP-partitioned rate limits into a single shared partition.
+            app.Logger.LogWarning(
+                "ForwardedHeaders:KnownNetworks trusts no proxy network (loopback only) in Production. " +
+                "Client IPs will resolve to the ingress address, collapsing IP-partitioned rate limits into one shared partition. " +
+                "Configure the egress CIDR ranges of your reverse proxy/ingress.");
+        }
+    }
+
+    private static bool IsLoopbackNetwork(string network)
+    {
+        return System.Net.IPNetwork.TryParse(network, out var parsed)
+            && System.Net.IPAddress.IsLoopback(parsed.BaseAddress);
+    }
+
     private static bool RequiresCsrfValidation(HttpContext httpContext)
     {
         var request = httpContext.Request;
@@ -217,7 +247,12 @@ public static class WebApplicationExtensions
             return false;
         }
 
-        if (request.Path.StartsWithSegments("/api/mcp", StringComparison.OrdinalIgnoreCase))
+        // The MCP HTTP surface is also exposed under /api (e.g. the upload
+        // endpoints) and authenticates with bearer tokens, not cookies, so CSRF
+        // validation does not apply. Derive the exclusion from the configured
+        // MCP endpoint path instead of hardcoding it.
+        var mcpOptions = httpContext.RequestServices.GetRequiredService<IOptions<McpOptions>>().Value;
+        if (request.Path.StartsWithSegments(GetMcpApiExclusionPath(mcpOptions), StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
@@ -232,5 +267,27 @@ public static class WebApplicationExtensions
             || HttpMethods.IsPut(request.Method)
             || HttpMethods.IsPatch(request.Method)
             || HttpMethods.IsDelete(request.Method);
+    }
+
+    private static string GetMcpApiExclusionPath(McpOptions mcpOptions)
+    {
+        var endpointPath = mcpOptions.EndpointPath;
+        if (!endpointPath.StartsWith('/'))
+        {
+            endpointPath = "/" + endpointPath;
+        }
+        endpointPath = endpointPath.TrimEnd('/');
+        if (endpointPath.Length == 0)
+        {
+            endpointPath = "/";
+        }
+
+        // Preserve the historical "/api/mcp" exclusion for the default "/mcp"
+        // endpoint without doubling the prefix when the configured endpoint
+        // already lives under /api.
+        return endpointPath.Equals("/api", StringComparison.OrdinalIgnoreCase)
+            || endpointPath.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
+                ? endpointPath
+                : "/api" + endpointPath;
     }
 }

@@ -11,12 +11,15 @@ const DIVISIONS: Array<{ amount: number; unit: RelativeUnit }> = [
 
 export function formatTimeAgo(iso: string, locale?: string): string {
   const ts = new Date(iso).getTime()
+
+  // Invalid dates render as an empty string instead of a misleading "now";
+  // callers decide how to display missing/garbage timestamps.
+  if (Number.isNaN(ts)) return ''
+
   const formatter = new Intl.RelativeTimeFormat(locale, {
     numeric: 'auto',
     style: 'short',
   })
-
-  if (Number.isNaN(ts)) return formatter.format(0, 'second')
 
   let value = Math.round((ts - Date.now()) / 1000)
   let unit: RelativeUnit = 'second'

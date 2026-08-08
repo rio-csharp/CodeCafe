@@ -1,4 +1,4 @@
-import { apiFetch } from '@/shared/api/client'
+import { apiFetch } from '@/shared/api'
 import type {
   Notebook,
   NotebookFavorite,
@@ -33,8 +33,8 @@ export async function getMyNotes(search?: string, limit = 50, offset = 0): Promi
   return apiFetch<Notebook[]>(`/api/notes/mine${params}`)
 }
 
-export async function getNotebookBySlug(slug: string): Promise<Notebook> {
-  return apiFetch<Notebook>(`/api/notes/${slug}?includeItems=false`)
+export async function getNotebookBySlug(slug: string, signal?: AbortSignal): Promise<Notebook> {
+  return apiFetch<Notebook>(`/api/notes/${slug}?includeItems=false`, { signal })
 }
 
 export async function getNotebookItems(
@@ -42,20 +42,22 @@ export async function getNotebookItems(
   search?: string,
   includeArchived?: boolean,
   includeContent?: boolean,
+  signal?: AbortSignal,
 ): Promise<NotebookItem[]> {
   const params = buildQueryString({
     search,
     includeArchived: includeArchived ? 'true' : undefined,
     includeContent: includeContent === undefined ? undefined : String(includeContent),
   })
-  return apiFetch<NotebookItem[]>(`/api/notes/${notebookId}/items${params}`)
+  return apiFetch<NotebookItem[]>(`/api/notes/${notebookId}/items${params}`, { signal })
 }
 
 export async function getNotebookItem(
   notebookId: string,
   itemId: string,
+  signal?: AbortSignal,
 ): Promise<NotebookItem> {
-  return apiFetch<NotebookItem>(`/api/notes/${notebookId}/items/${itemId}`)
+  return apiFetch<NotebookItem>(`/api/notes/${notebookId}/items/${itemId}`, { signal })
 }
 
 export async function createNotebook(data: CreateNotebookRequest): Promise<Notebook> {

@@ -1,4 +1,4 @@
-import { useState, memo } from 'react'
+import { useState } from 'react'
 import { ChevronRight, Folder, FolderOpen } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
 import { useTreeNodeActions } from '@/features/manage-notebook-items'
@@ -136,4 +136,5 @@ function TreeFolderNode({
   )
 }
 
-export default memo(TreeFolderNode)
+// NOTE: no memo() — see TreePageNode for why memo is ineffective here.
+export default TreeFolderNode

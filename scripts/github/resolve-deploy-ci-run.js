@@ -61,4 +61,7 @@ module.exports = async function resolveDeployCiRun({ github, context, core }) {
 
   core.setOutput('skip', 'false');
   core.setOutput('ci_run_id', String(ciRunId));
+  // Trusted ref (protected branch) from which deploy workflows check out CD
+  // scripts; the workflow_run head_sha itself is not used for checkout.
+  core.setOutput('head_branch', branch);
 };

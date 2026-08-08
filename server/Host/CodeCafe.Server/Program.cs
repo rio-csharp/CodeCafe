@@ -30,7 +30,7 @@ if (args is ["migrate", ..] or ["--migrate", ..])
 
 if (app.Environment.IsDevelopment())
 {
-    await app.Services.GetRequiredService<DatabaseMigrationRunner>().RunAsync(CancellationToken.None);
+    await app.Services.GetRequiredService<DatabaseMigrationRunner>().RunAsync(app.Lifetime.ApplicationStopping);
 }
 
 app.UseCodeCafeServerPipeline();

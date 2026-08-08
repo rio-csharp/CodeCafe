@@ -30,6 +30,12 @@ export interface UpdateNotebookItemRequest {
   parentId?: string | null
   sortOrder?: number
   contentJson?: Record<string, unknown> | null
+  /**
+   * Optimistic-concurrency token: the `updatedAtUtc` the client based its
+   * edit on. The backend answers 409 when the stored row is newer. Optional
+   * so older backends that don't know the field simply ignore it.
+   */
+  expectedUpdatedAtUtc?: string | null
 }
 
 export interface ReorderItemRequest {

@@ -9,6 +9,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export function Input({ label, error, iconLeft, className = '', ...props }: InputProps) {
   const generatedId = useId()
   const inputId = props.id ?? generatedId
+  const errorId = `${inputId}-error`
   return (
     <div className="w-full">
       {label && (
@@ -24,6 +25,8 @@ export function Input({ label, error, iconLeft, className = '', ...props }: Inpu
         )}
         <input
           id={inputId}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           className={`w-full rounded-lg border bg-surface text-text-primary outline-none focus:border-border-hover transition-colors placeholder:text-text-tertiary ${
             error
               ? 'border-status-error-border focus:border-status-error'
@@ -32,7 +35,7 @@ export function Input({ label, error, iconLeft, className = '', ...props }: Inpu
           {...props}
         />
       </div>
-      {error && <p className="mt-1 text-xs text-status-error">{error}</p>}
+      {error && <p id={errorId} className="mt-1 text-xs text-status-error">{error}</p>}
     </div>
   )
 }

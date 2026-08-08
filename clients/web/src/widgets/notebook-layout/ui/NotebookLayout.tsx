@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, PanelLeft, PanelRight, X } from 'lucide-react'
 import type { NotebookItem } from '@/entities/notebook-item'
 
@@ -21,6 +21,7 @@ const FOCUSABLE_SELECTOR =
 export default function NotebookLayout({ topBar, tree, content, rightPanel, contentRef, notebookSlug, prevPage, nextPage }: NotebookLayoutProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [mobilePanel, setMobilePanel] = useState<'none' | 'tree' | 'right'>('none')
   const treePanelRef = useRef<HTMLElement>(null)
   const rightPanelRef = useRef<HTMLElement>(null)
@@ -29,6 +30,13 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
   const closePanel = () => setMobilePanel('none')
+
+  // The scrollable element here is <main> (window never scrolls under this
+  // layout), so route changes must reset the content container explicitly —
+  // otherwise in-page navigation (prev/next links) lands mid-page.
+  useEffect(() => {
+    contentRef?.current?.scrollTo(0, 0)
+  }, [contentRef, pathname])
 
   useEffect(() => {
     if (mobilePanel === 'none') return
@@ -161,9 +169,10 @@ export default function NotebookLayout({ topBar, tree, content, rightPanel, cont
         </aside>
       </div>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay: click-to-dismiss backdrop, decorative for AT (the
+          panel close button / Escape provide the accessible path) */}
       {mobilePanel !== 'none' && (
-        <div className="lg:hidden fixed inset-0 z-30 bg-black/20" onClick={closePanel} />
+        <div aria-hidden="true" className="lg:hidden fixed inset-0 z-30 bg-black/20" onClick={closePanel} />
       )}
     </div>
   )

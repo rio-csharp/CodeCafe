@@ -7,18 +7,17 @@ internal static class Usage
         Console.WriteLine("CodeCafe database sync tool");
         Console.WriteLine();
         Console.WriteLine("Usage:");
-        Console.WriteLine("  dotnet run --project tools/CodeCafe.DbSync -- check");
-        Console.WriteLine("  dotnet run --project tools/CodeCafe.DbSync -- migrate-test");
-        Console.WriteLine("  dotnet run --project tools/CodeCafe.DbSync -- migrate-prod");
-        Console.WriteLine("  dotnet run --project tools/CodeCafe.DbSync -- prod-to-local [--yes]");
-        Console.WriteLine("  dotnet run --project tools/CodeCafe.DbSync -- local-to-test [--yes]");
+        Console.WriteLine("  dotnet run --project server/tools/CodeCafe.DbSync -- check");
+        Console.WriteLine("  dotnet run --project server/tools/CodeCafe.DbSync -- prod-to-local [--yes]");
+        Console.WriteLine("  dotnet run --project server/tools/CodeCafe.DbSync -- local-to-test [--yes]");
         Console.WriteLine();
         Console.WriteLine("Commands:");
         Console.WriteLine("  check          Verify local PostgreSQL client tools and SSH reachability.");
-        Console.WriteLine("  migrate-test   Apply EF Core migrations to the test database through SSH.");
-        Console.WriteLine("  migrate-prod   Apply EF Core migrations to production through SSH.");
         Console.WriteLine("  prod-to-local  Dump production through an SSH tunnel and restore to local.");
         Console.WriteLine("  local-to-test  Dump local, upload to test, back up test, and restore test.");
+        Console.WriteLine();
+        Console.WriteLine("Migrations are applied by the deployed api-migrate job");
+        Console.WriteLine("  (dotnet CodeCafe.Server.dll migrate); see docs/backend-best-practices.md.");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --yes          Skip destructive-operation confirmation prompts.");
@@ -29,6 +28,7 @@ internal static class Usage
         Console.WriteLine("  TEST_SSH_PORT, TEST_SSH_USER, TEST_DB_PORT, TEST_DB_USER, TEST_DB");
         Console.WriteLine("  LOCAL_HOST, LOCAL_DB_PORT, LOCAL_DB_USER, LOCAL_DB");
         Console.WriteLine("  PROD_DB_PASSWORD, LOCAL_DB_PASSWORD");
+        Console.WriteLine("  PROD_SSH_PASSWORD, TEST_SSH_PASSWORD");
         Console.WriteLine("  TEST_PGPASSFILE, TEST_BACKUP_DIR, SSH_KEY_PATHS");
     }
 }

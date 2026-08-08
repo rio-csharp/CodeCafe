@@ -15,6 +15,10 @@ done
 
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+. "$script_dir/lib-port-forward.sh"
+
 KUBECTL_BIN="${KUBECTL_BIN:-kubectl}"
 SMOKE_TEST_ATTEMPTS="${SMOKE_TEST_ATTEMPTS:-20}"
 SMOKE_TEST_DELAY_SECONDS="${SMOKE_TEST_DELAY_SECONDS:-3}"
@@ -31,51 +35,17 @@ fi
 
 frontend_pid=""
 api_pid=""
-frontend_log="${FRONTEND_PORT_FORWARD_LOG:-/tmp/codecafe-${RELEASE}-frontend-port-forward-$$.log}"
-api_log="${API_PORT_FORWARD_LOG:-/tmp/codecafe-${RELEASE}-api-port-forward-$$.log}"
-
-port_forward_cleanup() {
-  local pids=()
-
-  if [ -n "${frontend_pid:-}" ]; then
-    pids+=("$frontend_pid")
-  fi
-
-  if [ -n "${api_pid:-}" ]; then
-    pids+=("$api_pid")
-  fi
-
-  if [ "${#pids[@]}" -gt 0 ]; then
-    kill "${pids[@]}" 2>/dev/null || true
-    wait "${pids[@]}" 2>/dev/null || true
-  fi
-}
+init_port_forward_logs "$RELEASE"
 
 cleanup() {
   port_forward_cleanup
-  rm -f "$frontend_log" "$api_log"
+  remove_port_forward_logs
 }
 
 on_signal() {
   local signal_name="$1"
   echo "Smoke test interrupted by $signal_name; cleaning up port-forward processes." >&2
   exit 130
-}
-
-dump_port_forward_logs() {
-  echo "Frontend port-forward log:" >&2
-  cat "$frontend_log" >&2 || true
-  echo "API port-forward log:" >&2
-  cat "$api_log" >&2 || true
-}
-
-pick_port() {
-  python3 - <<'PY'
-import socket
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.bind(("127.0.0.1", 0))
-    print(sock.getsockname()[1])
-PY
 }
 
 trap cleanup EXIT

@@ -162,4 +162,47 @@ describe('useAiAssistantSession persistence', () => {
       expect(result.current.messages).toHaveLength(0)
     })
   })
+
+  it('clears the previous page session when switching to a page without a stored thread', async () => {
+    const threadKey = `codecafe:${notebook.slug}:${activePage.path}`
+    localStorage.setItem(
+      `${THREAD_STORAGE_KEY_PREFIX}${threadKey}`,
+      JSON.stringify({
+        version: 1,
+        savedAt: new Date().toISOString(),
+        messages: fakeMessages,
+      }),
+    )
+
+    const otherPage = {
+      ...activePage,
+      id: 'page-2',
+      title: 'Other',
+      slug: 'other',
+      path: 'guides/other',
+    } satisfies NotebookItem
+
+    const { result, rerender } = renderHook(
+      ({ page }: { page: NotebookItem }) =>
+        useAiAssistantSession({
+          enabled: true,
+          endpointPath: '/api/ai/assistant',
+          notebook,
+          activePage: page,
+        }),
+      { wrapper, initialProps: { page: activePage } },
+    )
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(2)
+    })
+
+    rerender({ page: otherPage })
+
+    await waitFor(() => {
+      expect(result.current.messages).toHaveLength(0)
+    })
+    expect(result.current.error).toBeNull()
+    expect(result.current.toolActivities).toHaveLength(0)
+  })
 })

@@ -4,7 +4,7 @@ using CodeCafe.Modules.Notes.Application.Notes.Commands.UpdateNotebook;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetMyNotebooks;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookById;
 using CodeCafe.Modules.Notes.Application.Notes.Queries.GetNotebookBySlug;
-using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Shared.Presentation.Errors;
 using CodeCafe.Shared.Application.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;

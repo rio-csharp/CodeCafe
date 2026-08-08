@@ -4,4 +4,5 @@ namespace CodeCafe.Modules.Identity.Application.Auth.Commands.AuthenticateUser;
 
 public sealed record AuthenticateUserCommand(
     string Email,
-    string Password) : ICommand<AuthResult<AuthUserModel>>;
+    string Password,
+    string? ClientIp) : ICommand<AuthResult<AuthUserModel>>;

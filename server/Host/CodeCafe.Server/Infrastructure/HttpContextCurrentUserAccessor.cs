@@ -7,4 +7,7 @@ public sealed class HttpContextCurrentUserAccessor(
 {
     public Guid? GetCurrentUserId()
         => CurrentUserClaims.GetUserId(httpContextAccessor.HttpContext?.User);
+
+    public Guid GetRequiredCurrentUserId()
+        => GetCurrentUserId() ?? throw new CurrentUserNotAuthenticatedException();
 }

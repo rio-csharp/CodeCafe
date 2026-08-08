@@ -16,6 +16,9 @@ export function ToastContainer() {
       {toasts.map((toast) => (
         <div
           key={toast.id}
+          // Errors are announced assertively; successes stay on the polite
+          // live region of the container.
+          role={toast.type === 'error' ? 'alert' : undefined}
           className={`flex items-center gap-2 rounded-lg px-4 py-2.5 shadow-lg text-sm font-medium ${
             leavingIds.includes(toast.id) ? 'toast-leaving' : 'toast-enter'
           } ${

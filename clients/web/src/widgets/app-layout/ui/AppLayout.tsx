@@ -46,8 +46,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </a>
   )
 
-  // Notebook reader routes render their own full-screen chrome
-  const isNotebookRoute = /^\/notes\/[^/]+/.test(location.pathname)
+  // Notebook reader routes render their own full-screen chrome — but the
+  // create page (/notes/new) and settings page (/notes/:slug/edit) are plain
+  // pages that expect the standard Navbar/Sidebar.
+  const isNotebookRoute =
+    /^\/notes\/[^/]+/.test(location.pathname) &&
+    location.pathname !== '/notes/new' &&
+    !/^\/notes\/[^/]+\/edit$/.test(location.pathname)
   if (isNotebookRoute) {
     return (
       <LayoutContext.Provider value={navbarValue}>

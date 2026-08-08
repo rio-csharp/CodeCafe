@@ -1,4 +1,5 @@
 import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from 'web-vitals'
+import { API_BASE_URL } from '@/shared/config'
 
 interface VitalsPayload {
   name: string
@@ -10,7 +11,10 @@ interface VitalsPayload {
 }
 
 const BATCH_LIMIT = 10
-const ANALYTICS_ENDPOINT = '/api/analytics/vitals'
+// Prepend API_BASE_URL so vitals reach the API origin when the frontend is
+// deployed on a different origin (a relative path would silently hit the
+// web host instead).
+const ANALYTICS_ENDPOINT = `${API_BASE_URL}/api/analytics/vitals`
 
 let queue: VitalsPayload[] = []
 let flushTimer: ReturnType<typeof setTimeout> | null = null
@@ -24,7 +28,9 @@ function flushQueue() {
 
   if (navigator.sendBeacon) {
     try {
-      navigator.sendBeacon(ANALYTICS_ENDPOINT, payload)
+      // A string body would be sent as text/plain; wrap in a Blob so the
+      // backend can parse it as application/json.
+      navigator.sendBeacon(ANALYTICS_ENDPOINT, new Blob([payload], { type: 'application/json' }))
       return
     } catch {
       // fall through to fetch

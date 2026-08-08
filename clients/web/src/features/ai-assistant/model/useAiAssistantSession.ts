@@ -80,6 +80,12 @@ export function useAiAssistantSession({
       // context changes is an intentional synchronization with an external store.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessages(persisted.messages)
+    } else {
+      // No persisted thread for this key — drop the previous page's session
+      // so its messages don't bleed into the page the user just opened.
+      setMessages([])
+      setToolActivities([])
+      setError(null)
     }
 
     return () => {

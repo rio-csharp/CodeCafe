@@ -10,6 +10,11 @@ interface PasswordInputProps extends React.InputHTMLAttributes<HTMLInputElement>
 export default function PasswordInput({ error, className, ref, ...rest }: PasswordInputProps) {
   const { t } = useTranslation()
   const [show, setShow] = useState(false)
+  // Fallback accessible name only when the caller provides no label of its own
+  // (via id + <label htmlFor>, aria-label, or aria-labelledby) — a hardcoded
+  // aria-label would win over an external <label>.
+  const fallbackAriaLabel =
+    rest.id || rest['aria-label'] || rest['aria-labelledby'] ? undefined : t('auth.password')
 
   return (
     <div className={className}>
@@ -21,7 +26,7 @@ export default function PasswordInput({ error, className, ref, ...rest }: Passwo
           className={`w-full rounded-lg border bg-surface py-2.5 pl-10 pr-10 text-sm text-text-primary outline-none transition-colors focus:border-border-focus ${
             error ? 'border-status-error-border' : 'border-border-default'
           }`}
-          aria-label={t('auth.password')}
+          aria-label={fallbackAriaLabel}
           {...rest}
         />
         <button

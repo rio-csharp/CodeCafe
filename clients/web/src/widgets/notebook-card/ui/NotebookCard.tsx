@@ -26,7 +26,9 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
   const { i18n, t } = useTranslation()
   const authorName = notebook.authorDisplayName || t('common.user')
   const initial = authorName.charAt(0).toUpperCase()
-  const lastActivity = notebook.lastActivityAtUtc || notebook.updatedAtUtc || new Date().toISOString()
+  // No timestamp fallback: showing "just now" for missing data would lie to
+  // the user — render nothing instead.
+  const lastActivity = notebook.lastActivityAtUtc || notebook.updatedAtUtc
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
@@ -98,7 +100,9 @@ function NotebookCardComponent({ notebook, showVisibility = false }: NotebookCar
             <div className="h-5 w-5 rounded-full bg-brand-brown-dark dark:bg-brand-brown flex items-center justify-center text-text-inverse text-[10px] font-medium">{initial}</div>
             <span className="text-xs text-text-secondary">{authorName}</span>
           </div>
-          <span className="text-xs text-text-tertiary">{formatTimeAgo(lastActivity, i18n.language)}</span>
+          {lastActivity && (
+            <span className="text-xs text-text-tertiary">{formatTimeAgo(lastActivity, i18n.language)}</span>
+          )}
         </div>
       </Link>
       <div className="absolute top-3 right-3 flex items-center gap-1">

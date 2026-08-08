@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
@@ -65,11 +64,10 @@ export default function FloatingAiAssistant({ notebook, activePage }: FloatingAi
   const suppressNextClickRef = useRef(false)
   const clickSuppressionTimerRef = useRef<number | null>(null)
 
-  const panelSize = useMemo(() => getPanelSize(minimized, viewport), [minimized, viewport])
-  const clampedPosition = useMemo(
-    () => clampPosition(position, panelSize, viewport),
-    [panelSize, position, viewport],
-  )
+  // Cheap pure arithmetic — no memoization benefit (§11).
+  const panelSize = getPanelSize(minimized, viewport)
+  const clampedPosition = clampPosition(position, panelSize, viewport)
+  const { width: panelWidth, height: panelHeight } = panelSize
 
   useEffect(() => {
     function handleResize() {
@@ -97,7 +95,7 @@ export default function FloatingAiAssistant({ notebook, activePage }: FloatingAi
         x: drag.originX + deltaX,
         y: drag.originY + deltaY,
       }
-      setPosition(clampPosition(nextPosition, panelSize, viewport))
+      setPosition(clampPosition(nextPosition, { width: panelWidth, height: panelHeight }, viewport))
     }
 
     function handlePointerEnd(event: PointerEvent) {
@@ -127,7 +125,7 @@ export default function FloatingAiAssistant({ notebook, activePage }: FloatingAi
       window.removeEventListener('pointerup', handlePointerEnd)
       window.removeEventListener('pointercancel', handlePointerEnd)
     }
-  }, [isDragging, panelSize, viewport])
+  }, [isDragging, panelWidth, panelHeight, viewport])
 
   useEffect(() => () => {
     if (clickSuppressionTimerRef.current !== null) {

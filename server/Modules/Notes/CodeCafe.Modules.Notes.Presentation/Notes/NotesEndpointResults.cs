@@ -1,5 +1,5 @@
 using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Presentation.Errors;
+using CodeCafe.Shared.Presentation.Errors;
 
 namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 

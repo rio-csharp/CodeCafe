@@ -79,6 +79,20 @@ public sealed class DependencyDirectionTests
     }
 
     [Fact]
+    public void Module_Presentations_DoNotReference_OtherModule_Presentations()
+    {
+        // Host-wide presentation policy (ApiProblems, GlobalExceptionHandler)
+        // lives in Shared.Presentation / the host, so no module Presentation
+        // assembly may depend on another module's Presentation assembly.
+        var identityPresentationReferences = GetReferenceNames(
+            typeof(CodeCafe.Modules.Identity.Presentation.Auth.DynamicClientRegistrationController).Assembly);
+        var notesPresentationReferences = GetReferenceNames(typeof(ApiAssemblyMarker).Assembly);
+
+        Assert.DoesNotContain("CodeCafe.Modules.Notes.Presentation", identityPresentationReferences);
+        Assert.DoesNotContain("CodeCafe.Modules.Identity.Presentation", notesPresentationReferences);
+    }
+
+    [Fact]
     public void Server_Composes_Adapters_Without_Leaking_Back_Into_Core()
     {
         var serverReferences = GetReferenceNames(typeof(ServerAssemblyMarker).Assembly);

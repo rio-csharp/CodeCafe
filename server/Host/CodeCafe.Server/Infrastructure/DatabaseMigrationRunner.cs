@@ -16,6 +16,14 @@ public sealed class DatabaseMigrationRunner(
         await using var scope = serviceScopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+        if (dbContext.Database.ProviderName != DatabaseProviderNames.Npgsql)
+        {
+            // pg_advisory_lock is PostgreSQL-only; other providers migrate directly.
+            await dbContext.Database.MigrateAsync(cancellationToken);
+            logger.LogInformation("Database migrations applied.");
+            return;
+        }
+
         await dbContext.Database.OpenConnectionAsync(cancellationToken);
         try
         {
@@ -29,9 +37,11 @@ public sealed class DatabaseMigrationRunner(
             }
             finally
             {
+                // The lock must be released even when the caller cancelled
+                // mid-migration, so the unlock runs without cancellation.
                 await dbContext.Database.ExecuteSqlRawAsync(
                     $"select pg_advisory_unlock({MigrationLockId})",
-                    cancellationToken);
+                    CancellationToken.None);
             }
         }
         finally

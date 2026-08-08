@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { X } from 'lucide-react'
 
@@ -33,7 +34,8 @@ export function Modal({ isOpen, onClose, title, ariaLabel, children }: ModalProp
 
     previousFocusRef.current = document.activeElement as HTMLElement | null
 
-    // Defer focus to next tick so the modal is mounted and refs are populated.
+    // Focus the close button (or the first focusable element) so keyboard
+    // users land inside the dialog.
     const focusTarget =
       closeButtonRef.current ?? containerRef.current?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)
     focusTarget?.focus()
@@ -76,7 +78,10 @@ export function Modal({ isOpen, onClose, title, ariaLabel, children }: ModalProp
 
   if (!isOpen) return null
 
-  return (
+  // Render into document.body: a fixed-position modal inside an ancestor
+  // with a CSS transform (e.g. the page-enter transition) would be positioned
+  // relative to that ancestor instead of the viewport.
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -106,6 +111,7 @@ export function Modal({ isOpen, onClose, title, ariaLabel, children }: ModalProp
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

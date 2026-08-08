@@ -1,4 +1,6 @@
-{{- if .Values.api.pdb.enabled | default true }}
+# PDBs are only rendered with more than one replica; with replicaCount: 1 a
+# minAvailable: 1 PDB would block node drains indefinitely.
+{{- if and .Values.api.pdb.enabled (gt (int .Values.api.replicaCount) 1) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -14,7 +16,7 @@ spec:
       app.kubernetes.io/component: api
 {{- end }}
 ---
-{{- if .Values.frontend.pdb.enabled | default true }}
+{{- if and .Values.frontend.pdb.enabled (gt (int .Values.frontend.replicaCount) 1) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:

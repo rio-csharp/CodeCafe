@@ -46,97 +46,97 @@ export function AppRouter() {
 
   return (
     <Routes location={location} key={routeKey}>
-        <Route
-          path="/"
-          element={
-            <PageTransition>
-              <LazyWrapper><HomePage /></LazyWrapper>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/notes"
-          element={
-            <PageTransition>
-              <LazyWrapper><NotesSelectionPage /></LazyWrapper>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/notes/new"
-          element={
-            <PageTransition>
-              <ProtectedRoute>
-                <LazyWrapper><CreateNotebookPage /></LazyWrapper>
-              </ProtectedRoute>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/notes/:notebookSlug/edit"
-          element={
-            <PageTransition>
-              <ProtectedRoute>
-                <LazyWrapper><EditNotebookPage /></LazyWrapper>
-              </ProtectedRoute>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/notes/:notebookSlug/*"
-          element={
-            <PageTransition>
-              <LazyWrapper><NotebookReaderPage /></LazyWrapper>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/codes"
-          element={
-            <PageTransition>
-              <LazyWrapper><CodesPage /></LazyWrapper>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/about"
-          element={
-            <PageTransition>
-              <LazyWrapper><AboutPage /></LazyWrapper>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <PageTransition>
-              <AuthRedirect>
-                <LazyWrapper><LoginPage /></LazyWrapper>
-              </AuthRedirect>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PageTransition>
-              <AuthRedirect>
-                <LazyWrapper><RegisterPage /></LazyWrapper>
-              </AuthRedirect>
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/dashboard"
-          element={
-            <PageTransition>
-              <ProtectedRoute>
-                <LazyWrapper><DashboardPage /></LazyWrapper>
-              </ProtectedRoute>
-            </PageTransition>
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Route
+        path="/"
+        element={
+          <PageTransition>
+            <LazyWrapper><HomePage /></LazyWrapper>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/notes"
+        element={
+          <PageTransition>
+            <LazyWrapper><NotesSelectionPage /></LazyWrapper>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/notes/new"
+        element={
+          <PageTransition>
+            <ProtectedRoute>
+              <LazyWrapper><CreateNotebookPage /></LazyWrapper>
+            </ProtectedRoute>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/notes/:notebookSlug/edit"
+        element={
+          <PageTransition>
+            <ProtectedRoute>
+              <LazyWrapper><EditNotebookPage /></LazyWrapper>
+            </ProtectedRoute>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/notes/:notebookSlug/*"
+        element={
+          <PageTransition>
+            <LazyWrapper><NotebookReaderPage /></LazyWrapper>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/codes"
+        element={
+          <PageTransition>
+            <LazyWrapper><CodesPage /></LazyWrapper>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/about"
+        element={
+          <PageTransition>
+            <LazyWrapper><AboutPage /></LazyWrapper>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <PageTransition>
+            <AuthRedirect>
+              <LazyWrapper><LoginPage /></LazyWrapper>
+            </AuthRedirect>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <PageTransition>
+            <AuthRedirect>
+              <LazyWrapper><RegisterPage /></LazyWrapper>
+            </AuthRedirect>
+          </PageTransition>
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <PageTransition>
+            <ProtectedRoute>
+              <LazyWrapper><DashboardPage /></LazyWrapper>
+            </ProtectedRoute>
+          </PageTransition>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }

@@ -9,7 +9,7 @@ export type CreateNotebookFormData = z.infer<ReturnType<typeof useCreateNotebook
 function useCreateNotebookSchema() {
   const { t } = useTranslation()
   return z.object({
-    title: z.string().min(1, t('notebook.titleRequired')),
+    title: z.string().trim().min(1, t('notebook.titleRequired')),
     description: z.string(),
     visibility: z.enum(['private', 'unlisted', 'public']),
   })

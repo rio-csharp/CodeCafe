@@ -34,6 +34,7 @@ jobs:
   deploy:
     name: Deploy test environment
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment:
       name: test
     steps:
@@ -58,25 +59,37 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p .artifacts/helm .artifacts/deployment .artifacts/scripts
-          gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-cd-scripts --dir .artifacts/scripts
+          # Artifacts carry data only (Helm chart, deployment metadata). CD
+          # scripts are never executed from the CI artifact; they are checked
+          # out from the trusted (protected) release branch in the next step.
+          mkdir -p .artifacts/helm .artifacts/deployment
           gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-helm-chart --dir .artifacts/helm
           gh run download "${{ steps.ci.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-deployment --dir .artifacts/deployment
 
+      - name: Checkout trusted CD scripts
+        if: steps.ci.outputs.skip != 'true'
+        uses: actions/checkout@v6
+        with:
+          # The resolver validated that the CI run comes from a protected
+          # release branch; deploy scripts run from a checkout of that branch
+          # instead of the CI artifact.
+          ref: ${{ steps.ci.outputs.head_branch }}
+          path: .trusted
+
       - name: Set image tag
         if: steps.ci.outputs.skip != 'true'
-        run: bash .artifacts/scripts/set-image-tag-env.sh
+        run: bash .trusted/scripts/cd/set-image-tag-env.sh
 
       - name: Prepare OAuth secret payload
         if: steps.ci.outputs.skip != 'true'
         env:
           OAUTH_CERT_BASE64: ${{ secrets.OAUTH_CERT_BASE64 }}
           OAUTH_CERT_PASSWORD: ${{ secrets.OAUTH_CERT_PASSWORD }}
-        run: bash .artifacts/scripts/write-oauth-env.sh
+        run: bash .trusted/scripts/cd/write-oauth-env.sh
 
       - name: Configure SSH
         if: steps.ci.outputs.skip != 'true'
-        uses: webfactory/ssh-agent@v0.10.0
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0 (digest-pinned)
         with:
           ssh-private-key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
 
@@ -101,4 +114,5 @@ jobs:
           AI_MODEL: ${{ vars.AI_MODEL }}
           AI_BASE_URL: ${{ vars.AI_BASE_URL }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
-        run: bash .artifacts/scripts/deploy-environment.sh
+          CD_SCRIPTS_DIR: .trusted/scripts/cd
+        run: bash .trusted/scripts/cd/deploy-environment.sh

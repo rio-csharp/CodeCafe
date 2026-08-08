@@ -68,6 +68,12 @@ Published deployment inputs are:
 - CD script artifact
 - deployment metadata containing the image tag and source ref
 
+Deployment workflows treat artifacts as data only (Helm chart, deployment
+metadata). They never execute scripts from the CI artifact: every deploy job
+checks out `scripts/cd/` from the trusted, protected branch the CI run belongs
+to (the PR base branch for previews, the release branch for test, `main` for
+production) and runs the scripts from that checkout.
+
 ### Feature PR Preview Flow
 
 1. A `feature/*` branch is pushed.
@@ -162,6 +168,8 @@ The MCP adapter is enabled by default (`Mcp:Enabled` is `true` in `appsettings.j
 - `AI_BASE_URL`, optional OpenAI-compatible base URL; root URLs are normalized to `/v1`
 - `AI_ENDPOINT_PATH`, `AI_STATUS_ENDPOINT_PATH`, `AI_DRAFT_ENDPOINT_PATH`, and AI limit overrides
 
+AI limit overrides (`AI_MAX_*`) are optional: when a variable is unset, no Helm override is passed and the chart default applies, so the script, chart, and backend defaults cannot drift apart. `deploy-environment.sh` forwards all of the variables above (plus replica/migration and TLS secret namespace overrides) to the deploy host; `AI_API_KEY` is shipped as a file rather than on the remote command line.
+
 Current deployments may still expose draft-specific variables because the transitional draft endpoint is still part of the runtime status and configuration surface. New AI notebook editing work should still target backend-managed TipTap JSON proposals and direct-save flows rather than treating Markdown drafts as the long-term architecture.
 
 `AI_STATUS_ENDPOINT_PATH` is also passed to the frontend runtime config so browser capability discovery stays aligned with the backend endpoint. The deploy smoke test checks frontend `/`, API readiness, AI status, and MCP protected-resource metadata.
@@ -187,6 +195,8 @@ dotnet CodeCafe.Server.dll migrate
 Development startup applies migrations automatically. Helm also includes an API migration job template.
 
 Migration `20260718224927_AddNotebookTrigramIndexes` enables the `pg_trgm` extension and creates GIN trigram indexes on `Notebooks.Title`, `NotebookItems.Title`, and `NotebookItems.PlainTextContent`. Enabling the extension requires a database role with `CREATE EXTENSION` privilege. The indexes are created non-concurrently, so the migration holds a write lock on `NotebookItems` while it runs. This only matters for large installs; small databases finish in milliseconds. For large installs, run the migration in a low-traffic window.
+
+Operational note: when writing a new EF migration that adds a GIN (or otherwise expensive) index on a large table, hand-write the index creation as `migrationBuilder.Sql("CREATE INDEX CONCURRENTLY ...", suppressTransaction: true)` instead of `migrationBuilder.CreateIndex(...)`. `CONCURRENTLY` avoids holding a write lock for the duration of the build, but it cannot run inside a transaction — hence `suppressTransaction: true` — and a failed build leaves an `INVALID` index that must be dropped and recreated manually.
 
 ## Database Maintenance
 

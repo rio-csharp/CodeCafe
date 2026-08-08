@@ -3,12 +3,13 @@ using CodeCafe.Modules.Identity.Presentation.Auth;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
 using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
 using CodeCafe.Modules.Identity.Presentation.Networking;
-using CodeCafe.Modules.Notes.Presentation.Errors;
 using CodeCafe.Server.Configuration;
+using CodeCafe.Server.Errors;
 using CodeCafe.Server.Infrastructure;
 using CodeCafe.Shared.Application.Configuration;
 using CodeCafe.Shared.Application.Identity;
 using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Shared.Presentation.Errors;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -34,6 +35,11 @@ public static class ServiceCollectionExtensions
         services.AddCors();
         // JSON payloads are large; Brotli/Gzip cut them to a fraction.
         // text/event-stream (AG-UI SSE) is not in the default mime list.
+        // EnableForHttps=true: BREACH-style compression-oracle risk was assessed
+        // and accepted — no compressed response body combines a secret with
+        // attacker-controlled reflected input (auth tokens travel in
+        // cookies/headers, never echoed back in a compressible body). Revisit
+        // before ever reflecting user input alongside credentials in one response.
         services.AddResponseCompression(options =>
         {
             options.EnableForHttps = true;
@@ -48,12 +54,14 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthSessionService, IdentityAuthSessionService>();
         services.AddCodeCafeApplicationCookie(environment);
         services.AddCodeCafeShutdownOptions(configuration);
+        services.AddCodeCafeOpenIddictPruningOptions();
         services.AddCodeCafeHealthChecks(environment);
         services.AddSingleton<ServerDrainState>();
         services.AddHostedService<ServerDrainHostedService>();
         if (!environment.IsEnvironment("Testing"))
         {
             services.AddHostedService<DynamicClientCleanupHostedService>();
+            services.AddHostedService<OpenIddictPruningHostedService>();
         }
         services.AddSingleton<IClientIpAddressAccessor, ClientIpAddressAccessor>();
         services.AddHttpContextAccessor();
@@ -101,7 +109,12 @@ public static class ServiceCollectionExtensions
                 // Bounded token lifetimes (previously OpenIddict defaults).
                 options.SetAccessTokenLifetime(TimeSpan.FromMinutes(30));
                 options.SetRefreshTokenLifetime(TimeSpan.FromDays(7));
-                options.RegisterScopes("notes.read", "notes.write");
+                // Derive the registered scopes from the same configurable MCP
+                // scope set the startup validation checks PublicClients against.
+                options.RegisterScopes(mcpOptions.RequiredReadScopes
+                    .Concat(mcpOptions.RequiredWriteScopes)
+                    .Distinct()
+                    .ToArray());
                 options.RegisterAudiences(McpResourceIdentifiers.GetAudienceValues(mcpOptions, authOptions));
                 options.RegisterResources(McpResourceIdentifiers.GetResourceValues(mcpOptions, authOptions));
                 options.AddEventHandler(OpenIddictDiscoveryMetadataHandler.Descriptor);
@@ -160,6 +173,19 @@ public static class ServiceCollectionExtensions
             {
                 options.ShutdownTimeout = TimeSpan.FromSeconds(shutdownOptionsAccessor.Value.TimeoutSeconds);
             });
+
+        return services;
+    }
+
+    private static IServiceCollection AddCodeCafeOpenIddictPruningOptions(this IServiceCollection services)
+    {
+        services.AddOptions<OpenIddictPruningOptions>()
+            .BindConfiguration(OpenIddictPruningOptions.SectionName)
+            .Validate(options => options.IntervalHours > 0,
+                "OpenIddictPruning:IntervalHours must be greater than zero.")
+            .Validate(options => options.PruneThresholdDays > 0,
+                "OpenIddictPruning:PruneThresholdDays must be greater than zero.")
+            .ValidateOnStart();
 
         return services;
     }

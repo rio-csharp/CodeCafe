@@ -24,7 +24,9 @@ interface FolderOption {
 }
 
 const MAX_TITLE = 200
-const MAX_BYTES = 4 * 1024 * 1024 // 4 MB — matches backend default MaxUploadBytes
+// Client-side pre-check only; the backend upload limit (MaxUploadBytes) is
+// the source of truth and still enforces its own ceiling server-side.
+const MAX_BYTES = 4 * 1024 * 1024
 const ACCEPT = '.md,.markdown,text/markdown'
 
 export function ImportMarkdownModal({
@@ -47,6 +49,18 @@ export function ImportMarkdownModal({
 
   const folders: FolderOption[] = flattenFolders(tree)
 
+  const mutation = useImportMarkdown(notebookSlug, notebookId, {
+    onStage: ({ stage: next }) => setStage(next),
+    onSuccess: (data) => {
+      showToast(t('notebook.importMarkdownSuccess', { title: data.title }), 'success')
+      onSuccess?.(data.path)
+      handleClose()
+    },
+    onError: (err) => {
+      showToast(mapImportError(err, t), 'error')
+    },
+  })
+
   const resetForm = () => {
     setFile(null)
     setTitle('')
@@ -62,18 +76,6 @@ export function ImportMarkdownModal({
     resetForm()
     onClose()
   }
-
-  const mutation = useImportMarkdown(notebookSlug, notebookId, {
-    onStage: ({ stage: next }) => setStage(next),
-    onSuccess: (data) => {
-      showToast(t('notebook.importMarkdownSuccess', { title: data.title }), 'success')
-      onSuccess?.(data.path)
-      handleClose()
-    },
-    onError: (err) => {
-      showToast(mapImportError(err, t), 'error')
-    },
-  })
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const next = event.target.files?.[0] ?? null
@@ -121,10 +123,6 @@ export function ImportMarkdownModal({
     }
     if (!title.trim()) {
       setLocalError(t('notebook.importMarkdownTitleRequired'))
-      return
-    }
-    if (title.length > MAX_TITLE) {
-      setLocalError(t('notebook.importMarkdownTitleTooLong'))
       return
     }
     setLocalError(null)

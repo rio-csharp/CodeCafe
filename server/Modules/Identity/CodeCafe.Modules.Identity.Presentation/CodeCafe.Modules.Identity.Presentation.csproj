@@ -13,7 +13,7 @@
     <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Infrastructure\CodeCafe.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\CodeCafe.Modules.Identity.Application\CodeCafe.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\CodeCafe.Modules.Identity.Infrastructure\CodeCafe.Modules.Identity.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Notes\CodeCafe.Modules.Notes.Presentation\CodeCafe.Modules.Notes.Presentation.csproj" />
+    <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Presentation\CodeCafe.Shared.Presentation.csproj" />
   </ItemGroup>
 
 </Project>

@@ -24,8 +24,9 @@ done
 cd_scripts_dir="${CD_SCRIPTS_DIR:-scripts/cd}"
 rollback_script="${ROLLBACK_HELM_SCRIPT:-$cd_scripts_dir/rollback-helm-release.sh}"
 smoke_script="${SMOKE_TEST_SCRIPT:-$cd_scripts_dir/smoke-test-release.sh}"
+port_forward_lib="${PORT_FORWARD_LIB:-$cd_scripts_dir/lib-port-forward.sh}"
 
-for path in "$rollback_script" "$smoke_script"; do
+for path in "$rollback_script" "$smoke_script" "$port_forward_lib"; do
   if [ ! -f "$path" ]; then
     echo "Required rollback input is missing: $path" >&2
     exit 1
@@ -65,7 +66,7 @@ remote_dir_created=true
 scp -P "$ROLLBACK_SSH_PORT" \
   -o "UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE" \
   -o StrictHostKeyChecking=yes \
-  "$rollback_script" "$smoke_script" "$ssh_target:$remote_dir/"
+  "$rollback_script" "$smoke_script" "$port_forward_lib" "$ssh_target:$remote_dir/"
 
 remote_common="NAMESPACE=$(shell_quote "$NAMESPACE")"
 remote_common+=" RELEASE=$(shell_quote "$RELEASE")"

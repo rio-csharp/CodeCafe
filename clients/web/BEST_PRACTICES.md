@@ -741,6 +741,13 @@ app → pages → widgets → features → entities → shared
 - `entities` can import `shared` only
 - `shared` cannot import any other layer
 
+**Documented exception**: `entities/notebook` may import `entities/notebook-item`.
+`notebook-item` is a sub-domain of `notebook` (its types are only meaningful in
+the context of a notebook), so `entities/notebook` re-exports the item types
+through its own public API and other layers import them from `@/entities/notebook`.
+This is the only sanctioned cross-slice import inside `entities/`; any new one
+needs an explicit note here.
+
 ### Public API (Barrel Exports)
 
 Every slice **must** expose a public API through `index.ts`. External code **must** only import through the `index.ts`:

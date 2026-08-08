@@ -48,7 +48,9 @@ export function highlightCodeBlocks(container: HTMLElement): void {
     const language = languageMatch?.[1] || 'plaintext'
     const text = (code.textContent || '').replace(/\r\n/g, '\n').replace(/\n+$/, '')
 
-    if (code.querySelector('.hljs')) return
+    // The `hljs` class is added to `code` itself below, so check the class
+    // list (a descendant query would never match and is dead code).
+    if (code.classList.contains('hljs')) return
 
     try {
       const result = lowlight.highlight(language, text)

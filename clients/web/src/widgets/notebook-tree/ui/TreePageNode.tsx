@@ -1,4 +1,3 @@
-import { memo } from 'react'
 import { Link } from 'react-router-dom'
 import { FileText } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
@@ -106,4 +105,7 @@ function TreePageNode({
   )
 }
 
-export default memo(TreePageNode)
+// NOTE: no memo() here — every node consumes TreeContext, and the context
+// value identity changes with the action handlers, so memo never actually
+// skipped a render. Keeping it would only be misleading.
+export default TreePageNode

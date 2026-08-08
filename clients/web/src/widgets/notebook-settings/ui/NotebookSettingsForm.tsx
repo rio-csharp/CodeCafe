@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -47,7 +47,6 @@ function NotebookSettingsFormComponent({
   const {
     register,
     handleSubmit,
-    reset,
     formState: { errors },
     control,
   } = useForm<FormData>({
@@ -58,10 +57,6 @@ function NotebookSettingsFormComponent({
       visibility: notebook.visibility,
     },
   })
-
-  useEffect(() => {
-    reset({ title: notebook.title, description: notebook.description ?? '', visibility: notebook.visibility })
-  }, [notebook, reset])
 
   const onSubmit = (data: FormData) => {
     update.mutate(
@@ -132,9 +127,12 @@ function NotebookSettingsFormComponent({
 }
 
 export default function NotebookSettingsForm(props: NotebookSettingsFormProps) {
+  // key={id}: the form is rebuilt only when switching notebooks. A background
+  // refetch producing a new `notebook` object identity must NOT reset the
+  // form — that would silently discard the user's unsaved edits.
   return (
     <ErrorBoundary fallback={<ErrorFallback />}>
-      <NotebookSettingsFormComponent {...props} />
+      <NotebookSettingsFormComponent key={props.notebook.id} {...props} />
     </ErrorBoundary>
   )
 }

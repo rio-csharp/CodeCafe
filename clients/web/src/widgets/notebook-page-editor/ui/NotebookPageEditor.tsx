@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useRef, useState, useReducer, useCallback } from 'react'
+import { useEffect, useMemo, useState, useReducer, useCallback } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
-import type { Editor } from '@tiptap/react'
 import { Check, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { NotebookItem } from '@/entities/notebook-item'
@@ -14,6 +13,8 @@ import { ErrorFallback } from '@/shared/ui/ErrorBoundary'
 import { NotebookChangePreview } from '@/widgets/notebook-change-preview'
 import { useConfirmDialog } from '@/shared/ui/ConfirmDialog'
 import NotebookEditorToolbar from './NotebookEditorToolbar'
+import { useEditorContentSync } from './useEditorContentSync'
+import { useHoveredCodeBlock } from './useHoveredCodeBlock'
 import '@/shared/styles/codeHighlight.css'
 
 interface NotebookPageEditorProps {
@@ -22,16 +23,6 @@ interface NotebookPageEditorProps {
   onCancel: () => void
   isSaving?: boolean
   initialContentJson?: Record<string, unknown> | null
-}
-
-function getMountedEditorElement(editor: Editor): HTMLElement | null {
-  if (editor.isDestroyed) return null
-
-  try {
-    return editor.view.dom as HTMLElement
-  } catch {
-    return null
-  }
 }
 
 function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initialContentJson }: NotebookPageEditorProps) {
@@ -46,7 +37,6 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
     [sourceContentJson],
   )
 
-  const [hoveredPre, setHoveredPre] = useState<HTMLElement | null>(null)
   const [pendingPreview, setPendingPreview] = useState<{
     contentJson: Record<string, unknown>
     text: string
@@ -55,8 +45,6 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
   // external content is re-synced into the editor.
   const [dirty, setDirty] = useState(false)
   const { requestConfirm, confirmDialog } = useConfirmDialog()
-  const hoveredPreRef = useRef(hoveredPre)
-  useEffect(() => { hoveredPreRef.current = hoveredPre }, [hoveredPre])
 
   const editor = useEditor({
     extensions: createTipTapExtensions({ editable: true, placeholder: t('editor.placeholder') }),
@@ -69,18 +57,8 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
     },
   })
 
-  // Sync editor content when the external page content changes (e.g. after a
-  // save roundtrip or when navigating between pages). This must run after the
-  // editor instance is ready and be guarded against destroying user edits:
-  // user typing only mutates the editor view, never `page.contentJson`.
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) return
-    if (editor.isEmpty && !safeContent) return
-    const current = editor.getJSON()
-    if (JSON.stringify(current) !== JSON.stringify(safeContent)) {
-      editor.commands.setContent(safeContent, { emitUpdate: false })
-    }
-  }, [editor, safeContent])
+  useEditorContentSync(editor, safeContent)
+  const hoveredPre = useHoveredCodeBlock(editor)
 
   // Keep React in sync with editor updates (actual document changes only)
   useEffect(() => {
@@ -104,34 +82,6 @@ function NotebookPageEditorComponent({ page, onSave, onCancel, isSaving, initial
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
   }, [dirty])
-
-  // Track hovered code blocks for copy-button visibility
-  useEffect(() => {
-    const editorElement = getMountedEditorElement(editor)
-    if (!editorElement) return
-
-    const handleMouseOver = (e: MouseEvent) => {
-      const pre = (e.target as HTMLElement).closest('pre')
-      if (pre && editorElement.contains(pre)) setHoveredPre(pre as HTMLElement)
-    }
-    const handleMouseOut = (e: MouseEvent) => {
-      const pre = (e.target as HTMLElement).closest('pre')
-      if (pre && pre === hoveredPreRef.current) {
-        const related = e.relatedTarget as HTMLElement | null
-        if (!related || !pre.contains(related)) {
-          setHoveredPre(null)
-        }
-      }
-    }
-
-    editorElement.addEventListener('mouseover', handleMouseOver)
-    editorElement.addEventListener('mouseout', handleMouseOut)
-
-    return () => {
-      editorElement.removeEventListener('mouseover', handleMouseOver)
-      editorElement.removeEventListener('mouseout', handleMouseOut)
-    }
-  }, [editor])
 
   const handleSave = useCallback(() => {
     if (!editor) return

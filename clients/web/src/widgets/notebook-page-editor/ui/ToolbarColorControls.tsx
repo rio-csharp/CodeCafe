@@ -20,7 +20,7 @@ export default function ToolbarColorControls({ editor }: ToolbarColorControlsPro
   return (
     <>
       <label
-        className={`p-1.5 rounded-md cursor-pointer transition-colors ${
+        className={`p-1.5 rounded-md cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-brand-brown ${
           hasColor ? 'bg-surface-active text-brand-brown' : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
         }`}
         title={t('editor.toolbar.textColor')}
@@ -34,7 +34,7 @@ export default function ToolbarColorControls({ editor }: ToolbarColorControlsPro
         />
       </label>
       <label
-        className={`p-1.5 rounded-md cursor-pointer transition-colors ${
+        className={`p-1.5 rounded-md cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-brand-brown ${
           hasHighlight ? 'bg-surface-active text-brand-brown' : 'text-text-secondary hover:bg-surface-hover hover:text-text-primary'
         }`}
         title={t('editor.toolbar.highlight')}

@@ -47,7 +47,7 @@ export function LanguageSwitcher({ placement = 'bottom', align = 'right' }: Lang
                 setOpen(false)
               }}
               className={`flex items-center gap-2 w-full px-3 py-2 text-sm transition-colors ${
-                i18n.language === l.code
+                i18n.language.startsWith(l.code)
                   ? 'text-text-primary font-medium bg-surface-active'
                   : 'text-text-secondary hover:bg-surface-hover'
               }`}

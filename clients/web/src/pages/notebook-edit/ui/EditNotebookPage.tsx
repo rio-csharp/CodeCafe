@@ -3,6 +3,8 @@ import { ArrowLeft } from 'lucide-react'
 import { useNotebook } from '@/entities/notebook'
 import NotebookSettingsForm from '@/widgets/notebook-settings'
 import RouteGuardSpinner from '@/shared/ui/RouteGuardSpinner'
+import QueryError from '@/shared/ui/QueryError'
+import { getDisplayErrorMessage } from '@/shared/lib'
 import { useTranslation } from 'react-i18next'
 
 export default function EditNotebookPage() {
@@ -12,7 +14,7 @@ export default function EditNotebookPage() {
   const { t } = useTranslation()
   const fromPagePath = (location.state as { fromPagePath?: string } | null)?.fromPagePath
 
-  const { data: notebook, isPending, isError } = useNotebook(notebookSlug!)
+  const { data: notebook, isPending, isError, error, refetch } = useNotebook(notebookSlug!)
 
   if (isPending) {
     return (
@@ -28,7 +30,10 @@ export default function EditNotebookPage() {
     return (
       <div className="pt-24 pb-20 lg:pt-32 lg:pb-24">
         <div className="mx-auto max-w-xl px-6 lg:px-8">
-          <p className="text-sm text-status-error">{t('notebook.loadFailed')}</p>
+          <QueryError
+            message={getDisplayErrorMessage(error, t, t('notebook.loadFailed'))}
+            onRetry={() => refetch()}
+          />
         </div>
       </div>
     )
@@ -38,7 +43,7 @@ export default function EditNotebookPage() {
     return (
       <div className="pt-24 pb-20 lg:pt-32 lg:pb-24">
         <div className="mx-auto max-w-xl px-6 lg:px-8">
-          <p className="text-sm text-status-error">{t('notebook.editPermissionDenied')}</p>
+          <QueryError message={t('notebook.editPermissionDenied')} />
         </div>
       </div>
     )

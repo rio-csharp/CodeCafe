@@ -26,7 +26,8 @@ internal sealed record SyncConfig(
                 DatabaseHost: "127.0.0.1",
                 DatabasePort: EnvInt("PROD_DB_PORT", 5432),
                 DatabaseUser: Env("PROD_DB_USER", "codecafe"),
-                DatabaseName: Env("PROD_DB", "codecafe")),
+                DatabaseName: Env("PROD_DB", "codecafe"),
+                PasswordEnvironmentVariable: "PROD_SSH_PASSWORD"),
             Test: new EndpointConfig(
                 Host: RequiredEnv("TEST_HOST"),
                 SshPort: EnvInt("TEST_SSH_PORT", 65008),
@@ -34,7 +35,8 @@ internal sealed record SyncConfig(
                 DatabaseHost: "localhost",
                 DatabasePort: EnvInt("TEST_DB_PORT", 5432),
                 DatabaseUser: Env("TEST_DB_USER", "codecafe"),
-                DatabaseName: Env("TEST_DB", "codecafe")),
+                DatabaseName: Env("TEST_DB", "codecafe"),
+                PasswordEnvironmentVariable: "TEST_SSH_PASSWORD"),
             Local: new LocalDatabaseConfig(
                 Host: Env("LOCAL_HOST", "localhost"),
                 Port: EnvInt("LOCAL_DB_PORT", 5432),
@@ -86,7 +88,8 @@ internal sealed record EndpointConfig(
     string DatabaseHost,
     int DatabasePort,
     string DatabaseUser,
-    string DatabaseName);
+    string DatabaseName,
+    string PasswordEnvironmentVariable);
 
 internal sealed record LocalDatabaseConfig(
     string Host,

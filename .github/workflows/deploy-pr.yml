@@ -37,6 +37,7 @@ jobs:
   deploy:
     name: Deploy PR preview
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment:
       name: test
     outputs:
@@ -62,10 +63,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p .artifacts/helm .artifacts/deployment .artifacts/scripts
-          gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-cd-scripts --dir .artifacts/scripts
+          # Artifacts carry data only (Helm chart, deployment metadata). CD
+          # scripts are never executed from the PR-built artifact; they are
+          # checked out from the trusted PR base branch in the next step.
+          mkdir -p .artifacts/helm .artifacts/deployment
           gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-helm-chart --dir .artifacts/helm
           gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-deployment --dir .artifacts/deployment
+
+      - name: Checkout trusted CD scripts
+        if: steps.pr.outputs.skip != 'true'
+        uses: actions/checkout@v6
+        with:
+          # workflow_run head_sha and artifacts are attacker-influenced; the
+          # PR base branch (release/*) is protected, so deploy scripts run
+          # from a checkout of that ref instead of the CI artifact.
+          ref: ${{ steps.pr.outputs.base_ref }}
+          path: .trusted
 
       - name: Set deployment variables
         if: steps.pr.outputs.skip != 'true'
@@ -79,11 +92,11 @@ jobs:
         env:
           OAUTH_CERT_BASE64: ${{ secrets.OAUTH_CERT_BASE64 }}
           OAUTH_CERT_PASSWORD: ${{ secrets.OAUTH_CERT_PASSWORD }}
-        run: bash .artifacts/scripts/write-oauth-env.sh
+        run: bash .trusted/scripts/cd/write-oauth-env.sh
 
       - name: Configure SSH
         if: steps.pr.outputs.skip != 'true'
-        uses: webfactory/ssh-agent@v0.10.0
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0 (digest-pinned)
         with:
           ssh-private-key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
 
@@ -116,7 +129,8 @@ jobs:
           FRONTEND_REPLICA_COUNT: '1'
           API_REPLICA_COUNT: '1'
           API_MIGRATION_ENABLED: 'false'
-        run: bash .artifacts/scripts/deploy-environment.sh
+          CD_SCRIPTS_DIR: .trusted/scripts/cd
+        run: bash .trusted/scripts/cd/deploy-environment.sh
 
       - name: Verify deployed preview is still current
         id: postdeploy
@@ -136,7 +150,7 @@ jobs:
           TEST_SSH_PORT: ${{ vars.TEST_SSH_PORT }}
           TEST_SSH_USER: ${{ vars.TEST_SSH_USER }}
           TEST_SSH_HOST: ${{ secrets.TEST_SSH_HOST }}
-        run: bash .artifacts/scripts/delete-stale-pr-preview.sh
+        run: bash .trusted/scripts/cd/delete-stale-pr-preview.sh
 
       - name: Comment preview
         if: steps.postdeploy.outputs.current == 'true'

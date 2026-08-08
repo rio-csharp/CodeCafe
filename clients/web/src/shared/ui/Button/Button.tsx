@@ -13,6 +13,9 @@ export function Button({
   isLoading = false,
   className = '',
   disabled,
+  // Default to "button" so placing this inside a <form> never submits
+  // accidentally; pass type="submit" explicitly where submission is wanted.
+  type = 'button',
   ...props
 }: ButtonProps) {
   const base = 'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
@@ -32,12 +35,16 @@ export function Button({
 
   return (
     <button
+      type={type}
       className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
       disabled={disabled || isLoading}
       {...props}
     >
       {isLoading && (
-        <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+        <span
+          aria-hidden="true"
+          className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+        />
       )}
       {children}
     </button>

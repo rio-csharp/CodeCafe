@@ -1,4 +1,4 @@
-import { slugifyHeadingId } from '@/shared/lib/slugifyHeadingId'
+import { slugifyHeadingId } from '@/shared/lib'
 
 export { slugifyHeadingId }
 
@@ -36,6 +36,8 @@ export function extractOutline(contentJson: Record<string, unknown> | null): Out
   function walk(node: TipTapNode) {
     if (node.type === 'heading' && typeof node.attrs?.level === 'number') {
       const text = getTextFromNode(node)
+      // Empty headings are skipped — and do not consume an id index — to
+      // stay aligned with TipTapViewer (see slugifyHeadingId's contract).
       if (text) {
         const id = slugifyHeadingId(text, headings.length)
         headings.push({ id, level: node.attrs.level, text })

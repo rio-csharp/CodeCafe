@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { TreeNode } from '@/entities/notebook'
 import type { NotebookItem } from '@/entities/notebook-item'
+import QueryError from '@/shared/ui/QueryError'
 import { useTreeContext } from '../model/TreeContext'
 import TreeItem from './TreeItem'
 import SearchResultItem from './SearchResultItem'
@@ -13,6 +14,7 @@ interface TreeContentProps {
   searchPending: boolean
   searchError: boolean
   searchResults: NotebookItem[] | undefined
+  onSearchRetry: () => void
   tree: TreeNode[]
 }
 
@@ -21,6 +23,7 @@ export default function TreeContent({
   searchPending,
   searchError,
   searchResults,
+  onSearchRetry,
   tree,
 }: TreeContentProps) {
   const [rootDragOver, setRootDragOver] = useState(false)
@@ -36,7 +39,13 @@ export default function TreeContent({
       )
     }
     if (searchError) {
-      return <p className="text-xs text-status-error text-center py-8">{t('search.error')}</p>
+      return (
+        <QueryError
+          message={t('search.error')}
+          onRetry={onSearchRetry}
+          className="border-0 bg-transparent px-2 py-6"
+        />
+      )
     }
     if (!searchResults?.length) {
       return <p className="text-xs text-text-tertiary text-center py-8">{t('search.noResults')}</p>

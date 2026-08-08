@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '@/shared/ui/Modal'
 
@@ -31,6 +31,14 @@ export function useConfirmDialog() {
     setOptions(null)
     resolverRef.current?.(result)
     resolverRef.current = null
+  }, [])
+
+  // Settle a pending confirmation on unmount so awaiting callers never hang.
+  useEffect(() => {
+    return () => {
+      resolverRef.current?.(false)
+      resolverRef.current = null
+    }
   }, [])
 
   const confirmDialog: ReactNode = options ? (

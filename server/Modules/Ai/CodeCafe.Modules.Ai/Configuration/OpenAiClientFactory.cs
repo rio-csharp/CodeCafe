@@ -7,17 +7,19 @@ public static class OpenAiClientFactory
 {
     public static OpenAIClient Create(AiOptions options)
     {
-        if (string.IsNullOrWhiteSpace(options.BaseUrl))
+        // Always set an explicit network timeout: without it a hung upstream surfaces as an
+        // unobserved TaskCanceledException instead of a timeout the handlers can map to 504.
+        var clientOptions = new OpenAIClientOptions
         {
-            return new OpenAIClient(options.ApiKey);
+            NetworkTimeout = TimeSpan.FromSeconds(Math.Max(1, options.NetworkTimeoutSeconds))
+        };
+
+        if (!string.IsNullOrWhiteSpace(options.BaseUrl))
+        {
+            clientOptions.Endpoint = NormalizeEndpoint(options.BaseUrl);
         }
 
-        return new OpenAIClient(
-            new ApiKeyCredential(options.ApiKey),
-            new OpenAIClientOptions
-            {
-                Endpoint = NormalizeEndpoint(options.BaseUrl)
-            });
+        return new OpenAIClient(new ApiKeyCredential(options.ApiKey), clientOptions);
     }
 
     public static Uri NormalizeEndpoint(string baseUrl)

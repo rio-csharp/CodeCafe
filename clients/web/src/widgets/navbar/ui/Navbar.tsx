@@ -168,14 +168,24 @@ function Navbar() {
               {t('nav.github')}
             </a>
             {user && (
-              <Link
-                to="/dashboard"
-                className={`block text-sm font-medium ${
-                  isActive('/dashboard') ? 'text-text-primary' : 'text-text-secondary'
-                }`}
-              >
-                {t('nav.dashboard')}
-              </Link>
+              <>
+                <Link
+                  to="/dashboard"
+                  className={`block text-sm font-medium ${
+                    isActive('/dashboard') ? 'text-text-primary' : 'text-text-secondary'
+                  }`}
+                >
+                  {t('nav.dashboard')}
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={logout.isPending}
+                  className="block text-sm font-medium text-status-error"
+                >
+                  {logout.isPending ? t('nav.loggingOut') : t('nav.logout')}
+                </button>
+              </>
             )}
             <div className="flex items-center gap-2 pt-2 border-t border-border-subtle">
               <ThemeToggle />

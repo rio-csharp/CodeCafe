@@ -65,6 +65,31 @@ describe('extractOutline', () => {
     }
     expect(extractOutline(doc)).toEqual([])
   })
+
+  it('skips empty headings without consuming an id index', () => {
+    const doc = {
+      type: 'doc',
+      content: [
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'First' }],
+        },
+        { type: 'heading', attrs: { level: 2 }, content: [] },
+        {
+          type: 'heading',
+          attrs: { level: 2 },
+          content: [{ type: 'text', text: 'Second' }],
+        },
+      ],
+    }
+    // The empty heading must not shift the index — TipTapViewer numbers only
+    // non-empty headings the same way.
+    expect(extractOutline(doc)).toEqual([
+      { id: 'heading-first', level: 2, text: 'First' },
+      { id: 'heading-second-1', level: 2, text: 'Second' },
+    ])
+  })
 })
 
 describe('slugifyHeadingId', () => {

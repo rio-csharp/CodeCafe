@@ -6,6 +6,13 @@ interface Props {
   fallback?: ReactNode
   /** Invoked when a descendant throws. Use this to forward to Sentry/Datadog/etc. */
   onError?: (error: Error, errorInfo: ErrorInfo) => void
+  /**
+   * When this value changes while the boundary is showing its fallback, the
+   * boundary resets and retries rendering its children. Pass e.g. the current
+   * location pathname at the app root so a transient error does not lock the
+   * whole page until a manual reload.
+   */
+  resetKey?: string
 }
 
 interface State {
@@ -28,6 +35,12 @@ class ErrorBoundary extends Component<Props, State> {
     // prop lets host apps route this to their telemetry/observability stack.
     console.error('[ErrorBoundary] Uncaught error:', error, errorInfo)
     this.props.onError?.(error, errorInfo)
+  }
+
+  componentDidUpdate(prevProps: Props): void {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: undefined })
+    }
   }
 
   render() {

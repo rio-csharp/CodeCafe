@@ -152,9 +152,11 @@ export default function Sidebar() {
         <Menu className="h-5 w-5 text-text-primary" />
       </button>
 
-      {/* Mobile overlay */}
+      {/* Mobile overlay: click-to-dismiss backdrop, decorative for AT (the
+          sidebar close button provides the accessible path) */}
       {mobileOpen && (
         <div
+          aria-hidden="true"
           className="md:hidden fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
           onClick={closeMobileSidebar}
         />

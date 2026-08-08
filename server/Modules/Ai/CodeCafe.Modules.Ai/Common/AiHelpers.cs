@@ -24,6 +24,27 @@ internal static class AiHelpers
     public static string NormalizeLocale(string? locale)
         => string.IsNullOrWhiteSpace(locale) ? "en" : locale.Trim();
 
+    public static string StripCodeFence(string value, string language)
+    {
+        var trimmed = value.Trim();
+        var languageFence = string.Concat("```", language);
+        if (trimmed.StartsWith(languageFence, StringComparison.OrdinalIgnoreCase))
+        {
+            trimmed = trimmed[languageFence.Length..].TrimStart();
+        }
+        else if (trimmed.StartsWith("```", StringComparison.Ordinal))
+        {
+            trimmed = trimmed["```".Length..].TrimStart();
+        }
+
+        if (trimmed.EndsWith("```", StringComparison.Ordinal))
+        {
+            trimmed = trimmed[..^"```".Length].TrimEnd();
+        }
+
+        return trimmed;
+    }
+
     public static string NormalizeAgentName(string agentName)
         => string.IsNullOrWhiteSpace(agentName)
             ? new AiOptions().AgentName
@@ -85,7 +106,9 @@ internal static class AiHelpers
             Status = statusCode
         };
         problem.Extensions["code"] = code;
-        problem.Extensions["retryable"] = statusCode is StatusCodes.Status429TooManyRequests or StatusCodes.Status502BadGateway;
+        problem.Extensions["retryable"] = statusCode is StatusCodes.Status429TooManyRequests
+            or StatusCodes.Status502BadGateway
+            or StatusCodes.Status504GatewayTimeout;
         if (!string.IsNullOrWhiteSpace(field))
         {
             problem.Extensions["field"] = field;

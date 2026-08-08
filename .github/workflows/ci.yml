@@ -15,7 +15,6 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  packages: write
 
 env:
   DOTNET_VERSION: 10.0.x
@@ -25,6 +24,7 @@ jobs:
   artifact-policy:
     name: Decide artifact policy
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       upload_artifacts: ${{ steps.artifacts.outputs.upload_artifacts }}
       image_tag: ${{ steps.artifacts.outputs.image_tag }}
@@ -47,6 +47,12 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Image push rights live only on the jobs that build and push images;
+    # workflow-level permissions stay read-only.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - artifact-policy
     steps:
@@ -102,6 +108,10 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
     needs:
       - artifact-policy
     steps:
@@ -169,6 +179,7 @@ jobs:
   helm-chart:
     name: Helm chart
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs:
       - artifact-policy
     if: needs.artifact-policy.outputs.upload_artifacts == 'true'
@@ -177,7 +188,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4 (digest-pinned)
 
       - name: Validate Helm chart
         run: |
@@ -198,6 +209,7 @@ jobs:
   cd-scripts:
     name: CD scripts
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs:
       - artifact-policy
     if: needs.artifact-policy.outputs.upload_artifacts == 'true'
@@ -210,6 +222,7 @@ jobs:
           bash -n scripts/cd/delete-stale-pr-preview.sh
           bash -n scripts/cd/deploy-environment.sh
           bash -n scripts/cd/deploy-helm.sh
+          bash -n scripts/cd/lib-port-forward.sh
           bash -n scripts/cd/rollback-environment.sh
           bash -n scripts/cd/rollback-helm-release.sh
           bash -n scripts/cd/set-image-tag-env.sh
@@ -224,6 +237,7 @@ jobs:
             scripts/cd/delete-stale-pr-preview.sh
             scripts/cd/deploy-environment.sh
             scripts/cd/deploy-helm.sh
+            scripts/cd/lib-port-forward.sh
             scripts/cd/rollback-environment.sh
             scripts/cd/rollback-helm-release.sh
             scripts/cd/set-image-tag-env.sh
@@ -234,6 +248,7 @@ jobs:
   deployment-metadata:
     name: Deployment metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs:
       - artifact-policy
       - backend

@@ -109,6 +109,36 @@ describe('apiFetch', () => {
       'Invalid input',
     )
   })
+
+  it('always passes an AbortSignal to fetch (default timeout)', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue(''),
+    })
+
+    await apiFetch('/test', { method: 'GET' })
+
+    const [, options] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(options.signal).toBeInstanceOf(AbortSignal)
+    expect(options.signal.aborted).toBe(false)
+  })
+
+  it('merges the caller signal with the default timeout', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: vi.fn().mockResolvedValue(''),
+    })
+
+    const controller = new AbortController()
+    await apiFetch('/test', { method: 'GET', signal: controller.signal })
+
+    const [, options] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(options.signal).toBeInstanceOf(AbortSignal)
+    expect(options.signal.aborted).toBe(false)
+
+    controller.abort()
+    expect(options.signal.aborted).toBe(true)
+  })
 })
 
 describe('fetchCsrfToken', () => {
@@ -154,5 +184,14 @@ describe('fetchCsrfToken', () => {
     expect(second).toBe('shared-token')
     expect(third).toBe('shared-token')
     expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('throws when the response has no usable token field', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({}),
+    })
+
+    await expect(fetchCsrfToken()).rejects.toThrow()
   })
 })

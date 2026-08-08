@@ -18,6 +18,7 @@ jobs:
   check-freshness:
     name: Check PR base freshness
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Checkout with full history
         uses: actions/checkout@v6

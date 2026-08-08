@@ -1,9 +1,12 @@
+using CodeCafe.Shared.Application.Common;
+using CodeCafe.Shared.Application.Identity;
+using CodeCafe.Shared.Presentation.Errors;
 using FluentValidation;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 
-namespace CodeCafe.Modules.Notes.Presentation.Errors;
+namespace CodeCafe.Server.Errors;
 
 public sealed class GlobalExceptionHandler(
     ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
@@ -13,11 +16,21 @@ public sealed class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
+        if (exception is OperationCanceledException && httpContext.RequestAborted.IsCancellationRequested)
+        {
+            // The client already disconnected; writing a response body would fail
+            // on the broken connection and nobody would read it anyway.
+            return true;
+        }
+
         var (statusCode, problem) = exception switch
         {
             AntiforgeryValidationException => (
                 StatusCodes.Status400BadRequest,
                 ApiProblems.Create("invalid_csrf_token", "The CSRF token is missing or invalid.", StatusCodes.Status400BadRequest)),
+            CurrentUserNotAuthenticatedException => (
+                StatusCodes.Status401Unauthorized,
+                ApiProblems.Create("authentication_required", "Authentication is required to access this resource.", StatusCodes.Status401Unauthorized)),
             ValidationException validationException when validationException.Errors.Any() => (
                 StatusCodes.Status400BadRequest,
                 ApiProblems.CreateValidation(
@@ -27,21 +40,27 @@ public sealed class GlobalExceptionHandler(
             ValidationException => (
                 StatusCodes.Status400BadRequest,
                 ApiProblems.Create("validation_error", "One or more validation errors occurred.", StatusCodes.Status400BadRequest)),
+            // Optimistic concurrency conflicts (stale revision on edit) are an
+            // expected business outcome, not a server failure: 409, no Error log.
+            DbUpdateConcurrencyException => (
+                StatusCodes.Status409Conflict,
+                ApiProblems.Create("concurrency_conflict", "The resource was modified by another request. Refresh and try again.", StatusCodes.Status409Conflict)),
             DbUpdateException => (
                 StatusCodes.Status500InternalServerError,
                 ApiProblems.Create("database_error", "A database error occurred.", StatusCodes.Status500InternalServerError)),
             TimeoutException => (
                 StatusCodes.Status504GatewayTimeout,
                 ApiProblems.Create("timeout", "The request timed out.", StatusCodes.Status504GatewayTimeout)),
-            OperationCanceledException when httpContext.RequestAborted.IsCancellationRequested => (
-                StatusCodes.Status499ClientClosedRequest,
-                ApiProblems.Create("request_cancelled", "The request was cancelled.", StatusCodes.Status499ClientClosedRequest)),
             _ => (
                 StatusCodes.Status500InternalServerError,
                 ApiProblems.Create("internal_error", "An unexpected error occurred.", StatusCodes.Status500InternalServerError))
         };
 
-        if (statusCode == StatusCodes.Status500InternalServerError)
+        // The MediatR LoggingBehavior already logged exceptions that escaped a
+        // handler (with request name and elapsed time) and marked them; skip
+        // those here so one fault does not produce two Error entries.
+        if (statusCode == StatusCodes.Status500InternalServerError
+            && !ExceptionLoggingMarker.IsMarkedAsLogged(exception))
         {
             logger.LogError(exception, "Unhandled exception.");
         }

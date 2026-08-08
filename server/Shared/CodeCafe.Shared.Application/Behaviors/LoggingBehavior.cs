@@ -1,3 +1,4 @@
+using CodeCafe.Shared.Application.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -31,6 +32,9 @@ public sealed class LoggingBehavior<TRequest, TResponse>(
         catch (Exception exception)
         {
             stopwatch.Stop();
+            // Mark the exception so the HTTP boundary (GlobalExceptionHandler)
+            // does not log the same fault a second time; see ExceptionLoggingMarker.
+            ExceptionLoggingMarker.MarkAsLogged(exception);
             logger.LogError(
                 exception,
                 "Application request {RequestName} failed after {ElapsedMilliseconds}ms",

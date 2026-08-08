@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <ProjectReference Include="..\CodeCafe.Modules.Notes.Application\CodeCafe.Modules.Notes.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Presentation\CodeCafe.Shared.Presentation.csproj" />
   </ItemGroup>
 
 </Project>

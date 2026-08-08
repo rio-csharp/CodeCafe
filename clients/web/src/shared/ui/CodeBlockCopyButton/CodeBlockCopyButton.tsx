@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Copy, Check } from 'lucide-react'
+import { CODE_COPY_FEEDBACK_MS, copyCodeFromPre } from './codeCopy'
 
 interface CodeBlockCopyButtonProps {
   pre: HTMLElement
@@ -21,12 +22,11 @@ export function CodeBlockCopyButton({ pre }: CodeBlockCopyButtonProps) {
   }, [])
 
   const handleCopy = useCallback(() => {
-    const code = pre.querySelector('code')
-    if (!code) return
-    navigator.clipboard.writeText(code.textContent ?? '').then(() => {
+    copyCodeFromPre(pre).then((didCopy) => {
+      if (!didCopy) return
       setCopied(true)
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current)
-      timeoutRef.current = window.setTimeout(() => setCopied(false), 2000)
+      timeoutRef.current = window.setTimeout(() => setCopied(false), CODE_COPY_FEEDBACK_MS)
     }).catch(() => {})
   }, [pre])
 

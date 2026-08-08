@@ -17,6 +17,10 @@ done
 
 export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/sbin:/usr/sbin:/sbin
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+. "$script_dir/lib-port-forward.sh"
+
 KUBECTL_BIN="${KUBECTL_BIN:-kubectl}"
 HELM_BIN="${HELM_BIN:-helm}"
 HELM_TIMEOUT="${HELM_TIMEOUT:-180s}"
@@ -34,9 +38,12 @@ AI_BASE_URL="${AI_BASE_URL:-}"
 AI_MAX_TOOL_RESULTS="${AI_MAX_TOOL_RESULTS:-10}"
 AI_MAX_TOOL_CONTENT_CHARS="${AI_MAX_TOOL_CONTENT_CHARS:-4000}"
 AI_MAX_DRAFT_PROMPT_CHARS="${AI_MAX_DRAFT_PROMPT_CHARS:-2000}"
-AI_MAX_DRAFT_CONTEXT_CHARS="${AI_MAX_DRAFT_CONTEXT_CHARS:-12000}"
+# Deliberately no script-side default: when unset, no --set is passed and the
+# chart default applies, so script/chart/backend defaults cannot drift apart.
+AI_MAX_DRAFT_CONTEXT_CHARS="${AI_MAX_DRAFT_CONTEXT_CHARS:-}"
 AI_MAX_DRAFT_OUTPUT_TOKENS="${AI_MAX_DRAFT_OUTPUT_TOKENS:-1600}"
 AI_API_KEY="${AI_API_KEY:-}"
+TLS_SECRET_NAMESPACE="${TLS_SECRET_NAMESPACE:-codecafe-shared}"
 OAUTH_SECRET_NAME="${OAUTH_SECRET_NAME:-codecafe-oauth-secret}"
 OAUTH_SECRET_NAMESPACE="${OAUTH_SECRET_NAMESPACE:-$NAMESPACE}"
 OAUTH_ENV_FILE="${OAUTH_ENV_FILE:-}"
@@ -45,26 +52,11 @@ tls_cert_file=""
 tls_key_file=""
 frontend_pid=""
 api_pid=""
-
-port_forward_cleanup() {
-  local pids=()
-
-  if [ -n "${frontend_pid:-}" ]; then
-    pids+=("$frontend_pid")
-  fi
-
-  if [ -n "${api_pid:-}" ]; then
-    pids+=("$api_pid")
-  fi
-
-  if [ "${#pids[@]}" -gt 0 ]; then
-    kill "${pids[@]}" 2>/dev/null || true
-    wait "${pids[@]}" 2>/dev/null || true
-  fi
-}
+init_port_forward_logs "$RELEASE"
 
 cleanup() {
   port_forward_cleanup
+  remove_port_forward_logs
   rm -f "${tls_cert_file:-}" "${tls_key_file:-}"
   rm -rf "$REMOTE_DIR"
 }
@@ -157,8 +149,8 @@ $KUBECTL_BIN create namespace "$NAMESPACE" --dry-run=client -o yaml | $KUBECTL_B
 
 tls_cert_file="$(mktemp)"
 tls_key_file="$(mktemp)"
-$KUBECTL_BIN get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.crt}' | base64 -d > "$tls_cert_file"
-$KUBECTL_BIN get secret "$TLS_SECRET" --namespace codecafe-shared -o jsonpath='{.data.tls\.key}' | base64 -d > "$tls_key_file"
+$KUBECTL_BIN get secret "$TLS_SECRET" --namespace "$TLS_SECRET_NAMESPACE" -o jsonpath='{.data.tls\.crt}' | base64 -d > "$tls_cert_file"
+$KUBECTL_BIN get secret "$TLS_SECRET" --namespace "$TLS_SECRET_NAMESPACE" -o jsonpath='{.data.tls\.key}' | base64 -d > "$tls_key_file"
 $KUBECTL_BIN create secret tls "$TLS_SECRET" \
   --cert="$tls_cert_file" \
   --key="$tls_key_file" \
@@ -227,7 +219,6 @@ helm_args=(
   --set "api.ai.maxToolResults=$AI_MAX_TOOL_RESULTS"
   --set "api.ai.maxToolContentChars=$AI_MAX_TOOL_CONTENT_CHARS"
   --set "api.ai.maxDraftPromptChars=$AI_MAX_DRAFT_PROMPT_CHARS"
-  --set "api.ai.maxDraftContextChars=$AI_MAX_DRAFT_CONTEXT_CHARS"
   --set "api.ai.maxDraftOutputTokens=$AI_MAX_DRAFT_OUTPUT_TOKENS"
   --set "api.cors.allowedOrigins[0]=https://$FRONTEND_HOST"
   --set "api.ingress.host=$API_HOST"
@@ -250,7 +241,11 @@ if [ -n "$API_MIGRATION_ENABLED" ]; then
   helm_args+=(--set "api.migration.enabled=$API_MIGRATION_ENABLED")
 fi
 
-release_status="$($HELM_BIN status "$RELEASE" --namespace "$NAMESPACE" -o json 2>/dev/null | sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' || true)"
+if [ -n "$AI_MAX_DRAFT_CONTEXT_CHARS" ]; then
+  helm_args+=(--set "api.ai.maxDraftContextChars=$AI_MAX_DRAFT_CONTEXT_CHARS")
+fi
+
+release_status="$($HELM_BIN status "$RELEASE" --namespace "$NAMESPACE" -o template --template '{{.info.status}}' 2>/dev/null || true)"
 case "$release_status" in
   pending-install)
     echo "Found pending Helm install for $RELEASE; uninstalling before retry."
@@ -283,27 +278,11 @@ $KUBECTL_BIN rollout status deployment \
   --namespace "$NAMESPACE" \
   --timeout=180s
 
-pick_port() {
-  python3 - <<'PY'
-import socket
-with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-    sock.bind(("127.0.0.1", 0))
-    print(sock.getsockname()[1])
-PY
-}
-
-dump_port_forward_logs() {
-  echo "Frontend port-forward log:" >&2
-  cat /tmp/codecafe-frontend-port-forward.log >&2 || true
-  echo "API port-forward log:" >&2
-  cat /tmp/codecafe-api-port-forward.log >&2 || true
-}
-
 frontend_port="$(pick_port)"
 api_port="$(pick_port)"
-$KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-frontend" "${frontend_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-frontend-port-forward.log 2>&1 &
+$KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-frontend" "${frontend_port}:80" --namespace "$NAMESPACE" >"$frontend_log" 2>&1 &
 frontend_pid=$!
-$KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >/tmp/codecafe-api-port-forward.log 2>&1 &
+$KUBECTL_BIN port-forward --address 127.0.0.1 "service/${RELEASE}-api" "${api_port}:80" --namespace "$NAMESPACE" >"$api_log" 2>&1 &
 api_pid=$!
 
 for _ in $(seq 1 20); do
@@ -322,7 +301,8 @@ for _ in $(seq 1 20); do
 done
 
 dump_port_forward_logs
-curl --fail --header "Host: $FRONTEND_HOST" "http://127.0.0.1:${frontend_port}/"
-curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/health/ready"
-curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}${AI_STATUS_ENDPOINT_PATH}"
-curl --fail --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/.well-known/oauth-protected-resource/mcp"
+curl --fail --show-error --header "Host: $FRONTEND_HOST" "http://127.0.0.1:${frontend_port}/" || true
+curl --fail --show-error --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/health/ready" || true
+curl --fail --show-error --header "Host: $API_HOST" "http://127.0.0.1:${api_port}${AI_STATUS_ENDPOINT_PATH}" || true
+curl --fail --show-error --header "Host: $API_HOST" "http://127.0.0.1:${api_port}/.well-known/oauth-protected-resource/mcp" || true
+exit 1

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Modal } from '@/shared/ui/Modal'
 
@@ -41,15 +41,25 @@ export function usePromptDialog() {
   }, [])
 
   const submit = useCallback(() => {
-    setState((current) => {
-      if (!current) return current
-      const error = current.validate?.(current.value) ?? null
-      if (error) return { ...current, error }
-      // Use a microtask so resolver runs after state settles.
-      queueMicrotask(() => settle(current.value))
-      return current
-    })
-  }, [settle])
+    // Work off a state snapshot instead of the setState updater: updaters
+    // must be pure (StrictMode double-invokes them) and must not settle
+    // promises as a side effect.
+    if (!state) return
+    const error = state.validate?.(state.value) ?? null
+    if (error) {
+      setState({ ...state, error })
+      return
+    }
+    settle(state.value)
+  }, [state, settle])
+
+  // Settle a pending prompt on unmount so awaiting callers never hang.
+  useEffect(() => {
+    return () => {
+      resolverRef.current?.(null)
+      resolverRef.current = null
+    }
+  }, [])
 
   const promptDialog: ReactNode = state ? (
     <Modal isOpen onClose={() => settle(null)} title={state.title}>

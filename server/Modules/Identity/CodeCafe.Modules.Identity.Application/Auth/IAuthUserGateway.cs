@@ -12,8 +12,12 @@ public interface IAuthUserGateway
         string password,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Verifies the password for the account with the given email in a single
+    /// user lookup, so the login path does not load the user twice.
+    /// </summary>
     Task<AuthPasswordVerificationResult> VerifyPasswordAsync(
-        Guid userId,
+        string normalizedEmail,
         string password,
         bool lockoutOnFailure,
         CancellationToken cancellationToken);
@@ -33,9 +37,10 @@ public sealed record AuthCreateUserResult(
 
 public sealed record AuthPasswordVerificationResult(
     bool Succeeded,
-    bool IsLockedOut)
+    bool IsLockedOut,
+    AuthUserModel? User)
 {
-    public static AuthPasswordVerificationResult Success() => new(true, false);
+    public static AuthPasswordVerificationResult Success(AuthUserModel user) => new(true, false, user);
 
-    public static AuthPasswordVerificationResult Failure(bool isLockedOut) => new(false, isLockedOut);
+    public static AuthPasswordVerificationResult Failure(bool isLockedOut) => new(false, isLockedOut, null);
 }

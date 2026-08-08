@@ -98,6 +98,24 @@ function HeroNotebookMock() {
 function HeroSection() {
   const { t } = useTranslation()
   const { user } = useLayout()
+
+  // Highlight must keep the surrounding text: splitting on the highlight and
+  // rendering only part [0] silently drops the tail in locales where it isn't
+  // at the end (e.g. zh).
+  const renderTagline = () => {
+    const tagline = t('home.tagline')
+    const highlight = t('home.highlight')
+    const idx = tagline.indexOf(highlight)
+    if (idx < 0) return tagline
+    return (
+      <>
+        {tagline.slice(0, idx)}
+        <span className="text-brand-brown-text">{highlight}</span>
+        {tagline.slice(idx + highlight.length)}
+      </>
+    )
+  }
+
   return (
     <section className="pt-28 pb-16 lg:pt-32 lg:pb-20">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -118,22 +136,7 @@ function HeroSection() {
               transition={{ duration: 0.4, delay: 0.1 }}
               className="mt-6 text-3xl sm:text-4xl lg:text-5xl font-bold text-text-primary tracking-tight leading-[1.15]"
             >
-              {(() => {
-                // Highlight must keep the surrounding text: splitting on the
-                // highlight and rendering only part [0] silently drops the
-                // tail in locales where it isn't at the end (e.g. zh).
-                const tagline = t('home.tagline')
-                const highlight = t('home.highlight')
-                const idx = tagline.indexOf(highlight)
-                if (idx < 0) return tagline
-                return (
-                  <>
-                    {tagline.slice(0, idx)}
-                    <span className="text-brand-brown-text">{highlight}</span>
-                    {tagline.slice(idx + highlight.length)}
-                  </>
-                )
-              })()}
+              {renderTagline()}
             </motion.h1>
 
             <motion.p

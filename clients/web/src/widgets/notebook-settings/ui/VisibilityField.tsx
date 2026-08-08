@@ -1,4 +1,4 @@
-import { useWatch, useController } from 'react-hook-form'
+import { useController } from 'react-hook-form'
 import type { Control, FieldValues, Path } from 'react-hook-form'
 import type { NotebookVisibility } from '@/entities/notebook'
 import { useTranslation } from 'react-i18next'
@@ -8,15 +8,19 @@ interface VisibilityFieldProps<T extends FieldValues> {
   name?: Path<T>
 }
 
+function normalizeVisibility(value: unknown): NotebookVisibility {
+  return value === 'unlisted' || value === 'public' ? value : 'private'
+}
+
 export default function VisibilityField<T extends FieldValues>({
   control,
   name = 'visibility' as Path<T>,
 }: VisibilityFieldProps<T>) {
   const { t } = useTranslation()
-  const visibility = useWatch({ control, name })
   const {
     field: { onChange, value },
   } = useController({ control, name })
+  const visibility = normalizeVisibility(value)
   const visibilityOptions: { value: NotebookVisibility; label: string }[] = [
     { value: 'private', label: t('notebook.visibilityPrivate') },
     { value: 'unlisted', label: t('notebook.visibilityUnlisted') },
@@ -46,7 +50,7 @@ export default function VisibilityField<T extends FieldValues>({
               id={`visibility-${opt.value}`}
               type="radio"
               value={opt.value}
-              checked={value === opt.value}
+              checked={visibility === opt.value}
               onChange={() => onChange(opt.value)}
               className="accent-brand-brown bg-transparent"
             />
@@ -54,7 +58,7 @@ export default function VisibilityField<T extends FieldValues>({
           </label>
         ))}
       </div>
-      <p className="mt-2 text-xs text-text-tertiary">{helpText[(visibility as NotebookVisibility) ?? 'private']}</p>
+      <p className="mt-2 text-xs text-text-tertiary">{helpText[visibility]}</p>
     </div>
   )
 }

@@ -41,6 +41,7 @@ function NotebookTreeComponent({ notebook, notebookSlug, tree, activePage, showA
     data: searchResults,
     isPending: searchPending,
     isError: searchError,
+    refetch: refetchSearch,
   } = useNotebookItems(notebook.id, debouncedSearch || undefined, showArchived, isSearching, false)
 
   const {
@@ -94,6 +95,7 @@ function NotebookTreeComponent({ notebook, notebookSlug, tree, activePage, showA
             searchPending={searchPending}
             searchError={searchError}
             searchResults={searchResults}
+            onSearchRetry={() => refetchSearch()}
             tree={tree}
           />
         </div>

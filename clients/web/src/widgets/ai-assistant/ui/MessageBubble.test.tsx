@@ -3,22 +3,18 @@ import { describe, expect, it } from 'vitest'
 import { MessageBubble } from './MessageBubble'
 
 describe('MessageBubble', () => {
-  it('uses dark-mode-safe styling for user messages', () => {
-    const { container } = render(<MessageBubble role="user" text="Hello from user" />)
+  it('renders user messages as plain text without parsing markdown', () => {
+    render(<MessageBubble role="user" text="**not bold**" />)
 
-    const bubble = container.querySelector('.rounded-md')
-    expect(bubble).toHaveClass('bg-brand-brown')
-    expect(bubble).toHaveClass('dark:bg-brand-brown-light')
-    expect(bubble).toHaveClass('dark:text-text-inverse')
+    // The raw markers stay visible — user input is never run through the
+    // markdown renderer.
+    expect(screen.getByText('**not bold**')).toBeInTheDocument()
+    expect(document.querySelector('strong')).toBeNull()
   })
 
-  it('keeps assistant markdown content inheriting the bubble text color', () => {
+  it('renders assistant messages as markdown', () => {
     render(<MessageBubble role="assistant" text="**Hello** from assistant" />)
 
-    const markdown = screen.getByText('Hello', { selector: 'strong' }).closest('.prose')
-    expect(markdown).not.toBeNull()
-    expect(markdown).toHaveClass('text-inherit')
-    expect(markdown).toHaveClass('prose-p:text-inherit')
-    expect(markdown).toHaveClass('prose-headings:text-inherit')
+    expect(screen.getByText('Hello', { selector: 'strong' })).toBeInTheDocument()
   })
 })

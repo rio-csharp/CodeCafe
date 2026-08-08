@@ -34,38 +34,14 @@ import {
 import ToolbarGroup from './ToolbarGroup'
 import ToolbarButton from './ToolbarButton'
 import ToolbarColorControls from './ToolbarColorControls'
+import ToolbarFontSelect from './ToolbarFontSelect'
+import ToolbarLanguageSelect from './ToolbarLanguageSelect'
 import { usePromptDialog } from '@/shared/ui/PromptDialog'
 import {
   normalizeEditorImageUrl,
   normalizeEditorLinkUrl,
   normalizeEditorYoutubeUrl,
 } from '@/shared/lib/safeUrls'
-
-const LANGUAGES = [
-  { value: 'plaintext', label: 'Plain text' },
-  { value: 'javascript', label: 'JavaScript' },
-  { value: 'typescript', label: 'TypeScript' },
-  { value: 'python', label: 'Python' },
-  { value: 'bash', label: 'Bash' },
-  { value: 'json', label: 'JSON' },
-  { value: 'html', label: 'HTML' },
-  { value: 'css', label: 'CSS' },
-  { value: 'csharp', label: 'C#' },
-  { value: 'sql', label: 'SQL' },
-  { value: 'markdown', label: 'Markdown' },
-  { value: 'java', label: 'Java' },
-  { value: 'go', label: 'Go' },
-  { value: 'rust', label: 'Rust' },
-  { value: 'yaml', label: 'YAML' },
-  { value: 'xml', label: 'XML' },
-]
-
-const FONTS = [
-  { value: '', labelKey: 'editor.toolbar.fontDefault' },
-  { value: 'serif', labelKey: 'editor.toolbar.fontSerif' },
-  { value: 'sans-serif', labelKey: 'editor.toolbar.fontSans' },
-  { value: 'monospace', labelKey: 'editor.toolbar.fontMono' },
-] as const
 
 interface NotebookEditorToolbarProps {
   editor: Editor
@@ -126,9 +102,6 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
     }
   }, [editor, requestPrompt, t])
 
-  const currentLang = (editor.getAttributes('codeBlock').language as string | undefined) || 'plaintext'
-  const currentFont = (editor.getAttributes('textStyle').fontFamily as string | undefined) || ''
-
   return (
     <div className="flex items-center gap-1 px-3 py-2 flex-wrap">
       <ToolbarGroup showDivider>
@@ -146,23 +119,7 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
         <ToolbarButton active={editor.isActive('superscript')} onClick={() => editor.chain().focus().toggleSuperscript().run()} title={t('editor.toolbar.superscript')}><Superscript className="h-4 w-4" /></ToolbarButton>
       </ToolbarGroup>
       <ToolbarGroup showDivider>
-        <select
-          value={currentFont}
-          onChange={(e) => {
-            const font = e.target.value
-            if (font) {
-              editor.chain().focus().setFontFamily(font).run()
-            } else {
-              editor.chain().focus().unsetFontFamily().run()
-            }
-          }}
-          className="text-xs border border-border-default rounded px-1.5 py-0.5 bg-surface text-text-secondary outline-none focus:border-border-hover cursor-pointer"
-          title={t('editor.toolbar.fontFamily')}
-        >
-          {FONTS.map((f) => (
-            <option key={f.value} value={f.value}>{t(f.labelKey)}</option>
-          ))}
-        </select>
+        <ToolbarFontSelect editor={editor} />
         <ToolbarColorControls editor={editor} />
       </ToolbarGroup>
       <ToolbarGroup showDivider>
@@ -182,11 +139,7 @@ export default function NotebookEditorToolbar({ editor }: NotebookEditorToolbarP
       <ToolbarGroup showDivider>
         <ToolbarButton active={editor.isActive('codeBlock')} onClick={() => editor.chain().toggleCodeBlock().run()} title={t('editor.toolbar.codeBlock')}><Code className="h-4 w-4" /></ToolbarButton>
         {editor.isActive('codeBlock') && (
-          <select value={currentLang} onChange={(e) => editor.chain().focus().setCodeBlock({ language: e.target.value }).run()} className="text-xs border border-border-default rounded px-1.5 py-0.5 bg-surface text-text-secondary outline-none focus:border-border-hover cursor-pointer" title={t('editor.toolbar.codeLanguage')}>
-            {LANGUAGES.map((lang) => (
-              <option key={lang.value} value={lang.value}>{lang.label}</option>
-            ))}
-          </select>
+          <ToolbarLanguageSelect editor={editor} />
         )}
         <ToolbarButton active={editor.isActive('blockquote')} onClick={() => editor.chain().focus().toggleBlockquote().run()} title={t('editor.toolbar.quote')}><Quote className="h-4 w-4" /></ToolbarButton>
         <ToolbarButton onClick={() => editor.chain().focus().setHorizontalRule().run()} title={t('editor.toolbar.horizontalRule')}><Minus className="h-4 w-4" /></ToolbarButton>

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import type { TreeNode } from '@/entities/notebook'
 import { useTreeContext } from '../model/TreeContext'
 import TreeFolderNode from './TreeFolderNode'
@@ -149,4 +149,5 @@ function TreeItem({ node, level }: TreeItemProps) {
   )
 }
 
-export default memo(TreeItem)
+// NOTE: no memo() — see TreePageNode for why memo is ineffective here.
+export default TreeItem

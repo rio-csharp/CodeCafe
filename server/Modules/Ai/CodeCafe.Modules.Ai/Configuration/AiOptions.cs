@@ -39,4 +39,16 @@ public sealed class AiOptions
     public int MaxDraftContextChars { get; set; } = 200000;
 
     public int MaxDraftOutputTokens { get; set; } = 1600;
+
+    public int NetworkTimeoutSeconds { get; set; } = 100;
+
+    public int MaxChatOutputTokens { get; set; } = 1600;
+
+    public int MaxChatHistoryMessages { get; set; } = 40;
+
+    public int MaxChatHistoryChars { get; set; } = 100000;
+
+    public int MaxAgUiContextEntries { get; set; } = 8;
+
+    public int EditProposalTtlMinutes { get; set; } = 30;
 }

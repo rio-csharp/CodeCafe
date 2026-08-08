@@ -20,6 +20,7 @@ jobs:
   release-e2e:
     name: Release E2E
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     services:
       postgres:
         image: postgres:16

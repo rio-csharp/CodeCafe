@@ -1,3 +1,11 @@
+/**
+ * Single source of truth for heading anchor ids.
+ *
+ * Contract shared by extractOutline (outline panel) and TipTapViewer
+ * (rendered headings): only headings with non-empty text receive an id, and
+ * `index` counts only those headings. Both callers must follow this rule or
+ * outline anchors drift off-by-one.
+ */
 export function slugifyHeadingId(text: string, index: number): string {
   const slug = text
     .toLowerCase()

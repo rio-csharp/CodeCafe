@@ -3,6 +3,7 @@
     <Project Path="Shared/CodeCafe.Shared.Domain/CodeCafe.Shared.Domain.csproj" />
     <Project Path="Shared/CodeCafe.Shared.Application/CodeCafe.Shared.Application.csproj" />
     <Project Path="Shared/CodeCafe.Shared.Infrastructure/CodeCafe.Shared.Infrastructure.csproj" />
+    <Project Path="Shared/CodeCafe.Shared.Presentation/CodeCafe.Shared.Presentation.csproj" />
   </Folder>
   <Folder Name="/Modules/Identity/">
     <Project Path="Modules/Identity/CodeCafe.Modules.Identity.Application/CodeCafe.Modules.Identity.Application.csproj" />

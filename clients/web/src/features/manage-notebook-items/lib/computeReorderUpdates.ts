@@ -23,7 +23,7 @@ export function computeReorderUpdates(
   draggingId: string,
   targetId: string,
   position: 'before' | 'after' | 'inside',
-): { updates: ReorderUpdate[]; draggedParentId: string | null } | null {
+): { updates: ReorderUpdate[] } | null {
   const draggedLoc = findNodeAndSiblings(tree, draggingId)
   const targetLoc = findNodeAndSiblings(tree, targetId)
   if (!draggedLoc || !targetLoc) {
@@ -32,30 +32,26 @@ export function computeReorderUpdates(
   const draggedNode = draggedLoc.node
   const targetNode = targetLoc.node
 
-  const isSameSiblings = draggedLoc.siblings === targetLoc.siblings
-
-  // Clone sibling arrays so we never mutate the original tree prop
-  const oldSiblings = cloneSiblings(draggedLoc.siblings)
-  let newSiblings: TreeNode[]
+  let destination: TreeNode[]
   let newIndex: number
   let newParentId: string | null
 
   if (position === 'inside') {
-    newSiblings = cloneSiblings(targetNode.children)
-    newIndex = newSiblings.length
+    destination = targetNode.children
+    newIndex = destination.length
     newParentId = targetId
   } else if (targetNode.item.type === 'folder' && targetNode.children.length === 0) {
     // Empty folder with a 'before'/'after' Y-position intent. The
     // visual is the same thin line as any other item, but the drop
     // means "put me in this folder as the only child" — same parent
     // rewrite as the 'inside' branch above.
-    newSiblings = cloneSiblings(targetNode.children)
+    destination = targetNode.children
     newIndex = 0
     newParentId = targetId
   } else {
-    newSiblings = cloneSiblings(targetLoc.siblings)
+    destination = targetLoc.siblings
     newIndex = targetLoc.index
-    if (isSameSiblings && draggedLoc.index < targetLoc.index) {
+    if (destination === draggedLoc.siblings && draggedLoc.index < targetLoc.index) {
       newIndex--
     }
     if (position === 'after') {
@@ -71,24 +67,15 @@ export function computeReorderUpdates(
     return null
   }
 
-  // Remove dragged from its current slot in the source list.
-  const draggedIndexInOld = oldSiblings.findIndex((n) => n.item.id === draggingId)
-  if (draggedIndexInOld >= 0) {
-    oldSiblings.splice(draggedIndexInOld, 1)
+  // Clone the destination list so we never mutate the original tree prop.
+  // The dragged item may already be in it — reordering within the same
+  // parent, or dropping 'inside' the item's current parent — so strip it
+  // first and the splice below can never produce a duplicate entry.
+  const newSiblings = cloneSiblings(destination)
+  const draggedIndexInNew = newSiblings.findIndex((n) => n.item.id === draggingId)
+  if (draggedIndexInNew >= 0) {
+    newSiblings.splice(draggedIndexInNew, 1)
   }
-
-  // If the destination IS the same list (i.e. reordering within the
-  // same parent), the cloned newSiblings still contains the dragged
-  // item and the splice below would duplicate it. The newIndex above
-  // was already adjusted for the removal, so strip the dragged item
-  // out of newSiblings first and the splice produces the final order.
-  if (isSameSiblings && position !== 'inside') {
-    const draggedIndexInNew = newSiblings.findIndex((n) => n.item.id === draggingId)
-    if (draggedIndexInNew >= 0) {
-      newSiblings.splice(draggedIndexInNew, 1)
-    }
-  }
-
   newSiblings.splice(newIndex, 0, draggedNode)
 
   const updates: ReorderUpdate[] = []
@@ -103,10 +90,13 @@ export function computeReorderUpdates(
     })
   }
 
-  recompute(oldSiblings)
-  if (newSiblings !== oldSiblings) {
-    recompute(newSiblings)
+  // Only when the dragged item actually left its old list does that list
+  // need its survivors' sort orders recomputed; for a same-list reorder the
+  // single recompute of newSiblings below covers everything.
+  if (destination !== draggedLoc.siblings) {
+    recompute(cloneSiblings(draggedLoc.siblings).filter((n) => n.item.id !== draggingId))
   }
+  recompute(newSiblings)
 
   // Update dragged item's parentId
   const draggedUpdate = updates.find((u) => u.itemId === draggingId)
@@ -114,5 +104,5 @@ export function computeReorderUpdates(
     draggedUpdate.parentId = newParentId
   }
 
-  return { updates, draggedParentId: newParentId }
+  return { updates }
 }
