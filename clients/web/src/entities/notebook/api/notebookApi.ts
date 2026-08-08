@@ -23,14 +23,24 @@ function buildQueryString(params: Record<string, string | undefined>): string {
   return qs ? `?${qs}` : ''
 }
 
-export async function getPublicNotes(search?: string, limit = 50, offset = 0): Promise<Notebook[]> {
+export async function getPublicNotes(
+  search?: string,
+  limit = 50,
+  offset = 0,
+  signal?: AbortSignal,
+): Promise<Notebook[]> {
   const params = buildQueryString({ search, limit: String(limit), offset: String(offset) })
-  return apiFetch<Notebook[]>(`/api/notes/public${params}`)
+  return apiFetch<Notebook[]>(`/api/notes/public${params}`, { signal })
 }
 
-export async function getMyNotes(search?: string, limit = 50, offset = 0): Promise<Notebook[]> {
+export async function getMyNotes(
+  search?: string,
+  limit = 50,
+  offset = 0,
+  signal?: AbortSignal,
+): Promise<Notebook[]> {
   const params = buildQueryString({ search, limit: String(limit), offset: String(offset) })
-  return apiFetch<Notebook[]>(`/api/notes/mine${params}`)
+  return apiFetch<Notebook[]>(`/api/notes/mine${params}`, { signal })
 }
 
 export async function getNotebookBySlug(slug: string, signal?: AbortSignal): Promise<Notebook> {
@@ -145,8 +155,11 @@ export async function reorderNotebookItems(
 
 // Favorite APIs
 
-export async function getFavoriteStatus(notebookId: string): Promise<NotebookFavorite> {
-  return apiFetch<NotebookFavorite>(`/api/notes/${notebookId}/favorite`)
+export async function getFavoriteStatus(
+  notebookId: string,
+  signal?: AbortSignal,
+): Promise<NotebookFavorite> {
+  return apiFetch<NotebookFavorite>(`/api/notes/${notebookId}/favorite`, { signal })
 }
 
 export async function addFavorite(notebookId: string): Promise<NotebookFavorite> {

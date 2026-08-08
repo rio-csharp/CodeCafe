@@ -586,6 +586,35 @@ public sealed class MarkdigMcpMarkdownImporterTests
         Assert.Equal("https://cdn.example.com/a.png", image.GetProperty("attrs").GetProperty("src").GetString());
     }
 
+    [Fact]
+    public void ConvertMarkdownToDocument_RejectsPathologicallyNestedInput_WithoutExhaustingTheStack()
+    {
+        // The block converter recurses over the parsed tree with no depth guard of its own. It is safe
+        // because Markdig refuses to parse input nested past its own limit, so the converter never
+        // sees such a tree. This test pins that dependency: if a Markdig upgrade dropped the limit,
+        // the recursion would become a stack-overflow risk and this test would stop throwing.
+        var importer = new MarkdigMcpMarkdownImporter();
+        var deeplyNested = string.Concat(Enumerable.Repeat("> ", 5000)) + "boom";
+
+        var exception = Record.Exception(() => importer.ConvertMarkdownToDocument(deeplyNested));
+
+        Assert.NotNull(exception);
+        Assert.IsType<ArgumentException>(exception);
+        Assert.Contains("deeply nested", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ConvertMarkdownToDocument_AcceptsModeratelyNestedInput()
+    {
+        // Guards the other side: ordinary nesting must stay well inside Markdig's limit.
+        var importer = new MarkdigMcpMarkdownImporter();
+        var nested = string.Concat(Enumerable.Repeat("> ", 20)) + "still fine";
+
+        var document = importer.ConvertMarkdownToDocument(nested);
+
+        Assert.Equal("doc", document.GetProperty("type").GetString());
+    }
+
     private static string ExtractText(JsonElement element)
     {
         var parts = new List<string>();

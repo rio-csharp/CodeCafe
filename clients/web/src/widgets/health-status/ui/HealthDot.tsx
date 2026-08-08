@@ -6,7 +6,7 @@ function HealthDot() {
   const { t } = useTranslation()
   const { data, isLoading } = useQuery({
     queryKey: ['health'],
-    queryFn: fetchHealth,
+    queryFn: ({ signal }) => fetchHealth(signal),
     refetchInterval: 30000,
     retry: 1,
     staleTime: 25000,

@@ -10,7 +10,7 @@ const PAGE_SIZE = 50
 export function usePublicNotes(search?: string) {
   const query = useInfiniteQuery({
     queryKey: notesKeys.public(search),
-    queryFn: ({ pageParam }) => getPublicNotes(search, PAGE_SIZE, pageParam),
+    queryFn: ({ pageParam, signal }) => getPublicNotes(search, PAGE_SIZE, pageParam, signal),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) =>
       lastPage.length < PAGE_SIZE ? undefined : lastPageParam + PAGE_SIZE,
@@ -21,7 +21,7 @@ export function usePublicNotes(search?: string) {
 export function useMyNotes(search?: string, enabled = true) {
   const query = useInfiniteQuery({
     queryKey: notesKeys.mine(search),
-    queryFn: ({ pageParam }) => getMyNotes(search, PAGE_SIZE, pageParam),
+    queryFn: ({ pageParam, signal }) => getMyNotes(search, PAGE_SIZE, pageParam, signal),
     initialPageParam: 0,
     getNextPageParam: (lastPage, _allPages, lastPageParam) =>
       lastPage.length < PAGE_SIZE ? undefined : lastPageParam + PAGE_SIZE,

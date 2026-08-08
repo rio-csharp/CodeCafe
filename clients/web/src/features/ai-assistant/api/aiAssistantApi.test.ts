@@ -26,9 +26,11 @@ describe('aiAssistantApi', () => {
       draftEndpointPath: '/api/ai/drafts',
     })
 
-    await getAiStatus()
+    const controller = new AbortController()
+    await getAiStatus(controller.signal)
 
-    expect(apiFetchMock).toHaveBeenCalledWith('/custom/ai/status')
+    // The caller's signal is forwarded so React Query can cancel the request.
+    expect(apiFetchMock).toHaveBeenCalledWith('/custom/ai/status', { signal: controller.signal })
   })
 
   it('posts AI edit requests to the discovered edit endpoint', async () => {

@@ -2,8 +2,8 @@ import { apiFetch } from '@/shared/api/client'
 import { AI_STATUS_ENDPOINT_PATH } from '@/shared/config'
 import type { AiEditRequest, AiEditResponse, AiStatus } from '../model/types'
 
-export async function getAiStatus(): Promise<AiStatus> {
-  return apiFetch<AiStatus>(AI_STATUS_ENDPOINT_PATH)
+export async function getAiStatus(signal?: AbortSignal): Promise<AiStatus> {
+  return apiFetch<AiStatus>(AI_STATUS_ENDPOINT_PATH, { signal })
 }
 
 export async function createAiEditProposal(
