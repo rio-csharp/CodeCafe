@@ -20,7 +20,11 @@ public sealed class ApplicationDbContextDesignTimeFactory : IDesignTimeDbContext
         }
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-        optionsBuilder.UseNpgsql(connectionString);
+        // Must match the runtime registration, or `dotnet ef` would scaffold and look up migrations in
+        // a different assembly than the application uses.
+        optionsBuilder.UseNpgsql(
+            connectionString,
+            npgsql => npgsql.MigrationsAssembly(ApplicationDbContextAssembly.Name));
         optionsBuilder.UseOpenIddict<Guid>();
 
         return new ApplicationDbContext(optionsBuilder.Options, new DesignTimeDateTimeProvider());

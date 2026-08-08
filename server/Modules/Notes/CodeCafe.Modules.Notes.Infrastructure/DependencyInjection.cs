@@ -28,7 +28,14 @@ public static class DependencyInjection
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddDbContext<ApplicationDbContext>(options =>
         {
-            options.UseNpgsql(connectionString);
+            // Pin the migrations assembly explicitly. Without this, EF resolves migrations from the
+            // assembly holding the DbContext, so moving ApplicationDbContext to another project would
+            // silently orphan the applied migrations: EF would find none and try to run
+            // InitialIdentity against a populated database. Pinning keeps the existing migrations,
+            // their namespace and their MigrationIds untouched no matter where the context lives.
+            options.UseNpgsql(
+                connectionString,
+                npgsql => npgsql.MigrationsAssembly(ApplicationDbContextAssembly.Name));
             options.UseOpenIddict<Guid>();
         });
         services.AddScoped<INotebookReadService, NotebookReadService>();
