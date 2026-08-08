@@ -1,3 +1,5 @@
+using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
 using Markdig;
 using Markdig.Extensions.Abbreviations;
@@ -14,7 +16,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Unicode;
 
-namespace CodeCafe.Modules.Mcp.Tools.Notes;
+namespace CodeCafe.Infrastructure.Mcp;
 
 public interface IMcpMarkdownImporter
 {

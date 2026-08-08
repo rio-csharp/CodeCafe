@@ -1,6 +1,7 @@
+using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
 
-namespace CodeCafe.Modules.Mcp.Tools.Notes;
+namespace CodeCafe.Application.Mcp;
 
 public sealed record McpMutationResult<T>
     where T : class

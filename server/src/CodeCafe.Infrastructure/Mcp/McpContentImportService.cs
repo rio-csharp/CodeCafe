@@ -1,10 +1,12 @@
+using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Configuration;
 using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
 
-namespace CodeCafe.Modules.Mcp.Tools.Notes;
+namespace CodeCafe.Infrastructure.Mcp;
 
 public sealed class McpContentImportService(
     IMcpUploadStore uploadStore,

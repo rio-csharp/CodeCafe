@@ -1,3 +1,5 @@
+using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Modules.Mcp.Tools.Notes;
 using System.Text.Json;
 

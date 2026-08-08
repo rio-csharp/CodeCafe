@@ -1,3 +1,5 @@
+using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Configuration;
 using CodeCafe.Domain.Mcp;
@@ -6,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Text;
 
-namespace CodeCafe.Modules.Mcp.Tools.Notes;
+namespace CodeCafe.Infrastructure.Mcp;
 
 public sealed class DatabaseMcpUploadStore(
     ApplicationDbContext dbContext,

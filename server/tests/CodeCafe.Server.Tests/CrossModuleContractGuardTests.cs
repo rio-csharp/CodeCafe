@@ -1,3 +1,5 @@
+using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
 using CodeCafe.Server.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;

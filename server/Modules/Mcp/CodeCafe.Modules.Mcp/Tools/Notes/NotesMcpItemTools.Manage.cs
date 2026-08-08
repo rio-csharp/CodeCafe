@@ -1,3 +1,5 @@
+using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
 using CodeCafe.Application.Notes.Commands.DeleteNotebookItem;

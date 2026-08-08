@@ -1,3 +1,5 @@
+using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Modules.Mcp.Tools.Diagnostics;
 using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Application.Notes;
