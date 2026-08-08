@@ -4,6 +4,7 @@ using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 using MediatR;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace CodeCafe.Modules.Ai.Edits.Commands.CreateNotebookEditProposal;
@@ -13,7 +14,8 @@ public sealed class CreateNotebookEditProposalCommandHandler(
     ISender sender,
     ITipTapContentService tipTapContentService,
     IAiNotebookEditGenerator editGenerator,
-    IAiNotebookEditProposalStore proposalStore)
+    IAiNotebookEditProposalStore proposalStore,
+    ILogger<CreateNotebookEditProposalCommandHandler> logger)
     : ICommandHandler<CreateNotebookEditProposalCommand, AiEditProposalFlowResult>
 {
     private static readonly string[] SupportedOperations =
@@ -35,8 +37,11 @@ public sealed class CreateNotebookEditProposalCommandHandler(
             return AiEditProposalFlowResult.Failure(validationError);
         }
 
-        var notebookResult = await notebookReadService.GetNotebookContextAsync(
+        // One notebook load serves both the context and the active page; the two-call form reloaded
+        // every page's full content a second time.
+        var notebookResult = await notebookReadService.GetNotebookContextWithItemAsync(
             request.NotebookSlug.Trim(),
+            request.ActivePagePath,
             request.ActorId,
             cancellationToken);
         if (!notebookResult.Succeeded)
@@ -44,7 +49,7 @@ public sealed class CreateNotebookEditProposalCommandHandler(
             return AiEditProposalFlowResult.Failure(notebookResult.Error!);
         }
 
-        var notebook = notebookResult.Value!;
+        var notebook = notebookResult.Value!.Context;
         if (!notebook.CanEdit)
         {
             return AiEditProposalFlowResult.Failure(new AiFlowError(
@@ -53,8 +58,7 @@ public sealed class CreateNotebookEditProposalCommandHandler(
                 StatusCodes.Status403Forbidden));
         }
 
-        var activePageItem = AiHelpers.ResolveActivePage(notebook, request.ActivePagePath);
-        if (request.ActivePagePath is not null && activePageItem is null)
+        if (!notebookResult.Value.ActivePageFound)
         {
             return AiEditProposalFlowResult.Failure(new AiFlowError(
                 "notebook_item_not_found",
@@ -63,22 +67,7 @@ public sealed class CreateNotebookEditProposalCommandHandler(
                 "activePagePath"));
         }
 
-        NotebookItemModel? activePage = null;
-        if (activePageItem is not null)
-        {
-            var activePageResult = await notebookReadService.GetNotebookItemByPathAsync(
-                notebook.Slug,
-                activePageItem.Path,
-                request.ActorId,
-                cancellationToken);
-            if (!activePageResult.Succeeded)
-            {
-                return AiEditProposalFlowResult.Failure(activePageResult.Error!);
-            }
-
-            activePage = activePageResult.Value;
-        }
-
+        var activePage = notebookResult.Value.ActivePage;
         var normalizedOperation = NormalizeOperation(request.Operation);
         if (RequiresActivePage(normalizedOperation) && activePage is null)
         {
@@ -106,6 +95,13 @@ public sealed class CreateNotebookEditProposalCommandHandler(
             ex is System.ClientModel.ClientResultException
                 or HttpRequestException)
         {
+            // The caller only sees a generic 502, so without this log an upstream outage is
+            // invisible in the server's own telemetry.
+            logger.LogWarning(
+                ex,
+                "AI edit generation failed calling the provider. Operation={Operation}; NotebookSlug={NotebookSlug}",
+                normalizedOperation,
+                notebook.Slug);
             return AiEditProposalFlowResult.Failure(new AiFlowError(
                 "ai_edit_generation_failed",
                 "The assistant could not generate a notebook edit. Please try again.",
@@ -115,6 +111,11 @@ public sealed class CreateNotebookEditProposalCommandHandler(
             ex is InvalidOperationException
                 or JsonException)
         {
+            logger.LogWarning(
+                ex,
+                "AI edit generation returned an unusable edit. Operation={Operation}; NotebookSlug={NotebookSlug}",
+                normalizedOperation,
+                notebook.Slug);
             return AiEditProposalFlowResult.Failure(new AiFlowError(
                 "ai_edit_generation_failed",
                 "The assistant returned an unparseable or invalid edit. Please rephrase your prompt.",

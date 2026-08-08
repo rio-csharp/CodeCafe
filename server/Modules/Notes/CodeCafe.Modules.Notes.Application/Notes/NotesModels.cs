@@ -48,6 +48,16 @@ public sealed record NotebookFavoriteModel(
     bool IsFavorited,
     int FavoriteCount);
 
+/// <summary>
+/// The AI context projection plus the full active-page item, both derived from a single notebook
+/// load. <paramref name="ActivePageFound"/> is false only when an active page was requested and no
+/// item matched, letting the caller distinguish that from "no active page requested".
+/// </summary>
+public sealed record NotebookContextWithItem(
+    NotebookContextModel Context,
+    NotebookItemModel? ActivePage,
+    bool ActivePageFound);
+
 public sealed record NotebookItemModel(
     Guid Id,
     Guid NotebookId,

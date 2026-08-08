@@ -2,12 +2,14 @@ using CodeCafe.Modules.Ai.Common;
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace CodeCafe.Modules.Ai.Drafts.Commands.GenerateNoteDraft;
 
 public sealed class GenerateNoteDraftCommandHandler(
     INotebookReadService notebookReadService,
-    IAiNoteDraftGenerator draftGenerator)
+    IAiNoteDraftGenerator draftGenerator,
+    ILogger<GenerateNoteDraftCommandHandler> logger)
     : ICommandHandler<GenerateNoteDraftCommand, GenerateNoteDraftResult>
 {
     private static readonly string[] SupportedIntents =
@@ -30,8 +32,11 @@ public sealed class GenerateNoteDraftCommandHandler(
             return GenerateNoteDraftResult.Failure(validationError);
         }
 
-        var notebookResult = await notebookReadService.GetNotebookContextAsync(
+        // Resolve the active page from the same notebook load that produces the context; requesting
+        // them separately reloads every page's full content a second time.
+        var notebookResult = await notebookReadService.GetNotebookContextWithItemAsync(
             request.NotebookSlug.Trim(),
+            request.ActivePagePath,
             request.ActorId,
             cancellationToken);
         if (!notebookResult.Succeeded)
@@ -39,9 +44,8 @@ public sealed class GenerateNoteDraftCommandHandler(
             return GenerateNoteDraftResult.Failure(AiFlowError.FromNotesError(notebookResult.Error!));
         }
 
-        var notebook = notebookResult.Value!;
-        var activePageItem = AiHelpers.ResolveActivePage(notebook, request.ActivePagePath);
-        if (request.ActivePagePath is not null && activePageItem is null)
+        var notebook = notebookResult.Value!.Context;
+        if (!notebookResult.Value.ActivePageFound)
         {
             return GenerateNoteDraftResult.Failure(new AiFlowError(
                 "notebook_item_not_found",
@@ -50,22 +54,7 @@ public sealed class GenerateNoteDraftCommandHandler(
                 "activePagePath"));
         }
 
-        NotebookItemModel? activePage = null;
-        if (activePageItem is not null)
-        {
-            var activePageResult = await notebookReadService.GetNotebookItemByPathAsync(
-                notebook.Slug,
-                activePageItem.Path,
-                request.ActorId,
-                cancellationToken);
-            if (!activePageResult.Succeeded)
-            {
-                return GenerateNoteDraftResult.Failure(AiFlowError.FromNotesError(activePageResult.Error!));
-            }
-
-            activePage = activePageResult.Value;
-        }
-
+        var activePage = notebookResult.Value.ActivePage;
         var normalizedIntent = NormalizeIntent(request.Intent);
         AiNoteDraftResult result;
         try
@@ -84,6 +73,13 @@ public sealed class GenerateNoteDraftCommandHandler(
             ex is System.ClientModel.ClientResultException
                 or HttpRequestException)
         {
+            // The caller only sees a generic 502, so without this log an upstream outage is
+            // invisible in the server's own telemetry.
+            logger.LogWarning(
+                ex,
+                "AI draft generation failed calling the provider. Intent={Intent}; NotebookSlug={NotebookSlug}",
+                normalizedIntent,
+                notebook.Slug);
             return GenerateNoteDraftResult.Failure(new AiFlowError(
                 "ai_draft_generation_failed",
                 "The assistant could not generate a note draft. Please try again.",
@@ -91,6 +87,11 @@ public sealed class GenerateNoteDraftCommandHandler(
         }
         catch (Exception ex) when (ex is InvalidOperationException)
         {
+            logger.LogWarning(
+                ex,
+                "AI draft generation returned an unusable draft. Intent={Intent}; NotebookSlug={NotebookSlug}",
+                normalizedIntent,
+                notebook.Slug);
             return GenerateNoteDraftResult.Failure(new AiFlowError(
                 "ai_draft_generation_failed",
                 "The assistant returned an unparseable or invalid draft. Please rephrase your prompt.",

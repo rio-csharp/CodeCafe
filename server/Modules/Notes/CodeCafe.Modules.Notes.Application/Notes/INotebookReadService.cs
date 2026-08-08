@@ -140,6 +140,57 @@ public interface INotebookReadService
             : NotesResult<NotebookItemModel>.Success(item);
     }
 
+    /// <summary>
+    /// Loads the notebook once and returns both the AI context projection and the full
+    /// <see cref="NotebookItemModel"/> for <paramref name="activePagePath"/>. Callers that need both
+    /// should prefer this over calling <see cref="GetNotebookContextAsync"/> and
+    /// <see cref="GetNotebookItemByPathAsync"/> in sequence, which loads the whole notebook —
+    /// including every page's full content — twice per request.
+    /// </summary>
+    /// <remarks>
+    /// A null <paramref name="activePagePath"/> yields a null item with <c>ActivePageFound = true</c>;
+    /// any non-null value is looked up, so a blank string is reported as not found. Only items of
+    /// type "page" can match, so a path pointing at a folder is also not found. Both rules match the
+    /// resolution the AI flows already used via <c>AiHelpers.ResolveActivePage</c>.
+    /// </remarks>
+    async Task<NotesResult<NotebookContextWithItem>> GetNotebookContextWithItemAsync(
+        string slug,
+        string? activePagePath,
+        Guid currentUserId,
+        CancellationToken cancellationToken)
+    {
+        var notebookResult = await GetNotebookBySlugAsync(
+            slug,
+            currentUserId,
+            cancellationToken,
+            includeArchived: false,
+            includeItems: true);
+        if (!notebookResult.Succeeded)
+        {
+            return NotesResult<NotebookContextWithItem>.Failure(
+                notebookResult.Error!.Kind,
+                notebookResult.Error.Code,
+                notebookResult.Error.Message);
+        }
+
+        var context = BuildContext(notebookResult.Value!);
+        // Only a null path means "no active page requested". A blank-but-present path is malformed
+        // input and falls through to the lookup, which reports it as not found.
+        if (activePagePath is null)
+        {
+            return NotesResult<NotebookContextWithItem>.Success(
+                new NotebookContextWithItem(context, null, ActivePageFound: true));
+        }
+
+        var normalizedPath = NotebookInput.NormalizePath(activePagePath);
+        var activePage = notebookResult.Value!.Items.SingleOrDefault(existingItem =>
+            string.Equals(existingItem.Path, normalizedPath, StringComparison.Ordinal)
+            && string.Equals(existingItem.Type, "page", StringComparison.OrdinalIgnoreCase));
+
+        return NotesResult<NotebookContextWithItem>.Success(
+            new NotebookContextWithItem(context, activePage, activePage is not null));
+    }
+
     async Task<NotesResult<NotebookContextModel>> GetNotebookContextAsync(
         string slug,
         Guid currentUserId,
@@ -159,7 +210,11 @@ public interface INotebookReadService
                 notebookResult.Error.Message);
         }
 
-        var notebook = notebookResult.Value!;
+        return NotesResult<NotebookContextModel>.Success(BuildContext(notebookResult.Value!));
+    }
+
+    private static NotebookContextModel BuildContext(NotebookDetailModel notebook)
+    {
         var items = notebook.Items
             .Select(item => new NotebookContextItemModel(
                 item.Id,
@@ -171,14 +226,14 @@ public interface INotebookReadService
                 TruncateTextPreview(item.PlainTextContent)))
             .ToList();
 
-        return NotesResult<NotebookContextModel>.Success(new NotebookContextModel(
+        return new NotebookContextModel(
             notebook.Id,
             notebook.OwnerId,
             notebook.Title,
             notebook.Slug,
             notebook.Description,
             notebook.CanEdit,
-            items));
+            items);
     }
 
     private static string? TruncateTextPreview(string? value)

@@ -72,6 +72,16 @@ public static class ServiceCollectionExtensions
                 "Ai:MaxDraftContextChars must be greater than zero.")
             .Validate(options => options.MaxDraftOutputTokens > 0,
                 "Ai:MaxDraftOutputTokens must be greater than zero.")
+            .Validate(options => options.MaxChatOutputTokens > 0,
+                "Ai:MaxChatOutputTokens must be greater than zero.")
+            .Validate(options => options.MaxChatHistoryMessages > 0,
+                "Ai:MaxChatHistoryMessages must be greater than zero.")
+            .Validate(options => options.MaxChatHistoryChars > 0,
+                "Ai:MaxChatHistoryChars must be greater than zero.")
+            .Validate(options => options.MaxAgUiContextEntries > 0,
+                "Ai:MaxAgUiContextEntries must be greater than zero.")
+            .Validate(options => options.NetworkTimeoutSeconds > 0,
+                "Ai:NetworkTimeoutSeconds must be greater than zero.")
             .ValidateOnStart();
 
         services.AddSingleton<NotebookAssistantTools>();
@@ -130,6 +140,13 @@ public static class ServiceCollectionExtensions
             ? openAiClient.GetResponsesClient().AsIChatClient(options.Model)
             : openAiClient.GetChatClient(options.Model).AsIChatClient();
         chatClient = new AgUiCompatChatClient(chatClient);
+        // Outermost so the budget applies to whatever the agent pipeline ends up sending, including
+        // the tool-calling follow-up turns that resend the whole history.
+        chatClient = new AiBudgetChatClient(
+            chatClient,
+            options.MaxChatOutputTokens,
+            options.MaxChatHistoryMessages,
+            options.MaxChatHistoryChars);
 
         var agent = chatClient.AsAIAgent(
                 name: agentName,
@@ -139,7 +156,7 @@ public static class ServiceCollectionExtensions
                 loggerFactory: loggerFactory,
                 services: serviceProvider);
 
-        return new AgUiContextEnrichingAgent(agent);
+        return new AgUiContextEnrichingAgent(agent, options.MaxAgUiContextEntries);
     }
 
     private const string AssistantInstructions = """
