@@ -5,17 +5,7 @@ namespace CodeCafe.Modules.Notes.Presentation.Endpoints.Notes;
 
 public static partial class NotesEndpoints
 {
-    private static int ToStatusCode(NotesFailureKind kind)
-    {
-        return kind switch
-        {
-            NotesFailureKind.Validation => StatusCodes.Status400BadRequest,
-            NotesFailureKind.Forbidden => StatusCodes.Status403Forbidden,
-            NotesFailureKind.NotFound => StatusCodes.Status404NotFound,
-            NotesFailureKind.Conflict => StatusCodes.Status409Conflict,
-            _ => StatusCodes.Status400BadRequest
-        };
-    }
+    private static int ToStatusCode(NotesFailureKind kind) => NotesFailureStatusCodes.ToStatusCode(kind);
 
     private static IResult ToDetailResult(NotesResult<NotebookDetailModel> result)
     {

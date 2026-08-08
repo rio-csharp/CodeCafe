@@ -437,37 +437,13 @@ public static class NotesMarkdownImportEndpoints
             page.UpdatedAtUtc ?? page.CreatedAtUtc);
     }
 
+    // Delegates to the shared implementation instead of keeping a near-copy. The copy that used to
+    // live here differed in two ways that mattered: it serialized without the UnicodeRanges.All
+    // encoder, so non-ASCII content was written as \uXXXX escapes, and it did not translate a
+    // JsonException from an invalid block into ArgumentException, so that case escaped as a 500
+    // instead of the 400 this endpoint's catch produces.
     private static JsonElement AppendBlocks(JsonElement? existingContentJson, JsonElement blocks)
-    {
-        if (blocks.ValueKind != JsonValueKind.Array)
-        {
-            throw new ArgumentException("Blocks must be a JSON array.");
-        }
-
-        var root = existingContentJson is null || existingContentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
-            ? new JsonObject
-            {
-                ["type"] = "doc",
-                ["content"] = new JsonArray()
-            }
-            : JsonNode.Parse(existingContentJson.Value.GetRawText())?.AsObject()
-              ?? new JsonObject
-              {
-                  ["type"] = "doc",
-                  ["content"] = new JsonArray()
-              };
-
-        root["type"] ??= "doc";
-        var content = root["content"] as JsonArray ?? new JsonArray();
-        root["content"] = content;
-
-        foreach (var block in blocks.EnumerateArray())
-        {
-            content.Add(JsonNode.Parse(block.GetRawText()));
-        }
-
-        return JsonSerializer.SerializeToElement(root);
-    }
+        => TipTapDocumentOperations.AppendBlocks(existingContentJson, blocks);
 
     private static int GetUtf8ByteCount(JsonElement? contentJson)
         => !contentJson.HasValue || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
@@ -557,15 +533,7 @@ public static class NotesMarkdownImportEndpoints
         return TypedResults.Problem(problem);
     }
 
-    private static int ToStatusCode(NotesFailureKind kind)
-        => kind switch
-        {
-            NotesFailureKind.Validation => StatusCodes.Status400BadRequest,
-            NotesFailureKind.Forbidden => StatusCodes.Status403Forbidden,
-            NotesFailureKind.NotFound => StatusCodes.Status404NotFound,
-            NotesFailureKind.Conflict => StatusCodes.Status409Conflict,
-            _ => StatusCodes.Status400BadRequest
-        };
+    private static int ToStatusCode(NotesFailureKind kind) => NotesFailureStatusCodes.ToStatusCode(kind);
 
     public sealed record CreateMarkdownPageImportRequest(
         string Title,

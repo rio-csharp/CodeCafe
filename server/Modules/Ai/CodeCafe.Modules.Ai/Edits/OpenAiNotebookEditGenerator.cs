@@ -46,7 +46,7 @@ public sealed class OpenAiNotebookEditGenerator(
 
     private AiNotebookEditResult ParseResponse(string responseText, AiNotebookEditGenerationContext context)
     {
-        var normalized = StripCodeFence(responseText).Trim();
+        var normalized = AiHelpers.StripCodeFence(responseText, "json").Trim();
         using var document = JsonDocument.Parse(normalized);
         var root = document.RootElement;
 
@@ -209,26 +209,6 @@ public sealed class OpenAiNotebookEditGenerator(
             "delete_page" => $"Delete page '{context.ActivePage?.Path ?? "current-page"}'.",
             _ => $"Update page '{context.ActivePage?.Path ?? "current-page"}'."
         };
-    }
-
-    private static string StripCodeFence(string value)
-    {
-        var trimmed = value.Trim();
-        if (trimmed.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-        {
-            trimmed = trimmed["```json".Length..].TrimStart();
-        }
-        else if (trimmed.StartsWith("```", StringComparison.Ordinal))
-        {
-            trimmed = trimmed["```".Length..].TrimStart();
-        }
-
-        if (trimmed.EndsWith("```", StringComparison.Ordinal))
-        {
-            trimmed = trimmed[..^"```".Length].TrimEnd();
-        }
-
-        return trimmed;
     }
 
     private void AppendBlockOutline(StringBuilder builder, int budget, JsonElement contentJson)
