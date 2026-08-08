@@ -36,6 +36,13 @@ public sealed class DatabaseMcpUploadStore(
         return ToStatus(session);
     }
 
+    /// <remarks>
+    /// Concurrent appends to one upload race twice over: the sequence number is derived from the
+    /// session's chunk count, and (UploadId, SequenceNumber) is unique, so two writers pick the same
+    /// number and one insert fails; and BytesReceived is a read-modify-write, so the loser's bytes
+    /// would go missing. Each attempt therefore re-reads the session and derives the next sequence
+    /// number from the chunks already stored, and a duplicate-key loss is retried on that fresh state.
+    /// </remarks>
     public async Task<NotesUploadResult<McpUploadStatus>> AppendTextAsync(
         Guid actorId,
         string uploadId,
@@ -45,13 +52,6 @@ public sealed class DatabaseMcpUploadStore(
         CancellationToken cancellationToken)
     {
         await PruneExpiredUploadsAsync(cancellationToken);
-
-        var session = await dbContext.McpUploadSessions
-            .SingleOrDefaultAsync(existingSession => existingSession.UploadId == uploadId, cancellationToken);
-        if (session is null || session.ActorUserId != actorId)
-        {
-            return NotesUploadResult<McpUploadStatus>.Failure("upload_not_found", "Upload session was not found.");
-        }
 
         var chunkBytes = Encoding.UTF8.GetByteCount(chunkText);
         if (chunkBytes == 0)
@@ -66,28 +66,68 @@ public sealed class DatabaseMcpUploadStore(
                 $"Upload chunk exceeds the limit of {maxChunkBytes} bytes (received {chunkBytes} bytes).");
         }
 
-        var nextBytes = session.BytesReceived + chunkBytes;
-        if (nextBytes > maxUploadBytes)
+        const int maxAttempts = 5;
+        for (var attempt = 1; ; attempt++)
         {
-            return NotesUploadResult<McpUploadStatus>.Failure(
-                "upload_too_large",
-                $"Upload exceeds the limit of {maxUploadBytes} bytes (received {nextBytes} bytes).");
+            // Detach anything a previous attempt tracked so the retry starts from committed state.
+            dbContext.ChangeTracker.Clear();
+
+            var session = await dbContext.McpUploadSessions
+                .SingleOrDefaultAsync(existingSession => existingSession.UploadId == uploadId, cancellationToken);
+            if (session is null || session.ActorUserId != actorId)
+            {
+                return NotesUploadResult<McpUploadStatus>.Failure("upload_not_found", "Upload session was not found.");
+            }
+
+            var nextBytes = session.BytesReceived + chunkBytes;
+            if (nextBytes > maxUploadBytes)
+            {
+                return NotesUploadResult<McpUploadStatus>.Failure(
+                    "upload_too_large",
+                    $"Upload exceeds the limit of {maxUploadBytes} bytes (received {nextBytes} bytes).");
+            }
+
+            // Derived from the stored chunks rather than ChunkCount so a session counter that drifted
+            // (or a concurrent insert) cannot hand out a number that is already taken.
+            var highestSequence = await dbContext.McpUploadChunks
+                .Where(chunk => chunk.UploadId == uploadId)
+                .MaxAsync(chunk => (int?)chunk.SequenceNumber, cancellationToken) ?? 0;
+
+            dbContext.McpUploadChunks.Add(new McpUploadChunkEntry
+            {
+                Id = Guid.NewGuid(),
+                UploadId = session.UploadId,
+                SequenceNumber = highestSequence + 1,
+                ContentText = chunkText
+            });
+
+            session.BytesReceived = nextBytes;
+            session.ChunkCount += 1;
+
+            try
+            {
+                await dbContext.SaveChangesAsync(cancellationToken);
+                return NotesUploadResult<McpUploadStatus>.Success(ToStatus(session));
+            }
+            catch (DbUpdateException exception) when (
+                attempt < maxAttempts && IsDuplicateChunkSequenceException(exception))
+            {
+                // Another append took this sequence number first; retry against the new state.
+            }
         }
+    }
 
-        dbContext.McpUploadChunks.Add(new McpUploadChunkEntry
-        {
-            Id = Guid.NewGuid(),
-            UploadId = session.UploadId,
-            SequenceNumber = session.ChunkCount + 1,
-            ContentText = chunkText
-        });
-
-        session.BytesReceived = nextBytes;
-        session.ChunkCount += 1;
-
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return NotesUploadResult<McpUploadStatus>.Success(ToStatus(session));
+    /// <summary>
+    /// Detects a violation of the unique (UploadId, SequenceNumber) index on McpUploadChunks.
+    /// </summary>
+    private static bool IsDuplicateChunkSequenceException(DbUpdateException exception)
+    {
+        var message = exception.InnerException?.Message ?? exception.Message;
+        return message.Contains("IX_McpUploadChunks_UploadId_SequenceNumber", StringComparison.OrdinalIgnoreCase)
+               || (message.Contains("McpUploadChunks", StringComparison.OrdinalIgnoreCase)
+                   && message.Contains("SequenceNumber", StringComparison.OrdinalIgnoreCase)
+                   && (message.Contains("unique", StringComparison.OrdinalIgnoreCase)
+                       || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)));
     }
 
     public async Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(

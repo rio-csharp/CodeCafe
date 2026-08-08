@@ -63,6 +63,7 @@ public static class ServiceCollectionExtensions
             services.AddHostedService<DynamicClientCleanupHostedService>();
             services.AddHostedService<OpenIddictPruningHostedService>();
         }
+        services.AddCodeCafeCrossModuleContractGuard();
         services.AddSingleton<IClientIpAddressAccessor, ClientIpAddressAccessor>();
         services.AddHttpContextAccessor();
         services.AddSingleton<ICurrentUserAccessor, HttpContextCurrentUserAccessor>();

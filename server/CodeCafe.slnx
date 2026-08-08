@@ -17,7 +17,6 @@
     <Project Path="Modules/Notes/CodeCafe.Modules.Notes.Presentation/CodeCafe.Modules.Notes.Presentation.csproj" />
   </Folder>
   <Folder Name="/Modules/Mcp/">
-    <Project Path="Modules/Mcp/CodeCafe.Modules.Mcp.Domain/CodeCafe.Modules.Mcp.Domain.csproj" />
     <Project Path="Modules/Mcp/CodeCafe.Modules.Mcp/CodeCafe.Modules.Mcp.csproj" />
   </Folder>
   <Folder Name="/Modules/Ai/">

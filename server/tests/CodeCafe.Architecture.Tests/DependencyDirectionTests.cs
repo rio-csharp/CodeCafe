@@ -4,6 +4,7 @@ using CodeCafe.Modules.Notes.Presentation.Common;
 using CodeCafe.Server.Common;
 using CodeCafe.Shared.Application.Common.Interfaces;
 using CodeCafe.Shared.Domain.Common.Interfaces;
+using CodeCafe.Shared.Infrastructure.Persistence;
 using System.Reflection;
 
 namespace CodeCafe.Architecture.Tests;
@@ -112,9 +113,10 @@ public sealed class DependencyDirectionTests
     {
         var referencesByAssembly = new[]
         {
+            // McpToolAuditEntry now lives in Shared.Domain alongside IAuditableEntity, so it no
+            // longer needs its own entry here.
             GetReferenceNames(typeof(IAuditableEntity).Assembly),
             GetReferenceNames(typeof(CodeCafe.Modules.Notes.Domain.Notes.Notebook).Assembly),
-            GetReferenceNames(typeof(CodeCafe.Shared.Domain.Mcp.McpToolAuditEntry).Assembly),
             GetReferenceNames(typeof(IDateTimeProvider).Assembly),
             GetReferenceNames(typeof(CodeCafe.Modules.Identity.Application.DependencyInjection).Assembly),
             GetReferenceNames(typeof(CodeCafe.Modules.Notes.Application.DependencyInjection).Assembly)
@@ -133,6 +135,30 @@ public sealed class DependencyDirectionTests
         Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(McpAssemblyMarker).Assembly));
         Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(CodeCafe.Modules.Identity.Presentation.Auth.DynamicClientRegistrationController).Assembly));
         Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(ServerAssemblyMarker).Assembly));
+    }
+
+    [Fact]
+    public void Shared_And_Notes_DoNotReference_AnyMcpAssembly()
+    {
+        // The exact-name assertions elsewhere in this file miss satellite assemblies: a reference to
+        // "CodeCafe.Modules.Mcp.Domain" is not equal to "CodeCafe.Modules.Mcp", so Shared.Infrastructure
+        // and Notes.Infrastructure both depended on the Mcp module unnoticed. Match by prefix instead.
+        AssertNoReferenceStartingWith(typeof(IAuditableEntity).Assembly, "CodeCafe.Modules.Mcp");
+        AssertNoReferenceStartingWith(typeof(ApplicationDbContext).Assembly, "CodeCafe.Modules.Mcp");
+        AssertNoReferenceStartingWith(
+            typeof(CodeCafe.Modules.Notes.Infrastructure.DependencyInjection).Assembly,
+            "CodeCafe.Modules.Mcp");
+    }
+
+    private static void AssertNoReferenceStartingWith(Assembly assembly, string prefix)
+    {
+        var offenders = GetReferenceNames(assembly)
+            .Where(name => name.StartsWith(prefix, StringComparison.Ordinal))
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            $"{assembly.GetName().Name} must not reference {prefix}*, but references: {string.Join(", ", offenders)}");
     }
 
     private static IReadOnlySet<string> GetReferenceNames(Assembly assembly)
