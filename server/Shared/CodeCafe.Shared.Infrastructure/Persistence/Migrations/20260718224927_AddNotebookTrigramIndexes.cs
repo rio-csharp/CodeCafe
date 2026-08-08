@@ -4,7 +4,23 @@
 
 namespace CodeCafe.Shared.Infrastructure.Persistence.Migrations
 {
-    /// <inheritdoc />
+    /// <remarks>
+    /// These three GIN indexes are built with a plain CREATE INDEX, which holds an ACCESS EXCLUSIVE
+    /// lock and blocks writes to the table until the build finishes. That is a write outage on a large
+    /// NotebookItems table.
+    /// <para>
+    /// It is deliberately left as-is: this migration has already been applied to the test and
+    /// production databases, so editing it cannot undo the lock that already happened, and EF will not
+    /// re-run it. The only databases affected by a change here are fresh ones, where the tables are
+    /// empty and the lock is irrelevant.
+    /// </para>
+    /// <para>
+    /// New indexes on tables that can grow must instead be created with
+    /// <c>migrationBuilder.Sql("CREATE INDEX CONCURRENTLY IF NOT EXISTS ...", suppressTransaction: true)</c>.
+    /// CONCURRENTLY cannot run inside a transaction, so the suppressTransaction flag is required.
+    /// MigrationIndexConcurrencyTests enforces this for any migration added after this one.
+    /// </para>
+    /// </remarks>
     public partial class AddNotebookTrigramIndexes : Migration
     {
         /// <inheritdoc />
