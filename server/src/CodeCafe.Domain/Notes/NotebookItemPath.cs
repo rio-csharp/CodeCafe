@@ -1,4 +1,4 @@
-namespace CodeCafe.Modules.Notes.Domain.Notes;
+namespace CodeCafe.Domain.Notes;
 
 /// <summary>
 /// Path length budgeting for notebook item paths. Paths are materialised strings

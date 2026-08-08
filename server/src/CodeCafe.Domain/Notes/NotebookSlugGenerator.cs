@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Text;
 
-namespace CodeCafe.Modules.Notes.Domain.Notes;
+namespace CodeCafe.Domain.Notes;
 
 public static class NotebookSlugGenerator
 {

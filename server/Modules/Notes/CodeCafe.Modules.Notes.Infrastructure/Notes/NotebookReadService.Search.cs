@@ -1,5 +1,5 @@
 using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Domain.Notes;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeCafe.Modules.Notes.Infrastructure.Notes;

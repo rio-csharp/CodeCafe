@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Domain.Notes;
 using CodeCafe.Server.Common;
 using CodeCafe.Shared.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Authentication;

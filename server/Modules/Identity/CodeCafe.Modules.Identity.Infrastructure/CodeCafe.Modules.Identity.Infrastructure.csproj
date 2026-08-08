@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Domain\CodeCafe.Shared.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\CodeCafe.Domain\CodeCafe.Domain.csproj" />
     <ProjectReference Include="..\CodeCafe.Modules.Identity.Application\CodeCafe.Modules.Identity.Application.csproj" />
   </ItemGroup>
 

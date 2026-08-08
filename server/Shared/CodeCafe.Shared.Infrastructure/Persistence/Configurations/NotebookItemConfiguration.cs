@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Domain.Notes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

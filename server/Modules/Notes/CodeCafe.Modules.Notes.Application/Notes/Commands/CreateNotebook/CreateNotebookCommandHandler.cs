@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Domain.Notes;
 using CodeCafe.Shared.Application.Common.Abstractions.Messaging;
 using CodeCafe.Shared.Application.Common.Interfaces;
 

@@ -1,4 +1,4 @@
-using CodeCafe.Shared.Domain.Common.Interfaces;
+using CodeCafe.Domain.Common;
 using Microsoft.AspNetCore.Identity;
 
 namespace CodeCafe.Modules.Identity.Infrastructure.Identity;

@@ -1,6 +1,6 @@
-using CodeCafe.Shared.Domain.Common.Interfaces;
+using CodeCafe.Domain.Common;
 
-namespace CodeCafe.Modules.Notes.Domain.Notes;
+namespace CodeCafe.Domain.Notes;
 
 public sealed class Notebook : IAuditableEntity
 {

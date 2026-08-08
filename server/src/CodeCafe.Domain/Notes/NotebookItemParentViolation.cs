@@ -1,4 +1,4 @@
-namespace CodeCafe.Modules.Notes.Domain.Notes;
+namespace CodeCafe.Domain.Notes;
 
 public enum NotebookItemParentViolation
 {

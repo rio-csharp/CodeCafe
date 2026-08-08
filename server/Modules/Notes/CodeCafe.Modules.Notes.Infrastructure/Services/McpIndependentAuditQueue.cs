@@ -1,5 +1,5 @@
 using CodeCafe.Shared.Application.Common.Interfaces;
-using CodeCafe.Shared.Domain.Mcp;
+using CodeCafe.Domain.Mcp;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

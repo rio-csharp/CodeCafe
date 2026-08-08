@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Notes.Application.Notes;
 using CodeCafe.Shared.Application.Configuration;
-using CodeCafe.Shared.Domain.Mcp;
+using CodeCafe.Domain.Mcp;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;

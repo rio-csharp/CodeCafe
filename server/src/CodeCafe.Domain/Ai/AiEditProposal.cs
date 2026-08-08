@@ -1,6 +1,6 @@
-using CodeCafe.Shared.Domain.Common.Interfaces;
+using CodeCafe.Domain.Common;
 
-namespace CodeCafe.Shared.Domain.Ai;
+namespace CodeCafe.Domain.Ai;
 
 public sealed class AiEditProposal : IAuditableEntity
 {

@@ -1,4 +1,4 @@
-using CodeCafe.Shared.Domain.Mcp;
+using CodeCafe.Domain.Mcp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

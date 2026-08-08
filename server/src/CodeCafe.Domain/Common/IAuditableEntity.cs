@@ -1,4 +1,4 @@
-namespace CodeCafe.Shared.Domain.Common.Interfaces;
+namespace CodeCafe.Domain.Common;
 
 public interface IAuditableEntity
 {

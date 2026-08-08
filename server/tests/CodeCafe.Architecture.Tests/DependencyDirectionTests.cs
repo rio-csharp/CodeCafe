@@ -3,7 +3,7 @@ using CodeCafe.Modules.Mcp.Common;
 using CodeCafe.Modules.Notes.Presentation.Common;
 using CodeCafe.Server.Common;
 using CodeCafe.Shared.Application.Common.Interfaces;
-using CodeCafe.Shared.Domain.Common.Interfaces;
+using CodeCafe.Domain.Common;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using System.Reflection;
 
@@ -116,7 +116,7 @@ public sealed class DependencyDirectionTests
             // McpToolAuditEntry now lives in Shared.Domain alongside IAuditableEntity, so it no
             // longer needs its own entry here.
             GetReferenceNames(typeof(IAuditableEntity).Assembly),
-            GetReferenceNames(typeof(CodeCafe.Modules.Notes.Domain.Notes.Notebook).Assembly),
+            GetReferenceNames(typeof(CodeCafe.Domain.Notes.Notebook).Assembly),
             GetReferenceNames(typeof(IDateTimeProvider).Assembly),
             GetReferenceNames(typeof(CodeCafe.Modules.Identity.Application.DependencyInjection).Assembly),
             GetReferenceNames(typeof(CodeCafe.Modules.Notes.Application.DependencyInjection).Assembly)

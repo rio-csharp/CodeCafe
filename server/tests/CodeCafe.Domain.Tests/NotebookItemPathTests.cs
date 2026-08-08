@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Domain.Notes;
 
 namespace CodeCafe.Domain.Tests;
 

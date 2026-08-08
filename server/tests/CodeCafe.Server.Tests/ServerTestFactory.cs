@@ -2,7 +2,7 @@ using CodeCafe.Modules.Ai.Edits;
 using CodeCafe.Modules.Identity.Application.Auth;
 using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
 using CodeCafe.Modules.Notes.Application.Notes;
-using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Domain.Notes;
 using CodeCafe.Server.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;

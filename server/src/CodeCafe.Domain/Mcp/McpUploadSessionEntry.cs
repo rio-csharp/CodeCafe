@@ -1,6 +1,6 @@
-using CodeCafe.Shared.Domain.Common.Interfaces;
+using CodeCafe.Domain.Common;
 
-namespace CodeCafe.Shared.Domain.Mcp;
+namespace CodeCafe.Domain.Mcp;
 
 public sealed class McpUploadSessionEntry : IAuditableEntity
 {

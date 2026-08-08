@@ -1,9 +1,9 @@
 using CodeCafe.Modules.Identity.Infrastructure.Identity;
-using CodeCafe.Modules.Notes.Domain.Notes;
+using CodeCafe.Domain.Notes;
 using CodeCafe.Shared.Application.Common.Interfaces;
-using CodeCafe.Shared.Domain.Ai;
-using CodeCafe.Shared.Domain.Common.Interfaces;
-using CodeCafe.Shared.Domain.Mcp;
+using CodeCafe.Domain.Ai;
+using CodeCafe.Domain.Common;
+using CodeCafe.Domain.Mcp;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;

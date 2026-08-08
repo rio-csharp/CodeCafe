@@ -2,10 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Application\CodeCafe.Shared.Application.csproj" />
-    <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Domain\CodeCafe.Shared.Domain.csproj" />
+    <ProjectReference Include="..\..\..\src\CodeCafe.Domain\CodeCafe.Domain.csproj" />
     <ProjectReference Include="..\..\..\Shared\CodeCafe.Shared.Infrastructure\CodeCafe.Shared.Infrastructure.csproj" />
     <ProjectReference Include="..\CodeCafe.Modules.Notes.Application\CodeCafe.Modules.Notes.Application.csproj" />
-    <ProjectReference Include="..\CodeCafe.Modules.Notes.Domain\CodeCafe.Modules.Notes.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -25,7 +25,7 @@ namespace CodeCafe.Shared.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("CodeCafe.Modules.Notes.Domain.Notes.Notebook", b =>
+            modelBuilder.Entity("CodeCafe.Domain.Notes.Notebook", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -77,7 +77,7 @@ namespace CodeCafe.Shared.Infrastructure.Persistence.Migrations
                     b.ToTable("Notebooks", (string)null);
                 });
 
-            modelBuilder.Entity("CodeCafe.Modules.Notes.Domain.Notes.NotebookItem", b =>
+            modelBuilder.Entity("CodeCafe.Domain.Notes.NotebookItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -366,7 +366,7 @@ namespace CodeCafe.Shared.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("CodeCafe.Modules.Notes.Domain.Notes.Notebook", b =>
+            modelBuilder.Entity("CodeCafe.Domain.Notes.Notebook", b =>
                 {
                     b.HasOne("CodeCafe.Modules.Identity.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
@@ -375,15 +375,15 @@ namespace CodeCafe.Shared.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("CodeCafe.Modules.Notes.Domain.Notes.NotebookItem", b =>
+            modelBuilder.Entity("CodeCafe.Domain.Notes.NotebookItem", b =>
                 {
-                    b.HasOne("CodeCafe.Modules.Notes.Domain.Notes.Notebook", "Notebook")
+                    b.HasOne("CodeCafe.Domain.Notes.Notebook", "Notebook")
                         .WithMany("Items")
                         .HasForeignKey("NotebookId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("CodeCafe.Modules.Notes.Domain.Notes.NotebookItem", "Parent")
+                    b.HasOne("CodeCafe.Domain.Notes.NotebookItem", "Parent")
                         .WithMany("Children")
                         .HasForeignKey("ParentId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -444,12 +444,12 @@ namespace CodeCafe.Shared.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("CodeCafe.Modules.Notes.Domain.Notes.Notebook", b =>
+            modelBuilder.Entity("CodeCafe.Domain.Notes.Notebook", b =>
                 {
                     b.Navigation("Items");
                 });
 
-            modelBuilder.Entity("CodeCafe.Modules.Notes.Domain.Notes.NotebookItem", b =>
+            modelBuilder.Entity("CodeCafe.Domain.Notes.NotebookItem", b =>
                 {
                     b.Navigation("Children");
                 });

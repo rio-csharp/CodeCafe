@@ -1,4 +1,4 @@
-using CodeCafe.Shared.Domain.Ai;
+using CodeCafe.Domain.Ai;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

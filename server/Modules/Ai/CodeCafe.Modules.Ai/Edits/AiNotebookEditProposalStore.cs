@@ -1,4 +1,4 @@
-using CodeCafe.Shared.Domain.Ai;
+using CodeCafe.Domain.Ai;
 using CodeCafe.Shared.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;

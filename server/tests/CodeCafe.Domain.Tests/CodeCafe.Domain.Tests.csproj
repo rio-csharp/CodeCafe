@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Domain\CodeCafe.Modules.Notes.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CodeCafe.Domain\CodeCafe.Domain.csproj" />
   </ItemGroup>
 
 </Project>
