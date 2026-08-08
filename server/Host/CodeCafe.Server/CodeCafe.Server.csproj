@@ -18,7 +18,7 @@
     <ProjectReference Include="..\..\src\CodeCafe.Application\CodeCafe.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Infrastructure\CodeCafe.Modules.Notes.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Presentation\CodeCafe.Modules.Notes.Presentation.csproj" />
-    <ProjectReference Include="..\..\Shared\CodeCafe.Shared.Infrastructure\CodeCafe.Shared.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Shared\CodeCafe.Shared.Presentation\CodeCafe.Shared.Presentation.csproj" />
   </ItemGroup>
 

@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Ai.DependencyInjection;
 using CodeCafe.Application.Identity;
-using CodeCafe.Modules.Identity.Infrastructure;
+using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Modules.Identity.Presentation.DependencyInjection;
 using CodeCafe.Modules.Mcp.DependencyInjection;
 using CodeCafe.Application.Notes;

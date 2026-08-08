@@ -1,4 +1,4 @@
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CodeCafe.Server.Infrastructure;

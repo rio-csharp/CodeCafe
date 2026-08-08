@@ -102,8 +102,8 @@ public sealed class MigrationIndexConcurrencyTests
             var candidate = Path.Combine(
                 current.FullName,
                 "server",
-                "Shared",
-                "CodeCafe.Shared.Infrastructure",
+                "src",
+                "CodeCafe.Infrastructure",
                 "Persistence",
                 "Migrations");
             if (Directory.Exists(candidate))

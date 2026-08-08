@@ -1,7 +1,7 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Configuration;
 using CodeCafe.Domain.Mcp;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Text;

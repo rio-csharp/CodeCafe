@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Notes.Infrastructure.Notes;
 using CodeCafe.Application.Common;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 

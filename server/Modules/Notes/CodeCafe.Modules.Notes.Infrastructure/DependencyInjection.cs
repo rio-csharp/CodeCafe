@@ -2,7 +2,7 @@ using CodeCafe.Application.Notes;
 using CodeCafe.Modules.Notes.Infrastructure.Notes;
 using CodeCafe.Modules.Notes.Infrastructure.Services;
 using CodeCafe.Application.Common;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

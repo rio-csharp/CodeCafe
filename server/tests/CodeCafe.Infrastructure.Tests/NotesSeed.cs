@@ -1,6 +1,6 @@
-using CodeCafe.Modules.Identity.Infrastructure.Identity;
+using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Domain.Notes;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 
 namespace CodeCafe.Infrastructure.Tests;
 

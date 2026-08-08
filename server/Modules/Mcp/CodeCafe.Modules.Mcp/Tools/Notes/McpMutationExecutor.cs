@@ -1,6 +1,6 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Identity;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore.Storage;
 using ModelContextProtocol.Protocol;
 using System.Security.Claims;

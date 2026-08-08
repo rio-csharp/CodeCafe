@@ -1,6 +1,6 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeCafe.Modules.Notes.Infrastructure.Notes;

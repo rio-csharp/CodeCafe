@@ -1,7 +1,7 @@
 using CodeCafe.Modules.Identity.Presentation.Auth;
 using CodeCafe.Server.Infrastructure;
 using CodeCafe.Application.Common;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

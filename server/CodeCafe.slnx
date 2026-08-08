@@ -6,11 +6,9 @@
     <Project Path="src/CodeCafe.Host/CodeCafe.Host.csproj" />
   </Folder>
   <Folder Name="/Shared/">
-    <Project Path="Shared/CodeCafe.Shared.Infrastructure/CodeCafe.Shared.Infrastructure.csproj" />
     <Project Path="Shared/CodeCafe.Shared.Presentation/CodeCafe.Shared.Presentation.csproj" />
   </Folder>
   <Folder Name="/Modules/Identity/">
-    <Project Path="Modules/Identity/CodeCafe.Modules.Identity.Infrastructure/CodeCafe.Modules.Identity.Infrastructure.csproj" />
     <Project Path="Modules/Identity/CodeCafe.Modules.Identity.Presentation/CodeCafe.Modules.Identity.Presentation.csproj" />
   </Folder>
   <Folder Name="/Modules/Notes/">

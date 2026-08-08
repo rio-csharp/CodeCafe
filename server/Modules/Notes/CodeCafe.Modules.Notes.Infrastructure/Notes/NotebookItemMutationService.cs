@@ -1,7 +1,7 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
 using CodeCafe.Application.Common;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 

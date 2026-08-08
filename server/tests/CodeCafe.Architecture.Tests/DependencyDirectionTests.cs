@@ -4,7 +4,7 @@ using CodeCafe.Modules.Notes.Presentation.Common;
 using CodeCafe.Server.Common;
 using CodeCafe.Application.Common;
 using CodeCafe.Domain.Common;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using System.Reflection;
 
 namespace CodeCafe.Architecture.Tests;
@@ -30,7 +30,7 @@ public sealed class DependencyDirectionTests
         var identityReferences = GetReferenceNames(typeof(CodeCafe.Application.Identity.DependencyInjection).Assembly);
         var notesReferences = GetReferenceNames(typeof(CodeCafe.Application.Notes.DependencyInjection).Assembly);
 
-        Assert.DoesNotContain("CodeCafe.Modules.Identity.Infrastructure", identityReferences);
+        Assert.DoesNotContain("CodeCafe.Infrastructure", identityReferences);
         Assert.DoesNotContain("CodeCafe.Modules.Identity.Presentation", identityReferences);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Infrastructure", notesReferences);
         Assert.DoesNotContain("CodeCafe.Modules.Notes.Presentation", notesReferences);
@@ -130,7 +130,7 @@ public sealed class DependencyDirectionTests
         Assert.Contains("CodeCafe.Modules.Ai", serverReferences);
         Assert.Contains("CodeCafe.Modules.Mcp", serverReferences);
         Assert.Contains("CodeCafe.Application", serverReferences);
-        Assert.Contains("CodeCafe.Modules.Identity.Infrastructure", serverReferences);
+        Assert.Contains("CodeCafe.Infrastructure", serverReferences);
         Assert.Contains("CodeCafe.Modules.Notes.Infrastructure", serverReferences);
     }
 
@@ -150,17 +150,17 @@ public sealed class DependencyDirectionTests
 
         foreach (var references in referencesByAssembly)
         {
-            Assert.DoesNotContain("CodeCafe.Shared.Infrastructure", references);
+            Assert.DoesNotContain("CodeCafe.Infrastructure", references);
         }
     }
 
     [Fact]
     public void SharedInfrastructure_IsReferenced_By_InfrastructureLevel_And_Host()
     {
-        Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(CodeCafe.Modules.Notes.Infrastructure.DependencyInjection).Assembly));
-        Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(McpAssemblyMarker).Assembly));
-        Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(CodeCafe.Modules.Identity.Presentation.Auth.DynamicClientRegistrationController).Assembly));
-        Assert.Contains("CodeCafe.Shared.Infrastructure", GetReferenceNames(typeof(ServerAssemblyMarker).Assembly));
+        Assert.Contains("CodeCafe.Infrastructure", GetReferenceNames(typeof(CodeCafe.Modules.Notes.Infrastructure.DependencyInjection).Assembly));
+        Assert.Contains("CodeCafe.Infrastructure", GetReferenceNames(typeof(McpAssemblyMarker).Assembly));
+        Assert.Contains("CodeCafe.Infrastructure", GetReferenceNames(typeof(CodeCafe.Modules.Identity.Presentation.Auth.DynamicClientRegistrationController).Assembly));
+        Assert.Contains("CodeCafe.Infrastructure", GetReferenceNames(typeof(ServerAssemblyMarker).Assembly));
     }
 
     [Fact]

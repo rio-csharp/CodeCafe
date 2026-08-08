@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Identity.Infrastructure.Identity;
+using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Modules.Identity.Presentation.Auth;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
 using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
@@ -8,7 +8,7 @@ using CodeCafe.Server.Errors;
 using CodeCafe.Server.Infrastructure;
 using CodeCafe.Application.Common.Configuration;
 using CodeCafe.Application.Common.Identity;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 using CodeCafe.Shared.Presentation.Errors;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;

@@ -1,6 +1,6 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Domain.Mcp;
-using CodeCafe.Shared.Infrastructure.Persistence;
+using CodeCafe.Infrastructure.Persistence;
 
 namespace CodeCafe.Modules.Notes.Infrastructure.Services;
 
