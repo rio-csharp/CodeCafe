@@ -1,6 +1,6 @@
 using CodeCafe.Modules.Ai.Common;
-using CodeCafe.Modules.Ai.Configuration;
-using CodeCafe.Modules.Ai.Drafts.Commands.GenerateNoteDraft;
+using CodeCafe.Application.Ai;
+using CodeCafe.Application.Ai.Drafts.Commands.GenerateNoteDraft;
 using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-namespace CodeCafe.Modules.Ai.Drafts;
+namespace CodeCafe.Application.Ai.Drafts;
 
 public static class AiNoteDraftEndpoints
 {
@@ -37,7 +37,7 @@ public static class AiNoteDraftEndpoints
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiHelpers.ToError("authenticated_actor_required", "Authentication is required to generate note drafts.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to generate note drafts.", StatusCodes.Status401Unauthorized);
         }
 
         var result = await sender.Send(
@@ -51,7 +51,7 @@ public static class AiNoteDraftEndpoints
             cancellationToken);
         if (!result.Succeeded)
         {
-            return AiHelpers.ToError(result.Error!);
+            return AiProblemResults.ToError(result.Error!);
         }
 
         var draft = result.Draft!;

@@ -1,3 +1,4 @@
+using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;

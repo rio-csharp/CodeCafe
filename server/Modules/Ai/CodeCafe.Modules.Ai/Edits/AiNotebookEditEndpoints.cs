@@ -1,9 +1,9 @@
 using CodeCafe.Modules.Ai.Common;
-using CodeCafe.Modules.Ai.Configuration;
-using CodeCafe.Modules.Ai.Edits.Commands.ApplyNotebookEditProposal;
-using CodeCafe.Modules.Ai.Edits.Commands.CreateNotebookEditProposal;
-using CodeCafe.Modules.Ai.Edits.Commands.DiscardNotebookEditProposal;
-using CodeCafe.Modules.Ai.Edits.Queries.GetNotebookEditProposal;
+using CodeCafe.Application.Ai;
+using CodeCafe.Application.Ai.Edits.Commands.ApplyNotebookEditProposal;
+using CodeCafe.Application.Ai.Edits.Commands.CreateNotebookEditProposal;
+using CodeCafe.Application.Ai.Edits.Commands.DiscardNotebookEditProposal;
+using CodeCafe.Application.Ai.Edits.Queries.GetNotebookEditProposal;
 using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
 
-namespace CodeCafe.Modules.Ai.Edits;
+namespace CodeCafe.Application.Ai.Edits;
 
 public static class AiNotebookEditEndpoints
 {
@@ -53,7 +53,7 @@ public static class AiNotebookEditEndpoints
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiHelpers.ToError("authenticated_actor_required", "Authentication is required to generate notebook edits.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to generate notebook edits.", StatusCodes.Status401Unauthorized);
         }
 
         var result = await sender.Send(
@@ -70,7 +70,7 @@ public static class AiNotebookEditEndpoints
             cancellationToken);
         if (!result.Succeeded)
         {
-            return AiHelpers.ToError(result.Error!);
+            return AiProblemResults.ToError(result.Error!);
         }
 
         return TypedResults.Ok(ToResponse(
@@ -90,7 +90,7 @@ public static class AiNotebookEditEndpoints
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiHelpers.ToError("authenticated_actor_required", "Authentication is required to preview notebook edits.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to preview notebook edits.", StatusCodes.Status401Unauthorized);
         }
 
         var result = await sender.Send(
@@ -98,7 +98,7 @@ public static class AiNotebookEditEndpoints
             cancellationToken);
         if (!result.Succeeded)
         {
-            return AiHelpers.ToError(result.Error!);
+            return AiProblemResults.ToError(result.Error!);
         }
 
         return TypedResults.Ok(ToResponse(
@@ -118,7 +118,7 @@ public static class AiNotebookEditEndpoints
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiHelpers.ToError("authenticated_actor_required", "Authentication is required to apply notebook edits.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to apply notebook edits.", StatusCodes.Status401Unauthorized);
         }
 
         var result = await sender.Send(
@@ -126,7 +126,7 @@ public static class AiNotebookEditEndpoints
             cancellationToken);
         if (!result.Succeeded)
         {
-            return AiHelpers.ToError(result.Error!);
+            return AiProblemResults.ToError(result.Error!);
         }
 
         return TypedResults.Ok(ToResponse(
@@ -145,7 +145,7 @@ public static class AiNotebookEditEndpoints
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiHelpers.ToError("authenticated_actor_required", "Authentication is required to discard notebook edits.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to discard notebook edits.", StatusCodes.Status401Unauthorized);
         }
 
         var error = await sender.Send(
@@ -153,7 +153,7 @@ public static class AiNotebookEditEndpoints
             cancellationToken);
         if (error is not null)
         {
-            return AiHelpers.ToError(error);
+            return AiProblemResults.ToError(error);
         }
 
         return TypedResults.Ok(new { proposalId, discarded = true });

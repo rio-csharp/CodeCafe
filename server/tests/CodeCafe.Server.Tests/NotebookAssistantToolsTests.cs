@@ -1,5 +1,6 @@
-using CodeCafe.Modules.Ai.Configuration;
-using CodeCafe.Modules.Ai.Tools;
+using CodeCafe.Infrastructure.Ai.Agents;
+using CodeCafe.Application.Ai;
+using CodeCafe.Infrastructure.Ai;
 using CodeCafe.Application.Notes;
 using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.Http;

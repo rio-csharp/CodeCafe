@@ -34,4 +34,11 @@
     <ProjectReference Include="..\CodeCafe.Domain\CodeCafe.Domain.csproj" />
   </ItemGroup>
 
+  <!-- The delegating chat clients and the context-enriching agent stay internal; their tests exercise
+       them directly rather than through the whole agent pipeline. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="CodeCafe.Server.Tests" />
+    <InternalsVisibleTo Include="CodeCafe.Infrastructure.Tests" />
+  </ItemGroup>
+
 </Project>

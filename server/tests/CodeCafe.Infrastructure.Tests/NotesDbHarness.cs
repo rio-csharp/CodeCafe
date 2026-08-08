@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Notes.Infrastructure.Notes;
+using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Application.Common;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;

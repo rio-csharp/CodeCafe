@@ -33,7 +33,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CodeCafe.Application\CodeCafe.Application.csproj" />
-    <ProjectReference Include="..\..\Modules\Notes\CodeCafe.Modules.Notes.Infrastructure\CodeCafe.Modules.Notes.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Mcp\CodeCafe.Modules.Mcp\CodeCafe.Modules.Mcp.csproj" />
     <ProjectReference Include="..\..\Host\CodeCafe.Server\CodeCafe.Server.csproj" />
   </ItemGroup>

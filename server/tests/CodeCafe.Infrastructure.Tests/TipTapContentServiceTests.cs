@@ -1,5 +1,5 @@
 using CodeCafe.Application.Notes;
-using CodeCafe.Modules.Notes.Infrastructure.Notes;
+using CodeCafe.Infrastructure.Notes;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 

@@ -1,3 +1,4 @@
+using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Identity;
 using CodeCafe.Infrastructure.Persistence;

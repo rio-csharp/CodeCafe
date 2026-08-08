@@ -12,7 +12,6 @@
     <Project Path="Modules/Identity/CodeCafe.Modules.Identity.Presentation/CodeCafe.Modules.Identity.Presentation.csproj" />
   </Folder>
   <Folder Name="/Modules/Notes/">
-    <Project Path="Modules/Notes/CodeCafe.Modules.Notes.Infrastructure/CodeCafe.Modules.Notes.Infrastructure.csproj" />
     <Project Path="Modules/Notes/CodeCafe.Modules.Notes.Presentation/CodeCafe.Modules.Notes.Presentation.csproj" />
   </Folder>
   <Folder Name="/Modules/Mcp/">

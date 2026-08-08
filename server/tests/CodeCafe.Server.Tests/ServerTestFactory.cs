@@ -1,4 +1,6 @@
-using CodeCafe.Modules.Ai.Edits;
+using CodeCafe.Infrastructure.Ai;
+using CodeCafe.Application.Ai;
+using CodeCafe.Application.Ai.Edits;
 using CodeCafe.Application.Identity;
 using CodeCafe.Modules.Identity.Presentation.Endpoints.Auth;
 using CodeCafe.Application.Notes;

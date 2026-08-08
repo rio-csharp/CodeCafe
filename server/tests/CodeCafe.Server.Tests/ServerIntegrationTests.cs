@@ -1,5 +1,8 @@
-using CodeCafe.Modules.Ai.Drafts;
-using CodeCafe.Modules.Ai.Edits;
+using CodeCafe.Infrastructure.Ai.Agents;
+using CodeCafe.Infrastructure.Ai;
+using CodeCafe.Application.Ai;
+using CodeCafe.Application.Ai.Drafts;
+using CodeCafe.Application.Ai.Edits;
 using CodeCafe.Modules.Mcp.Tools.Notes;
 using CodeCafe.Server.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -1337,7 +1340,9 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
             AiNoteDraftGenerationContext context,
             CancellationToken cancellationToken)
         {
-            throw new HttpRequestException("Provider unavailable.");
+            // Adapters translate provider SDK failures into AiProviderException; a double that
+            // threw the raw HttpRequestException would not be honouring the port contract.
+            throw new AiProviderException(AiFailureKind.Upstream, "Provider unavailable.");
         }
     }
 
@@ -1459,7 +1464,9 @@ public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
             AiNotebookEditGenerationContext context,
             CancellationToken cancellationToken)
         {
-            throw new HttpRequestException("Provider unavailable.");
+            // Adapters translate provider SDK failures into AiProviderException; a double that
+            // threw the raw HttpRequestException would not be honouring the port contract.
+            throw new AiProviderException(AiFailureKind.Upstream, "Provider unavailable.");
         }
     }
 }

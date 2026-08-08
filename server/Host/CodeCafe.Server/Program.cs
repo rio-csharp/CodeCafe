@@ -4,7 +4,7 @@ using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Modules.Identity.Presentation.DependencyInjection;
 using CodeCafe.Modules.Mcp.DependencyInjection;
 using CodeCafe.Application.Notes;
-using CodeCafe.Modules.Notes.Infrastructure;
+using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Server.Common;
 using CodeCafe.Server.DependencyInjection;
 using CodeCafe.Server.Infrastructure;

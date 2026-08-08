@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Ai.Common;
+using CodeCafe.Application.Ai;
 using CodeCafe.Modules.Identity.Presentation.Configuration;
 using CodeCafe.Modules.Mcp.Common;
 using CodeCafe.Modules.Mcp.Tools.Diagnostics;

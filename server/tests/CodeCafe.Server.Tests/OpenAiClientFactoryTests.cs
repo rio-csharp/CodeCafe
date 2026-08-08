@@ -1,4 +1,6 @@
-using CodeCafe.Modules.Ai.Configuration;
+using CodeCafe.Infrastructure.Ai.Agents;
+using CodeCafe.Infrastructure.Ai;
+using CodeCafe.Application.Ai;
 using Xunit;
 
 namespace CodeCafe.Server.Tests;

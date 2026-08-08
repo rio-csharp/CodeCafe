@@ -1,3 +1,3 @@
-namespace CodeCafe.Modules.Ai.Common;
+namespace CodeCafe.Application.Ai;
 
 public sealed class AiAssemblyMarker;

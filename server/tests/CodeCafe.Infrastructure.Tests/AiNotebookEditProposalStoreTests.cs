@@ -1,4 +1,6 @@
-using CodeCafe.Modules.Ai.Edits;
+using CodeCafe.Infrastructure.Ai;
+using CodeCafe.Application.Ai;
+using CodeCafe.Application.Ai.Edits;
 using System.Text.Json;
 
 namespace CodeCafe.Infrastructure.Tests;

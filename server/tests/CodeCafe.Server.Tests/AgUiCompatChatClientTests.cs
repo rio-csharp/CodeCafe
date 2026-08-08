@@ -1,4 +1,6 @@
-using CodeCafe.Modules.Ai.Agents;
+using CodeCafe.Infrastructure.Ai;
+using CodeCafe.Application.Ai;
+using CodeCafe.Infrastructure.Ai.Agents;
 using Microsoft.Extensions.AI;
 using Xunit;
 

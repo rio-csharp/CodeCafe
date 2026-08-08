@@ -1,3 +1,4 @@
+using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Configuration;
