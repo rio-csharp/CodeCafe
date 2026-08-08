@@ -1,4 +1,10 @@
 <Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CodeCafe.Domain/CodeCafe.Domain.csproj" />
+    <Project Path="src/CodeCafe.Application/CodeCafe.Application.csproj" />
+    <Project Path="src/CodeCafe.Infrastructure/CodeCafe.Infrastructure.csproj" />
+    <Project Path="src/CodeCafe.Host/CodeCafe.Host.csproj" />
+  </Folder>
   <Folder Name="/Shared/">
     <Project Path="Shared/CodeCafe.Shared.Domain/CodeCafe.Shared.Domain.csproj" />
     <Project Path="Shared/CodeCafe.Shared.Application/CodeCafe.Shared.Application.csproj" />

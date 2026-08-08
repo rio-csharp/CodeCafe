@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!--
+    The innermost layer: entities, value objects and the invariants that guard them.
+    Deliberately has no project or package references at all. Anything that needs EF, ASP.NET,
+    MediatR or a clock belongs in Application or Infrastructure.
+  -->
+
+</Project>
