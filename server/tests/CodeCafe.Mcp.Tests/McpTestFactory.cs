@@ -1,9 +1,9 @@
 using CodeCafe.Application.Mcp;
 using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Modules.Mcp.Tools.Notes;
+using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
-using CodeCafe.Server.Common;
+using CodeCafe.Host.Common;
 using CodeCafe.Application.Common;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -19,9 +19,9 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace CodeCafe.Modules.Mcp.Tests;
+namespace CodeCafe.Host.Mcp.Tests;
 
-public sealed class McpTestFactory : WebApplicationFactory<ServerAssemblyMarker>
+public sealed class McpTestFactory : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

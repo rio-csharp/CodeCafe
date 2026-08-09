@@ -4,7 +4,7 @@ using CodeCafe.Infrastructure.Ai.Agents;
 using Microsoft.Extensions.AI;
 using Xunit;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 /// <summary>
 /// Chat budget enforcement. Every turn resends the whole history, so without trimming the cost per

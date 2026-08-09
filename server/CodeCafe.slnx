@@ -5,21 +5,6 @@
     <Project Path="src/CodeCafe.Infrastructure/CodeCafe.Infrastructure.csproj" />
     <Project Path="src/CodeCafe.Host/CodeCafe.Host.csproj" />
   </Folder>
-  <Folder Name="/Shared/">
-    <Project Path="Shared/CodeCafe.Shared.Presentation/CodeCafe.Shared.Presentation.csproj" />
-  </Folder>
-  <Folder Name="/Modules/Identity/">
-    <Project Path="Modules/Identity/CodeCafe.Modules.Identity.Presentation/CodeCafe.Modules.Identity.Presentation.csproj" />
-  </Folder>
-  <Folder Name="/Modules/Notes/">
-    <Project Path="Modules/Notes/CodeCafe.Modules.Notes.Presentation/CodeCafe.Modules.Notes.Presentation.csproj" />
-  </Folder>
-  <Folder Name="/Modules/Mcp/">
-    <Project Path="Modules/Mcp/CodeCafe.Modules.Mcp/CodeCafe.Modules.Mcp.csproj" />
-  </Folder>
-  <Folder Name="/Modules/Ai/">
-    <Project Path="Modules/Ai/CodeCafe.Modules.Ai/CodeCafe.Modules.Ai.csproj" />
-  </Folder>
   <Folder Name="/Host/">
     <Project Path="Host/CodeCafe.Server/CodeCafe.Server.csproj" />
   </Folder>

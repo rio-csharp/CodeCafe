@@ -3,7 +3,7 @@ using CodeCafe.Infrastructure.Ai;
 using CodeCafe.Application.Ai;
 using Xunit;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 public sealed class OpenAiClientFactoryTests
 {

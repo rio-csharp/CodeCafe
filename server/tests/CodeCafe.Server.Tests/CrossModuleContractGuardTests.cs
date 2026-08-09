@@ -1,11 +1,11 @@
 using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
-using CodeCafe.Server.DependencyInjection;
+using CodeCafe.Host.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 /// <summary>
 /// The Notes markdown-import endpoints consume contracts that only the MCP module registers. Without

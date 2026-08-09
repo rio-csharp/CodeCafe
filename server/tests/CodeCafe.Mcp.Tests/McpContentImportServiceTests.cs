@@ -1,12 +1,12 @@
 using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Application.Mcp;
-using CodeCafe.Modules.Mcp.Tools.Notes;
+using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Configuration;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
-namespace CodeCafe.Modules.Mcp.Tests;
+namespace CodeCafe.Host.Mcp.Tests;
 
 public sealed class McpContentImportServiceTests
 {

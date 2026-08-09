@@ -6,7 +6,7 @@ using Microsoft.Extensions.AI;
 using System.Text.Json;
 using Xunit;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 public sealed class AgUiContextEnrichingAgentTests
 {

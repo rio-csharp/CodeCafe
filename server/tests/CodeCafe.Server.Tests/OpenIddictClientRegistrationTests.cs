@@ -1,11 +1,11 @@
-using CodeCafe.Modules.Identity.Presentation.Auth;
-using CodeCafe.Modules.Identity.Presentation.Configuration;
+using CodeCafe.Host.Rest.Auth;
+using CodeCafe.Host.Common;
 using CodeCafe.Application.Common.Configuration;
 using OpenIddict.Abstractions;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 public sealed class OpenIddictClientRegistrationTests
 {

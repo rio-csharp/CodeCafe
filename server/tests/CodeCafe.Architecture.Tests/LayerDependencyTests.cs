@@ -101,7 +101,7 @@ public sealed class LayerDependencyTests
     private static void AssertNoReferenceStartingWith(Assembly assembly, string prefix)
     {
         // Prefix rather than exact match: an exact-name check missed a reference to
-        // "CodeCafe.Modules.Mcp.Domain" while looking for "CodeCafe.Modules.Mcp", so two real
+        // "CodeCafe.Host.Mcp.Domain" while looking for "CodeCafe.Host.Mcp", so two real
         // violations went unnoticed.
         var offenders = GetReferenceNames(assembly)
             .Where(name => name.StartsWith(prefix, StringComparison.Ordinal))

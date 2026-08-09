@@ -1,5 +1,5 @@
-using CodeCafe.Modules.Identity.Presentation.Auth;
-using CodeCafe.Server.Infrastructure;
+using CodeCafe.Host.Rest.Auth;
+using CodeCafe.Host.Common;
 using CodeCafe.Application.Common;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
@@ -13,7 +13,7 @@ using OpenIddict.Core;
 using OpenIddict.EntityFrameworkCore.Models;
 using Xunit;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 /// <summary>
 /// Exercises <see cref="DynamicClientCleanupHostedService"/> against a real SQLite database with

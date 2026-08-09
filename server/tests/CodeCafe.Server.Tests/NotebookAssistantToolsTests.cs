@@ -2,14 +2,14 @@ using CodeCafe.Infrastructure.Ai.Agents;
 using CodeCafe.Application.Ai;
 using CodeCafe.Infrastructure.Ai;
 using CodeCafe.Application.Notes;
-using CodeCafe.Server.Infrastructure;
+using CodeCafe.Host.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using Xunit;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 public sealed class NotebookAssistantToolsTests
 {

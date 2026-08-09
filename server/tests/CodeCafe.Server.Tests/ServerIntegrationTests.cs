@@ -3,8 +3,8 @@ using CodeCafe.Infrastructure.Ai;
 using CodeCafe.Application.Ai;
 using CodeCafe.Application.Ai.Drafts;
 using CodeCafe.Application.Ai.Edits;
-using CodeCafe.Modules.Mcp.Tools.Notes;
-using CodeCafe.Server.Infrastructure;
+using CodeCafe.Host.Mcp;
+using CodeCafe.Host.Common;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -19,7 +19,7 @@ using System.Text;
 using System.Text.Json;
 using Xunit;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 public sealed class ServerIntegrationTests : IClassFixture<ServerTestFactory>
 {

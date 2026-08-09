@@ -1,4 +1,4 @@
-using CodeCafe.Modules.Mcp.Tools.Notes;
+using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -6,7 +6,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
-namespace CodeCafe.Modules.Mcp.Tests;
+namespace CodeCafe.Host.Mcp.Tests;
 
 public sealed class McpHostTests : IClassFixture<McpTestFactory>
 {

@@ -3,7 +3,7 @@ using CodeCafe.Application.Notes;
 using Microsoft.AspNetCore.Http;
 using Xunit;
 
-namespace CodeCafe.Server.Tests;
+namespace CodeCafe.Host.Tests;
 
 /// <summary>
 /// Replaces NotesFailureStatusCodeParityTests. That test pinned two duplicated

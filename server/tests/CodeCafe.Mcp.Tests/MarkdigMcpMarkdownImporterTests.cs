@@ -1,9 +1,9 @@
 using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Application.Mcp;
-using CodeCafe.Modules.Mcp.Tools.Notes;
+using CodeCafe.Host.Mcp;
 using System.Text.Json;
 
-namespace CodeCafe.Modules.Mcp.Tests;
+namespace CodeCafe.Host.Mcp.Tests;
 
 public sealed class MarkdigMcpMarkdownImporterTests
 {

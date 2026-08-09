@@ -4,7 +4,11 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NoWarn>$(NoWarn);OPENAI001</NoWarn>
+    <NoWarn>$(NoWarn);OPENAPI001</NoWarn>
+    <RootNamespace>CodeCafe.Host</RootNamespace>
+    <AssemblyName>CodeCafe.Host</AssemblyName>
+    <!-- Library so test projects that reference it do not become console apps -->
+    <OutputType>Library</OutputType>
   </PropertyGroup>
 
   <!--
@@ -27,6 +31,12 @@
     <ProjectReference Include="..\CodeCafe.Application\CodeCafe.Application.csproj" />
     <ProjectReference Include="..\CodeCafe.Domain\CodeCafe.Domain.csproj" />
     <ProjectReference Include="..\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CodeCafe.Mcp.Tests" />
+    <InternalsVisibleTo Include="CodeCafe.Server.Tests" />
+    <InternalsVisibleTo Include="CodeCafe.Api.Tests" />
   </ItemGroup>
 
 </Project>
