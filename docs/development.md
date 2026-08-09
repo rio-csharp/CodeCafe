@@ -20,7 +20,7 @@ GRANT ALL PRIVILEGES ON DATABASE codecafe TO codecafe;
 
 ### 2. Configure The Backend
 
-Create `server/Host/CodeCafe.Server/appsettings.Development.json`:
+Create `server/src/CodeCafe.Host/appsettings.Development.json`:
 
 ```json
 {
@@ -85,7 +85,7 @@ Restore and run the combined backend host:
 
 ```powershell
 dotnet restore server/CodeCafe.slnx
-dotnet run --project server/Host/CodeCafe.Server
+dotnet run --project server/src/CodeCafe.Host
 ```
 
 The checked-in development launch profile uses:
@@ -152,7 +152,7 @@ Use `CodeCafe.Shared.Infrastructure` as the current migrations project and `Code
 ```powershell
 dotnet ef database update `
   --project server/Shared/CodeCafe.Shared.Infrastructure/CodeCafe.Shared.Infrastructure.csproj `
-  --startup-project server/Host/CodeCafe.Server/CodeCafe.Server.csproj `
+  --startup-project server/src/CodeCafe.Host/CodeCafe.Host.csproj `
   --context ApplicationDbContext
 ```
 

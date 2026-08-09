@@ -53,7 +53,7 @@ jobs:
 
       - name: Publish API
         run: >
-          dotnet publish server/Host/CodeCafe.Server/CodeCafe.Server.csproj
+          dotnet publish server/src/CodeCafe.Host/CodeCafe.Host.csproj
           --configuration Release
           --output .artifacts/api
           /p:UseAppHost=false

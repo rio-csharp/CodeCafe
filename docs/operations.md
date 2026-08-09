@@ -5,7 +5,7 @@
 Backend deploy target:
 
 ```text
-server/Host/CodeCafe.Server/CodeCafe.Server.csproj
+server/src/CodeCafe.Host/CodeCafe.Host.csproj
 ```
 
 Frontend deploy target:
@@ -16,7 +16,7 @@ clients/web/
 
 Container images are built from:
 
-- `server/Host/CodeCafe.Server/Dockerfile`
+- `server/src/CodeCafe.Host/Dockerfile`
 - `clients/web/Dockerfile`
 
 ## GitHub Workflow

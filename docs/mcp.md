@@ -242,7 +242,7 @@ Stored content is normalized before persistence. URLs on links and media are fil
 
 ## Default Limits
 
-From `server/Host/CodeCafe.Server/appsettings.json`:
+From `server/src/CodeCafe.Host/appsettings.json`:
 
 - Max inline content: `131072` bytes
 - Max upload chunk: `262144` bytes
@@ -276,7 +276,7 @@ Run the combined backend host locally:
 
 ```powershell
 dotnet restore server/CodeCafe.slnx
-dotnet run --project server/Host/CodeCafe.Server
+dotnet run --project server/src/CodeCafe.Host
 ```
 
 The checked-in development profile serves:

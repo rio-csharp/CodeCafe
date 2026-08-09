@@ -44,8 +44,8 @@ CodeCafe/
 
 1. Install .NET 10, Node 24, and PostgreSQL 16+.
 2. Create a local `codecafe` database and user.
-3. Add `server/Host/CodeCafe.Server/appsettings.Development.json` with your local connection string.
-4. Run `dotnet run --project server/Host/CodeCafe.Server`.
+3. Add `server/src/CodeCafe.Host/appsettings.Development.json` with your local connection string.
+4. Run `dotnet run --project server/src/CodeCafe.Host`.
 5. Run `npm ci` and `npm run dev` inside `clients/web/`.
 
 The detailed setup, testing, and migration flow lives in [docs/development.md](docs/development.md).
