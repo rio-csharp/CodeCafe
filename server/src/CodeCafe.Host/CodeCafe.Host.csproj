@@ -7,8 +7,9 @@
     <NoWarn>$(NoWarn);OPENAPI001</NoWarn>
     <RootNamespace>CodeCafe.Host</RootNamespace>
     <AssemblyName>CodeCafe.Host</AssemblyName>
-    <!-- Library so test projects that reference it do not become console apps -->
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerfileContext>..\..</DockerfileContext>
   </PropertyGroup>
 
   <!--

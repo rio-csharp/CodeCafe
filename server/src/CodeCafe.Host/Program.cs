@@ -8,13 +8,7 @@ using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Host.Common;
 using CodeCafe.Host.DependencyInjection;
 
-namespace CodeCafe.Host.Common;
-
-public static class WebApplicationRunner
-{
-    public static async Task RunAsync(string[] args)
-    {
-        var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddIdentityApplication();
 builder.Services.AddIdentityInfrastructure();
@@ -40,8 +34,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseCodeCafeServerPipeline();
 
-        await app.RunAsync();
-    }
-}
+await app.RunAsync();
 
 public partial class Program;
