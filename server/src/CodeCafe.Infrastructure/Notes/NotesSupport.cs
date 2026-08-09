@@ -136,18 +136,6 @@ internal static class NotesSupport
             items);
     }
 
-    public static bool IsDuplicateFavoriteException(Exception exception)
-    {
-        var message = exception.InnerException?.Message ?? exception.Message;
-        return message.Contains("NotebookFavorites", StringComparison.OrdinalIgnoreCase)
-            && (message.Contains("unique", StringComparison.OrdinalIgnoreCase)
-                || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase));
-    }
-
-    /// <summary>
-    /// Detects a violation of the unique (NotebookId, Path) index on NotebookItems, which is how a
-    /// concurrent create/rename of the same title surfaces.
-    /// </summary>
     public static bool IsDuplicateItemPathException(DbUpdateException exception)
     {
         var message = exception.InnerException?.Message ?? exception.Message;
