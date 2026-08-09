@@ -82,11 +82,20 @@ export function computeReorderUpdates(
 
   const recompute = (siblings: TreeNode[]) => {
     siblings.forEach((node, idx) => {
-      updates.push({
+      const existingIndex = updates.findIndex((u) => u.itemId === node.item.id)
+      const update = {
         itemId: node.item.id,
         parentId: node.item.parentId,
         sortOrder: idx * 10,
-      })
+      }
+      if (existingIndex >= 0) {
+        // Overwrite the duplicate: the dragged item appears in both lists (old
+        // and new siblings) when reordering within the same parent, so the later
+        // recompute wins.
+        updates[existingIndex] = update
+      } else {
+        updates.push(update)
+      }
     })
   }
 

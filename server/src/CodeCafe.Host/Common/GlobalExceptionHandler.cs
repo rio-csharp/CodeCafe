@@ -59,10 +59,19 @@ public sealed class GlobalExceptionHandler(
         // The MediatR LoggingBehavior already logged exceptions that escaped a
         // handler (with request name and elapsed time) and marked them; skip
         // those here so one fault does not produce two Error entries.
+        // Optimistic concurrency conflicts are expected business outcomes at
+        // 409, so they are logged at Info rather than Error.
         if (statusCode == StatusCodes.Status500InternalServerError
             && !ExceptionLoggingMarker.IsMarkedAsLogged(exception))
         {
             logger.LogError(exception, "Unhandled exception.");
+        }
+        else if (exception is DbUpdateConcurrencyException)
+        {
+            logger.LogInformation(
+                exception,
+                "Optimistic concurrency conflict. Path={Path}",
+                httpContext.Request.Path);
         }
 
         httpContext.Response.StatusCode = statusCode;

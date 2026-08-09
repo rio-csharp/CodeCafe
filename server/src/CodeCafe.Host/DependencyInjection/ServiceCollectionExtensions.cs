@@ -148,6 +148,7 @@ public static class ServiceCollectionExtensions
         if (!environment.IsEnvironment("Testing"))
         {
             services.AddHostedService<OpenIddictSeedHostedService>();
+            services.AddHostedService<OpenIddictTokenCleanupService>();
         }
 
         return services;
