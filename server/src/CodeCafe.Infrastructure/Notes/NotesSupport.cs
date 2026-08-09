@@ -136,7 +136,7 @@ internal static class NotesSupport
             items);
     }
 
-    public static bool IsDuplicateFavoriteException(DbUpdateException exception)
+    public static bool IsDuplicateFavoriteException(Exception exception)
     {
         var message = exception.InnerException?.Message ?? exception.Message;
         return message.Contains("NotebookFavorites", StringComparison.OrdinalIgnoreCase)

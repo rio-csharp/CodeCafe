@@ -5,14 +5,40 @@ using CodeCafe.Application.Notes;
 using OpenAI.Chat;
 using OpenAI.Responses;
 using OpenAI;
+using Polly;
+using Polly.Retry;
 
 namespace CodeCafe.Infrastructure.Ai;
 
 internal static class OpenAiTextCompletion
 {
+    private static readonly ResiliencePipeline<string> RetryPipeline = new ResiliencePipelineBuilder<string>()
+        .AddRetry(new RetryStrategyOptions<string>
+        {
+            MaxRetryAttempts = 2,
+            Delay = TimeSpan.FromMilliseconds(500),
+            BackoffType = DelayBackoffType.Exponential,
+            UseJitter = true,
+            ShouldHandle = new PredicateBuilder<string>()
+                .HandleInner<HttpRequestException>()
+                .HandleInner<System.ClientModel.ClientResultException>(ex =>
+                {
+                    // Retry only on transient HTTP errors (5xx, network failure), not on client errors (4xx)
+                    if (ex.InnerException is HttpRequestException httpEx)
+                    {
+                        return httpEx.StatusCode is null or >= System.Net.HttpStatusCode.InternalServerError;
+                    }
+                    // Retry on network failures wrapped in ClientResultException
+                    return ex.Message.Contains("network", StringComparison.OrdinalIgnoreCase)
+                        || ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase);
+                })
+        })
+        .Build();
+
     /// <summary>
     /// Single boundary where provider SDK failures become <see cref="AiProviderException"/>. Both
     /// generators route through here, so use cases never see an OpenAI or HTTP exception type.
+    /// Retries transient failures (5xx, network errors) up to 2 times with exponential backoff.
     /// </summary>
     public static async Task<string> CompleteAsync(
         OpenAIClient openAiClient,
@@ -24,9 +50,12 @@ internal static class OpenAiTextCompletion
     {
         try
         {
-            return options.WireFormat == AiWireFormat.Responses
-                ? await CompleteWithResponsesApiAsync(openAiClient, options, instructions, userPrompt, endUserId, cancellationToken)
-                : await CompleteWithChatCompletionsAsync(openAiClient, options, instructions, userPrompt, endUserId, cancellationToken);
+            return await RetryPipeline.ExecuteAsync(async ct =>
+            {
+                return options.WireFormat == AiWireFormat.Responses
+                    ? await CompleteWithResponsesApiAsync(openAiClient, options, instructions, userPrompt, endUserId, ct)
+                    : await CompleteWithChatCompletionsAsync(openAiClient, options, instructions, userPrompt, endUserId, ct);
+            }, cancellationToken);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {

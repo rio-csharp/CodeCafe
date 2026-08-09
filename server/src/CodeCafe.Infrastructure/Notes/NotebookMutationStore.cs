@@ -101,18 +101,7 @@ public sealed class NotebookMutationStore(ApplicationDbContext dbContext) : INot
     public async Task AddFavoriteAsync(NotebookFavorite favorite, CancellationToken cancellationToken)
     {
         dbContext.NotebookFavorites.Add(favorite);
-
-        try
-        {
-            await dbContext.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException exception) when (NotesSupport.IsDuplicateFavoriteException(exception))
-        {
-            // A concurrent request (double-clicked favorite button) won the race against the
-            // check-then-insert. The row exists, which is what the caller wanted, so detach the
-            // losing insert and report success.
-            dbContext.Entry(favorite).State = EntityState.Detached;
-        }
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public void RemoveFavorite(NotebookFavorite favorite)

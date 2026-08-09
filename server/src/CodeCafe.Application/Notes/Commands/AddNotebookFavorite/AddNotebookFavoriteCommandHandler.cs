@@ -28,17 +28,37 @@ public sealed class AddNotebookFavoriteCommandHandler(
             cancellationToken);
         if (existingFavorite is null)
         {
-            await notebookMutationStore.AddFavoriteAsync(
-                new NotebookFavorite
-                {
-                    Id = Guid.NewGuid(),
-                    NotebookId = request.NotebookId,
-                    UserId = request.CurrentUserId
-                },
-                cancellationToken);
+            try
+            {
+                await notebookMutationStore.AddFavoriteAsync(
+                    new NotebookFavorite
+                    {
+                        Id = Guid.NewGuid(),
+                        NotebookId = request.NotebookId,
+                        UserId = request.CurrentUserId
+                    },
+                    cancellationToken);
+            }
+            catch (Exception exception) when (IsDuplicateFavoriteException(exception))
+            {
+                // Concurrent double-favorite resolved: the favorite already exists, so map to 409
+                // instead of 500. The client can refetch to see the current state.
+                return NotesResult<NotebookFavoriteModel>.Failure(
+                    NotesFailureKind.Conflict,
+                    "favorite_already_exists",
+                    "The notebook is already favorited by this user.");
+            }
         }
 
         return await BuildFavoriteResultAsync(notebookMutationStore, request.NotebookId, request.CurrentUserId, cancellationToken);
+    }
+
+    private static bool IsDuplicateFavoriteException(Exception exception)
+    {
+        var message = exception.InnerException?.Message ?? exception.Message;
+        return message.Contains("NotebookFavorites", StringComparison.OrdinalIgnoreCase)
+            && (message.Contains("unique", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<NotesResult<NotebookFavoriteModel>> BuildFavoriteResultAsync(
