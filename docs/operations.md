@@ -203,7 +203,6 @@ Operational note: when writing a new EF migration that adds a GIN (or otherwise 
 The maintained database helper lives in:
 
 ```text
-server/tools/CodeCafe.DbSync
 ```
 
 Supported commands:

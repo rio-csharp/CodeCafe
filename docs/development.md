@@ -170,4 +170,3 @@ dotnet CodeCafe.Server.dll migrate
 - AI is disabled by default. Set `Ai:Enabled`, `Ai:Model`, and `Ai:ApiKey` only in local user secrets, environment variables, or deployment secrets.
 - Current AI configuration still includes `Ai:DraftEndpointPath`, `Ai:MaxDraftPromptChars`, `Ai:MaxDraftContextChars`, and `Ai:MaxDraftOutputTokens` for the transitional draft flow.
 - Notebook page content is stored as TipTap JSON. Markdown is allowed only as an import/upload input that is converted before persistence.
-- `scripts/README.md` documents the maintained database-sync helper in `server/tools/CodeCafe.DbSync`.
