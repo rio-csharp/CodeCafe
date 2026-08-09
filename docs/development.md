@@ -159,7 +159,7 @@ dotnet ef database update `
 Manual migration execution from the published server host:
 
 ```powershell
-dotnet CodeCafe.Server.dll migrate
+dotnet CodeCafe.Host.dll migrate
 ```
 
 ## Development Notes

@@ -4,7 +4,7 @@ set -euo pipefail
 connection_string="${E2E_CONNECTION_STRING:-Host=localhost;Database=codecafe_e2e;Username=codecafe;Password=codecafe}"
 backend_url="${E2E_BACKEND_URL:-http://localhost:5042}"
 ready_url="${backend_url%/}/health/ready"
-api_dll="${E2E_API_DLL:-.artifacts/api/CodeCafe.Server.dll}"
+api_dll="${E2E_API_DLL:-.artifacts/api/CodeCafe.Host.dll}"
 backend_log="${E2E_BACKEND_LOG:-.artifacts/e2e/backend.log}"
 frontend_dir="${E2E_FRONTEND_DIR:-clients/web}"
 max_attempts="${E2E_BACKEND_READY_ATTEMPTS:-30}"

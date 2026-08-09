@@ -9,4 +9,4 @@ EXPOSE 8080
 
 COPY .artifacts/api/ ./
 USER $APP_UID
-ENTRYPOINT ["dotnet", "CodeCafe.Server.dll"]
+ENTRYPOINT ["dotnet", "CodeCafe.Host.dll"]

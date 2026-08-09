@@ -50,7 +50,7 @@ spec:
           {{- end }}
           command:
             - dotnet
-            - CodeCafe.Server.dll
+            - CodeCafe.Host.dll
             - migrate
           env:
             - name: Ai__Enabled

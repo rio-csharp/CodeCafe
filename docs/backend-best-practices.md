@@ -196,7 +196,7 @@ Focus:
 Migration command:
 
 ```bash
-dotnet CodeCafe.Server.dll migrate
+dotnet CodeCafe.Host.dll migrate
 ```
 
 ## Review Checklist

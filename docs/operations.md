@@ -189,7 +189,7 @@ That runtime config provides `apiBaseUrl` and `aiStatusEndpointPath` without reb
 Published-host migration command:
 
 ```powershell
-dotnet CodeCafe.Server.dll migrate
+dotnet CodeCafe.Host.dll migrate
 ```
 
 Development startup applies migrations automatically. Helm also includes an API migration job template.
