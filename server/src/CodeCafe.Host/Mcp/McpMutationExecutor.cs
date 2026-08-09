@@ -1,4 +1,5 @@
 using CodeCafe.Application.Mcp;
+using CodeCafe.Application.Notes;
 using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Identity;

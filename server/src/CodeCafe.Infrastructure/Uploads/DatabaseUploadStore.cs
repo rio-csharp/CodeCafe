@@ -1,20 +1,21 @@
-using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Application.Mcp;
-using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Configuration;
-using CodeCafe.Domain.Mcp;
+using CodeCafe.Application.Common.Uploads;
+using CodeCafe.Domain.Uploads;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Text;
 
-namespace CodeCafe.Infrastructure.Mcp;
+using DomainUploadSession = CodeCafe.Domain.Uploads.UploadSession;
+using DomainUploadChunk = CodeCafe.Domain.Uploads.UploadChunk;
 
-public sealed class DatabaseMcpUploadStore(
+namespace CodeCafe.Infrastructure.Uploads;
+
+public sealed class DatabaseUploadStore(
     ApplicationDbContext dbContext,
-    IOptions<McpOptions> mcpOptionsAccessor) : IMcpUploadStore
+    IOptions<McpOptions> mcpOptionsAccessor) : IUploadStore
 {
-    public async Task<McpUploadStatus> CreateAsync(
+    public async Task<UploadStatus> CreateAsync(
         Guid actorId,
         string? fileName,
         string mediaType,
@@ -22,7 +23,7 @@ public sealed class DatabaseMcpUploadStore(
     {
         await PruneExpiredUploadsAsync(cancellationToken);
 
-        var session = new McpUploadSessionEntry
+        var session = new DomainUploadSession
         {
             UploadId = Guid.NewGuid().ToString("N"),
             ActorUserId = actorId,
@@ -32,7 +33,7 @@ public sealed class DatabaseMcpUploadStore(
             ChunkCount = 0
         };
 
-        dbContext.McpUploadSessions.Add(session);
+        dbContext.UploadSessions.Add(session);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return ToStatus(session);
@@ -45,7 +46,7 @@ public sealed class DatabaseMcpUploadStore(
     /// would go missing. Each attempt therefore re-reads the session and derives the next sequence
     /// number from the chunks already stored, and a duplicate-key loss is retried on that fresh state.
     /// </remarks>
-    public async Task<NotesUploadResult<McpUploadStatus>> AppendTextAsync(
+    public async Task<UploadResult<UploadStatus>> AppendTextAsync(
         Guid actorId,
         string uploadId,
         string chunkText,
@@ -58,12 +59,12 @@ public sealed class DatabaseMcpUploadStore(
         var chunkBytes = Encoding.UTF8.GetByteCount(chunkText);
         if (chunkBytes == 0)
         {
-            return NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload chunk text is required.");
+            return UploadResult<UploadStatus>.Failure("invalid_upload_chunk", "Upload chunk text is required.");
         }
 
         if (chunkBytes > maxChunkBytes)
         {
-            return NotesUploadResult<McpUploadStatus>.Failure(
+            return UploadResult<UploadStatus>.Failure(
                 "upload_chunk_too_large",
                 $"Upload chunk exceeds the limit of {maxChunkBytes} bytes (received {chunkBytes} bytes).");
         }
@@ -74,28 +75,28 @@ public sealed class DatabaseMcpUploadStore(
             // Detach anything a previous attempt tracked so the retry starts from committed state.
             dbContext.ChangeTracker.Clear();
 
-            var session = await dbContext.McpUploadSessions
+            var session = await dbContext.UploadSessions
                 .SingleOrDefaultAsync(existingSession => existingSession.UploadId == uploadId, cancellationToken);
             if (session is null || session.ActorUserId != actorId)
             {
-                return NotesUploadResult<McpUploadStatus>.Failure("upload_not_found", "Upload session was not found.");
+                return UploadResult<UploadStatus>.Failure("upload_not_found", "Upload session was not found.");
             }
 
             var nextBytes = session.BytesReceived + chunkBytes;
             if (nextBytes > maxUploadBytes)
             {
-                return NotesUploadResult<McpUploadStatus>.Failure(
+                return UploadResult<UploadStatus>.Failure(
                     "upload_too_large",
                     $"Upload exceeds the limit of {maxUploadBytes} bytes (received {nextBytes} bytes).");
             }
 
             // Derived from the stored chunks rather than ChunkCount so a session counter that drifted
             // (or a concurrent insert) cannot hand out a number that is already taken.
-            var highestSequence = await dbContext.McpUploadChunks
+            var highestSequence = await dbContext.UploadChunks
                 .Where(chunk => chunk.UploadId == uploadId)
                 .MaxAsync(chunk => (int?)chunk.SequenceNumber, cancellationToken) ?? 0;
 
-            dbContext.McpUploadChunks.Add(new McpUploadChunkEntry
+            dbContext.UploadChunks.Add(new DomainUploadChunk
             {
                 Id = Guid.NewGuid(),
                 UploadId = session.UploadId,
@@ -109,7 +110,7 @@ public sealed class DatabaseMcpUploadStore(
             try
             {
                 await dbContext.SaveChangesAsync(cancellationToken);
-                return NotesUploadResult<McpUploadStatus>.Success(ToStatus(session));
+                return UploadResult<UploadStatus>.Success(ToStatus(session));
             }
             catch (DbUpdateException exception) when (
                 attempt < maxAttempts && IsDuplicateChunkSequenceException(exception))
@@ -120,19 +121,21 @@ public sealed class DatabaseMcpUploadStore(
     }
 
     /// <summary>
-    /// Detects a violation of the unique (UploadId, SequenceNumber) index on McpUploadChunks.
+    /// Detects a violation of the unique (UploadId, SequenceNumber) index on UploadChunks.
     /// </summary>
     private static bool IsDuplicateChunkSequenceException(DbUpdateException exception)
     {
         var message = exception.InnerException?.Message ?? exception.Message;
-        return message.Contains("IX_McpUploadChunks_UploadId_SequenceNumber", StringComparison.OrdinalIgnoreCase)
-               || (message.Contains("McpUploadChunks", StringComparison.OrdinalIgnoreCase)
+        // Check both old and new index names for compatibility during migration
+        return message.Contains("IX_UploadChunks_UploadId_SequenceNumber", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("IX_McpUploadChunks_UploadId_SequenceNumber", StringComparison.OrdinalIgnoreCase)
+               || (message.Contains("UploadChunks", StringComparison.OrdinalIgnoreCase)
                    && message.Contains("SequenceNumber", StringComparison.OrdinalIgnoreCase)
                    && (message.Contains("unique", StringComparison.OrdinalIgnoreCase)
                        || message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)));
     }
 
-    public async Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(
+    public async Task<UploadResult<UploadStatus>> CreateTextAsync(
         Guid actorId,
         string? fileName,
         string mediaType,
@@ -146,17 +149,17 @@ public sealed class DatabaseMcpUploadStore(
         var contentBytes = Encoding.UTF8.GetByteCount(normalizedText);
         if (contentBytes == 0)
         {
-            return NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload content is required.");
+            return UploadResult<UploadStatus>.Failure("invalid_upload_chunk", "Upload content is required.");
         }
 
         if (contentBytes > maxUploadBytes)
         {
-            return NotesUploadResult<McpUploadStatus>.Failure(
+            return UploadResult<UploadStatus>.Failure(
                 "upload_too_large",
                 $"Upload exceeds the limit of {maxUploadBytes} bytes (received {contentBytes} bytes).");
         }
 
-        var session = new McpUploadSessionEntry
+        var session = new DomainUploadSession
         {
             UploadId = Guid.NewGuid().ToString("N"),
             ActorUserId = actorId,
@@ -166,8 +169,8 @@ public sealed class DatabaseMcpUploadStore(
             ChunkCount = 1
         };
 
-        dbContext.McpUploadSessions.Add(session);
-        dbContext.McpUploadChunks.Add(new McpUploadChunkEntry
+        dbContext.UploadSessions.Add(session);
+        dbContext.UploadChunks.Add(new DomainUploadChunk
         {
             Id = Guid.NewGuid(),
             UploadId = session.UploadId,
@@ -177,22 +180,22 @@ public sealed class DatabaseMcpUploadStore(
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return NotesUploadResult<McpUploadStatus>.Success(ToStatus(session));
+        return UploadResult<UploadStatus>.Success(ToStatus(session));
     }
 
-    public async Task<NotesUploadResult<McpUploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
+    public async Task<UploadResult<Application.Common.Uploads.UploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
     {
         await PruneExpiredUploadsAsync(cancellationToken);
 
-        var session = await dbContext.McpUploadSessions
+        var session = await dbContext.UploadSessions
             .AsNoTracking()
             .SingleOrDefaultAsync(existingSession => existingSession.UploadId == uploadId, cancellationToken);
         if (session is null || session.ActorUserId != actorId)
         {
-            return NotesUploadResult<McpUploadSession>.Failure("upload_not_found", "Upload session was not found.");
+            return UploadResult<Application.Common.Uploads.UploadSession>.Failure("upload_not_found", "Upload session was not found.");
         }
 
-        var chunks = await dbContext.McpUploadChunks
+        var chunks = await dbContext.UploadChunks
             .AsNoTracking()
             .Where(chunk => chunk.UploadId == uploadId)
             .OrderBy(chunk => chunk.SequenceNumber)
@@ -205,7 +208,7 @@ public sealed class DatabaseMcpUploadStore(
             builder.Append(chunk);
         }
 
-        return NotesUploadResult<McpUploadSession>.Success(new McpUploadSession(
+        return UploadResult<Application.Common.Uploads.UploadSession>.Success(new Application.Common.Uploads.UploadSession(
             session.UploadId,
             session.ActorUserId,
             session.FileName,
@@ -220,14 +223,14 @@ public sealed class DatabaseMcpUploadStore(
     {
         await PruneExpiredUploadsAsync(cancellationToken);
 
-        var session = await dbContext.McpUploadSessions
+        var session = await dbContext.UploadSessions
             .SingleOrDefaultAsync(existingSession => existingSession.UploadId == uploadId, cancellationToken);
         if (session is null || session.ActorUserId != actorId)
         {
             return false;
         }
 
-        dbContext.McpUploadSessions.Remove(session);
+        dbContext.UploadSessions.Remove(session);
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -237,14 +240,14 @@ public sealed class DatabaseMcpUploadStore(
         var timeout = TimeSpan.FromSeconds(mcpOptionsAccessor.Value.UploadIdleTimeoutSeconds);
         var cutoff = DateTimeOffset.UtcNow - timeout;
 
-        await dbContext.McpUploadSessions
+        await dbContext.UploadSessions
             .Where(session => (session.UpdatedAtUtc ?? session.CreatedAtUtc) <= cutoff)
             .ExecuteDeleteAsync(cancellationToken);
     }
 
-    private static McpUploadStatus ToStatus(McpUploadSessionEntry session)
+    private static UploadStatus ToStatus(DomainUploadSession session)
     {
-        return new McpUploadStatus(
+        return new UploadStatus(
             session.UploadId,
             session.ActorUserId,
             session.FileName,

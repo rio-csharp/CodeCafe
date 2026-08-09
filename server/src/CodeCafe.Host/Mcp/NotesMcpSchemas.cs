@@ -1,4 +1,5 @@
 namespace CodeCafe.Host.Mcp;
+using CodeCafe.Application.Notes;
 
 public sealed record NotebookSearchResultResponse(
     Guid NotebookId,

@@ -1,4 +1,5 @@
 using System.Text.Encodings.Web;
+using CodeCafe.Application.Notes;
 using System.Text.Json;
 using System.Text.Unicode;
 

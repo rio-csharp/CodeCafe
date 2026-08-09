@@ -1,8 +1,10 @@
 using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Application.Mcp;
-using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
+using CodeCafe.Infrastructure.Uploads;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Application.Common.Uploads;
+using CodeCafe.Host.Mcp;
 
 namespace CodeCafe.Host.Mcp;
 
@@ -55,9 +57,12 @@ public static class ServiceCollectionExtensions
             .WithResources<NotesMcpResources>()
             .WithPrompts<NotesMcpPrompts>();
 
-        services.AddScoped<IMcpUploadStore, DatabaseMcpUploadStore>();
+        // Register shared upload infrastructure
+        services.AddScoped<IUploadStore, DatabaseUploadStore>();
+        services.AddScoped<IContentImporter, MarkdownContentImporter>();
+
+        // MCP-specific services
         services.AddSingleton<IMcpMarkdownImporter, MarkdigMcpMarkdownImporter>();
-        services.AddScoped<IMcpContentImportService, McpContentImportService>();
         services.AddScoped<IMcpMutationExecutor, McpMutationExecutor>();
 
         return services;

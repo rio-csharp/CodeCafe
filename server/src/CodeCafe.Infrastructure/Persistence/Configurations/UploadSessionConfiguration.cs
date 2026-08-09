@@ -1,12 +1,16 @@
-using CodeCafe.Domain.Mcp;
+using CodeCafe.Domain.Uploads;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CodeCafe.Infrastructure.Persistence.Configurations;
 
-public sealed class McpUploadSessionEntryConfiguration : IEntityTypeConfiguration<McpUploadSessionEntry>
+/// <summary>
+/// Maps UploadSession to the McpUploadSessions table for backward compatibility.
+/// The table retains its MCP prefix even though uploads are now a general-purpose feature.
+/// </summary>
+public sealed class UploadSessionConfiguration : IEntityTypeConfiguration<UploadSession>
 {
-    public void Configure(EntityTypeBuilder<McpUploadSessionEntry> entity)
+    public void Configure(EntityTypeBuilder<UploadSession> entity)
     {
         entity.ToTable("McpUploadSessions");
 

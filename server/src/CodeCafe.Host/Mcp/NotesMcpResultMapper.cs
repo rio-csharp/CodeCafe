@@ -1,5 +1,6 @@
 using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
+using CodeCafe.Application.Common.Uploads;
 using ModelContextProtocol.Protocol;
 
 namespace CodeCafe.Host.Mcp;

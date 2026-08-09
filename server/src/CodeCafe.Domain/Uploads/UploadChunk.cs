@@ -1,14 +1,18 @@
 using CodeCafe.Domain.Common;
 
-namespace CodeCafe.Domain.Mcp;
+namespace CodeCafe.Domain.Uploads;
 
-public sealed class McpUploadChunkEntry : IAuditableEntity
+/// <summary>
+/// Represents a single chunk of an upload session. Chunks are stored with sequence
+/// numbers to preserve order and support concurrent appends.
+/// </summary>
+public sealed class UploadChunk : IAuditableEntity
 {
     public Guid Id { get; set; }
 
     public required string UploadId { get; set; }
 
-    public McpUploadSessionEntry UploadSession { get; set; } = null!;
+    public UploadSession UploadSession { get; set; } = null!;
 
     public int SequenceNumber { get; set; }
 

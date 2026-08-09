@@ -1,4 +1,5 @@
 using ModelContextProtocol.Server;
+using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Host.Mcp;
 

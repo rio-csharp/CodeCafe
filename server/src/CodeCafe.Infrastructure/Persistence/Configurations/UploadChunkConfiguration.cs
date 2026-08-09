@@ -1,12 +1,16 @@
-using CodeCafe.Domain.Mcp;
+using CodeCafe.Domain.Uploads;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace CodeCafe.Infrastructure.Persistence.Configurations;
 
-public sealed class McpUploadChunkEntryConfiguration : IEntityTypeConfiguration<McpUploadChunkEntry>
+/// <summary>
+/// Maps UploadChunk to the McpUploadChunks table for backward compatibility.
+/// The table retains its MCP prefix even though uploads are now a general-purpose feature.
+/// </summary>
+public sealed class UploadChunkConfiguration : IEntityTypeConfiguration<UploadChunk>
 {
-    public void Configure(EntityTypeBuilder<McpUploadChunkEntry> entity)
+    public void Configure(EntityTypeBuilder<UploadChunk> entity)
     {
         entity.ToTable("McpUploadChunks");
 

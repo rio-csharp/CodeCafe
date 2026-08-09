@@ -1,5 +1,6 @@
 using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
+using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Application.Common.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -30,7 +31,7 @@ public static class McpHttpUploadEndpoints
     private static async Task<IResult> UploadMarkdownAsync(
         HttpContext httpContext,
         HttpRequest request,
-        IMcpUploadStore uploadStore,
+        IUploadStore uploadStore,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
@@ -103,7 +104,7 @@ public static class McpHttpUploadEndpoints
     private static async Task<IResult> DeleteUploadAsync(
         string uploadId,
         HttpContext httpContext,
-        IMcpUploadStore uploadStore,
+        IUploadStore uploadStore,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {

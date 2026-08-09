@@ -1,4 +1,6 @@
+using CodeCafe.Infrastructure.Uploads;
 using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Application.Mcp;
 using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
@@ -8,7 +10,7 @@ using System.Text.Json;
 
 namespace CodeCafe.Host.Mcp.Tests;
 
-public sealed class McpContentImportServiceTests
+public sealed class MarkdownContentImporterTests
 {
     [Fact]
     public async Task ResolveRequiredPageContentAsync_AllowsInlineHeadingNodes()
@@ -75,7 +77,7 @@ public sealed class McpContentImportServiceTests
     public async Task ResolveRequiredPageContentAsync_PreservesUploadedMarkdownHeadingNodes()
     {
         var actorId = Guid.NewGuid();
-        var upload = new McpUploadSession(
+        var upload = new UploadSession(
             "upload-1",
             actorId,
             "page.md",
@@ -109,24 +111,24 @@ public sealed class McpContentImportServiceTests
             secondNode.GetProperty("content")[0].GetProperty("text").GetString());
     }
 
-    private static McpContentImportService CreateService()
+    private static MarkdownContentImporter CreateService()
         => new(
             new TestUploadStore(),
             new MarkdigMcpMarkdownImporter(),
             Options.Create(new McpOptions()));
 
-    private static McpContentImportService CreateService(IMcpUploadStore uploadStore)
+    private static MarkdownContentImporter CreateService(IUploadStore uploadStore)
         => new(
             uploadStore,
             new MarkdigMcpMarkdownImporter(),
             Options.Create(new McpOptions()));
 
-    private sealed class TestUploadStore(McpUploadSession? session = null) : IMcpUploadStore
+    private sealed class TestUploadStore(UploadSession? session = null) : IUploadStore
     {
-        public Task<McpUploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken)
+        public Task<UploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(
+        public Task<UploadResult<UploadStatus>> CreateTextAsync(
             Guid actorId,
             string? fileName,
             string mediaType,
@@ -135,7 +137,7 @@ public sealed class McpContentImportServiceTests
             CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<NotesUploadResult<McpUploadStatus>> AppendTextAsync(
+        public Task<UploadResult<UploadStatus>> AppendTextAsync(
             Guid actorId,
             string uploadId,
             string chunkText,
@@ -144,11 +146,11 @@ public sealed class McpContentImportServiceTests
             CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
-        public Task<NotesUploadResult<McpUploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
+        public Task<UploadResult<UploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
             => Task.FromResult(
                 session is not null && session.ActorId == actorId && session.UploadId == uploadId
-                    ? NotesUploadResult<McpUploadSession>.Success(session)
-                    : NotesUploadResult<McpUploadSession>.Failure("upload_not_found", "Upload session was not found."));
+                    ? UploadResult<UploadSession>.Success(session)
+                    : UploadResult<UploadSession>.Failure("upload_not_found", "Upload session was not found."));
 
         public Task<bool> DeleteAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
             => Task.FromResult(false);

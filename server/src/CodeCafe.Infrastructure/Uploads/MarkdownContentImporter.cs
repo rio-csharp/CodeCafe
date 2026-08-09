@@ -1,17 +1,17 @@
-using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Application.Mcp;
-using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Application.Common.Uploads;
+using CodeCafe.Application.Notes;
+using CodeCafe.Infrastructure.Mcp;
 using Microsoft.Extensions.Options;
 using System.Text;
 using System.Text.Json;
 
-namespace CodeCafe.Infrastructure.Mcp;
+namespace CodeCafe.Infrastructure.Uploads;
 
-public sealed class McpContentImportService(
-    IMcpUploadStore uploadStore,
+public sealed class MarkdownContentImporter(
+    IUploadStore uploadStore,
     IMcpMarkdownImporter markdownImporter,
-    IOptions<McpOptions> mcpOptionsAccessor) : IMcpContentImportService
+    IOptions<McpOptions> mcpOptionsAccessor) : IContentImporter
 {
     public async Task<NotesResult<JsonElement?>> ResolveOptionalPageContentAsync(
         Guid actorId,
@@ -366,7 +366,7 @@ public sealed class McpContentImportService(
         }
     }
 
-    private static NotesResult<JsonElement> ToNotesResult(NotesUploadError error, string fallbackCode, string field)
+    private static NotesResult<JsonElement> ToNotesResult(UploadError error, string fallbackCode, string field)
     {
         return NotesResult<JsonElement>.Failure(
             NotesFailureKind.Validation,

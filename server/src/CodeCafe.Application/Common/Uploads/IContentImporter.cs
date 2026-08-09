@@ -1,9 +1,13 @@
-using CodeCafe.Application.Mcp;
+using CodeCafe.Application.Notes;
 using System.Text.Json;
 
-namespace CodeCafe.Application.Notes;
+namespace CodeCafe.Application.Common.Uploads;
 
-public interface IMcpContentImportService
+/// <summary>
+/// Converts uploaded content (markdown, plain text) into structured formats (TipTap JSON).
+/// Handles both inline content and upload-based content, with validation and size enforcement.
+/// </summary>
+public interface IContentImporter
 {
     Task<NotesResult<JsonElement?>> ResolveOptionalPageContentAsync(
         Guid actorId,

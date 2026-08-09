@@ -1,5 +1,6 @@
 using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Application.Notes;
+using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Configuration;
 using Microsoft.Extensions.Options;
@@ -24,7 +25,7 @@ public sealed partial class NotesMcpItemTools
     public async Task<CallToolResult> CreateUpload(
         ClaimsPrincipal user,
         IOptions<McpOptions> mcpOptionsAccessor,
-        IMcpUploadStore uploadStore,
+        IUploadStore uploadStore,
         IMcpAuditService auditService,
         ILogger<NotesMcpItemTools> logger,
         CancellationToken cancellationToken,
@@ -79,7 +80,7 @@ public sealed partial class NotesMcpItemTools
         [Description("UTF-8 text chunk to append to the upload. Must not exceed maxUploadChunkBytes returned by notes_get_limits.")] string chunkText,
         ClaimsPrincipal user,
         IOptions<McpOptions> mcpOptionsAccessor,
-        IMcpUploadStore uploadStore,
+        IUploadStore uploadStore,
         IMcpAuditService auditService,
         ILogger<NotesMcpItemTools> logger,
         CancellationToken cancellationToken)
@@ -153,7 +154,7 @@ public sealed partial class NotesMcpItemTools
         [Description("The upload session id returned by notes_create_upload.")] string uploadId,
         ClaimsPrincipal user,
         IOptions<McpOptions> mcpOptionsAccessor,
-        IMcpUploadStore uploadStore,
+        IUploadStore uploadStore,
         IMcpAuditService auditService,
         ILogger<NotesMcpItemTools> logger,
         CancellationToken cancellationToken)

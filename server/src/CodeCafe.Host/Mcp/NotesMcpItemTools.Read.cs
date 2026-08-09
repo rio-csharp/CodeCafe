@@ -1,3 +1,4 @@
+using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Configuration;
 using Microsoft.Extensions.Options;

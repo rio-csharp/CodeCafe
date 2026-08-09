@@ -1,4 +1,5 @@
 using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Application.Notes;
 using CodeCafe.Application.Mcp;
 using ModelContextProtocol.Protocol;
 using System.Security.Claims;

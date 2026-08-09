@@ -1,10 +1,10 @@
-using CodeCafe.Application.Mcp;
+using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Application.Common.Identity;
+using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
 using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
 using CodeCafe.Host.Common;
-using CodeCafe.Application.Common.Configuration;
-using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.Extensions.Options;
 using System.Text;
@@ -33,7 +33,7 @@ public static class NotesMarkdownImportEndpoints
     private static async Task<IResult> UploadMarkdownAsync(
         HttpRequest request,
         ICurrentUserAccessor currentUserAccessor,
-        IMcpUploadStore uploadStore,
+        IUploadStore uploadStore,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken)
     {
@@ -102,7 +102,7 @@ public static class NotesMarkdownImportEndpoints
     private static async Task<IResult> DeleteUploadAsync(
         string uploadId,
         ICurrentUserAccessor currentUserAccessor,
-        IMcpUploadStore uploadStore,
+        IUploadStore uploadStore,
         CancellationToken cancellationToken)
     {
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
@@ -121,7 +121,7 @@ public static class NotesMarkdownImportEndpoints
         ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
         ISender sender,
-        IMcpContentImportService contentImportService,
+        IContentImporter contentImportService,
         CancellationToken cancellationToken)
     {
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
@@ -199,7 +199,7 @@ public static class NotesMarkdownImportEndpoints
         ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
         ISender sender,
-        IMcpContentImportService contentImportService,
+        IContentImporter contentImportService,
         CancellationToken cancellationToken)
     {
         if (!TryExtractPagePath(pathAndAction, "import-markdown", out var path))
@@ -274,7 +274,7 @@ public static class NotesMarkdownImportEndpoints
         ICurrentUserAccessor currentUserAccessor,
         INotebookReadService notebookReadService,
         ISender sender,
-        IMcpContentImportService contentImportService,
+        IContentImporter contentImportService,
         CancellationToken cancellationToken)
     {
         if (!TryExtractPagePath(pathAndAction, "append-markdown", out var path))
@@ -509,7 +509,7 @@ public static class NotesMarkdownImportEndpoints
     private static IResult ToNotesError(NotesError error)
         => ToError(error.Code, error.Message, ToStatusCode(error.Kind), error.Field, error.Details);
 
-    private static IResult ToUploadError(NotesUploadError error, int statusCode)
+    private static IResult ToUploadError(UploadError error, int statusCode)
         => ToError(error.Code, error.Message, statusCode);
 
     private static IResult ToError(

@@ -1,6 +1,7 @@
 using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
+using CodeCafe.Application.Mcp;
+using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
 using CodeCafe.Application.Notes.Commands.DeleteNotebook;
 using CodeCafe.Application.Notes.Commands.UpdateNotebook;

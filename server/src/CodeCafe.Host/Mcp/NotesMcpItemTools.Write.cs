@@ -1,6 +1,7 @@
 using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
+using CodeCafe.Application.Mcp;
+using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
 using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
 using CodeCafe.Application.Common.Configuration;
@@ -110,7 +111,7 @@ public sealed partial class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         ISender sender,
-        IMcpContentImportService contentImportService,
+        IContentImporter contentImportService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
@@ -217,7 +218,7 @@ public sealed partial class NotesMcpItemTools
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         ISender sender,
-        IMcpContentImportService contentImportService,
+        IContentImporter contentImportService,
         IMcpMutationExecutor mutationExecutor,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,

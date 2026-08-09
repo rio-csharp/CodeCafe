@@ -1,4 +1,5 @@
 namespace CodeCafe.Host.Mcp;
+using CodeCafe.Application.Notes;
 
 internal static class NotesMcpErrorAdvisor
 {

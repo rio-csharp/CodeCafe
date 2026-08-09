@@ -4,6 +4,7 @@ using CodeCafe.Application.Common;
 using CodeCafe.Domain.Ai;
 using CodeCafe.Domain.Common;
 using CodeCafe.Domain.Mcp;
+using CodeCafe.Domain.Uploads;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -26,9 +27,10 @@ public sealed class ApplicationDbContext(
 
     public DbSet<McpToolAuditEntry> McpToolAuditEntries { get; set; }
 
-    public DbSet<McpUploadSessionEntry> McpUploadSessions { get; set; }
+    // Upload entities (mapped to McpUploadSessions/McpUploadChunks tables for backward compatibility)
+    public DbSet<UploadSession> UploadSessions { get; set; }
 
-    public DbSet<McpUploadChunkEntry> McpUploadChunks { get; set; }
+    public DbSet<UploadChunk> UploadChunks { get; set; }
 
     public DbSet<AiEditProposal> AiEditProposals { get; set; }
 

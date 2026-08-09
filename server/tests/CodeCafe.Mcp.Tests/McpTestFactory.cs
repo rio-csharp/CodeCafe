@@ -1,4 +1,5 @@
 using CodeCafe.Application.Mcp;
+using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Infrastructure.Mcp;
 using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
@@ -62,7 +63,7 @@ public sealed class McpTestFactory : WebApplicationFactory<Program>
             services.AddSingleton<INotebookItemMutationService, TestNotebookMutationService>();
             services.AddSingleton<IMcpMutationExecutor, TestMcpMutationExecutor>();
             services.AddSingleton<TestMcpUploadStore>();
-            services.AddScoped<IMcpUploadStore>(serviceProvider => serviceProvider.GetRequiredService<TestMcpUploadStore>());
+            services.AddScoped<IUploadStore>(serviceProvider => serviceProvider.GetRequiredService<TestMcpUploadStore>());
             services.AddScoped<IMcpAuditService, NoopMcpAuditService>();
         });
     }
@@ -391,15 +392,15 @@ internal sealed class TestNotebookMutationService : INotebookItemMutationService
     }
 }
 
-internal sealed class TestMcpUploadStore : IMcpUploadStore
+internal sealed class TestMcpUploadStore : IUploadStore
 {
     private readonly ConcurrentDictionary<string, UploadState> uploads = new(StringComparer.Ordinal);
 
-    public Task<McpUploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken)
+    public Task<UploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken)
     {
         var now = DateTimeOffset.UtcNow;
         var uploadId = Guid.NewGuid().ToString("N");
-        var status = new McpUploadStatus(
+        var status = new UploadStatus(
             uploadId,
             actorId,
             string.IsNullOrWhiteSpace(fileName) ? null : fileName.Trim(),
@@ -411,7 +412,7 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
         return Task.FromResult(status);
     }
 
-    public Task<NotesUploadResult<McpUploadStatus>> AppendTextAsync(
+    public Task<UploadResult<UploadStatus>> AppendTextAsync(
         Guid actorId,
         string uploadId,
         string chunkText,
@@ -421,18 +422,18 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
     {
         if (!uploads.TryGetValue(uploadId, out var state) || state.Status.ActorId != actorId)
         {
-            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("upload_not_found", "Upload session was not found."));
+            return Task.FromResult(UploadResult<UploadStatus>.Failure("upload_not_found", "Upload session was not found."));
         }
 
         var chunkBytes = Encoding.UTF8.GetByteCount(chunkText);
         if (chunkBytes == 0)
         {
-            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload chunk text is required."));
+            return Task.FromResult(UploadResult<UploadStatus>.Failure("invalid_upload_chunk", "Upload chunk text is required."));
         }
 
         if (chunkBytes > maxChunkBytes)
         {
-            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+            return Task.FromResult(UploadResult<UploadStatus>.Failure(
                 "upload_chunk_too_large",
                 $"Upload chunk exceeds the limit of {maxChunkBytes} bytes (received {chunkBytes} bytes)."));
         }
@@ -442,7 +443,7 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
             var nextBytes = state.Status.BytesReceived + chunkBytes;
             if (nextBytes > maxUploadBytes)
             {
-                return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+                return Task.FromResult(UploadResult<UploadStatus>.Failure(
                     "upload_too_large",
                     $"Upload exceeds the limit of {maxUploadBytes} bytes (received {nextBytes} bytes)."));
             }
@@ -453,11 +454,11 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
                 BytesReceived = nextBytes,
                 UpdatedAtUtc = DateTimeOffset.UtcNow
             };
-            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Success(state.Status));
+            return Task.FromResult(UploadResult<UploadStatus>.Success(state.Status));
         }
     }
 
-    public Task<NotesUploadResult<McpUploadStatus>> CreateTextAsync(
+    public Task<UploadResult<UploadStatus>> CreateTextAsync(
         Guid actorId,
         string? fileName,
         string mediaType,
@@ -468,19 +469,19 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
         var contentBytes = Encoding.UTF8.GetByteCount(contentText ?? string.Empty);
         if (contentBytes == 0)
         {
-            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure("invalid_upload_chunk", "Upload content is required."));
+            return Task.FromResult(UploadResult<UploadStatus>.Failure("invalid_upload_chunk", "Upload content is required."));
         }
 
         if (contentBytes > maxUploadBytes)
         {
-            return Task.FromResult(NotesUploadResult<McpUploadStatus>.Failure(
+            return Task.FromResult(UploadResult<UploadStatus>.Failure(
                 "upload_too_large",
                 $"Upload exceeds the limit of {maxUploadBytes} bytes (received {contentBytes} bytes)."));
         }
 
         var now = DateTimeOffset.UtcNow;
         var uploadId = Guid.NewGuid().ToString("N");
-        var status = new McpUploadStatus(
+        var status = new UploadStatus(
             uploadId,
             actorId,
             string.IsNullOrWhiteSpace(fileName) ? null : fileName.Trim(),
@@ -493,19 +494,19 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
         state.Content.Append(contentText);
         uploads[uploadId] = state;
 
-        return Task.FromResult(NotesUploadResult<McpUploadStatus>.Success(status));
+        return Task.FromResult(UploadResult<UploadStatus>.Success(status));
     }
 
-    public Task<NotesUploadResult<McpUploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
+    public Task<UploadResult<UploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
     {
         if (!uploads.TryGetValue(uploadId, out var state) || state.Status.ActorId != actorId)
         {
-            return Task.FromResult(NotesUploadResult<McpUploadSession>.Failure("upload_not_found", "Upload session was not found."));
+            return Task.FromResult(UploadResult<UploadSession>.Failure("upload_not_found", "Upload session was not found."));
         }
 
         lock (state.SyncRoot)
         {
-            return Task.FromResult(NotesUploadResult<McpUploadSession>.Success(new McpUploadSession(
+            return Task.FromResult(UploadResult<UploadSession>.Success(new UploadSession(
                 state.Status.UploadId,
                 state.Status.ActorId,
                 state.Status.FileName,
@@ -525,13 +526,13 @@ internal sealed class TestMcpUploadStore : IMcpUploadStore
             && uploads.TryRemove(uploadId, out _));
     }
 
-    private sealed class UploadState(McpUploadStatus status)
+    private sealed class UploadState(UploadStatus status)
     {
         public object SyncRoot { get; } = new();
 
         public StringBuilder Content { get; } = new();
 
-        public McpUploadStatus Status { get; set; } = status;
+        public UploadStatus Status { get; set; } = status;
     }
 }
 

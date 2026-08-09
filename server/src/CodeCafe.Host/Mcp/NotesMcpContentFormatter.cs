@@ -1,4 +1,5 @@
 using System.Text;
+using CodeCafe.Application.Notes;
 using System.Text.Json;
 
 namespace CodeCafe.Host.Mcp;
