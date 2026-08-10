@@ -9,3 +9,9 @@ api:
   # chart validation), not for scripted deployments.
   envFromSecrets:
     - codecafe-db-secret
+  forwardedHeaders:
+    # The k3s pod CIDR. Traefik terminates TLS and sets X-Forwarded-Proto from
+    # a pod IP in this range; without trusting it the API sees plain HTTP and
+    # antiforgery (Cookie.SecurePolicy=Always) fails every request with 500.
+    knownNetworks:
+      - "10.42.0.0/16"

@@ -9,3 +9,11 @@ api:
   # chart validation), not for scripted deployments.
   envFromSecrets:
     - codecafe-db-secret
+  forwardedHeaders:
+    # Assumed k3s default pod CIDR, same as the test cluster. VERIFY on the
+    # prod server before the next deploy (kubectl get pods -A -o wide): if
+    # the ingress pods live in a different range, update this value, otherwise
+    # antiforgery (Cookie.SecurePolicy=Always) will 500 every request once
+    # the app sees plain HTTP behind the proxy.
+    knownNetworks:
+      - "10.42.0.0/16"
