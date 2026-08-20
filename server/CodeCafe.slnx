@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="CodeCafe.Application/CodeCafe.Application.csproj" />
+  <Project Path="CodeCafe.Domain/CodeCafe.Domain.csproj" />
+  <Project Path="CodeCafe.Host/CodeCafe.Host.csproj" />
+  <Project Path="CodeCafe.Infrastructure/CodeCafe.Infrastructure.csproj" />
+</Solution>

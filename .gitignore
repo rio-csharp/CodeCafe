@@ -1,0 +1,16 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+
+# Test results
+TestResults/
+
+# IDE and OS files
+.idea/
+.DS_Store
+Thumbs.db
