@@ -1,3 +1,4 @@
+using CodeCafe.Application.Common;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
@@ -6,7 +7,6 @@ using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
 using CodeCafe.Application.Notes.Commands.UpdateNotebook;
 using CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
 using CodeCafe.Domain.Notes;
-using CodeCafe.Application.Common;
 
 namespace CodeCafe.Application.Tests;
 
@@ -18,11 +18,21 @@ public sealed class NotebookMutationHandlerTests
         var store = new StubNotebookMutationStore();
         var queryService = new StubNotebookQueryService();
         var now = new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero);
-        var handler = new CreateNotebookCommandHandler(store, queryService, new StubDateTimeProvider(now));
+        var handler = new CreateNotebookCommandHandler(
+            store,
+            queryService,
+            new StubDateTimeProvider(now)
+        );
 
         var result = await handler.Handle(
-            new CreateNotebookCommand(Guid.NewGuid(), "  New Notebook  ", "  Description  ", "public"),
-            CancellationToken.None);
+            new CreateNotebookCommand(
+                Guid.NewGuid(),
+                "  New Notebook  ",
+                "  Description  ",
+                "public"
+            ),
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.NotNull(store.AddedNotebook);
@@ -38,13 +48,18 @@ public sealed class NotebookMutationHandlerTests
         var store = new StubNotebookMutationStore
         {
             ExistingNotebook = null,
-            NotebookExists = true
+            NotebookExists = true,
         };
-        var handler = new UpdateNotebookCommandHandler(store, new StubNotebookQueryService(), new StubDateTimeProvider(DateTimeOffset.UtcNow));
+        var handler = new UpdateNotebookCommandHandler(
+            store,
+            new StubNotebookQueryService(),
+            new StubDateTimeProvider(DateTimeOffset.UtcNow)
+        );
 
         var result = await handler.Handle(
             new UpdateNotebookCommand(Guid.NewGuid(), Guid.NewGuid(), "Updated", null, "private"),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.False(result.Succeeded);
         Assert.Equal(NotesFailureKind.Forbidden, result.Error?.Kind);
@@ -57,13 +72,14 @@ public sealed class NotebookMutationHandlerTests
         var store = new StubNotebookMutationStore
         {
             ExistingNotebook = notebook,
-            NotebookExists = true
+            NotebookExists = true,
         };
         var handler = new DeleteNotebookCommandHandler(store);
 
         var result = await handler.Handle(
             new DeleteNotebookCommand(notebook.Id, notebook.OwnerId),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.Same(notebook, store.RemovedNotebook);
@@ -75,13 +91,18 @@ public sealed class NotebookMutationHandlerTests
     {
         var store = new StubNotebookMutationStore
         {
-            LookupNotebook = CreateNotebook(Guid.NewGuid(), NotebookVisibility.Private, isPublished: false)
+            LookupNotebook = CreateNotebook(
+                Guid.NewGuid(),
+                NotebookVisibility.Private,
+                isPublished: false
+            ),
         };
         var handler = new GetNotebookFavoriteStatusQueryHandler(store);
 
         var result = await handler.Handle(
             new GetNotebookFavoriteStatusQuery(store.LookupNotebook.Id, Guid.NewGuid()),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.False(result.Succeeded);
         Assert.Equal(NotesFailureKind.Forbidden, result.Error?.Kind);
@@ -96,13 +117,14 @@ public sealed class NotebookMutationHandlerTests
         {
             LookupNotebook = notebook,
             FavoriteCount = 1,
-            FavoritedByCurrentUser = false
+            FavoritedByCurrentUser = false,
         };
         var handler = new AddNotebookFavoriteCommandHandler(store);
 
         var result = await handler.Handle(
             new AddNotebookFavoriteCommand(notebook.Id, currentUserId),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.NotNull(store.AddedFavorite);
@@ -123,16 +145,17 @@ public sealed class NotebookMutationHandlerTests
             {
                 Id = Guid.NewGuid(),
                 NotebookId = notebook.Id,
-                UserId = currentUserId
+                UserId = currentUserId,
             },
             FavoriteCount = 1,
-            FavoritedByCurrentUser = true
+            FavoritedByCurrentUser = true,
         };
         var handler = new AddNotebookFavoriteCommandHandler(store);
 
         var result = await handler.Handle(
             new AddNotebookFavoriteCommand(notebook.Id, currentUserId),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.True(result.Value!.IsFavorited);
@@ -149,26 +172,31 @@ public sealed class NotebookMutationHandlerTests
         {
             Id = Guid.NewGuid(),
             NotebookId = notebook.Id,
-            UserId = currentUserId
+            UserId = currentUserId,
         };
         var store = new StubNotebookMutationStore
         {
             LookupNotebook = notebook,
             ExistingFavorite = existingFavorite,
             FavoriteCount = 0,
-            FavoritedByCurrentUser = false
+            FavoritedByCurrentUser = false,
         };
         var handler = new RemoveNotebookFavoriteCommandHandler(store);
 
         var result = await handler.Handle(
             new RemoveNotebookFavoriteCommand(notebook.Id, currentUserId),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.Same(existingFavorite, store.RemovedFavorite);
     }
 
-    private static Notebook CreateNotebook(Guid ownerId, NotebookVisibility visibility = NotebookVisibility.Private, bool isPublished = false)
+    private static Notebook CreateNotebook(
+        Guid ownerId,
+        NotebookVisibility visibility = NotebookVisibility.Private,
+        bool isPublished = false
+    )
     {
         return new Notebook
         {
@@ -178,7 +206,7 @@ public sealed class NotebookMutationHandlerTests
             Slug = "notebook",
             Visibility = visibility,
             IsPublished = isPublished,
-            CreatedAtUtc = DateTimeOffset.UtcNow
+            CreatedAtUtc = DateTimeOffset.UtcNow,
         };
     }
 
@@ -191,14 +219,28 @@ public sealed class NotebookMutationHandlerTests
     {
         public Guid LastNotebookId { get; private set; }
 
-        public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(string? search, Guid currentUserId, CancellationToken cancellationToken, int? limit = null, int? offset = null)
-            => throw new NotSupportedException();
+        public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(
+            string? search,
+            Guid currentUserId,
+            CancellationToken cancellationToken,
+            int? limit = null,
+            int? offset = null
+        ) => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(Guid currentUserId, string? search, CancellationToken cancellationToken, int? limit = null, int? offset = null)
-            => throw new NotSupportedException();
+        public Task<IReadOnlyList<NotebookSummaryModel>> GetMyNotebooksAsync(
+            Guid currentUserId,
+            string? search,
+            CancellationToken cancellationToken,
+            int? limit = null,
+            int? offset = null
+        ) => throw new NotSupportedException();
 
-        public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(Guid currentUserId, string search, CancellationToken cancellationToken, int? limit = null)
-            => throw new NotSupportedException();
+        public Task<IReadOnlyList<NotebookItemSearchModel>> SearchVisibleNotebookItemsAsync(
+            Guid currentUserId,
+            string search,
+            CancellationToken cancellationToken,
+            int? limit = null
+        ) => throw new NotSupportedException();
 
         public Task<NotesResult<NotebookDetailModel>> GetPublicNotebookAsync(
             string slug,
@@ -206,14 +248,19 @@ public sealed class NotebookMutationHandlerTests
             CancellationToken cancellationToken,
             bool includeArchived = false,
             bool includeItems = true,
-            bool includeContent = true)
-            => throw new NotSupportedException();
+            bool includeContent = true
+        ) => throw new NotSupportedException();
 
-        public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(string slug, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
+        public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(
+            string slug,
+            CancellationToken cancellationToken
+        ) => throw new NotSupportedException();
 
-        public Task<NotesResult<NotebookItemModel>> GetPublicNotebookItemAsync(string slug, string path, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
+        public Task<NotesResult<NotebookItemModel>> GetPublicNotebookItemAsync(
+            string slug,
+            string path,
+            CancellationToken cancellationToken
+        ) => throw new NotSupportedException();
 
         public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
             Guid notebookId,
@@ -221,30 +268,35 @@ public sealed class NotebookMutationHandlerTests
             CancellationToken cancellationToken,
             bool includeArchived = false,
             bool includeItems = true,
-            bool includeContent = true)
+            bool includeContent = true
+        )
         {
             LastNotebookId = notebookId;
-            return Task.FromResult(NotesResult<NotebookDetailModel>.Success(
-                new NotebookDetailModel(
-                    notebookId,
-                    currentUserId,
-                    "Notebook",
-                    "notebook",
-                    null,
-                    "private",
-                    false,
-                    "Yao",
-                    true,
-                    0,
-                    0,
-                    0,
-                    0,
-                    false,
-                    DateTimeOffset.UtcNow,
-                    DateTimeOffset.UtcNow,
-                    null,
-                    null,
-                    [])));
+            return Task.FromResult(
+                NotesResult<NotebookDetailModel>.Success(
+                    new NotebookDetailModel(
+                        notebookId,
+                        currentUserId,
+                        "Notebook",
+                        "notebook",
+                        null,
+                        "private",
+                        false,
+                        "Yao",
+                        true,
+                        0,
+                        0,
+                        0,
+                        0,
+                        false,
+                        DateTimeOffset.UtcNow,
+                        DateTimeOffset.UtcNow,
+                        null,
+                        null,
+                        []
+                    )
+                )
+            );
         }
 
         public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
@@ -253,14 +305,26 @@ public sealed class NotebookMutationHandlerTests
             CancellationToken cancellationToken,
             bool includeArchived = false,
             bool includeItems = true,
-            bool includeContent = true)
-            => throw new NotSupportedException();
+            bool includeContent = true
+        ) => throw new NotSupportedException();
 
-        public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(Guid notebookId, Guid currentUserId, string? search, CancellationToken cancellationToken, bool includeArchived = false, bool includeContent = true, int? limit = null)
-            => throw new NotSupportedException();
+        public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetNotebookItemsAsync(
+            Guid notebookId,
+            Guid currentUserId,
+            string? search,
+            CancellationToken cancellationToken,
+            bool includeArchived = false,
+            bool includeContent = true,
+            int? limit = null
+        ) => throw new NotSupportedException();
 
-        public Task<NotesResult<NotebookItemModel>> GetNotebookItemByIdAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken, bool includeArchived = false)
-            => throw new NotSupportedException();
+        public Task<NotesResult<NotebookItemModel>> GetNotebookItemByIdAsync(
+            Guid notebookId,
+            Guid itemId,
+            Guid currentUserId,
+            CancellationToken cancellationToken,
+            bool includeArchived = false
+        ) => throw new NotSupportedException();
     }
 
     private sealed class StubNotebookMutationStore : INotebookMutationStore
@@ -283,33 +347,49 @@ public sealed class NotebookMutationHandlerTests
         public int FavoriteCount { get; init; }
         public bool FavoritedByCurrentUser { get; init; }
 
-        public Task<Notebook?> GetOwnedNotebookAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
-            => Task.FromResult(ExistingNotebook);
+        public Task<Notebook?> GetOwnedNotebookAsync(
+            Guid notebookId,
+            Guid currentUserId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(ExistingNotebook);
 
-        public Task<Notebook?> GetNotebookAsync(Guid notebookId, CancellationToken cancellationToken)
-            => Task.FromResult(LookupNotebook);
+        public Task<Notebook?> GetNotebookAsync(
+            Guid notebookId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(LookupNotebook);
 
-        public Task<bool> NotebookExistsAsync(Guid notebookId, CancellationToken cancellationToken)
-            => Task.FromResult(NotebookExists);
+        public Task<bool> NotebookExistsAsync(
+            Guid notebookId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(NotebookExists);
 
-        public Task<string> GenerateUniqueNotebookSlugAsync(string title, Guid? currentNotebookId, CancellationToken cancellationToken)
-            => Task.FromResult("new-notebook");
+        public Task<string> GenerateUniqueNotebookSlugAsync(
+            string title,
+            Guid? currentNotebookId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult("new-notebook");
 
         public void AddNotebook(Notebook notebook)
         {
             AddedNotebook = notebook;
         }
 
-        public Task SaveNotebookAsync(Notebook notebook, string title, CancellationToken cancellationToken)
-            => Task.CompletedTask;
+        public Task SaveNotebookAsync(
+            Notebook notebook,
+            string title,
+            CancellationToken cancellationToken
+        ) => Task.CompletedTask;
 
         public void RemoveNotebook(Notebook notebook)
         {
             RemovedNotebook = notebook;
         }
 
-        public Task<NotebookFavorite?> GetFavoriteAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
-            => Task.FromResult(ExistingFavorite);
+        public Task<NotebookFavorite?> GetFavoriteAsync(
+            Guid notebookId,
+            Guid currentUserId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(ExistingFavorite);
 
         public Task AddFavoriteAsync(NotebookFavorite favorite, CancellationToken cancellationToken)
         {
@@ -323,11 +403,16 @@ public sealed class NotebookMutationHandlerTests
             RemovedFavorite = favorite;
         }
 
-        public Task<int> CountFavoritesAsync(Guid notebookId, CancellationToken cancellationToken)
-            => Task.FromResult(FavoriteCount);
+        public Task<int> CountFavoritesAsync(
+            Guid notebookId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(FavoriteCount);
 
-        public Task<bool> IsFavoritedAsync(Guid notebookId, Guid currentUserId, CancellationToken cancellationToken)
-            => Task.FromResult(FavoritedByCurrentUser);
+        public Task<bool> IsFavoritedAsync(
+            Guid notebookId,
+            Guid currentUserId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(FavoritedByCurrentUser);
 
         public Task SaveChangesAsync(CancellationToken cancellationToken)
         {

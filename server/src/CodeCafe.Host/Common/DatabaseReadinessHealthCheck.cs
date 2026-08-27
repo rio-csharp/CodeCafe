@@ -3,11 +3,13 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CodeCafe.Host.Common;
 
-public sealed class DatabaseReadinessHealthCheck(IServiceScopeFactory serviceScopeFactory) : IHealthCheck
+public sealed class DatabaseReadinessHealthCheck(IServiceScopeFactory serviceScopeFactory)
+    : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
         HealthCheckContext context,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         await using var scope = serviceScopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -21,9 +23,7 @@ public sealed class DatabaseReadinessHealthCheck(IServiceScopeFactory serviceSco
         }
         catch (Exception exception)
         {
-            return HealthCheckResult.Unhealthy(
-                "Database readiness check failed.",
-                exception);
+            return HealthCheckResult.Unhealthy("Database readiness check failed.", exception);
         }
     }
 }

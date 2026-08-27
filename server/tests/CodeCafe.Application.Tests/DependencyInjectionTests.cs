@@ -15,9 +15,7 @@ public sealed class DependencyInjectionTests
     {
         var services = new ServiceCollection();
 
-        var result = services
-            .AddIdentityApplication()
-            .AddNotesApplication();
+        var result = services.AddIdentityApplication().AddNotesApplication();
 
         Assert.Same(services, result);
     }

@@ -7,27 +7,41 @@ namespace CodeCafe.Infrastructure.Notes;
 
 public sealed partial class NotebookReadService
 {
-    private async Task<Notebook?> GetPublicNotebookEntityBySlugAsync(string slug, CancellationToken cancellationToken)
+    private async Task<Notebook?> GetPublicNotebookEntityBySlugAsync(
+        string slug,
+        CancellationToken cancellationToken
+    )
     {
-        return await dbContext.Notebooks.AsNoTracking().SingleOrDefaultAsync(
-            notebook => notebook.Slug == slug
-                && notebook.Visibility == NotebookVisibility.Public
-                && notebook.IsPublished,
-            cancellationToken);
+        return await dbContext
+            .Notebooks.AsNoTracking()
+            .SingleOrDefaultAsync(
+                notebook =>
+                    notebook.Slug == slug
+                    && notebook.Visibility == NotebookVisibility.Public
+                    && notebook.IsPublished,
+                cancellationToken
+            );
     }
 
     private async Task<NotesResult<NotebookAccessRow>> GetPublicReadableNotebookAccessAsync(
         string slug,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var notebook = await dbContext.Notebooks
-            .AsNoTracking()
+        var notebook = await dbContext
+            .Notebooks.AsNoTracking()
             .Where(existingNotebook =>
                 existingNotebook.Slug == slug
                 && existingNotebook.Visibility == NotebookVisibility.Public
-                && existingNotebook.IsPublished)
-            .Select(existingNotebook => new NotebookAccessRow(existingNotebook.Id, existingNotebook.OwnerId, existingNotebook.Visibility, existingNotebook.IsPublished))
+                && existingNotebook.IsPublished
+            )
+            .Select(existingNotebook => new NotebookAccessRow(
+                existingNotebook.Id,
+                existingNotebook.OwnerId,
+                existingNotebook.Visibility,
+                existingNotebook.IsPublished
+            ))
             .SingleOrDefaultAsync(cancellationToken);
 
         return ToReadableNotebookAccessResult(notebook, currentUserId);
@@ -36,12 +50,18 @@ public sealed partial class NotebookReadService
     private async Task<NotesResult<NotebookAccessRow>> GetReadableNotebookAccessAsync(
         Guid notebookId,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var notebook = await dbContext.Notebooks
-            .AsNoTracking()
+        var notebook = await dbContext
+            .Notebooks.AsNoTracking()
             .Where(existingNotebook => existingNotebook.Id == notebookId)
-            .Select(existingNotebook => new NotebookAccessRow(existingNotebook.Id, existingNotebook.OwnerId, existingNotebook.Visibility, existingNotebook.IsPublished))
+            .Select(existingNotebook => new NotebookAccessRow(
+                existingNotebook.Id,
+                existingNotebook.OwnerId,
+                existingNotebook.Visibility,
+                existingNotebook.IsPublished
+            ))
             .SingleOrDefaultAsync(cancellationToken);
 
         return ToReadableNotebookAccessResult(notebook, currentUserId);
@@ -50,48 +70,79 @@ public sealed partial class NotebookReadService
     private async Task<NotesResult<NotebookAccessRow>> GetReadableNotebookAccessAsync(
         string slug,
         Guid currentUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var notebook = await dbContext.Notebooks
-            .AsNoTracking()
+        var notebook = await dbContext
+            .Notebooks.AsNoTracking()
             .Where(existingNotebook => existingNotebook.Slug == slug)
-            .Select(existingNotebook => new NotebookAccessRow(existingNotebook.Id, existingNotebook.OwnerId, existingNotebook.Visibility, existingNotebook.IsPublished))
+            .Select(existingNotebook => new NotebookAccessRow(
+                existingNotebook.Id,
+                existingNotebook.OwnerId,
+                existingNotebook.Visibility,
+                existingNotebook.IsPublished
+            ))
             .SingleOrDefaultAsync(cancellationToken);
 
         return ToReadableNotebookAccessResult(notebook, currentUserId);
     }
 
-    private static NotesResult<NotebookAccessRow> ToReadableNotebookAccessResult(NotebookAccessRow? notebook, Guid currentUserId)
+    private static NotesResult<NotebookAccessRow> ToReadableNotebookAccessResult(
+        NotebookAccessRow? notebook,
+        Guid currentUserId
+    )
     {
         if (notebook is null)
         {
-            return NotesResult<NotebookAccessRow>.Failure(NotesFailureKind.NotFound, "notebook_not_found", "Notebook was not found.");
+            return NotesResult<NotebookAccessRow>.Failure(
+                NotesFailureKind.NotFound,
+                "notebook_not_found",
+                "Notebook was not found."
+            );
         }
 
-        return NotebookAccessPolicy.CanReadNotebook(notebook.OwnerId, notebook.Visibility, notebook.IsPublished, currentUserId)
+        return NotebookAccessPolicy.CanReadNotebook(
+            notebook.OwnerId,
+            notebook.Visibility,
+            notebook.IsPublished,
+            currentUserId
+        )
             ? NotesResult<NotebookAccessRow>.Success(notebook)
-            : NotesResult<NotebookAccessRow>.Failure(NotesFailureKind.Forbidden, "notebook_forbidden", "You do not have access to this notebook.");
+            : NotesResult<NotebookAccessRow>.Failure(
+                NotesFailureKind.Forbidden,
+                "notebook_forbidden",
+                "You do not have access to this notebook."
+            );
     }
 
     private static NotesError? GetArchivedReadError(
         NotebookAccessRow notebook,
         Guid currentUserId,
-        bool includeArchived)
+        bool includeArchived
+    )
     {
         return includeArchived && notebook.OwnerId != currentUserId
             ? new NotesError(
                 NotesFailureKind.Forbidden,
                 "notebook_forbidden",
-                "Only the notebook owner can view archived items.")
+                "Only the notebook owner can view archived items."
+            )
             : null;
     }
 
     private bool UsesPostgresProvider()
     {
-        return string.Equals(dbContext.Database.ProviderName, DatabaseProviderNames.Npgsql, StringComparison.Ordinal);
+        return string.Equals(
+            dbContext.Database.ProviderName,
+            DatabaseProviderNames.Npgsql,
+            StringComparison.Ordinal
+        );
     }
 
-    private static IQueryable<NotebookItemRow> BuildItemRowQuery(IQueryable<NotebookItem> query, bool includeContent)
+    private static IQueryable<NotebookItemRow> BuildItemRowQuery(
+        IQueryable<NotebookItem> query,
+        bool includeContent
+    )
     {
         return includeContent
             ? query.Select(item => new NotebookItemRow(
@@ -110,7 +161,8 @@ public sealed partial class NotebookReadService
                 item.ArchivedAtUtc,
                 item.ArchivedByUserId,
                 item.CreatedAtUtc,
-                item.UpdatedAtUtc))
+                item.UpdatedAtUtc
+            ))
             : query.Select(item => new NotebookItemRow(
                 item.Id,
                 item.NotebookId,
@@ -127,10 +179,13 @@ public sealed partial class NotebookReadService
                 item.ArchivedAtUtc,
                 item.ArchivedByUserId,
                 item.CreatedAtUtc,
-                item.UpdatedAtUtc));
+                item.UpdatedAtUtc
+            ));
     }
 
-    private static IOrderedQueryable<NotebookItem> OrderNotebookItems(IQueryable<NotebookItem> query)
+    private static IOrderedQueryable<NotebookItem> OrderNotebookItems(
+        IQueryable<NotebookItem> query
+    )
     {
         return query
             .OrderBy(item => item.ParentId)
@@ -151,9 +206,7 @@ public sealed partial class NotebookReadService
 
     private static IQueryable<T> ApplyLimit<T>(IQueryable<T> query, int? limit)
     {
-        return limit.HasValue
-            ? query.Take(Math.Max(1, limit.Value))
-            : query;
+        return limit.HasValue ? query.Take(Math.Max(1, limit.Value)) : query;
     }
 
     private static IQueryable<T> ApplyPage<T>(IQueryable<T> query, int? offset, int? limit)
@@ -183,5 +236,6 @@ public sealed partial class NotebookReadService
         Guid Id,
         Guid OwnerId,
         NotebookVisibility Visibility,
-        bool IsPublished);
+        bool IsPublished
+    );
 }

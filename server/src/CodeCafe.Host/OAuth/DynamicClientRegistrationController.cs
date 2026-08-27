@@ -1,5 +1,8 @@
-using CodeCafe.Host.Common;
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Host.Common;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -7,9 +10,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
-using System.ComponentModel.DataAnnotations;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace CodeCafe.Host.Rest.Auth;
 
@@ -18,80 +18,134 @@ public sealed class DynamicClientRegistrationController(
     ApplicationDbContext dbContext,
     IOpenIddictApplicationManager applicationManager,
     IOptions<McpOptions> mcpOptionsAccessor,
-    IOptions<AuthorizationServerOptions> authorizationServerOptionsAccessor)
-    : ControllerBase
+    IOptions<AuthorizationServerOptions> authorizationServerOptionsAccessor
+) : ControllerBase
 {
     [EnableRateLimiting("oauth-registration")]
     [HttpPost("~/connect/register")]
     [Produces("application/json")]
     public async Task<IActionResult> Register(
         [FromBody] DynamicClientRegistrationRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (request.RedirectUris.Length == 0)
         {
-            return BadRequest(new OAuthErrorResponse("invalid_redirect_uri", "At least one redirect URI is required."));
+            return BadRequest(
+                new OAuthErrorResponse(
+                    "invalid_redirect_uri",
+                    "At least one redirect URI is required."
+                )
+            );
         }
 
-        if (!string.IsNullOrWhiteSpace(request.TokenEndpointAuthMethod)
-            && !string.Equals(request.TokenEndpointAuthMethod, "none", StringComparison.Ordinal))
+        if (
+            !string.IsNullOrWhiteSpace(request.TokenEndpointAuthMethod)
+            && !string.Equals(request.TokenEndpointAuthMethod, "none", StringComparison.Ordinal)
+        )
         {
-            return BadRequest(new OAuthErrorResponse("invalid_client_metadata", "Only public clients using token_endpoint_auth_method 'none' are supported."));
+            return BadRequest(
+                new OAuthErrorResponse(
+                    "invalid_client_metadata",
+                    "Only public clients using token_endpoint_auth_method 'none' are supported."
+                )
+            );
         }
 
-        if (!string.IsNullOrWhiteSpace(request.ApplicationType)
-            && !string.Equals(request.ApplicationType, "native", StringComparison.Ordinal))
+        if (
+            !string.IsNullOrWhiteSpace(request.ApplicationType)
+            && !string.Equals(request.ApplicationType, "native", StringComparison.Ordinal)
+        )
         {
-            return BadRequest(new OAuthErrorResponse("invalid_client_metadata", "Only native applications are supported."));
+            return BadRequest(
+                new OAuthErrorResponse(
+                    "invalid_client_metadata",
+                    "Only native applications are supported."
+                )
+            );
         }
 
-        if (request.ResponseTypes.Length > 0
-            && request.ResponseTypes.Any(type => !string.Equals(type, "code", StringComparison.Ordinal)))
+        if (
+            request.ResponseTypes.Length > 0
+            && request.ResponseTypes.Any(type =>
+                !string.Equals(type, "code", StringComparison.Ordinal)
+            )
+        )
         {
-            return BadRequest(new OAuthErrorResponse("invalid_client_metadata", "Only the authorization code response type is supported."));
+            return BadRequest(
+                new OAuthErrorResponse(
+                    "invalid_client_metadata",
+                    "Only the authorization code response type is supported."
+                )
+            );
         }
 
-        if (request.GrantTypes.Length > 0
-            && request.GrantTypes.Any(type => !string.Equals(type, "authorization_code", StringComparison.Ordinal)
-                && !string.Equals(type, "refresh_token", StringComparison.Ordinal)))
+        if (
+            request.GrantTypes.Length > 0
+            && request.GrantTypes.Any(type =>
+                !string.Equals(type, "authorization_code", StringComparison.Ordinal)
+                && !string.Equals(type, "refresh_token", StringComparison.Ordinal)
+            )
+        )
         {
-            return BadRequest(new OAuthErrorResponse("invalid_client_metadata", "Only authorization_code and refresh_token grant types are supported."));
+            return BadRequest(
+                new OAuthErrorResponse(
+                    "invalid_client_metadata",
+                    "Only authorization_code and refresh_token grant types are supported."
+                )
+            );
         }
 
         var normalizedRedirectUris = new HashSet<string>(StringComparer.Ordinal);
         foreach (var redirectUri in request.RedirectUris.Distinct(StringComparer.Ordinal))
         {
-            if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var redirectUriValue)
-                || !OpenIddictClientRegistration.IsSupportedLoopbackRedirectUri(redirectUriValue))
+            if (
+                !Uri.TryCreate(redirectUri, UriKind.Absolute, out var redirectUriValue)
+                || !OpenIddictClientRegistration.IsSupportedLoopbackRedirectUri(redirectUriValue)
+            )
             {
-                return BadRequest(new OAuthErrorResponse(
-                    "invalid_redirect_uri",
-                    $"Redirect URI '{redirectUri}' must be an HTTP loopback URI on localhost, 127.0.0.1, or ::1."));
+                return BadRequest(
+                    new OAuthErrorResponse(
+                        "invalid_redirect_uri",
+                        $"Redirect URI '{redirectUri}' must be an HTTP loopback URI on localhost, 127.0.0.1, or ::1."
+                    )
+                );
             }
 
-            normalizedRedirectUris.Add(OpenIddictClientRegistration.NormalizeRedirectUri(redirectUriValue).AbsoluteUri);
+            normalizedRedirectUris.Add(
+                OpenIddictClientRegistration.NormalizeRedirectUri(redirectUriValue).AbsoluteUri
+            );
         }
 
-        var existingClient = await FindExistingClientAsync(normalizedRedirectUris, request.ClientName, cancellationToken);
+        var existingClient = await FindExistingClientAsync(
+            normalizedRedirectUris,
+            request.ClientName,
+            cancellationToken
+        );
         if (existingClient is not null)
         {
             existingClient = await ReconcileExistingClientAsync(
                 existingClient,
                 normalizedRedirectUris,
                 request.ClientName,
-                cancellationToken);
+                cancellationToken
+            );
 
-            return Ok(new DynamicClientRegistrationResponse
-            {
-                ApplicationType = "native",
-                ClientId = existingClient.ClientId,
-                ClientIdIssuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                ClientName = string.IsNullOrWhiteSpace(existingClient.DisplayName) ? existingClient.ClientId : existingClient.DisplayName,
-                GrantTypes = ["authorization_code", "refresh_token"],
-                RedirectUris = normalizedRedirectUris.ToArray(),
-                ResponseTypes = ["code"],
-                TokenEndpointAuthMethod = "none"
-            });
+            return Ok(
+                new DynamicClientRegistrationResponse
+                {
+                    ApplicationType = "native",
+                    ClientId = existingClient.ClientId,
+                    ClientIdIssuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    ClientName = string.IsNullOrWhiteSpace(existingClient.DisplayName)
+                        ? existingClient.ClientId
+                        : existingClient.DisplayName,
+                    GrantTypes = ["authorization_code", "refresh_token"],
+                    RedirectUris = normalizedRedirectUris.ToArray(),
+                    ResponseTypes = ["code"],
+                    TokenEndpointAuthMethod = "none",
+                }
+            );
         }
 
         var clientId = OpenIddictClientRegistration.CreateDynamicClientId();
@@ -101,35 +155,42 @@ public sealed class DynamicClientRegistrationController(
             normalizedRedirectUris,
             OpenIddictClientRegistration.GetDynamicClientAllowedScopes(mcpOptionsAccessor.Value),
             mcpOptionsAccessor.Value,
-            authorizationServerOptionsAccessor.Value);
+            authorizationServerOptionsAccessor.Value
+        );
 
         await applicationManager.CreateAsync(descriptor, cancellationToken);
 
-        return StatusCode(StatusCodes.Status201Created, new DynamicClientRegistrationResponse
-        {
-            ApplicationType = "native",
-            ClientId = clientId,
-            ClientIdIssuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            ClientName = descriptor.DisplayName ?? clientId,
-            GrantTypes = ["authorization_code", "refresh_token"],
-            RedirectUris = descriptor.RedirectUris.Select(uri => uri.AbsoluteUri).ToArray(),
-            ResponseTypes = ["code"],
-            TokenEndpointAuthMethod = "none"
-        });
+        return StatusCode(
+            StatusCodes.Status201Created,
+            new DynamicClientRegistrationResponse
+            {
+                ApplicationType = "native",
+                ClientId = clientId,
+                ClientIdIssuedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                ClientName = descriptor.DisplayName ?? clientId,
+                GrantTypes = ["authorization_code", "refresh_token"],
+                RedirectUris = descriptor.RedirectUris.Select(uri => uri.AbsoluteUri).ToArray(),
+                ResponseTypes = ["code"],
+                TokenEndpointAuthMethod = "none",
+            }
+        );
     }
 
     private async Task<ExistingDynamicClient?> FindExistingClientAsync(
         IReadOnlyCollection<string> normalizedRedirectUris,
         string? clientName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var applications = await dbContext.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
+        var applications = await dbContext
+            .Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
             .AsNoTracking()
             .Where(application =>
                 application.ClientType == OpenIddictConstants.ClientTypes.Public
                 && application.ApplicationType == OpenIddictConstants.ApplicationTypes.Native
                 && application.ClientId != null
-                && EF.Functions.Like(application.ClientId, "codecafe-%"))
+                && EF.Functions.Like(application.ClientId, "codecafe-%")
+            )
             .ToListAsync(cancellationToken);
 
         foreach (var application in applications)
@@ -139,8 +200,10 @@ public sealed class DynamicClientRegistrationController(
                 continue;
             }
 
-            if (!string.IsNullOrWhiteSpace(clientName)
-                && !string.Equals(application.DisplayName, clientName, StringComparison.Ordinal))
+            if (
+                !string.IsNullOrWhiteSpace(clientName)
+                && !string.Equals(application.DisplayName, clientName, StringComparison.Ordinal)
+            )
             {
                 continue;
             }
@@ -165,10 +228,14 @@ public sealed class DynamicClientRegistrationController(
         ExistingDynamicClient existingClient,
         IReadOnlyCollection<string> normalizedRedirectUris,
         string? requestedClientName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var application = await applicationManager.FindByClientIdAsync(existingClient.ClientId, cancellationToken)
-            ?? throw new InvalidOperationException($"Registered OAuth client '{existingClient.ClientId}' could not be loaded.");
+        var application =
+            await applicationManager.FindByClientIdAsync(existingClient.ClientId, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Registered OAuth client '{existingClient.ClientId}' could not be loaded."
+            );
 
         var existingDescriptor = new OpenIddictApplicationDescriptor();
         await applicationManager.PopulateAsync(existingDescriptor, application, cancellationToken);
@@ -182,16 +249,25 @@ public sealed class DynamicClientRegistrationController(
             normalizedRedirectUris,
             OpenIddictClientRegistration.GetDynamicClientAllowedScopes(mcpOptionsAccessor.Value),
             mcpOptionsAccessor.Value,
-            authorizationServerOptionsAccessor.Value);
+            authorizationServerOptionsAccessor.Value
+        );
 
         if (OpenIddictClientRegistration.ReconcileDescriptor(existingDescriptor, desiredDescriptor))
         {
-            await applicationManager.UpdateAsync(application, existingDescriptor, cancellationToken);
+            await applicationManager.UpdateAsync(
+                application,
+                existingDescriptor,
+                cancellationToken
+            );
         }
 
         return new ExistingDynamicClient(existingClient.ClientId, existingDescriptor.DisplayName);
     }
-    private static bool TryParseRedirectUris(string? redirectUrisJson, out HashSet<string> redirectUris)
+
+    private static bool TryParseRedirectUris(
+        string? redirectUrisJson,
+        out HashSet<string> redirectUris
+    )
     {
         redirectUris = new HashSet<string>(StringComparer.Ordinal);
         if (string.IsNullOrWhiteSpace(redirectUrisJson))
@@ -270,4 +346,5 @@ public sealed class DynamicClientRegistrationResponse
 
 public sealed record OAuthErrorResponse(
     [property: JsonPropertyName("error")] string Error,
-    [property: JsonPropertyName("error_description")] string ErrorDescription);
+    [property: JsonPropertyName("error_description")] string ErrorDescription
+);

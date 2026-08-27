@@ -4,8 +4,7 @@ namespace CodeCafe.Host.OAuth;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddIdentityPresentation(
-        this IServiceCollection services)
+    public static IServiceCollection AddIdentityPresentation(this IServiceCollection services)
     {
         return services.AddCodeCafeAuthOptions();
     }
@@ -14,8 +13,7 @@ public static class ServiceCollectionExtensions
     {
         // AuthOptions is a single boolean (RegistrationEnabled) with no invalid
         // state, so there is no meaningful startup validation rule to run.
-        services.AddOptions<AuthOptions>()
-            .BindConfiguration(AuthOptions.SectionName);
+        services.AddOptions<AuthOptions>().BindConfiguration(AuthOptions.SectionName);
 
         return services;
     }

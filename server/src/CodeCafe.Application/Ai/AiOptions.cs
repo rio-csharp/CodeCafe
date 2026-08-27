@@ -3,7 +3,7 @@ namespace CodeCafe.Application.Ai;
 public enum AiWireFormat
 {
     ChatCompletions,
-    Responses
+    Responses,
 }
 
 public sealed class AiOptions

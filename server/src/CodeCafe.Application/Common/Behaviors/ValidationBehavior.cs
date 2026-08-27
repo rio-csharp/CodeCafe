@@ -4,13 +4,15 @@ using MediatR;
 namespace CodeCafe.Application.Common.Behaviors;
 
 public sealed class ValidationBehavior<TRequest, TResponse>(
-    IEnumerable<IValidator<TRequest>> validators) : IPipelineBehavior<TRequest, TResponse>
+    IEnumerable<IValidator<TRequest>> validators
+) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {
     public async Task<TResponse> Handle(
         TRequest request,
         RequestHandlerDelegate<TResponse> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (!validators.Any())
         {
@@ -19,11 +21,10 @@ public sealed class ValidationBehavior<TRequest, TResponse>(
 
         var context = new ValidationContext<TRequest>(request);
         var validationResults = await Task.WhenAll(
-            validators.Select(validator => validator.ValidateAsync(context, cancellationToken)));
+            validators.Select(validator => validator.ValidateAsync(context, cancellationToken))
+        );
 
-        var failures = validationResults
-            .SelectMany(result => result.Errors)
-            .ToList();
+        var failures = validationResults.SelectMany(result => result.Errors).ToList();
 
         if (failures.Count != 0)
         {

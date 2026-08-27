@@ -4,5 +4,5 @@ public enum NotebookItemRestoreViolation
 {
     NotArchived,
     ParentNotFound,
-    ParentArchived
+    ParentArchived,
 }

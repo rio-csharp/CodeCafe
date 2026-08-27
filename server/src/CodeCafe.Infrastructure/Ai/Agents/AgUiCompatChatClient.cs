@@ -1,8 +1,5 @@
-using CodeCafe.Application.Ai.Drafts;
-using CodeCafe.Application.Ai.Edits;
-using CodeCafe.Application.Notes;
-using Microsoft.Extensions.AI;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.AI;
 
 namespace CodeCafe.Infrastructure.Ai.Agents;
 
@@ -12,12 +9,14 @@ namespace CodeCafe.Infrastructure.Ai.Agents;
 /// validates reasoning events strictly) and makes sure tool-call updates carry
 /// a message id, because AG-UI tool-call events require a parent message id.
 /// </summary>
-internal sealed class AgUiCompatChatClient(IChatClient innerClient) : DelegatingChatClient(innerClient)
+internal sealed class AgUiCompatChatClient(IChatClient innerClient)
+    : DelegatingChatClient(innerClient)
 {
     public override async Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         var response = await base.GetResponseAsync(messages, options, cancellationToken);
         foreach (var message in response.Messages)
@@ -31,9 +30,12 @@ internal sealed class AgUiCompatChatClient(IChatClient innerClient) : Delegating
     public override async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
-        await foreach (var update in base.GetStreamingResponseAsync(messages, options, cancellationToken))
+        await foreach (
+            var update in base.GetStreamingResponseAsync(messages, options, cancellationToken)
+        )
         {
             var hadContent = update.Contents.Count > 0;
             RemoveReasoningContent(update.Contents);

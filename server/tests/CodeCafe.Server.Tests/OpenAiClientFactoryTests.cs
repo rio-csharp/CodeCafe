@@ -1,6 +1,4 @@
-using CodeCafe.Infrastructure.Ai.Agents;
 using CodeCafe.Infrastructure.Ai;
-using CodeCafe.Application.Ai;
 using Xunit;
 
 namespace CodeCafe.Host.Tests;
@@ -14,7 +12,8 @@ public sealed class OpenAiClientFactoryTests
     [InlineData("https://router.example.test/openai", "https://router.example.test/openai")]
     public void NormalizeEndpoint_NormalizesProviderRootToOpenAiV1Endpoint(
         string baseUrl,
-        string expectedEndpoint)
+        string expectedEndpoint
+    )
     {
         var endpoint = OpenAiClientFactory.NormalizeEndpoint(baseUrl);
 
@@ -27,6 +26,8 @@ public sealed class OpenAiClientFactoryTests
     [InlineData("ftp://router.example.test")]
     public void NormalizeEndpoint_RejectsInvalidEndpoint(string baseUrl)
     {
-        Assert.Throws<InvalidOperationException>(() => OpenAiClientFactory.NormalizeEndpoint(baseUrl));
+        Assert.Throws<InvalidOperationException>(() =>
+            OpenAiClientFactory.NormalizeEndpoint(baseUrl)
+        );
     }
 }

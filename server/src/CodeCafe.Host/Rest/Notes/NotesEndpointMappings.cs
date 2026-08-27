@@ -24,7 +24,8 @@ internal static class NotesEndpointMappings
             model.LastActivityAtUtc,
             model.CreatedAtUtc,
             model.UpdatedAtUtc,
-            model.PublishedAtUtc);
+            model.PublishedAtUtc
+        );
     }
 
     public static NotebookDetailResponse ToDetailResponse(NotebookDetailModel model)
@@ -48,7 +49,8 @@ internal static class NotesEndpointMappings
             model.CreatedAtUtc,
             model.UpdatedAtUtc,
             model.PublishedAtUtc,
-            model.Items.Select(ToItemResponse).ToList());
+            model.Items.Select(ToItemResponse).ToList()
+        );
     }
 
     public static NotebookFavoriteResponse ToFavoriteResponse(NotebookFavoriteModel model)
@@ -56,7 +58,8 @@ internal static class NotesEndpointMappings
         return new NotebookFavoriteResponse(
             model.NotebookId,
             model.IsFavorited,
-            model.FavoriteCount);
+            model.FavoriteCount
+        );
     }
 
     public static NotebookItemResponse ToItemResponse(NotebookItemModel model)
@@ -77,6 +80,7 @@ internal static class NotesEndpointMappings
             model.ArchivedAtUtc,
             model.ArchivedByUserId,
             model.CreatedAtUtc,
-            model.UpdatedAtUtc);
+            model.UpdatedAtUtc
+        );
     }
 }

@@ -5,19 +5,21 @@ namespace CodeCafe.Application.Identity.Commands.AuthenticateUser;
 
 public sealed class AuthenticateUserCommandHandler(
     IAuthUserGateway authUserGateway,
-    ILogger<AuthenticateUserCommandHandler> logger)
-    : ICommandHandler<AuthenticateUserCommand, AuthResult<AuthUserModel>>
+    ILogger<AuthenticateUserCommandHandler> logger
+) : ICommandHandler<AuthenticateUserCommand, AuthResult<AuthUserModel>>
 {
     public async Task<AuthResult<AuthUserModel>> Handle(
         AuthenticateUserCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var email = AuthInput.NormalizeEmail(request.Email);
         var verificationResult = await authUserGateway.VerifyPasswordAsync(
             email,
             request.Password,
             lockoutOnFailure: true,
-            cancellationToken);
+            cancellationToken
+        );
 
         if (verificationResult.Succeeded)
         {
@@ -31,7 +33,8 @@ public sealed class AuthenticateUserCommandHandler(
             // invalid_credentials failure to avoid account enumeration.
             logger.LogWarning(
                 "Login denied for locked-out account. ClientIp={ClientIp}",
-                request.ClientIp);
+                request.ClientIp
+            );
         }
 
         return InvalidCredentials();
@@ -42,6 +45,7 @@ public sealed class AuthenticateUserCommandHandler(
         return AuthResult<AuthUserModel>.Failure(
             AuthFailureKind.Unauthorized,
             "invalid_credentials",
-            "Invalid email or password.");
+            "Invalid email or password."
+        );
     }
 }

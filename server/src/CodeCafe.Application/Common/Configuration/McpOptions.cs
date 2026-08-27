@@ -14,7 +14,8 @@ public sealed class McpOptions
 
     public string RequiredAudience { get; set; } = "codecafe-mcp";
 
-    public string ProtectedResourceMetadataPath { get; set; } = "/.well-known/oauth-protected-resource/mcp";
+    public string ProtectedResourceMetadataPath { get; set; } =
+        "/.well-known/oauth-protected-resource/mcp";
 
     public string[] RequiredReadScopes { get; set; } = ["notes.read"];
 

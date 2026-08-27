@@ -18,18 +18,27 @@ public static class MarkdownUploadValidation
         long maxUploadBytes,
         string fileTooLargeMessage,
         string unsupportedMediaTypeMessage,
-        out MarkdownUploadContent? content)
+        out MarkdownUploadContent? content
+    )
     {
         content = null;
 
         if (!hasFormContentType)
         {
-            return new MarkdownUploadValidationError("invalid_upload_request", "Expected multipart/form-data.", "file");
+            return new MarkdownUploadValidationError(
+                "invalid_upload_request",
+                "Expected multipart/form-data.",
+                "file"
+            );
         }
 
         if (file is null)
         {
-            return new MarkdownUploadValidationError("invalid_upload_request", "Form field 'file' is required.", "file");
+            return new MarkdownUploadValidationError(
+                "invalid_upload_request",
+                "Form field 'file' is required.",
+                "file"
+            );
         }
 
         var effectiveFileName = string.IsNullOrWhiteSpace(requestedFileName)
@@ -37,12 +46,20 @@ public static class MarkdownUploadValidation
             : requestedFileName.Trim();
         if (string.IsNullOrWhiteSpace(effectiveFileName))
         {
-            return new MarkdownUploadValidationError("invalid_upload_file", "A file name is required.", "fileName");
+            return new MarkdownUploadValidationError(
+                "invalid_upload_file",
+                "A file name is required.",
+                "fileName"
+            );
         }
 
         if (file.Length <= 0)
         {
-            return new MarkdownUploadValidationError("invalid_upload_file", "Uploaded file is empty.", "file");
+            return new MarkdownUploadValidationError(
+                "invalid_upload_file",
+                "Uploaded file is empty.",
+                "file"
+            );
         }
 
         if (file.Length > maxUploadBytes)
@@ -54,8 +71,9 @@ public static class MarkdownUploadValidation
                 new Dictionary<string, object?>
                 {
                     ["maxUploadBytes"] = maxUploadBytes,
-                    ["actualUploadBytes"] = file.Length
-                });
+                    ["actualUploadBytes"] = file.Length,
+                }
+            );
         }
 
         var mediaType = NormalizeMediaType(file.ContentType, effectiveFileName);
@@ -69,8 +87,9 @@ public static class MarkdownUploadValidation
                 {
                     ["supportedMediaTypes"] = SupportedMediaTypes,
                     ["supportedFileExtensions"] = SupportedFileExtensions,
-                    ["receivedMediaType"] = file.ContentType
-                });
+                    ["receivedMediaType"] = file.ContentType,
+                }
+            );
         }
 
         content = new MarkdownUploadContent(effectiveFileName, mediaType);
@@ -79,8 +98,14 @@ public static class MarkdownUploadValidation
 
     public static string NormalizeMediaType(string? contentType, string fileName)
     {
-        if (!string.IsNullOrWhiteSpace(contentType)
-            && !string.Equals(contentType, "application/octet-stream", StringComparison.OrdinalIgnoreCase))
+        if (
+            !string.IsNullOrWhiteSpace(contentType)
+            && !string.Equals(
+                contentType,
+                "application/octet-stream",
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return contentType.Trim();
         }
@@ -88,9 +113,9 @@ public static class MarkdownUploadValidation
         return HasSupportedFileExtension(fileName) ? "text/markdown" : "text/plain";
     }
 
-    private static bool IsSupportedMediaType(string mediaType, string fileName)
-        => SupportedMediaTypes.Contains(mediaType, StringComparer.OrdinalIgnoreCase)
-           || HasSupportedFileExtension(fileName);
+    private static bool IsSupportedMediaType(string mediaType, string fileName) =>
+        SupportedMediaTypes.Contains(mediaType, StringComparer.OrdinalIgnoreCase)
+        || HasSupportedFileExtension(fileName);
 
     private static bool HasSupportedFileExtension(string fileName)
     {
@@ -107,4 +132,5 @@ public sealed record MarkdownUploadValidationError(
     string Code,
     string Message,
     string Field,
-    IReadOnlyDictionary<string, object?>? Details = null);
+    IReadOnlyDictionary<string, object?>? Details = null
+);

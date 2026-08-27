@@ -1,5 +1,4 @@
 namespace CodeCafe.Host.Mcp;
-using CodeCafe.Application.Notes;
 
 public sealed record NotebookSearchResultResponse(
     Guid NotebookId,
@@ -14,17 +13,20 @@ public sealed record NotebookSearchResultResponse(
     string? ResourceUri,
     string? PlainTextSnippet,
     bool CanEdit,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record SearchNotesToolResponse(
     string Query,
     int TotalCount,
-    IReadOnlyList<NotebookSearchResultResponse> Results);
+    IReadOnlyList<NotebookSearchResultResponse> Results
+);
 
 public sealed record ListNotebooksToolResponse(
     string Scope,
     int TotalCount,
-    IReadOnlyList<GetNotebookToolResponse> Notebooks);
+    IReadOnlyList<GetNotebookToolResponse> Notebooks
+);
 
 public sealed record ListNotebookItemsToolResponse(
     Guid NotebookId,
@@ -34,7 +36,8 @@ public sealed record ListNotebookItemsToolResponse(
     int TotalCount,
     int Offset,
     int ReturnedCount,
-    IReadOnlyList<NotebookItemSummaryToolResponse> Items);
+    IReadOnlyList<NotebookItemSummaryToolResponse> Items
+);
 
 public sealed record NotebookItemSummaryToolResponse(
     Guid Id,
@@ -49,7 +52,8 @@ public sealed record NotebookItemSummaryToolResponse(
     int SortOrder,
     string? ContentFormat,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record GetNotebookToolResponse(
     Guid Id,
@@ -71,7 +75,8 @@ public sealed record GetNotebookToolResponse(
     DateTimeOffset? UpdatedAtUtc,
     DateTimeOffset? PublishedAtUtc,
     string NotebookUri,
-    string ItemsUri);
+    string ItemsUri
+);
 
 public sealed record GetPageToolResponse(
     Guid PageId,
@@ -89,7 +94,8 @@ public sealed record GetPageToolResponse(
     int TipTapNodeCount,
     bool CanEdit,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record CreatePageToolResponse(
     Guid PageId,
@@ -109,7 +115,8 @@ public sealed record CreatePageToolResponse(
     int PlainTextLength,
     int TipTapNodeCount,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record CreateItemToolResponse(
     Guid ItemId,
@@ -124,7 +131,8 @@ public sealed record CreateItemToolResponse(
     Guid? ParentId,
     int SortOrder,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record UpdatePageContentToolResponse(
     Guid PageId,
@@ -141,7 +149,8 @@ public sealed record UpdatePageContentToolResponse(
     int ContentJsonBytes,
     int PlainTextLength,
     int TipTapNodeCount,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record MoveItemToolResponse(
     Guid ItemId,
@@ -155,24 +164,28 @@ public sealed record MoveItemToolResponse(
     string? ResourceUri,
     Guid? ParentId,
     int SortOrder,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record ReorderItemsToolResponse(
     Guid NotebookId,
     string NotebookSlug,
-    IReadOnlyList<NotebookItemSummaryToolResponse> Items);
+    IReadOnlyList<NotebookItemSummaryToolResponse> Items
+);
 
 public sealed record DeleteItemToolResponse(
     Guid NotebookId,
     string NotebookSlug,
     Guid ItemId,
     string Path,
-    string Result);
+    string Result
+);
 
 public sealed record DeleteNotebookToolResponse(
     Guid NotebookId,
     string NotebookSlug,
-    string Result);
+    string Result
+);
 
 public sealed record GetNotesLimitsToolResponse(
     int MaxInlineContentBytes,
@@ -186,7 +199,8 @@ public sealed record GetNotesLimitsToolResponse(
     int MaxTipTapNodeCount,
     int MaxTipTapTextLength,
     IReadOnlyList<string> SupportedImportFormats,
-    IReadOnlyList<string> SupportedHttpUploadMediaTypes);
+    IReadOnlyList<string> SupportedHttpUploadMediaTypes
+);
 
 public sealed record PrepareHttpUploadToolResponse(
     string UploadUrl,
@@ -196,29 +210,27 @@ public sealed record PrepareHttpUploadToolResponse(
     IReadOnlyList<string> Fields,
     int MaxUploadBytes,
     IReadOnlyList<string> SupportedMediaTypes,
-    string NextStep);
+    string NextStep
+);
 
 public sealed record CreateUploadToolResponse(
     string UploadId,
     string? FileName,
     string MediaType,
     int BytesReceived,
-    DateTimeOffset CreatedAtUtc);
+    DateTimeOffset CreatedAtUtc
+);
 
 public sealed record AppendUploadChunkToolResponse(
     string UploadId,
     int BytesReceived,
     int ChunkBytesReceived,
-    bool HasReceivedContent);
+    bool HasReceivedContent
+);
 
-public sealed record DiscardUploadToolResponse(
-    string UploadId,
-    string Result);
+public sealed record DiscardUploadToolResponse(string UploadId, string Result);
 
-public sealed record ReorderNotesItemRequest(
-    string Path,
-    string? ParentPath,
-    int SortOrder);
+public sealed record ReorderNotesItemRequest(string Path, string? ParentPath, int SortOrder);
 
 public sealed record McpToolErrorResponse(
     string Code,
@@ -226,4 +238,5 @@ public sealed record McpToolErrorResponse(
     string? Field,
     bool Retryable,
     string? Suggestion,
-    IReadOnlyDictionary<string, object?>? Details);
+    IReadOnlyDictionary<string, object?>? Details
+);

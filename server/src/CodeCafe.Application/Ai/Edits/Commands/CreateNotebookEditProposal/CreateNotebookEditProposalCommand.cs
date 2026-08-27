@@ -11,4 +11,5 @@ public sealed record CreateNotebookEditProposalCommand(
     string? Locale,
     bool Apply,
     string? ParentPath,
-    DateTimeOffset? ExpectedUpdatedAtUtc) : ICommand<AiEditProposalFlowResult>;
+    DateTimeOffset? ExpectedUpdatedAtUtc
+) : ICommand<AiEditProposalFlowResult>;

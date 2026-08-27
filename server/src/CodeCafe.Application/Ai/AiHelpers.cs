@@ -1,11 +1,14 @@
-using CodeCafe.Application.Notes;
 using System.Text;
+using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Application.Ai;
 
 public static class AiHelpers
 {
-    public static NotebookContextItemModel? ResolveActivePage(NotebookContextModel notebook, string? activePagePath)
+    public static NotebookContextItemModel? ResolveActivePage(
+        NotebookContextModel notebook,
+        string? activePagePath
+    )
     {
         if (string.IsNullOrWhiteSpace(activePagePath))
         {
@@ -15,11 +18,12 @@ public static class AiHelpers
         var normalizedPath = NotebookInput.NormalizePath(activePagePath);
         return notebook.Items.SingleOrDefault(item =>
             string.Equals(item.Path, normalizedPath, StringComparison.Ordinal)
-            && string.Equals(item.Type, "page", StringComparison.OrdinalIgnoreCase));
+            && string.Equals(item.Type, "page", StringComparison.OrdinalIgnoreCase)
+        );
     }
 
-    public static string NormalizeLocale(string? locale)
-        => string.IsNullOrWhiteSpace(locale) ? "en" : locale.Trim();
+    public static string NormalizeLocale(string? locale) =>
+        string.IsNullOrWhiteSpace(locale) ? "en" : locale.Trim();
 
     public static string StripCodeFence(string value, string language)
     {
@@ -42,10 +46,8 @@ public static class AiHelpers
         return trimmed;
     }
 
-    public static string NormalizeAgentName(string agentName)
-        => string.IsNullOrWhiteSpace(agentName)
-            ? new AiOptions().AgentName
-            : agentName.Trim();
+    public static string NormalizeAgentName(string agentName) =>
+        string.IsNullOrWhiteSpace(agentName) ? new AiOptions().AgentName : agentName.Trim();
 
     public static string TrimForPrompt(string value, int maxChars)
     {
@@ -76,7 +78,9 @@ public static class AiHelpers
 
         if (remaining > "[truncated]".Length + Environment.NewLine.Length)
         {
-            builder.Append(value.AsSpan(0, remaining - "[truncated]".Length - Environment.NewLine.Length));
+            builder.Append(
+                value.AsSpan(0, remaining - "[truncated]".Length - Environment.NewLine.Length)
+            );
             builder.AppendLine("[truncated]");
         }
 

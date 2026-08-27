@@ -6,13 +6,10 @@ public enum AuthFailureKind
     Unauthorized,
     Forbidden,
     Conflict,
-    NotFound
+    NotFound,
 }
 
-public sealed record AuthError(
-    AuthFailureKind Kind,
-    string Code,
-    string Message);
+public sealed record AuthError(AuthFailureKind Kind, string Code, string Message);
 
 public sealed class AuthResult<T>
 {
@@ -22,15 +19,8 @@ public sealed class AuthResult<T>
 
     public AuthError? Error { get; init; }
 
-    public static AuthResult<T> Success(T value) =>
-        new()
-        {
-            Value = value
-        };
+    public static AuthResult<T> Success(T value) => new() { Value = value };
 
     public static AuthResult<T> Failure(AuthFailureKind kind, string code, string message) =>
-        new()
-        {
-            Error = new AuthError(kind, code, message)
-        };
+        new() { Error = new AuthError(kind, code, message) };
 }

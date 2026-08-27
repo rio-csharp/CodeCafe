@@ -1,32 +1,57 @@
-using CodeCafe.Host.Mcp;
-using CodeCafe.Application.Notes;
-using CodeCafe.Application.Common.Uploads;
-using CodeCafe.Application.Common.Identity;
-using Microsoft.Extensions.AI;
-using ModelContextProtocol;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using CodeCafe.Application.Common.Identity;
+using CodeCafe.Application.Notes;
+using Microsoft.Extensions.AI;
+using ModelContextProtocol;
 
 namespace CodeCafe.Host.Mcp;
 
 internal static class NotesMcpSupport
 {
     internal readonly record struct NotebookContext(Guid ActorId, NotebookDetailModel Notebook);
-    internal readonly record struct ItemContext(Guid ActorId, NotebookDetailModel Notebook, NotebookItemModel Item);
-    internal readonly record struct NotebookSummaryContext(Guid ActorId, NotebookSummaryModel Notebook);
-    internal readonly record struct ItemSummaryContext(Guid ActorId, NotebookSummaryModel Notebook, NotebookItemModel Item);
+
+    internal readonly record struct ItemContext(
+        Guid ActorId,
+        NotebookDetailModel Notebook,
+        NotebookItemModel Item
+    );
+
+    internal readonly record struct NotebookSummaryContext(
+        Guid ActorId,
+        NotebookSummaryModel Notebook
+    );
+
+    internal readonly record struct ItemSummaryContext(
+        Guid ActorId,
+        NotebookSummaryModel Notebook,
+        NotebookItemModel Item
+    );
 
     internal static JsonSerializerOptions SerializerOptions => McpJson.SerializerOptions;
     private const string AuthenticatedActorRequiredCode = "authenticated_actor_required";
-    private const string AuthenticatedActorRequiredMessage = "The MCP endpoint requires an authenticated CodeCafe user.";
+    private const string AuthenticatedActorRequiredMessage =
+        "The MCP endpoint requires an authenticated CodeCafe user.";
 
     public static bool HasAnyScope(ClaimsPrincipal user, params string[] requiredScopes)
     {
         var scopeValues = user.FindAll("scope")
-            .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-            .Concat(user.FindAll("scp")
-                .SelectMany(claim => claim.Value.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)))
+            .SelectMany(claim =>
+                claim.Value.Split(
+                    ' ',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+                )
+            )
+            .Concat(
+                user.FindAll("scp")
+                    .SelectMany(claim =>
+                        claim.Value.Split(
+                            ' ',
+                            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+                        )
+                    )
+            )
             .ToHashSet(StringComparer.Ordinal);
 
         return requiredScopes.Any(scopeValues.Contains);
@@ -39,17 +64,23 @@ internal static class NotesMcpSupport
             : NotesResult.Failure(
                 NotesFailureKind.Forbidden,
                 "insufficient_scope",
-                $"The authenticated actor is missing required scope: {string.Join(" or ", requiredScopes)}.");
+                $"The authenticated actor is missing required scope: {string.Join(" or ", requiredScopes)}."
+            );
     }
 
     public static NotesResult<Guid> RequireActor(
         ClaimsPrincipal user,
-        params string[] requiredScopes)
+        params string[] requiredScopes
+    )
     {
         var scopeResult = RequireScope(user, requiredScopes);
         if (!scopeResult.Succeeded)
         {
-            return NotesResult<Guid>.Failure(scopeResult.Error!.Kind, scopeResult.Error.Code, scopeResult.Error.Message);
+            return NotesResult<Guid>.Failure(
+                scopeResult.Error!.Kind,
+                scopeResult.Error.Code,
+                scopeResult.Error.Message
+            );
         }
 
         var currentUserId = CurrentUserClaims.GetUserId(user);
@@ -57,13 +88,17 @@ internal static class NotesMcpSupport
             ? NotesResult<Guid>.Failure(
                 NotesFailureKind.Forbidden,
                 AuthenticatedActorRequiredCode,
-                AuthenticatedActorRequiredMessage)
+                AuthenticatedActorRequiredMessage
+            )
             : NotesResult<Guid>.Success(currentUserId.Value);
     }
 
     public static string NormalizePath(string path) => path?.Trim().Trim('/') ?? string.Empty;
 
-    private static IReadOnlyList<string> BuildPathLookupCandidates(string path, string? itemType = null)
+    private static IReadOnlyList<string> BuildPathLookupCandidates(
+        string path,
+        string? itemType = null
+    )
     {
         var normalized = NormalizePath(path);
         var candidates = new List<string>();
@@ -87,8 +122,10 @@ internal static class NotesMcpSupport
 
     private static void AddCandidate(List<string> candidates, string candidate)
     {
-        if (string.IsNullOrWhiteSpace(candidate)
-            || candidates.Contains(candidate, StringComparer.Ordinal))
+        if (
+            string.IsNullOrWhiteSpace(candidate)
+            || candidates.Contains(candidate, StringComparer.Ordinal)
+        )
         {
             return;
         }
@@ -119,14 +156,16 @@ internal static class NotesMcpSupport
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         bool includeArchived = false,
-        string? itemType = null)
+        string? itemType = null
+    )
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             return NotesResult<NotebookItemModel>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_path",
-                "The notebook item path is required.");
+                "The notebook item path is required."
+            );
         }
 
         NotesError? firstError = null;
@@ -137,7 +176,8 @@ internal static class NotesMcpSupport
                 candidate,
                 actorId,
                 cancellationToken,
-                includeArchived);
+                includeArchived
+            );
 
             if (itemResult.Succeeded)
             {
@@ -150,14 +190,16 @@ internal static class NotesMcpSupport
         return NotesResult<NotebookItemModel>.Failure(
             firstError?.Kind ?? NotesFailureKind.NotFound,
             firstError?.Code ?? "notebook_item_not_found",
-            firstError?.Message ?? "Notebook item was not found.");
+            firstError?.Message ?? "Notebook item was not found."
+        );
     }
 
     public static async Task<NotesResult<NotebookSummaryModel>> RequireNotebookAsync(
         string notebookSlug,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var currentUserId = CurrentUserClaims.GetUserId(user);
         if (currentUserId is null)
@@ -165,7 +207,8 @@ internal static class NotesMcpSupport
             return NotesResult<NotebookSummaryModel>.Failure(
                 NotesFailureKind.Forbidden,
                 AuthenticatedActorRequiredCode,
-                AuthenticatedActorRequiredMessage);
+                AuthenticatedActorRequiredMessage
+            );
         }
 
         if (string.IsNullOrWhiteSpace(notebookSlug))
@@ -173,10 +216,15 @@ internal static class NotesMcpSupport
             return NotesResult<NotebookSummaryModel>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_slug",
-                "The notebook slug is required.");
+                "The notebook slug is required."
+            );
         }
 
-        return await notebookReadService.GetNotebookSummaryBySlugAsync(notebookSlug.Trim(), currentUserId.Value, cancellationToken);
+        return await notebookReadService.GetNotebookSummaryBySlugAsync(
+            notebookSlug.Trim(),
+            currentUserId.Value,
+            cancellationToken
+        );
     }
 
     public static async Task<NotesResult<NotebookContext>> RequireNotebookContextAsync(
@@ -185,12 +233,17 @@ internal static class NotesMcpSupport
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         string[] requiredScopes,
-        bool includeArchived = false)
+        bool includeArchived = false
+    )
     {
         var actorResult = RequireActor(user, requiredScopes);
         if (!actorResult.Succeeded)
         {
-            return NotesResult<NotebookContext>.Failure(actorResult.Error!.Kind, actorResult.Error.Code, actorResult.Error.Message);
+            return NotesResult<NotebookContext>.Failure(
+                actorResult.Error!.Kind,
+                actorResult.Error.Code,
+                actorResult.Error.Message
+            );
         }
 
         if (string.IsNullOrWhiteSpace(notebookSlug))
@@ -198,37 +251,49 @@ internal static class NotesMcpSupport
             return NotesResult<NotebookContext>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_slug",
-                "The notebook slug is required.");
+                "The notebook slug is required."
+            );
         }
 
         var notebookResult = await notebookReadService.GetNotebookBySlugAsync(
             notebookSlug.Trim(),
             actorResult.Value,
             cancellationToken,
-            includeArchived);
+            includeArchived
+        );
         if (!notebookResult.Succeeded)
         {
             return NotesResult<NotebookContext>.Failure(
                 notebookResult.Error!.Kind,
                 notebookResult.Error.Code,
-                notebookResult.Error.Message);
+                notebookResult.Error.Message
+            );
         }
 
-        return NotesResult<NotebookContext>.Success(new NotebookContext(actorResult.Value, notebookResult.Value!));
+        return NotesResult<NotebookContext>.Success(
+            new NotebookContext(actorResult.Value, notebookResult.Value!)
+        );
     }
 
-    public static async Task<NotesResult<NotebookSummaryContext>> RequireNotebookSummaryContextAsync(
+    public static async Task<
+        NotesResult<NotebookSummaryContext>
+    > RequireNotebookSummaryContextAsync(
         string notebookSlug,
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
         string[] requiredScopes,
-        bool includeArchived = false)
+        bool includeArchived = false
+    )
     {
         var actorResult = RequireActor(user, requiredScopes);
         if (!actorResult.Succeeded)
         {
-            return NotesResult<NotebookSummaryContext>.Failure(actorResult.Error!.Kind, actorResult.Error.Code, actorResult.Error.Message);
+            return NotesResult<NotebookSummaryContext>.Failure(
+                actorResult.Error!.Kind,
+                actorResult.Error.Code,
+                actorResult.Error.Message
+            );
         }
 
         if (string.IsNullOrWhiteSpace(notebookSlug))
@@ -236,43 +301,51 @@ internal static class NotesMcpSupport
             return NotesResult<NotebookSummaryContext>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_slug",
-                "The notebook slug is required.");
+                "The notebook slug is required."
+            );
         }
 
         var notebookResult = await notebookReadService.GetNotebookSummaryBySlugAsync(
             notebookSlug.Trim(),
             actorResult.Value,
             cancellationToken,
-            includeArchived);
+            includeArchived
+        );
         if (!notebookResult.Succeeded)
         {
             return NotesResult<NotebookSummaryContext>.Failure(
                 notebookResult.Error!.Kind,
                 notebookResult.Error.Code,
-                notebookResult.Error.Message);
+                notebookResult.Error.Message
+            );
         }
 
-        return NotesResult<NotebookSummaryContext>.Success(new NotebookSummaryContext(actorResult.Value, notebookResult.Value!));
+        return NotesResult<NotebookSummaryContext>.Success(
+            new NotebookSummaryContext(actorResult.Value, notebookResult.Value!)
+        );
     }
 
     public static NotesResult<NotebookItemModel> RequireItem(
         NotebookDetailModel notebook,
         string path,
-        string? itemType = null)
+        string? itemType = null
+    )
     {
         if (string.IsNullOrWhiteSpace(path))
         {
             return NotesResult<NotebookItemModel>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_path",
-                "The notebook item path is required.");
+                "The notebook item path is required."
+            );
         }
 
         NotebookItemModel? item = null;
         foreach (var candidate in BuildPathLookupCandidates(path, itemType))
         {
             item = notebook.Items.SingleOrDefault(existingItem =>
-                string.Equals(existingItem.Path, candidate, StringComparison.Ordinal));
+                string.Equals(existingItem.Path, candidate, StringComparison.Ordinal)
+            );
             if (item is not null)
             {
                 break;
@@ -283,13 +356,15 @@ internal static class NotesMcpSupport
             ? NotesResult<NotebookItemModel>.Failure(
                 NotesFailureKind.NotFound,
                 "notebook_item_not_found",
-                "Notebook item was not found.")
+                "Notebook item was not found."
+            )
             : NotesResult<NotebookItemModel>.Success(item);
     }
 
     public static NotesResult<NotebookItemModel> RequirePage(
         NotebookDetailModel notebook,
-        string path)
+        string path
+    )
     {
         var itemResult = RequireItem(notebook, path, "page");
         if (!itemResult.Succeeded)
@@ -302,7 +377,8 @@ internal static class NotesMcpSupport
             : NotesResult<NotebookItemModel>.Failure(
                 NotesFailureKind.Validation,
                 "page_required",
-                "The requested notebook item is not a page.");
+                "The requested notebook item is not a page."
+            );
     }
 
     public static async Task<NotesResult<ItemContext>> RequireItemContextAsync(
@@ -313,7 +389,8 @@ internal static class NotesMcpSupport
         CancellationToken cancellationToken,
         string[] requiredScopes,
         bool includeArchived = false,
-        string? itemType = null)
+        string? itemType = null
+    )
     {
         var notebookContextResult = await RequireNotebookContextAsync(
             notebookSlug,
@@ -321,13 +398,15 @@ internal static class NotesMcpSupport
             notebookReadService,
             cancellationToken,
             requiredScopes,
-            includeArchived);
+            includeArchived
+        );
         if (!notebookContextResult.Succeeded)
         {
             return NotesResult<ItemContext>.Failure(
                 notebookContextResult.Error!.Kind,
                 notebookContextResult.Error.Code,
-                notebookContextResult.Error.Message);
+                notebookContextResult.Error.Message
+            );
         }
 
         var notebookContext = notebookContextResult.Value;
@@ -337,10 +416,13 @@ internal static class NotesMcpSupport
             return NotesResult<ItemContext>.Failure(
                 itemResult.Error!.Kind,
                 itemResult.Error.Code,
-                itemResult.Error.Message);
+                itemResult.Error.Message
+            );
         }
 
-        return NotesResult<ItemContext>.Success(new ItemContext(notebookContext.ActorId, notebookContext.Notebook, itemResult.Value!));
+        return NotesResult<ItemContext>.Success(
+            new ItemContext(notebookContext.ActorId, notebookContext.Notebook, itemResult.Value!)
+        );
     }
 
     public static async Task<NotesResult<ItemContext>> RequirePageContextAsync(
@@ -349,20 +431,23 @@ internal static class NotesMcpSupport
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
-        string[] requiredScopes)
+        string[] requiredScopes
+    )
     {
         var notebookContextResult = await RequireNotebookContextAsync(
             notebookSlug,
             user,
             notebookReadService,
             cancellationToken,
-            requiredScopes);
+            requiredScopes
+        );
         if (!notebookContextResult.Succeeded)
         {
             return NotesResult<ItemContext>.Failure(
                 notebookContextResult.Error!.Kind,
                 notebookContextResult.Error.Code,
-                notebookContextResult.Error.Message);
+                notebookContextResult.Error.Message
+            );
         }
 
         var notebookContext = notebookContextResult.Value;
@@ -372,10 +457,13 @@ internal static class NotesMcpSupport
             return NotesResult<ItemContext>.Failure(
                 pageResult.Error!.Kind,
                 pageResult.Error.Code,
-                pageResult.Error.Message);
+                pageResult.Error.Message
+            );
         }
 
-        return NotesResult<ItemContext>.Success(new ItemContext(notebookContext.ActorId, notebookContext.Notebook, pageResult.Value!));
+        return NotesResult<ItemContext>.Success(
+            new ItemContext(notebookContext.ActorId, notebookContext.Notebook, pageResult.Value!)
+        );
     }
 
     public static async Task<NotesResult<ItemSummaryContext>> RequireItemSummaryContextAsync(
@@ -386,7 +474,8 @@ internal static class NotesMcpSupport
         CancellationToken cancellationToken,
         string[] requiredScopes,
         bool includeArchived = false,
-        string? itemType = null)
+        string? itemType = null
+    )
     {
         var notebookContextResult = await RequireNotebookSummaryContextAsync(
             notebookSlug,
@@ -394,13 +483,15 @@ internal static class NotesMcpSupport
             notebookReadService,
             cancellationToken,
             requiredScopes,
-            includeArchived);
+            includeArchived
+        );
         if (!notebookContextResult.Succeeded)
         {
             return NotesResult<ItemSummaryContext>.Failure(
                 notebookContextResult.Error!.Kind,
                 notebookContextResult.Error.Code,
-                notebookContextResult.Error.Message);
+                notebookContextResult.Error.Message
+            );
         }
 
         if (string.IsNullOrWhiteSpace(path))
@@ -408,7 +499,8 @@ internal static class NotesMcpSupport
             return NotesResult<ItemSummaryContext>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_path",
-                "The notebook item path is required.");
+                "The notebook item path is required."
+            );
         }
 
         var notebookContext = notebookContextResult.Value;
@@ -419,16 +511,24 @@ internal static class NotesMcpSupport
             notebookReadService,
             cancellationToken,
             includeArchived,
-            itemType);
+            itemType
+        );
         if (!itemResult.Succeeded)
         {
             return NotesResult<ItemSummaryContext>.Failure(
                 itemResult.Error!.Kind,
                 itemResult.Error.Code,
-                itemResult.Error.Message);
+                itemResult.Error.Message
+            );
         }
 
-        return NotesResult<ItemSummaryContext>.Success(new ItemSummaryContext(notebookContext.ActorId, notebookContext.Notebook, itemResult.Value!));
+        return NotesResult<ItemSummaryContext>.Success(
+            new ItemSummaryContext(
+                notebookContext.ActorId,
+                notebookContext.Notebook,
+                itemResult.Value!
+            )
+        );
     }
 
     public static async Task<NotesResult<ItemSummaryContext>> RequirePageSummaryContextAsync(
@@ -437,7 +537,8 @@ internal static class NotesMcpSupport
         ClaimsPrincipal user,
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
-        string[] requiredScopes)
+        string[] requiredScopes
+    )
     {
         var itemContextResult = await RequireItemSummaryContextAsync(
             notebookSlug,
@@ -446,18 +547,24 @@ internal static class NotesMcpSupport
             notebookReadService,
             cancellationToken,
             requiredScopes,
-            itemType: "page");
+            itemType: "page"
+        );
         if (!itemContextResult.Succeeded)
         {
             return itemContextResult;
         }
 
-        return string.Equals(itemContextResult.Value.Item.Type, "page", StringComparison.OrdinalIgnoreCase)
+        return string.Equals(
+            itemContextResult.Value.Item.Type,
+            "page",
+            StringComparison.OrdinalIgnoreCase
+        )
             ? itemContextResult
             : NotesResult<ItemSummaryContext>.Failure(
                 NotesFailureKind.Validation,
                 "page_required",
-                "The requested notebook item is not a page.");
+                "The requested notebook item is not a page."
+            );
     }
 
     public static NotesResult<NotebookItemModel> RequirePage(NotebookItemModel item)
@@ -467,7 +574,8 @@ internal static class NotesMcpSupport
             : NotesResult<NotebookItemModel>.Failure(
                 NotesFailureKind.Validation,
                 "page_required",
-                "The requested notebook item is not a page.");
+                "The requested notebook item is not a page."
+            );
     }
 
     public static async Task<NotesResult<NotebookItemModel?>> ResolveParentAsync(
@@ -476,7 +584,8 @@ internal static class NotesMcpSupport
         Guid actorId,
         INotebookReadService notebookReadService,
         CancellationToken cancellationToken,
-        bool includeArchived = false)
+        bool includeArchived = false
+    )
     {
         if (string.IsNullOrWhiteSpace(parentPath))
         {
@@ -490,13 +599,15 @@ internal static class NotesMcpSupport
             notebookReadService,
             cancellationToken,
             includeArchived,
-            itemType: "folder");
+            itemType: "folder"
+        );
         if (!parentResult.Succeeded)
         {
             return NotesResult<NotebookItemModel?>.Failure(
                 parentResult.Error!.Kind,
                 parentResult.Error.Code,
-                parentResult.Error.Message);
+                parentResult.Error.Message
+            );
         }
 
         return string.Equals(parentResult.Value!.Type, "folder", StringComparison.OrdinalIgnoreCase)
@@ -504,12 +615,14 @@ internal static class NotesMcpSupport
             : NotesResult<NotebookItemModel?>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_parent",
-                "Parent item must be a folder.");
+                "Parent item must be a folder."
+            );
     }
 
     public static NotesResult<NotebookItemModel?> ResolveParent(
         NotebookDetailModel notebook,
-        string? parentPath)
+        string? parentPath
+    )
     {
         if (string.IsNullOrWhiteSpace(parentPath))
         {
@@ -522,7 +635,8 @@ internal static class NotesMcpSupport
             return NotesResult<NotebookItemModel?>.Failure(
                 parentResult.Error!.Kind,
                 parentResult.Error.Code,
-                parentResult.Error.Message);
+                parentResult.Error.Message
+            );
         }
 
         return string.Equals(parentResult.Value!.Type, "folder", StringComparison.OrdinalIgnoreCase)
@@ -530,7 +644,8 @@ internal static class NotesMcpSupport
             : NotesResult<NotebookItemModel?>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_parent",
-                "Parent item must be a folder.");
+                "Parent item must be a folder."
+            );
     }
 
     public static JsonElement SerializeToElement<T>(T value)
@@ -543,10 +658,15 @@ internal static class NotesMcpSupport
         return McpJson.Serialize(value);
     }
 
-    public static NotebookItemSummaryToolResponse ToNotebookItemSummaryToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
-        => ToNotebookItemSummaryToolResponse(ToSummaryModel(notebook), item);
+    public static NotebookItemSummaryToolResponse ToNotebookItemSummaryToolResponse(
+        NotebookDetailModel notebook,
+        NotebookItemModel item
+    ) => ToNotebookItemSummaryToolResponse(ToSummaryModel(notebook), item);
 
-    public static NotebookItemSummaryToolResponse ToNotebookItemSummaryToolResponse(NotebookSummaryModel notebook, NotebookItemModel item)
+    public static NotebookItemSummaryToolResponse ToNotebookItemSummaryToolResponse(
+        NotebookSummaryModel notebook,
+        NotebookItemModel item
+    )
     {
         return new NotebookItemSummaryToolResponse(
             item.Id,
@@ -561,11 +681,12 @@ internal static class NotesMcpSupport
             item.SortOrder,
             item.ContentFormat,
             item.CreatedAtUtc,
-            item.UpdatedAtUtc);
+            item.UpdatedAtUtc
+        );
     }
 
-    public static GetNotebookToolResponse ToGetNotebookToolResponse(NotebookDetailModel notebook)
-        => ToGetNotebookToolResponse(ToSummaryModel(notebook));
+    public static GetNotebookToolResponse ToGetNotebookToolResponse(NotebookDetailModel notebook) =>
+        ToGetNotebookToolResponse(ToSummaryModel(notebook));
 
     public static GetNotebookToolResponse ToGetNotebookToolResponse(NotebookSummaryModel notebook)
     {
@@ -589,13 +710,19 @@ internal static class NotesMcpSupport
             notebook.UpdatedAtUtc,
             notebook.PublishedAtUtc,
             BuildNotebookUri(notebook.Slug),
-            BuildNotebookItemsUri(notebook.Slug));
+            BuildNotebookItemsUri(notebook.Slug)
+        );
     }
 
-    public static GetPageToolResponse ToGetPageToolResponse(NotebookDetailModel notebook, NotebookItemModel page)
-        => ToGetPageToolResponse(ToSummaryModel(notebook), page);
+    public static GetPageToolResponse ToGetPageToolResponse(
+        NotebookDetailModel notebook,
+        NotebookItemModel page
+    ) => ToGetPageToolResponse(ToSummaryModel(notebook), page);
 
-    public static GetPageToolResponse ToGetPageToolResponse(NotebookSummaryModel notebook, NotebookItemModel page)
+    public static GetPageToolResponse ToGetPageToolResponse(
+        NotebookSummaryModel notebook,
+        NotebookItemModel page
+    )
     {
         var contentJson = SerializeJsonElement(page.ContentJson);
         var plainText = page.PlainTextContent;
@@ -615,13 +742,21 @@ internal static class NotesMcpSupport
             CountTipTapNodes(page.ContentJson),
             notebook.CanEdit,
             page.CreatedAtUtc,
-            page.UpdatedAtUtc);
+            page.UpdatedAtUtc
+        );
     }
 
-    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookDetailModel notebook, NotebookItemModel page, bool includeContent = false)
-        => ToCreatePageToolResponse(ToSummaryModel(notebook), page, includeContent);
+    public static CreatePageToolResponse ToCreatePageToolResponse(
+        NotebookDetailModel notebook,
+        NotebookItemModel page,
+        bool includeContent = false
+    ) => ToCreatePageToolResponse(ToSummaryModel(notebook), page, includeContent);
 
-    public static CreatePageToolResponse ToCreatePageToolResponse(NotebookSummaryModel notebook, NotebookItemModel page, bool includeContent = false)
+    public static CreatePageToolResponse ToCreatePageToolResponse(
+        NotebookSummaryModel notebook,
+        NotebookItemModel page,
+        bool includeContent = false
+    )
     {
         var contentJson = SerializeJsonElement(page.ContentJson);
         var plainText = page.PlainTextContent;
@@ -643,13 +778,19 @@ internal static class NotesMcpSupport
             plainText?.Length ?? 0,
             CountTipTapNodes(page.ContentJson),
             page.CreatedAtUtc,
-            page.UpdatedAtUtc);
+            page.UpdatedAtUtc
+        );
     }
 
-    public static CreateItemToolResponse ToCreateItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
-        => ToCreateItemToolResponse(ToSummaryModel(notebook), item);
+    public static CreateItemToolResponse ToCreateItemToolResponse(
+        NotebookDetailModel notebook,
+        NotebookItemModel item
+    ) => ToCreateItemToolResponse(ToSummaryModel(notebook), item);
 
-    public static CreateItemToolResponse ToCreateItemToolResponse(NotebookSummaryModel notebook, NotebookItemModel item)
+    public static CreateItemToolResponse ToCreateItemToolResponse(
+        NotebookSummaryModel notebook,
+        NotebookItemModel item
+    )
     {
         return new CreateItemToolResponse(
             item.Id,
@@ -664,13 +805,21 @@ internal static class NotesMcpSupport
             item.ParentId,
             item.SortOrder,
             item.CreatedAtUtc,
-            item.UpdatedAtUtc);
+            item.UpdatedAtUtc
+        );
     }
 
-    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookDetailModel notebook, NotebookItemModel page, bool includeContent = false)
-        => ToUpdatePageContentToolResponse(ToSummaryModel(notebook), page, includeContent);
+    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(
+        NotebookDetailModel notebook,
+        NotebookItemModel page,
+        bool includeContent = false
+    ) => ToUpdatePageContentToolResponse(ToSummaryModel(notebook), page, includeContent);
 
-    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(NotebookSummaryModel notebook, NotebookItemModel page, bool includeContent = false)
+    public static UpdatePageContentToolResponse ToUpdatePageContentToolResponse(
+        NotebookSummaryModel notebook,
+        NotebookItemModel page,
+        bool includeContent = false
+    )
     {
         var contentJson = SerializeJsonElement(page.ContentJson);
         var plainText = page.PlainTextContent;
@@ -689,12 +838,16 @@ internal static class NotesMcpSupport
             GetUtf8ByteCount(contentJson),
             plainText?.Length ?? 0,
             CountTipTapNodes(page.ContentJson),
-            page.UpdatedAtUtc);
+            page.UpdatedAtUtc
+        );
     }
 
     public static string? SerializeJsonElement(JsonElement? value)
     {
-        if (!value.HasValue || value.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        if (
+            !value.HasValue
+            || value.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+        )
         {
             return null;
         }
@@ -702,12 +855,15 @@ internal static class NotesMcpSupport
         return value.Value.GetRawText();
     }
 
-    private static int GetUtf8ByteCount(string? value)
-        => string.IsNullOrEmpty(value) ? 0 : Encoding.UTF8.GetByteCount(value);
+    private static int GetUtf8ByteCount(string? value) =>
+        string.IsNullOrEmpty(value) ? 0 : Encoding.UTF8.GetByteCount(value);
 
     private static int CountTipTapNodes(JsonElement? contentJson)
     {
-        if (!contentJson.HasValue || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        if (
+            !contentJson.HasValue
+            || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+        )
         {
             return 0;
         }
@@ -723,8 +879,10 @@ internal static class NotesMcpSupport
         }
 
         var count = 1;
-        if (node.TryGetProperty("content", out var contentElement)
-            && contentElement.ValueKind == JsonValueKind.Array)
+        if (
+            node.TryGetProperty("content", out var contentElement)
+            && contentElement.ValueKind == JsonValueKind.Array
+        )
         {
             foreach (var child in contentElement.EnumerateArray())
             {
@@ -735,10 +893,15 @@ internal static class NotesMcpSupport
         return count;
     }
 
-    public static MoveItemToolResponse ToMoveItemToolResponse(NotebookDetailModel notebook, NotebookItemModel item)
-        => ToMoveItemToolResponse(ToSummaryModel(notebook), item);
+    public static MoveItemToolResponse ToMoveItemToolResponse(
+        NotebookDetailModel notebook,
+        NotebookItemModel item
+    ) => ToMoveItemToolResponse(ToSummaryModel(notebook), item);
 
-    public static MoveItemToolResponse ToMoveItemToolResponse(NotebookSummaryModel notebook, NotebookItemModel item)
+    public static MoveItemToolResponse ToMoveItemToolResponse(
+        NotebookSummaryModel notebook,
+        NotebookItemModel item
+    )
     {
         return new MoveItemToolResponse(
             item.Id,
@@ -752,16 +915,17 @@ internal static class NotesMcpSupport
             BuildItemResourceUri(notebook.Slug, item),
             item.ParentId,
             item.SortOrder,
-            item.UpdatedAtUtc);
+            item.UpdatedAtUtc
+        );
     }
 
-    public static bool MatchesNotebook(NotebookDetailModel notebook, string query)
-        => MatchesNotebook(ToSummaryModel(notebook), query);
+    public static bool MatchesNotebook(NotebookDetailModel notebook, string query) =>
+        MatchesNotebook(ToSummaryModel(notebook), query);
 
     public static bool MatchesNotebook(NotebookSummaryModel notebook, string query)
     {
         return notebook.Title.Contains(query, StringComparison.OrdinalIgnoreCase)
-               || (notebook.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false);
+            || (notebook.Description?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false);
     }
 
     public static string? BuildPlainTextSnippet(string? plainText, string query)
@@ -782,26 +946,44 @@ internal static class NotesMcpSupport
         return plainText.Substring(start, length);
     }
 
-    public static JsonElement AppendBlocks(JsonElement? existingContentJson, JsonElement blocks)
-        => TipTapDocumentOperations.AppendBlocks(existingContentJson, blocks);
+    public static JsonElement AppendBlocks(JsonElement? existingContentJson, JsonElement blocks) =>
+        TipTapDocumentOperations.AppendBlocks(existingContentJson, blocks);
 
-    public static JsonElement ReplaceBlockAtIndex(JsonElement? existingContentJson, int index, JsonElement block)
-        => TipTapDocumentOperations.ReplaceBlockAtIndex(existingContentJson, index, block);
+    public static JsonElement ReplaceBlockAtIndex(
+        JsonElement? existingContentJson,
+        int index,
+        JsonElement block
+    ) => TipTapDocumentOperations.ReplaceBlockAtIndex(existingContentJson, index, block);
 
-    public static JsonElement InsertBlocksAtIndex(JsonElement? existingContentJson, int index, JsonElement blocks)
-        => TipTapDocumentOperations.InsertBlocksAtIndex(existingContentJson, index, blocks);
+    public static JsonElement InsertBlocksAtIndex(
+        JsonElement? existingContentJson,
+        int index,
+        JsonElement blocks
+    ) => TipTapDocumentOperations.InsertBlocksAtIndex(existingContentJson, index, blocks);
 
-    public static JsonElement DeleteBlockAtIndex(JsonElement? existingContentJson, int index)
-        => TipTapDocumentOperations.DeleteBlockAtIndex(existingContentJson, index);
+    public static JsonElement DeleteBlockAtIndex(JsonElement? existingContentJson, int index) =>
+        TipTapDocumentOperations.DeleteBlockAtIndex(existingContentJson, index);
 
-    public static JsonElement ReplaceTextInDocument(JsonElement? existingContentJson, string searchText, string replacementText, bool replaceAll)
-        => TipTapDocumentOperations.ReplaceTextInDocument(existingContentJson, searchText, replacementText, replaceAll);
+    public static JsonElement ReplaceTextInDocument(
+        JsonElement? existingContentJson,
+        string searchText,
+        string replacementText,
+        bool replaceAll
+    ) =>
+        TipTapDocumentOperations.ReplaceTextInDocument(
+            existingContentJson,
+            searchText,
+            replacementText,
+            replaceAll
+        );
 
     public static string BuildNotebookUri(string notebookSlug) => $"notebook://{notebookSlug}";
 
-    public static string BuildNotebookItemsUri(string notebookSlug) => $"notebook://{notebookSlug}/items";
+    public static string BuildNotebookItemsUri(string notebookSlug) =>
+        $"notebook://{notebookSlug}/items";
 
-    public static string BuildPageUri(string notebookSlug, string path) => $"page://{notebookSlug}/{NormalizePath(path)}";
+    public static string BuildPageUri(string notebookSlug, string path) =>
+        $"page://{notebookSlug}/{NormalizePath(path)}";
 
     public static string? BuildItemResourceUri(string notebookSlug, NotebookItemModel item)
     {
@@ -842,7 +1024,8 @@ internal static class NotesMcpSupport
             notebook.LastActivityAtUtc,
             notebook.CreatedAtUtc,
             notebook.UpdatedAtUtc,
-            notebook.PublishedAtUtc);
+            notebook.PublishedAtUtc
+        );
     }
 
     public static void EnsureMcpSuccess(NotesResult result)

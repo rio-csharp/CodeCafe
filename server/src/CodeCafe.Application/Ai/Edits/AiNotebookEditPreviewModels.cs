@@ -28,4 +28,5 @@ public sealed record AiNotebookEditResponse(
     int AfterPlainTextLength,
     int AfterTipTapNodeCount,
     DateTimeOffset GeneratedAtUtc,
-    DateTimeOffset? SavedAtUtc);
+    DateTimeOffset? SavedAtUtc
+);

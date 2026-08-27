@@ -2,13 +2,13 @@ using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Notes.Queries.GetPublicNotebook;
 
-public sealed class GetPublicNotebookQueryHandler(
-    INotebookReadService notebookReadService)
+public sealed class GetPublicNotebookQueryHandler(INotebookReadService notebookReadService)
     : IQueryHandler<GetPublicNotebookQuery, NotesResult<NotebookDetailModel>>
 {
     public async Task<NotesResult<NotebookDetailModel>> Handle(
         GetPublicNotebookQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         return await notebookReadService.GetPublicNotebookAsync(
             request.Slug,
@@ -16,6 +16,7 @@ public sealed class GetPublicNotebookQueryHandler(
             cancellationToken,
             request.IncludeArchived,
             request.IncludeItems,
-            request.IncludeContent);
+            request.IncludeContent
+        );
     }
 }

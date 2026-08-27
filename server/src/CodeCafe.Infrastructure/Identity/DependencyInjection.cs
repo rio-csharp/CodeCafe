@@ -1,5 +1,4 @@
 using CodeCafe.Application.Identity;
-using CodeCafe.Infrastructure.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeCafe.Infrastructure.Identity;

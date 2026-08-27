@@ -5,7 +5,8 @@ namespace CodeCafe.Host.Common;
 
 public sealed class DatabaseMigrationRunner(
     IServiceScopeFactory serviceScopeFactory,
-    ILogger<DatabaseMigrationRunner> logger)
+    ILogger<DatabaseMigrationRunner> logger
+)
 {
     private const long MigrationLockId = 0x434F444543414645;
 
@@ -29,7 +30,8 @@ public sealed class DatabaseMigrationRunner(
         {
             await dbContext.Database.ExecuteSqlRawAsync(
                 $"select pg_advisory_lock({MigrationLockId})",
-                cancellationToken);
+                cancellationToken
+            );
 
             try
             {
@@ -41,7 +43,8 @@ public sealed class DatabaseMigrationRunner(
                 // mid-migration, so the unlock runs without cancellation.
                 await dbContext.Database.ExecuteSqlRawAsync(
                     $"select pg_advisory_unlock({MigrationLockId})",
-                    CancellationToken.None);
+                    CancellationToken.None
+                );
             }
         }
         finally

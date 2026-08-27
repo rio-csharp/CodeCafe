@@ -1,5 +1,3 @@
-using CodeCafe.Infrastructure.Ai;
-using CodeCafe.Application.Ai;
 using CodeCafe.Infrastructure.Ai.Agents;
 using Microsoft.Extensions.AI;
 using Xunit;
@@ -16,7 +14,8 @@ public sealed class AiBudgetChatClientTests
     public void TrimHistory_KeepsNewestMessagesWithinMessageBudget()
     {
         var client = CreateClient(maxHistoryMessages: 3);
-        var messages = Enumerable.Range(0, 10)
+        var messages = Enumerable
+            .Range(0, 10)
             .Select(index => new ChatMessage(ChatRole.User, $"m{index}"))
             .ToList();
 
@@ -35,7 +34,7 @@ public sealed class AiBudgetChatClientTests
             new(ChatRole.System, "you are an assistant"),
             new(ChatRole.User, "m0"),
             new(ChatRole.Assistant, "m1"),
-            new(ChatRole.User, "m2")
+            new(ChatRole.User, "m2"),
         };
 
         var trimmed = client.TrimHistory(messages);
@@ -53,7 +52,7 @@ public sealed class AiBudgetChatClientTests
         {
             new(ChatRole.User, new string('a', 20)),
             new(ChatRole.User, new string('b', 20)),
-            new(ChatRole.User, new string('c', 20))
+            new(ChatRole.User, new string('c', 20)),
         };
 
         var trimmed = client.TrimHistory(messages);
@@ -69,10 +68,7 @@ public sealed class AiBudgetChatClientTests
         // Sending an empty conversation would be worse than sending one oversized message; the
         // provider's own limit is the real backstop.
         var client = CreateClient(maxHistoryMessages: 100, maxHistoryChars: 10);
-        var messages = new List<ChatMessage>
-        {
-            new(ChatRole.User, new string('a', 500))
-        };
+        var messages = new List<ChatMessage> { new(ChatRole.User, new string('a', 500)) };
 
         var trimmed = client.TrimHistory(messages);
 
@@ -91,7 +87,7 @@ public sealed class AiBudgetChatClientTests
             new(ChatRole.User, "search for x"),
             new(ChatRole.Assistant, "calling tool"),
             new(ChatRole.Tool, "tool result"),
-            new(ChatRole.Assistant, "here you go")
+            new(ChatRole.Assistant, "here you go"),
         };
 
         var trimmed = client.TrimHistory(messages);
@@ -108,7 +104,7 @@ public sealed class AiBudgetChatClientTests
         var messages = new List<ChatMessage>
         {
             new(ChatRole.User, "hello"),
-            new(ChatRole.Assistant, "hi")
+            new(ChatRole.Assistant, "hi"),
         };
 
         var trimmed = client.TrimHistory(messages);
@@ -119,13 +115,15 @@ public sealed class AiBudgetChatClientTests
     private static AiBudgetChatClient CreateClient(
         int maxHistoryMessages,
         int maxHistoryChars = 100000,
-        int maxOutputTokens = 1600)
+        int maxOutputTokens = 1600
+    )
     {
         return new AiBudgetChatClient(
             new StubChatClient(),
             maxOutputTokens,
             maxHistoryMessages,
-            maxHistoryChars);
+            maxHistoryChars
+        );
     }
 
     private sealed class StubChatClient : IChatClient
@@ -133,19 +131,17 @@ public sealed class AiBudgetChatClientTests
         public Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
-            CancellationToken cancellationToken = default)
-            => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(new ChatResponse(new ChatMessage(ChatRole.Assistant, "ok")));
 
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
-            CancellationToken cancellationToken = default)
-            => AsyncEnumerable.Empty<ChatResponseUpdate>();
+            CancellationToken cancellationToken = default
+        ) => AsyncEnumerable.Empty<ChatResponseUpdate>();
 
         public object? GetService(Type serviceType, object? serviceKey = null) => null;
 
-        public void Dispose()
-        {
-        }
+        public void Dispose() { }
     }
 }

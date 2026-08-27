@@ -1,18 +1,20 @@
-using CodeCafe.Host.Mcp;
 using CodeCafe.Application.Notes;
-using CodeCafe.Application.Common.Uploads;
 using ModelContextProtocol.Protocol;
 
 namespace CodeCafe.Host.Mcp;
 
 public static class NotesMcpResultMapper
 {
-    public static CallToolResult Success<T>(T value, string text) where T : class
+    public static CallToolResult Success<T>(T value, string text)
+        where T : class
     {
         return new CallToolResult
         {
-            Content = [new TextContentBlock { Text = NotesMcpContentFormatter.Format(value, text) }],
-            StructuredContent = McpJson.SerializeToElement(value)
+            Content =
+            [
+                new TextContentBlock { Text = NotesMcpContentFormatter.Format(value, text) },
+            ],
+            StructuredContent = McpJson.SerializeToElement(value),
         };
     }
 
@@ -24,13 +26,17 @@ public static class NotesMcpResultMapper
             error.Field,
             error.Kind is NotesFailureKind.Conflict,
             NotesMcpErrorAdvisor.GetSuggestion(error.Code),
-            error.Details);
+            error.Details
+        );
 
         return new CallToolResult
         {
             IsError = true,
-            Content = [new TextContentBlock { Text = NotesMcpContentFormatter.FormatError(response) }],
-            StructuredContent = McpJson.SerializeToElement(response)
+            Content =
+            [
+                new TextContentBlock { Text = NotesMcpContentFormatter.FormatError(response) },
+            ],
+            StructuredContent = McpJson.SerializeToElement(response),
         };
     }
 }

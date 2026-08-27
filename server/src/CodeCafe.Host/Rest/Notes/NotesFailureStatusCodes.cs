@@ -13,13 +13,13 @@ namespace CodeCafe.Host.Rest.Notes;
 /// </remarks>
 internal static class NotesFailureStatusCodes
 {
-    public static int ToStatusCode(NotesFailureKind kind)
-        => kind switch
+    public static int ToStatusCode(NotesFailureKind kind) =>
+        kind switch
         {
             NotesFailureKind.Validation => StatusCodes.Status400BadRequest,
             NotesFailureKind.Forbidden => StatusCodes.Status403Forbidden,
             NotesFailureKind.NotFound => StatusCodes.Status404NotFound,
             NotesFailureKind.Conflict => StatusCodes.Status409Conflict,
-            _ => StatusCodes.Status400BadRequest
+            _ => StatusCodes.Status400BadRequest,
         };
 }

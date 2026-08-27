@@ -11,11 +11,9 @@ public static class CurrentUserClaims
             return null;
         }
 
-        var claimValue = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
-            ?? user.FindFirst("sub")?.Value;
+        var claimValue =
+            user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? user.FindFirst("sub")?.Value;
 
-        return Guid.TryParse(claimValue, out var userId)
-            ? userId
-            : null;
+        return Guid.TryParse(claimValue, out var userId) ? userId : null;
     }
 }

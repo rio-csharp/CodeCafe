@@ -6,4 +6,5 @@ public sealed record GetPublicNotebooksQuery(
     string? Search,
     Guid CurrentUserId,
     int? Limit = null,
-    int? Offset = null) : IQuery<IReadOnlyList<NotebookSummaryModel>>;
+    int? Offset = null
+) : IQuery<IReadOnlyList<NotebookSummaryModel>>;

@@ -1,8 +1,7 @@
+using System.Reflection;
 using CodeCafe.Application.Ai;
-using CodeCafe.Application.Common;
 using CodeCafe.Domain.Common;
 using CodeCafe.Infrastructure.Persistence;
-using System.Reflection;
 
 namespace CodeCafe.Architecture.Tests;
 
@@ -32,7 +31,8 @@ public sealed class LayerDependencyTests
         Assert.True(
             offenders.Count == 0,
             "CodeCafe.Domain must not reference any other CodeCafe assembly, but references: "
-            + string.Join(", ", offenders));
+                + string.Join(", ", offenders)
+        );
     }
 
     [Fact]
@@ -53,7 +53,8 @@ public sealed class LayerDependencyTests
         Assert.True(
             offenders.Count == 0,
             "CodeCafe.Application may only reference CodeCafe.Domain, but also references: "
-            + string.Join(", ", offenders));
+                + string.Join(", ", offenders)
+        );
     }
 
     [Fact]
@@ -88,7 +89,8 @@ public sealed class LayerDependencyTests
         Assert.True(
             offenders.Count == 0,
             "CodeCafe.Infrastructure may only reference Domain and Application, but also references: "
-            + string.Join(", ", offenders));
+                + string.Join(", ", offenders)
+        );
     }
 
     [Fact]
@@ -110,12 +112,14 @@ public sealed class LayerDependencyTests
         Assert.True(
             offenders.Count == 0,
             $"{assembly.GetName().Name} must not reference {prefix}*, but references: "
-            + string.Join(", ", offenders));
+                + string.Join(", ", offenders)
+        );
     }
 
     private static IReadOnlySet<string> GetReferenceNames(Assembly assembly)
     {
-        return assembly.GetReferencedAssemblies()
+        return assembly
+            .GetReferencedAssemblies()
             .Select(reference => reference.Name)
             .OfType<string>()
             .ToHashSet(StringComparer.Ordinal);

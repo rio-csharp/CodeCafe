@@ -92,7 +92,10 @@ public static class NotebookSlugGenerator
         }
 
         // Reserve at least half the budget for the random tail so the base slug cannot crowd it out.
-        var reservedForUnique = Math.Min(unique.Length + 1, Math.Max(maxLength / 2, unique.Length + 1));
+        var reservedForUnique = Math.Min(
+            unique.Length + 1,
+            Math.Max(maxLength / 2, unique.Length + 1)
+        );
         var head = Truncate(baseSlug, maxLength - reservedForUnique);
         return head.Length == 0
             ? Truncate(unique, maxLength)

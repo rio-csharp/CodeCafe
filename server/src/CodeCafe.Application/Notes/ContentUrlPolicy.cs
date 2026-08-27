@@ -30,8 +30,12 @@ public static class ContentUrlPolicy
 
         return trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
             || trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-            || (allowMailSchemes
-                && (trimmed.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)
-                    || trimmed.StartsWith("tel:", StringComparison.OrdinalIgnoreCase)));
+            || (
+                allowMailSchemes
+                && (
+                    trimmed.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)
+                    || trimmed.StartsWith("tel:", StringComparison.OrdinalIgnoreCase)
+                )
+            );
     }
 }

@@ -1,6 +1,6 @@
+using System.Text.Json;
 using CodeCafe.Application.Notes;
 using CodeCafe.Domain.Notes;
-using System.Text.Json;
 
 namespace CodeCafe.Infrastructure.Tests;
 
@@ -21,9 +21,25 @@ public sealed class NotebookItemMutationServiceTests
 
         seed.AddUser(OwnerId, "Yao");
         seed.AddUser(OtherUserId, "Mei");
-        seed.AddNotebook(NotebookId, OwnerId, "Architecture Notes", "architecture-notes", NotebookVisibility.Public, true);
+        seed.AddNotebook(
+            NotebookId,
+            OwnerId,
+            "Architecture Notes",
+            "architecture-notes",
+            NotebookVisibility.Public,
+            true
+        );
         seed.AddItem(FolderId, NotebookId, NotebookItemType.Folder, "Chapters", "chapters", 0);
-        seed.AddItem(PageId, NotebookId, NotebookItemType.Page, "Overview", "chapters/overview", 1, parentId: FolderId, plainTextContent: "overview");
+        seed.AddItem(
+            PageId,
+            NotebookId,
+            NotebookItemType.Page,
+            "Overview",
+            "chapters/overview",
+            1,
+            parentId: FolderId,
+            plainTextContent: "overview"
+        );
         seed.SaveChanges();
 
         return harness;
@@ -36,10 +52,28 @@ public sealed class NotebookItemMutationServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateMutationService(context);
 
-        var forbidden = await service.CreateNotebookItemAsync(NotebookId, OtherUserId, null, "page", "New", 0, null, CancellationToken.None);
+        var forbidden = await service.CreateNotebookItemAsync(
+            NotebookId,
+            OtherUserId,
+            null,
+            "page",
+            "New",
+            0,
+            null,
+            CancellationToken.None
+        );
         Assert.Equal(NotesFailureKind.Forbidden, forbidden.Error!.Kind);
 
-        var missing = await service.CreateNotebookItemAsync(Guid.NewGuid(), OwnerId, null, "page", "New", 0, null, CancellationToken.None);
+        var missing = await service.CreateNotebookItemAsync(
+            Guid.NewGuid(),
+            OwnerId,
+            null,
+            "page",
+            "New",
+            0,
+            null,
+            CancellationToken.None
+        );
         Assert.Equal(NotesFailureKind.NotFound, missing.Error!.Kind);
     }
 
@@ -50,10 +84,28 @@ public sealed class NotebookItemMutationServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateMutationService(context);
 
-        var badType = await service.CreateNotebookItemAsync(NotebookId, OwnerId, null, "section", "X", 0, null, CancellationToken.None);
+        var badType = await service.CreateNotebookItemAsync(
+            NotebookId,
+            OwnerId,
+            null,
+            "section",
+            "X",
+            0,
+            null,
+            CancellationToken.None
+        );
         Assert.Equal("invalid_item_type", badType.Error!.Code);
 
-        var pageParent = await service.CreateNotebookItemAsync(NotebookId, OwnerId, PageId, "page", "Child", 0, null, CancellationToken.None);
+        var pageParent = await service.CreateNotebookItemAsync(
+            NotebookId,
+            OwnerId,
+            PageId,
+            "page",
+            "Child",
+            0,
+            null,
+            CancellationToken.None
+        );
         Assert.Equal("invalid_parent", pageParent.Error!.Code);
     }
 
@@ -64,7 +116,16 @@ public sealed class NotebookItemMutationServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateMutationService(context);
 
-        var created = await service.CreateNotebookItemAsync(NotebookId, OwnerId, FolderId, "page", "Deep Dive", 2, null, CancellationToken.None);
+        var created = await service.CreateNotebookItemAsync(
+            NotebookId,
+            OwnerId,
+            FolderId,
+            "page",
+            "Deep Dive",
+            2,
+            null,
+            CancellationToken.None
+        );
 
         Assert.True(created.Succeeded);
         Assert.Equal("chapters/deep-dive", created.Value!.Path);
@@ -78,7 +139,15 @@ public sealed class NotebookItemMutationServiceTests
         await using (var arrange = harness.CreateContext())
         {
             // page nested below the folder so renaming the folder must cascade.
-            arrange.AddItem(Guid.NewGuid(), NotebookId, NotebookItemType.Page, "Nested", "chapters/nested", 5, parentId: FolderId);
+            arrange.AddItem(
+                Guid.NewGuid(),
+                NotebookId,
+                NotebookItemType.Page,
+                "Nested",
+                "chapters/nested",
+                5,
+                parentId: FolderId
+            );
             await arrange.SaveChangesAsync();
         }
 
@@ -86,7 +155,15 @@ public sealed class NotebookItemMutationServiceTests
         {
             var service = harness.CreateMutationService(act);
             var updated = await service.UpdateNotebookItemAsync(
-                NotebookId, FolderId, OwnerId, "Sections", Undefined, null, Undefined, CancellationToken.None);
+                NotebookId,
+                FolderId,
+                OwnerId,
+                "Sections",
+                Undefined,
+                null,
+                Undefined,
+                CancellationToken.None
+            );
 
             Assert.True(updated.Succeeded);
             Assert.Equal("sections", updated.Value!.Path);
@@ -105,8 +182,16 @@ public sealed class NotebookItemMutationServiceTests
         var service = harness.CreateMutationService(context);
 
         var conflict = await service.UpdateNotebookItemAsync(
-            NotebookId, PageId, OwnerId, "Renamed", Undefined, null, Undefined, CancellationToken.None,
-            expectedUpdatedAtUtc: DateTimeOffset.Parse("2000-01-01T00:00:00+00:00"));
+            NotebookId,
+            PageId,
+            OwnerId,
+            "Renamed",
+            Undefined,
+            null,
+            Undefined,
+            CancellationToken.None,
+            expectedUpdatedAtUtc: DateTimeOffset.Parse("2000-01-01T00:00:00+00:00")
+        );
 
         Assert.Equal(NotesFailureKind.Conflict, conflict.Error!.Kind);
         Assert.Equal("content_conflict", conflict.Error.Code);
@@ -121,12 +206,28 @@ public sealed class NotebookItemMutationServiceTests
 
         // Move the folder under its own child page is invalid; build a folder-under-folder cycle instead.
         var childFolderId = Guid.NewGuid();
-        context.AddItem(childFolderId, NotebookId, NotebookItemType.Folder, "Child", "chapters/child", 3, parentId: FolderId);
+        context.AddItem(
+            childFolderId,
+            NotebookId,
+            NotebookItemType.Folder,
+            "Child",
+            "chapters/child",
+            3,
+            parentId: FolderId
+        );
         await context.SaveChangesAsync();
 
         var childParent = JsonSerializer.SerializeToElement(childFolderId.ToString());
         var cyclic = await service.UpdateNotebookItemAsync(
-            NotebookId, FolderId, OwnerId, "Chapters", childParent, null, Undefined, CancellationToken.None);
+            NotebookId,
+            FolderId,
+            OwnerId,
+            "Chapters",
+            childParent,
+            null,
+            Undefined,
+            CancellationToken.None
+        );
 
         Assert.Equal("invalid_parent", cyclic.Error!.Code);
     }
@@ -142,7 +243,8 @@ public sealed class NotebookItemMutationServiceTests
             NotebookId,
             OwnerId,
             [new ReorderNotebookItemModel(PageId, null, 9)],
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(reorder.Succeeded);
         var moved = reorder.Value!.Single(item => item.Id == PageId);
@@ -159,7 +261,12 @@ public sealed class NotebookItemMutationServiceTests
         await using (var act = harness.CreateContext())
         {
             var service = harness.CreateMutationService(act);
-            var archived = await service.ArchiveNotebookItemAsync(NotebookId, FolderId, OwnerId, CancellationToken.None);
+            var archived = await service.ArchiveNotebookItemAsync(
+                NotebookId,
+                FolderId,
+                OwnerId,
+                CancellationToken.None
+            );
             Assert.True(archived.Succeeded);
         }
 
@@ -171,7 +278,12 @@ public sealed class NotebookItemMutationServiceTests
         await using (var act = harness.CreateContext())
         {
             var service = harness.CreateMutationService(act);
-            var restored = await service.RestoreNotebookItemAsync(NotebookId, FolderId, OwnerId, CancellationToken.None);
+            var restored = await service.RestoreNotebookItemAsync(
+                NotebookId,
+                FolderId,
+                OwnerId,
+                CancellationToken.None
+            );
             Assert.True(restored.Succeeded);
         }
 
@@ -187,12 +299,22 @@ public sealed class NotebookItemMutationServiceTests
         await using (var act = harness.CreateContext())
         {
             var service = harness.CreateMutationService(act);
-            await service.ArchiveNotebookItemAsync(NotebookId, FolderId, OwnerId, CancellationToken.None);
+            await service.ArchiveNotebookItemAsync(
+                NotebookId,
+                FolderId,
+                OwnerId,
+                CancellationToken.None
+            );
         }
 
         await using var context = harness.CreateContext();
         var restoreService = harness.CreateMutationService(context);
-        var restoreChild = await restoreService.RestoreNotebookItemAsync(NotebookId, PageId, OwnerId, CancellationToken.None);
+        var restoreChild = await restoreService.RestoreNotebookItemAsync(
+            NotebookId,
+            PageId,
+            OwnerId,
+            CancellationToken.None
+        );
 
         Assert.Equal("parent_archived", restoreChild.Error!.Code);
     }
@@ -205,11 +327,26 @@ public sealed class NotebookItemMutationServiceTests
         await using (var act = harness.CreateContext())
         {
             var service = harness.CreateMutationService(act);
-            var notArchived = await service.DeleteNotebookItemAsync(NotebookId, FolderId, OwnerId, CancellationToken.None);
+            var notArchived = await service.DeleteNotebookItemAsync(
+                NotebookId,
+                FolderId,
+                OwnerId,
+                CancellationToken.None
+            );
             Assert.Equal("notebook_item_not_archived", notArchived.Error!.Code);
 
-            await service.ArchiveNotebookItemAsync(NotebookId, FolderId, OwnerId, CancellationToken.None);
-            var deleted = await service.DeleteNotebookItemAsync(NotebookId, FolderId, OwnerId, CancellationToken.None);
+            await service.ArchiveNotebookItemAsync(
+                NotebookId,
+                FolderId,
+                OwnerId,
+                CancellationToken.None
+            );
+            var deleted = await service.DeleteNotebookItemAsync(
+                NotebookId,
+                FolderId,
+                OwnerId,
+                CancellationToken.None
+            );
             Assert.True(deleted.Succeeded);
         }
 

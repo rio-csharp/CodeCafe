@@ -1,6 +1,6 @@
-using CodeCafe.Host.Rest.Auth;
-using CodeCafe.Host.Common;
 using CodeCafe.Application.Common;
+using CodeCafe.Host.Common;
+using CodeCafe.Host.Rest.Auth;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +26,9 @@ public sealed class DynamicClientCleanupHostedServiceTests
     public async Task CleanupAsync_RemovesStaleDynamicClient_WithItsTokens()
     {
         await using var fixture = await CleanupFixture.CreateAsync();
-        var applicationId = fixture.AddApplication(OpenIddictClientRegistration.CreateDynamicClientId());
+        var applicationId = fixture.AddApplication(
+            OpenIddictClientRegistration.CreateDynamicClientId()
+        );
         fixture.AddToken(applicationId, DateTimeOffset.UtcNow.AddDays(-31));
         fixture.AddToken(applicationId, DateTimeOffset.UtcNow.AddDays(-40));
         await fixture.SaveSeedAsync();
@@ -41,7 +43,9 @@ public sealed class DynamicClientCleanupHostedServiceTests
     public async Task CleanupAsync_KeepsDynamicClient_WithAStillValidToken()
     {
         await using var fixture = await CleanupFixture.CreateAsync();
-        var applicationId = fixture.AddApplication(OpenIddictClientRegistration.CreateDynamicClientId());
+        var applicationId = fixture.AddApplication(
+            OpenIddictClientRegistration.CreateDynamicClientId()
+        );
         fixture.AddToken(applicationId, DateTimeOffset.UtcNow.AddDays(-31));
         fixture.AddToken(applicationId, DateTimeOffset.UtcNow.AddDays(1));
         await fixture.SaveSeedAsync();
@@ -56,7 +60,9 @@ public sealed class DynamicClientCleanupHostedServiceTests
     public async Task CleanupAsync_KeepsDynamicClient_WithoutTokens()
     {
         await using var fixture = await CleanupFixture.CreateAsync();
-        var applicationId = fixture.AddApplication(OpenIddictClientRegistration.CreateDynamicClientId());
+        var applicationId = fixture.AddApplication(
+            OpenIddictClientRegistration.CreateDynamicClientId()
+        );
         await fixture.SaveSeedAsync();
 
         await fixture.RunCleanupAsync();
@@ -82,9 +88,13 @@ public sealed class DynamicClientCleanupHostedServiceTests
     public async Task CleanupAsync_ContinuesWithRemainingClients_WhenOneDeleteFails()
     {
         await using var fixture = await CleanupFixture.CreateAsync();
-        var failingApplicationId = fixture.AddApplication(OpenIddictClientRegistration.CreateDynamicClientId());
+        var failingApplicationId = fixture.AddApplication(
+            OpenIddictClientRegistration.CreateDynamicClientId()
+        );
         fixture.AddToken(failingApplicationId, DateTimeOffset.UtcNow.AddDays(-31));
-        var deletableApplicationId = fixture.AddApplication(OpenIddictClientRegistration.CreateDynamicClientId());
+        var deletableApplicationId = fixture.AddApplication(
+            OpenIddictClientRegistration.CreateDynamicClientId()
+        );
         fixture.AddToken(deletableApplicationId, DateTimeOffset.UtcNow.AddDays(-31));
         await fixture.SaveSeedAsync();
 
@@ -106,7 +116,8 @@ public sealed class DynamicClientCleanupHostedServiceTests
             SqliteConnection connection,
             ServiceProvider serviceProvider,
             ApplicationDbContext seedContext,
-            DeleteFailureGate deleteFailureGate)
+            DeleteFailureGate deleteFailureGate
+        )
         {
             _connection = connection;
             _serviceProvider = serviceProvider;
@@ -127,10 +138,12 @@ public sealed class DynamicClientCleanupHostedServiceTests
                 options.UseSqlite(connection);
                 options.UseOpenIddict<Guid>();
             });
-            services.AddOpenIddict()
+            services
+                .AddOpenIddict()
                 .AddCore(options =>
                 {
-                    options.UseEntityFrameworkCore()
+                    options
+                        .UseEntityFrameworkCore()
                         .UseDbContext<ApplicationDbContext>()
                         .ReplaceDefaultEntities<Guid>();
                 });
@@ -138,18 +151,36 @@ public sealed class DynamicClientCleanupHostedServiceTests
             // Registered after AddCore so it wins resolution: delegates everything to the
             // real manager except deletes for the gated application id, which throw.
             services.AddSingleton(new DeleteFailureGate());
-            services.AddScoped<IOpenIddictApplicationManager>(serviceProvider => new ThrowingDeleteApplicationManager(
-                serviceProvider.GetRequiredService<IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication<Guid>>>(),
-                serviceProvider.GetRequiredService<ILogger<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>>>(),
-                serviceProvider.GetRequiredService<IOptionsMonitor<OpenIddictCoreOptions>>(),
-                serviceProvider.GetRequiredService<IOpenIddictApplicationStore<OpenIddictEntityFrameworkCoreApplication<Guid>>>(),
-                serviceProvider.GetRequiredService<DeleteFailureGate>()));
+            services.AddScoped<IOpenIddictApplicationManager>(
+                serviceProvider => new ThrowingDeleteApplicationManager(
+                    serviceProvider.GetRequiredService<
+                        IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication<Guid>>
+                    >(),
+                    serviceProvider.GetRequiredService<
+                        ILogger<
+                            OpenIddictApplicationManager<
+                                OpenIddictEntityFrameworkCoreApplication<Guid>
+                            >
+                        >
+                    >(),
+                    serviceProvider.GetRequiredService<IOptionsMonitor<OpenIddictCoreOptions>>(),
+                    serviceProvider.GetRequiredService<
+                        IOpenIddictApplicationStore<OpenIddictEntityFrameworkCoreApplication<Guid>>
+                    >(),
+                    serviceProvider.GetRequiredService<DeleteFailureGate>()
+                )
+            );
 
             var serviceProvider = services.BuildServiceProvider();
             var seedContext = serviceProvider.GetRequiredService<ApplicationDbContext>();
             await seedContext.Database.EnsureCreatedAsync();
 
-            return new CleanupFixture(connection, serviceProvider, seedContext, serviceProvider.GetRequiredService<DeleteFailureGate>());
+            return new CleanupFixture(
+                connection,
+                serviceProvider,
+                seedContext,
+                serviceProvider.GetRequiredService<DeleteFailureGate>()
+            );
         }
 
         public Guid AddApplication(string clientId)
@@ -162,7 +193,7 @@ public sealed class DynamicClientCleanupHostedServiceTests
                 ApplicationType = "native",
                 ConsentType = "implicit",
                 DisplayName = clientId,
-                ConcurrencyToken = Guid.NewGuid().ToString("N")
+                ConcurrencyToken = Guid.NewGuid().ToString("N"),
             };
             _seedContext.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().Add(application);
             return application.Id;
@@ -170,18 +201,23 @@ public sealed class DynamicClientCleanupHostedServiceTests
 
         public void AddToken(Guid applicationId, DateTimeOffset expiresAtUtc)
         {
-            _seedContext.Set<OpenIddictEntityFrameworkCoreToken<Guid>>().Add(
-                new OpenIddictEntityFrameworkCoreToken<Guid>
-                {
-                    Id = Guid.NewGuid(),
-                    Application = _seedContext.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>().Local.Single(application => application.Id == applicationId),
-                    ConcurrencyToken = Guid.NewGuid().ToString("N"),
-                    Type = "refresh_token",
-                    Status = "valid",
-                    Subject = "test-user",
-                    CreationDate = DateTimeOffset.UtcNow.AddDays(-60).UtcDateTime,
-                    ExpirationDate = expiresAtUtc.UtcDateTime
-                });
+            _seedContext
+                .Set<OpenIddictEntityFrameworkCoreToken<Guid>>()
+                .Add(
+                    new OpenIddictEntityFrameworkCoreToken<Guid>
+                    {
+                        Id = Guid.NewGuid(),
+                        Application = _seedContext
+                            .Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
+                            .Local.Single(application => application.Id == applicationId),
+                        ConcurrencyToken = Guid.NewGuid().ToString("N"),
+                        Type = "refresh_token",
+                        Status = "valid",
+                        Subject = "test-user",
+                        CreationDate = DateTimeOffset.UtcNow.AddDays(-60).UtcDateTime,
+                        ExpirationDate = expiresAtUtc.UtcDateTime,
+                    }
+                );
         }
 
         public Task SaveSeedAsync() => _seedContext.SaveChangesAsync();
@@ -191,7 +227,8 @@ public sealed class DynamicClientCleanupHostedServiceTests
             _deleteFailureGate.ApplicationId = failDeleteForApplicationId;
             var service = new DynamicClientCleanupHostedService(
                 _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-                NullLogger<DynamicClientCleanupHostedService>.Instance);
+                NullLogger<DynamicClientCleanupHostedService>.Instance
+            );
             await service.CleanupAsync(CancellationToken.None);
         }
 
@@ -199,7 +236,8 @@ public sealed class DynamicClientCleanupHostedServiceTests
         {
             await using var scope = _serviceProvider.CreateAsyncScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            return await dbContext.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
+            return await dbContext
+                .Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
                 .AnyAsync(application => application.Id == applicationId);
         }
 
@@ -207,8 +245,11 @@ public sealed class DynamicClientCleanupHostedServiceTests
         {
             await using var scope = _serviceProvider.CreateAsyncScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            return await dbContext.Set<OpenIddictEntityFrameworkCoreToken<Guid>>()
-                .CountAsync(token => token.Application != null && token.Application.Id == applicationId);
+            return await dbContext
+                .Set<OpenIddictEntityFrameworkCoreToken<Guid>>()
+                .CountAsync(token =>
+                    token.Application != null && token.Application.Id == applicationId
+                );
         }
 
         public async ValueTask DisposeAsync()
@@ -231,15 +272,24 @@ public sealed class DynamicClientCleanupHostedServiceTests
 
     private sealed class ThrowingDeleteApplicationManager(
         IOpenIddictApplicationCache<OpenIddictEntityFrameworkCoreApplication<Guid>> cache,
-        ILogger<OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>> logger,
+        ILogger<
+            OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>
+        > logger,
         IOptionsMonitor<OpenIddictCoreOptions> options,
         IOpenIddictApplicationStore<OpenIddictEntityFrameworkCoreApplication<Guid>> store,
-        DeleteFailureGate deleteFailureGate)
-        : OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>(cache, logger, options, store)
+        DeleteFailureGate deleteFailureGate
+    )
+        : OpenIddictApplicationManager<OpenIddictEntityFrameworkCoreApplication<Guid>>(
+            cache,
+            logger,
+            options,
+            store
+        )
     {
         public override ValueTask DeleteAsync(
             OpenIddictEntityFrameworkCoreApplication<Guid> application,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             if (application.Id == deleteFailureGate.ApplicationId)
             {

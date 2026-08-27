@@ -12,23 +12,15 @@ public sealed class McpToolAuditEntryConfiguration : IEntityTypeConfiguration<Mc
 
         entity.HasKey(entry => entry.Id);
 
-        entity.Property(entry => entry.ActorType)
-            .HasMaxLength(40)
-            .IsRequired();
+        entity.Property(entry => entry.ActorType).HasMaxLength(40).IsRequired();
 
-        entity.Property(entry => entry.ToolName)
-            .HasMaxLength(160)
-            .IsRequired();
+        entity.Property(entry => entry.ToolName).HasMaxLength(160).IsRequired();
 
-        entity.Property(entry => entry.ResultCode)
-            .HasMaxLength(80)
-            .IsRequired();
+        entity.Property(entry => entry.ResultCode).HasMaxLength(80).IsRequired();
 
-        entity.Property(entry => entry.ErrorCode)
-            .HasMaxLength(80);
+        entity.Property(entry => entry.ErrorCode).HasMaxLength(80);
 
-        entity.Property(entry => entry.CreatedAtUtc)
-            .IsRequired();
+        entity.Property(entry => entry.CreatedAtUtc).IsRequired();
 
         entity.Property(entry => entry.UpdatedAtUtc);
 

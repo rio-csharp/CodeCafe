@@ -1,5 +1,5 @@
-using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Domain.Notes;
+using CodeCafe.Infrastructure.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,23 +13,23 @@ public sealed class NotebookFavoriteConfiguration : IEntityTypeConfiguration<Not
 
         entity.HasKey(favorite => favorite.Id);
 
-        entity.Property(favorite => favorite.CreatedAtUtc)
-            .IsRequired();
+        entity.Property(favorite => favorite.CreatedAtUtc).IsRequired();
 
         entity.Property(favorite => favorite.UpdatedAtUtc);
 
-        entity.HasOne(favorite => favorite.Notebook)
+        entity
+            .HasOne(favorite => favorite.Notebook)
             .WithMany(notebook => notebook.Favorites)
             .HasForeignKey(favorite => favorite.NotebookId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        entity.HasOne<ApplicationUser>()
+        entity
+            .HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(favorite => favorite.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        entity.HasIndex(favorite => new { favorite.NotebookId, favorite.UserId })
-            .IsUnique();
+        entity.HasIndex(favorite => new { favorite.NotebookId, favorite.UserId }).IsUnique();
 
         entity.HasIndex(favorite => favorite.UserId);
     }

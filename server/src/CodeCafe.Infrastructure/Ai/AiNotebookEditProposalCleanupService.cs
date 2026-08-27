@@ -1,7 +1,3 @@
-using CodeCafe.Application.Ai.Drafts;
-using CodeCafe.Application.Ai.Edits;
-using CodeCafe.Application.Ai;
-using CodeCafe.Application.Notes;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +11,8 @@ namespace CodeCafe.Infrastructure.Ai;
 /// </summary>
 public sealed class AiNotebookEditProposalCleanupService(
     IServiceScopeFactory scopeFactory,
-    ILogger<AiNotebookEditProposalCleanupService> logger) : BackgroundService
+    ILogger<AiNotebookEditProposalCleanupService> logger
+) : BackgroundService
 {
     private static readonly TimeSpan InitialDelay = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan Interval = TimeSpan.FromHours(24);
@@ -32,18 +29,20 @@ public sealed class AiNotebookEditProposalCleanupService(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.LogWarning(exception, "Expired AI edit proposal cleanup failed; retrying at the next interval.");
+                logger.LogWarning(
+                    exception,
+                    "Expired AI edit proposal cleanup failed; retrying at the next interval."
+                );
             }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
+        } while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
     private async Task CleanupAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var deleted = await dbContext.AiEditProposals
-            .Where(proposal => proposal.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+        var deleted = await dbContext
+            .AiEditProposals.Where(proposal => proposal.ExpiresAtUtc <= DateTimeOffset.UtcNow)
             .ExecuteDeleteAsync(cancellationToken);
 
         if (deleted > 0)

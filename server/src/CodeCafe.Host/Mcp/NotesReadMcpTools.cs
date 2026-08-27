@@ -1,10 +1,9 @@
-using CodeCafe.Application.Common.Uploads;
-using CodeCafe.Application.Notes;
+using System.ComponentModel;
 using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Application.Notes;
 using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using System.ComponentModel;
 
 namespace CodeCafe.Host.Mcp;
 
@@ -25,6 +24,7 @@ public sealed class NotesReadMcpTools
     /// identify a page.
     /// </summary>
     private const int PublicItemPreviewChars = 2000;
+
     [McpServerTool(
         Name = "notes_list_public_notebooks",
         Title = "List Public Notebooks",
@@ -32,40 +32,51 @@ public sealed class NotesReadMcpTools
         Destructive = false,
         OpenWorld = false,
         UseStructuredContent = true,
-        OutputSchemaType = typeof(ListPublicNotebooksResponse))]
+        OutputSchemaType = typeof(ListPublicNotebooksResponse)
+    )]
     [Description("List public notebooks exposed through this MCP endpoint.")]
     public async Task<CallToolResult> ListPublicNotebooksAsync(
         INotebookReadService notebookReadService,
         IOptions<McpOptions> mcpOptionsAccessor,
         CancellationToken cancellationToken,
         [Description("Optional search query.")] string? query = null,
-        [Description("Maximum number of notebooks to return.")] int? limit = null)
+        [Description("Maximum number of notebooks to return.")] int? limit = null
+    )
     {
         // Previously passed straight through, so a caller could ask for every public notebook.
         var maxResults = Math.Clamp(
             limit ?? DefaultPublicListLimit,
             1,
-            mcpOptionsAccessor.Value.MaxListItemsLimit);
+            mcpOptionsAccessor.Value.MaxListItemsLimit
+        );
         var notebooks = await notebookReadService.GetPublicNotebooksAsync(
             query,
             Guid.Empty,
             cancellationToken,
-            maxResults);
+            maxResults
+        );
 
         var response = new ListPublicNotebooksResponse(
             notebooks.Count,
-            notebooks.Select(notebook => new PublicNotebookSummary(
-                notebook.Id,
-                notebook.Title,
-                notebook.Slug,
-                notebook.Description,
-                notebook.AuthorDisplayName,
-                notebook.ItemCount,
-                notebook.FolderCount,
-                notebook.PageCount,
-                notebook.PublishedAtUtc)).ToList());
+            notebooks
+                .Select(notebook => new PublicNotebookSummary(
+                    notebook.Id,
+                    notebook.Title,
+                    notebook.Slug,
+                    notebook.Description,
+                    notebook.AuthorDisplayName,
+                    notebook.ItemCount,
+                    notebook.FolderCount,
+                    notebook.PageCount,
+                    notebook.PublishedAtUtc
+                ))
+                .ToList()
+        );
 
-        return NotesMcpResultMapper.Success(response, $"Listed {response.TotalCount} public notebook(s).");
+        return NotesMcpResultMapper.Success(
+            response,
+            $"Listed {response.TotalCount} public notebook(s)."
+        );
     }
 
     [McpServerTool(
@@ -75,17 +86,20 @@ public sealed class NotesReadMcpTools
         Destructive = false,
         OpenWorld = false,
         UseStructuredContent = true,
-        OutputSchemaType = typeof(PublicNotebookDetailResponse))]
+        OutputSchemaType = typeof(PublicNotebookDetailResponse)
+    )]
     [Description("Load one public notebook by slug, including its visible items.")]
     public async Task<CallToolResult> GetPublicNotebookAsync(
         [Description("The notebook slug.")] string slug,
         INotebookReadService notebookReadService,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await notebookReadService.GetPublicNotebookAsync(
             slug,
             Guid.Empty,
-            cancellationToken);
+            cancellationToken
+        );
 
         if (!result.Succeeded)
         {
@@ -103,15 +117,22 @@ public sealed class NotesReadMcpTools
             notebook.FolderCount,
             notebook.PageCount,
             notebook.PublishedAtUtc,
-            notebook.Items.Select(item => new PublicNotebookItemSummary(
-                item.Id,
-                item.Type,
-                item.Title,
-                item.Path,
-                item.SortOrder,
-                TruncatePreview(item.PlainTextContent))).ToList());
+            notebook
+                .Items.Select(item => new PublicNotebookItemSummary(
+                    item.Id,
+                    item.Type,
+                    item.Title,
+                    item.Path,
+                    item.SortOrder,
+                    TruncatePreview(item.PlainTextContent)
+                ))
+                .ToList()
+        );
 
-        return NotesMcpResultMapper.Success(response, $"Loaded public notebook '{response.Title}'.");
+        return NotesMcpResultMapper.Success(
+            response,
+            $"Loaded public notebook '{response.Title}'."
+        );
     }
 
     private static string? TruncatePreview(string? value)
@@ -127,7 +148,8 @@ public sealed class NotesReadMcpTools
 
 public sealed record ListPublicNotebooksResponse(
     int TotalCount,
-    IReadOnlyList<PublicNotebookSummary> Notebooks);
+    IReadOnlyList<PublicNotebookSummary> Notebooks
+);
 
 public sealed record PublicNotebookSummary(
     Guid Id,
@@ -138,7 +160,8 @@ public sealed record PublicNotebookSummary(
     int ItemCount,
     int FolderCount,
     int PageCount,
-    DateTimeOffset? PublishedAtUtc);
+    DateTimeOffset? PublishedAtUtc
+);
 
 public sealed record PublicNotebookDetailResponse(
     Guid Id,
@@ -150,7 +173,8 @@ public sealed record PublicNotebookDetailResponse(
     int FolderCount,
     int PageCount,
     DateTimeOffset? PublishedAtUtc,
-    IReadOnlyList<PublicNotebookItemSummary> Items);
+    IReadOnlyList<PublicNotebookItemSummary> Items
+);
 
 public sealed record PublicNotebookItemSummary(
     Guid Id,
@@ -158,4 +182,5 @@ public sealed record PublicNotebookItemSummary(
     string Title,
     string Path,
     int SortOrder,
-    string? PlainTextContent);
+    string? PlainTextContent
+);

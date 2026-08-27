@@ -2,7 +2,8 @@ using FluentValidation;
 
 namespace CodeCafe.Application.Notes.Commands.CreateNotebookItem;
 
-public sealed class CreateNotebookItemCommandValidator : AbstractValidator<CreateNotebookItemCommand>
+public sealed class CreateNotebookItemCommandValidator
+    : AbstractValidator<CreateNotebookItemCommand>
 {
     public CreateNotebookItemCommandValidator()
     {
@@ -11,8 +12,6 @@ public sealed class CreateNotebookItemCommandValidator : AbstractValidator<Creat
             .Must(value => NotebookInput.TryParseItemType(value, out _))
             .WithMessage("Item type must be folder or page.");
 
-        RuleFor(command => command.Title)
-            .NotEmpty()
-            .MaximumLength(160);
+        RuleFor(command => command.Title).NotEmpty().MaximumLength(160);
     }
 }

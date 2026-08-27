@@ -30,28 +30,33 @@ public static class AssistantAgentFactory
                 tools.ListNotebooksAsync,
                 name: "list_notebooks",
                 description: "List notebooks the current user can access.",
-                serializerOptions: jsonOptions.SerializerOptions),
+                serializerOptions: jsonOptions.SerializerOptions
+            ),
             AIFunctionFactory.Create(
                 tools.SearchNotesAsync,
                 name: "search_notes",
                 description: "Search visible notebook pages and folders for the current user.",
-                serializerOptions: jsonOptions.SerializerOptions),
+                serializerOptions: jsonOptions.SerializerOptions
+            ),
             AIFunctionFactory.Create(
                 tools.GetNotebookAsync,
                 name: "get_notebook",
                 description: "Load notebook metadata and item summaries by slug.",
-                serializerOptions: jsonOptions.SerializerOptions),
+                serializerOptions: jsonOptions.SerializerOptions
+            ),
             AIFunctionFactory.Create(
                 tools.GetPageAsync,
                 name: "get_page",
                 description: "Load one visible notebook page or folder by notebook slug and item path.",
-                serializerOptions: jsonOptions.SerializerOptions)
+                serializerOptions: jsonOptions.SerializerOptions
+            ),
         ];
 
         var openAiClient = serviceProvider.GetRequiredService<OpenAIClient>();
-        IChatClient chatClient = options.WireFormat == AiWireFormat.Responses
-            ? openAiClient.GetResponsesClient().AsIChatClient(options.Model)
-            : openAiClient.GetChatClient(options.Model).AsIChatClient();
+        IChatClient chatClient =
+            options.WireFormat == AiWireFormat.Responses
+                ? openAiClient.GetResponsesClient().AsIChatClient(options.Model)
+                : openAiClient.GetChatClient(options.Model).AsIChatClient();
         chatClient = new AgUiCompatChatClient(chatClient);
         // Outermost so the budget applies to whatever the agent pipeline ends up sending, including
         // the tool-calling follow-up turns that resend the whole history.
@@ -59,15 +64,17 @@ public static class AssistantAgentFactory
             chatClient,
             options.MaxChatOutputTokens,
             options.MaxChatHistoryMessages,
-            options.MaxChatHistoryChars);
+            options.MaxChatHistoryChars
+        );
 
         var agent = chatClient.AsAIAgent(
-                name: agentName,
-                instructions: AssistantInstructions,
-                description: "A CodeCafe assistant that answers questions using the current user's notebooks.",
-                tools: aiTools,
-                loggerFactory: loggerFactory,
-                services: serviceProvider);
+            name: agentName,
+            instructions: AssistantInstructions,
+            description: "A CodeCafe assistant that answers questions using the current user's notebooks.",
+            tools: aiTools,
+            loggerFactory: loggerFactory,
+            services: serviceProvider
+        );
 
         return new AgUiContextEnrichingAgent(agent, options.MaxAgUiContextEntries);
     }

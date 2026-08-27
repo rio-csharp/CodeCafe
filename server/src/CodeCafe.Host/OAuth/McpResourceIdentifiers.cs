@@ -1,11 +1,14 @@
-using CodeCafe.Host.Common;
 using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Host.Common;
 
 namespace CodeCafe.Host.Rest.Auth;
 
 public static class McpResourceIdentifiers
 {
-    public static string[] GetAudienceValues(McpOptions mcpOptions, AuthorizationServerOptions authorizationServerOptions)
+    public static string[] GetAudienceValues(
+        McpOptions mcpOptions,
+        AuthorizationServerOptions authorizationServerOptions
+    )
     {
         var audiences = new HashSet<string>(StringComparer.Ordinal);
 
@@ -22,7 +25,10 @@ public static class McpResourceIdentifiers
         return audiences.ToArray();
     }
 
-    public static string[] GetResourceValues(McpOptions mcpOptions, AuthorizationServerOptions authorizationServerOptions)
+    public static string[] GetResourceValues(
+        McpOptions mcpOptions,
+        AuthorizationServerOptions authorizationServerOptions
+    )
     {
         var resources = new HashSet<string>(StringComparer.Ordinal);
 
@@ -31,7 +37,9 @@ public static class McpResourceIdentifiers
             resources.Add(new Uri(issuer, mcpOptions.EndpointPath).AbsoluteUri);
         }
 
-        if (Uri.TryCreate(mcpOptions.RequiredAudience, UriKind.Absolute, out var configuredResource))
+        if (
+            Uri.TryCreate(mcpOptions.RequiredAudience, UriKind.Absolute, out var configuredResource)
+        )
         {
             resources.Add(configuredResource.AbsoluteUri);
         }

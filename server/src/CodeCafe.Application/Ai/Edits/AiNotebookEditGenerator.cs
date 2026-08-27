@@ -1,5 +1,5 @@
-using CodeCafe.Application.Notes;
 using System.Text.Json;
+using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Application.Ai.Edits;
 
@@ -16,7 +16,8 @@ public interface IAiNotebookEditGenerator
     /// </exception>
     Task<AiNotebookEditResult> GenerateEditAsync(
         AiNotebookEditGenerationContext context,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }
 
 public sealed record AiNotebookEditGenerationContext(
@@ -25,7 +26,8 @@ public sealed record AiNotebookEditGenerationContext(
     string Prompt,
     string Locale,
     NotebookContextModel Notebook,
-    NotebookItemModel? ActivePage);
+    NotebookItemModel? ActivePage
+);
 
 public sealed record AiNotebookEditResult(
     string Operation,
@@ -33,4 +35,5 @@ public sealed record AiNotebookEditResult(
     string? Title,
     string? Summary,
     JsonElement? ContentJson,
-    JsonElement? OperationsJson);
+    JsonElement? OperationsJson
+);

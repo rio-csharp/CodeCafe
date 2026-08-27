@@ -45,7 +45,8 @@ public sealed class SliceBoundaryTests
         Assert.True(
             offenders.Count == 0,
             "Application code must not name HTTP status codes, but these do: "
-            + string.Join(", ", offenders));
+                + string.Join(", ", offenders)
+        );
     }
 
     [Fact]
@@ -53,7 +54,13 @@ public sealed class SliceBoundaryTests
     {
         // Only provider SDK types. System.Text.Json is fine here: handlers legitimately read TipTap
         // document content, which is application data rather than a provider response.
-        var forbidden = new[] { "ClientResultException", "OpenAIClient", "ChatCompletionOptions", "MarkdownPipeline" };
+        var forbidden = new[]
+        {
+            "ClientResultException",
+            "OpenAIClient",
+            "ChatCompletionOptions",
+            "MarkdownPipeline",
+        };
         var offenders = new List<string>();
 
         foreach (var file in EnumerateSliceFiles())
@@ -71,7 +78,9 @@ public sealed class SliceBoundaryTests
         Assert.True(
             offenders.Count == 0,
             "Application code must not name provider SDK types; adapters translate those into "
-            + "AiProviderException. Offenders: " + string.Join(", ", offenders));
+                + "AiProviderException. Offenders: "
+                + string.Join(", ", offenders)
+        );
     }
 
     /// <summary>
@@ -101,17 +110,21 @@ public sealed class SliceBoundaryTests
 
         var offenders = Directory
             .EnumerateFiles(sliceDirectory, "*.cs", SearchOption.AllDirectories)
-            .Where(file => Regex.IsMatch(
-                File.ReadAllText(file),
-                $@"^using\s+{Regex.Escape(forbiddenNamespace)}(\.|;)",
-                RegexOptions.Multiline))
+            .Where(file =>
+                Regex.IsMatch(
+                    File.ReadAllText(file),
+                    $@"^using\s+{Regex.Escape(forbiddenNamespace)}(\.|;)",
+                    RegexOptions.Multiline
+                )
+            )
             .Select(Path.GetFileName)
             .ToList();
 
         Assert.True(
             offenders.Count == 0,
             $"Application/{slice} must not import {forbiddenNamespace}, but these files do: "
-            + string.Join(", ", offenders));
+                + string.Join(", ", offenders)
+        );
     }
 
     private static IEnumerable<string> EnumerateSliceFiles()
@@ -119,7 +132,8 @@ public sealed class SliceBoundaryTests
         return Directory.EnumerateFiles(
             FindApplicationProjectDirectory(),
             "*.cs",
-            SearchOption.AllDirectories);
+            SearchOption.AllDirectories
+        );
     }
 
     private static string FindApplicationProjectDirectory()
@@ -136,6 +150,8 @@ public sealed class SliceBoundaryTests
             current = current.Parent;
         }
 
-        throw new DirectoryNotFoundException("Could not locate CodeCafe.Application from the test output path.");
+        throw new DirectoryNotFoundException(
+            "Could not locate CodeCafe.Application from the test output path."
+        );
     }
 }

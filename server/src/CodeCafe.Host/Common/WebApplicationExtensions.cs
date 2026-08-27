@@ -1,8 +1,7 @@
 using CodeCafe.Application.Ai;
-using CodeCafe.Host.Common;
+using CodeCafe.Application.Common.Configuration;
 using CodeCafe.Host.Mcp;
 using CodeCafe.Host.Rest.Notes;
-using CodeCafe.Application.Common.Configuration;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
@@ -39,83 +38,133 @@ public static class WebApplicationExtensions
         return app;
     }
 
-    public static IEndpointRouteBuilder MapCodeCafeMcpProtectedResourceMetadata(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapCodeCafeMcpProtectedResourceMetadata(
+        this IEndpointRouteBuilder endpoints
+    )
     {
         var mcpOptions = endpoints.ServiceProvider.GetRequiredService<IOptions<McpOptions>>().Value;
-        var authorizationServerOptions = endpoints.ServiceProvider.GetRequiredService<IOptions<AuthorizationServerOptions>>().Value;
+        var authorizationServerOptions = endpoints
+            .ServiceProvider.GetRequiredService<IOptions<AuthorizationServerOptions>>()
+            .Value;
         if (!mcpOptions.Enabled || !mcpOptions.RequireAuthorization)
         {
             return endpoints;
         }
 
-        endpoints.MapGet(mcpOptions.ProtectedResourceMetadataPath, (HttpContext httpContext) =>
-        {
-            var resource = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{mcpOptions.EndpointPath}";
-            return Results.Ok(new
-            {
-                resource,
-                authorization_servers = new[] { authorizationServerOptions.Issuer.TrimEnd('/') },
-                scopes_supported = mcpOptions.RequiredReadScopes.Concat(mcpOptions.RequiredWriteScopes).Distinct().ToArray()
-            });
-        })
-        .AllowAnonymous();
+        endpoints
+            .MapGet(
+                mcpOptions.ProtectedResourceMetadataPath,
+                (HttpContext httpContext) =>
+                {
+                    var resource =
+                        $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{mcpOptions.EndpointPath}";
+                    return Results.Ok(
+                        new
+                        {
+                            resource,
+                            authorization_servers = new[]
+                            {
+                                authorizationServerOptions.Issuer.TrimEnd('/'),
+                            },
+                            scopes_supported = mcpOptions
+                                .RequiredReadScopes.Concat(mcpOptions.RequiredWriteScopes)
+                                .Distinct()
+                                .ToArray(),
+                        }
+                    );
+                }
+            )
+            .AllowAnonymous();
 
         return endpoints;
     }
 
     public static IApplicationBuilder UseCodeCafeMcpOriginValidation(this IApplicationBuilder app)
     {
-        return app.Use(async (httpContext, next) =>
-        {
-            var options = httpContext.RequestServices.GetRequiredService<IOptions<McpOptions>>().Value;
-            var isMcpRequest = options.Enabled
-                && (httpContext.Request.Path.StartsWithSegments(options.EndpointPath, StringComparison.OrdinalIgnoreCase)
-                    || httpContext.Request.Path.StartsWithSegments(options.ProtectedResourceMetadataPath, StringComparison.OrdinalIgnoreCase));
-
-            if (!isMcpRequest)
+        return app.Use(
+            async (httpContext, next) =>
             {
-                await next(httpContext);
-                return;
-            }
+                var options = httpContext
+                    .RequestServices.GetRequiredService<IOptions<McpOptions>>()
+                    .Value;
+                var isMcpRequest =
+                    options.Enabled
+                    && (
+                        httpContext.Request.Path.StartsWithSegments(
+                            options.EndpointPath,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                        || httpContext.Request.Path.StartsWithSegments(
+                            options.ProtectedResourceMetadataPath,
+                            StringComparison.OrdinalIgnoreCase
+                        )
+                    );
 
-            if (httpContext.Request.Headers.TryGetValue("Origin", out var originValues)
-                && originValues.Count > 0
-                && options.AllowedOrigins.Length > 0
-                && !originValues.Any(value => options.AllowedOrigins.Contains(value, StringComparer.OrdinalIgnoreCase)))
-            {
-                httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
-                await Results.Problem(ApiProblems.Create(
-                    "origin_forbidden",
-                    "Origin is not allowed for MCP.",
-                    StatusCodes.Status403Forbidden)).ExecuteAsync(httpContext);
-                return;
-            }
-
-            if (options.RequireAuthorization)
-            {
-                var resourceMetadataUri = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{options.ProtectedResourceMetadataPath}";
-                httpContext.Response.OnStarting(() =>
+                if (!isMcpRequest)
                 {
-                    if (httpContext.Response.StatusCode == StatusCodes.Status401Unauthorized)
+                    await next(httpContext);
+                    return;
+                }
+
+                if (
+                    httpContext.Request.Headers.TryGetValue("Origin", out var originValues)
+                    && originValues.Count > 0
+                    && options.AllowedOrigins.Length > 0
+                    && !originValues.Any(value =>
+                        options.AllowedOrigins.Contains(value, StringComparer.OrdinalIgnoreCase)
+                    )
+                )
+                {
+                    httpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    await Results
+                        .Problem(
+                            ApiProblems.Create(
+                                "origin_forbidden",
+                                "Origin is not allowed for MCP.",
+                                StatusCodes.Status403Forbidden
+                            )
+                        )
+                        .ExecuteAsync(httpContext);
+                    return;
+                }
+
+                if (options.RequireAuthorization)
+                {
+                    var resourceMetadataUri =
+                        $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{options.ProtectedResourceMetadataPath}";
+                    httpContext.Response.OnStarting(() =>
                     {
-                        EnsureMcpResourceMetadataChallenge(httpContext.Response, resourceMetadataUri);
-                    }
+                        if (httpContext.Response.StatusCode == StatusCodes.Status401Unauthorized)
+                        {
+                            EnsureMcpResourceMetadataChallenge(
+                                httpContext.Response,
+                                resourceMetadataUri
+                            );
+                        }
 
-                    return Task.CompletedTask;
-                });
+                        return Task.CompletedTask;
+                    });
+                }
+
+                await next(httpContext);
             }
-
-            await next(httpContext);
-        });
+        );
     }
 
-    private static void EnsureMcpResourceMetadataChallenge(HttpResponse response, string resourceMetadataUri)
+    private static void EnsureMcpResourceMetadataChallenge(
+        HttpResponse response,
+        string resourceMetadataUri
+    )
     {
-        var challenges = response.Headers.WWWAuthenticate
-            .Where(challenge => !string.IsNullOrWhiteSpace(challenge))
+        var challenges = response
+            .Headers.WWWAuthenticate.Where(challenge => !string.IsNullOrWhiteSpace(challenge))
             .Select(challenge => challenge!)
             .ToList();
-        if (challenges.Any(challenge => challenge!.Contains("resource_metadata=", StringComparison.OrdinalIgnoreCase)))
+        if (
+            challenges.Any(challenge =>
+                challenge!.Contains("resource_metadata=", StringComparison.OrdinalIgnoreCase)
+            )
+        )
         {
             return;
         }
@@ -123,10 +172,12 @@ public static class WebApplicationExtensions
         var metadataParameter = $"resource_metadata=\"{resourceMetadataUri}\"";
         var bearerIndex = challenges.FindIndex(challenge =>
             challenge.Equals("Bearer", StringComparison.OrdinalIgnoreCase)
-            || challenge.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase));
+            || challenge.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+        );
         if (bearerIndex >= 0)
         {
-            challenges[bearerIndex] = challenges[bearerIndex].Equals("Bearer", StringComparison.OrdinalIgnoreCase)
+            challenges[bearerIndex] = challenges[bearerIndex]
+                .Equals("Bearer", StringComparison.OrdinalIgnoreCase)
                 ? $"Bearer {metadataParameter}"
                 : $"{challenges[bearerIndex]}, {metadataParameter}";
         }
@@ -152,10 +203,13 @@ public static class WebApplicationExtensions
         endpoint.RequireRateLimiting("mcp");
         if (options.RequireAuthorization)
         {
-            endpoint.RequireAuthorization(new AuthorizeAttribute
-            {
-                AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme
-            });
+            endpoint.RequireAuthorization(
+                new AuthorizeAttribute
+                {
+                    AuthenticationSchemes =
+                        OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+                }
+            );
         }
 
         return endpoints;
@@ -163,16 +217,18 @@ public static class WebApplicationExtensions
 
     private static IApplicationBuilder UseCodeCafeSecurityHeaders(this IApplicationBuilder app)
     {
-        return app.Use(async (httpContext, next) =>
-        {
-            // Defense-in-depth for any HTML-ish response (error pages, OIDC
-            // flows). Inert for JSON API responses.
-            var headers = httpContext.Response.Headers;
-            headers["X-Content-Type-Options"] = "nosniff";
-            headers["Referrer-Policy"] = "no-referrer";
-            headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
-            await next(httpContext);
-        });
+        return app.Use(
+            async (httpContext, next) =>
+            {
+                // Defense-in-depth for any HTML-ish response (error pages, OIDC
+                // flows). Inert for JSON API responses.
+                var headers = httpContext.Response.Headers;
+                headers["X-Content-Type-Options"] = "nosniff";
+                headers["Referrer-Policy"] = "no-referrer";
+                headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
+                await next(httpContext);
+            }
+        );
     }
 
     private static IApplicationBuilder UseCodeCafeCors(this WebApplication app)
@@ -185,7 +241,8 @@ public static class WebApplicationExtensions
 
         app.UseCors(policy =>
         {
-            policy.WithOrigins(corsOptions.AllowedOrigins)
+            policy
+                .WithOrigins(corsOptions.AllowedOrigins)
                 .WithHeaders("Content-Type", "X-CSRF-TOKEN", "Authorization")
                 .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .AllowCredentials();
@@ -196,16 +253,19 @@ public static class WebApplicationExtensions
 
     private static IApplicationBuilder UseCodeCafeApiAntiforgery(this IApplicationBuilder app)
     {
-        return app.Use(async (httpContext, next) =>
-        {
-            if (RequiresCsrfValidation(httpContext))
+        return app.Use(
+            async (httpContext, next) =>
             {
-                var antiforgery = httpContext.RequestServices.GetRequiredService<IAntiforgery>();
-                await antiforgery.ValidateRequestAsync(httpContext);
-            }
+                if (RequiresCsrfValidation(httpContext))
+                {
+                    var antiforgery =
+                        httpContext.RequestServices.GetRequiredService<IAntiforgery>();
+                    await antiforgery.ValidateRequestAsync(httpContext);
+                }
 
-            await next(httpContext);
-        });
+                await next(httpContext);
+            }
+        );
     }
 
     private static void LogForwardedHeadersConfigurationWarnings(WebApplication app)
@@ -216,17 +276,18 @@ public static class WebApplicationExtensions
         }
 
         var settings = app.Services.GetRequiredService<IOptions<ForwardedHeadersSettings>>().Value;
-        var trustsOnlyLoopback = settings.KnownNetworks.Length > 0
-            && settings.KnownNetworks.All(IsLoopbackNetwork);
+        var trustsOnlyLoopback =
+            settings.KnownNetworks.Length > 0 && settings.KnownNetworks.All(IsLoopbackNetwork);
         if (settings.KnownNetworks.Length == 0 || trustsOnlyLoopback)
         {
             // With no real proxy network trusted, X-Forwarded-For is ignored and
             // every request gets the ingress IP as RemoteIpAddress — collapsing
             // all IP-partitioned rate limits into a single shared partition.
             app.Logger.LogWarning(
-                "ForwardedHeaders:KnownNetworks trusts no proxy network (loopback only) in Production. " +
-                "Client IPs will resolve to the ingress address, collapsing IP-partitioned rate limits into one shared partition. " +
-                "Configure the egress CIDR ranges of your reverse proxy/ingress.");
+                "ForwardedHeaders:KnownNetworks trusts no proxy network (loopback only) in Production. "
+                    + "Client IPs will resolve to the ingress address, collapsing IP-partitioned rate limits into one shared partition. "
+                    + "Configure the egress CIDR ranges of your reverse proxy/ingress."
+            );
         }
     }
 
@@ -248,13 +309,22 @@ public static class WebApplicationExtensions
         // endpoints) and authenticates with bearer tokens, not cookies, so CSRF
         // validation does not apply. Derive the exclusion from the configured
         // MCP endpoint path instead of hardcoding it.
-        var mcpOptions = httpContext.RequestServices.GetRequiredService<IOptions<McpOptions>>().Value;
-        if (request.Path.StartsWithSegments(GetMcpApiExclusionPath(mcpOptions), StringComparison.OrdinalIgnoreCase))
+        var mcpOptions = httpContext
+            .RequestServices.GetRequiredService<IOptions<McpOptions>>()
+            .Value;
+        if (
+            request.Path.StartsWithSegments(
+                GetMcpApiExclusionPath(mcpOptions),
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return false;
         }
 
-        var antiforgeryMetadata = httpContext.GetEndpoint()?.Metadata.GetMetadata<IAntiforgeryMetadata>();
+        var antiforgeryMetadata = httpContext
+            .GetEndpoint()
+            ?.Metadata.GetMetadata<IAntiforgeryMetadata>();
         if (antiforgeryMetadata is not null && !antiforgeryMetadata.RequiresValidation)
         {
             return false;
@@ -282,9 +352,10 @@ public static class WebApplicationExtensions
         // Preserve the historical "/api/mcp" exclusion for the default "/mcp"
         // endpoint without doubling the prefix when the configured endpoint
         // already lives under /api.
-        return endpointPath.Equals("/api", StringComparison.OrdinalIgnoreCase)
+        return
+            endpointPath.Equals("/api", StringComparison.OrdinalIgnoreCase)
             || endpointPath.StartsWith("/api/", StringComparison.OrdinalIgnoreCase)
-                ? endpointPath
-                : "/api" + endpointPath;
+            ? endpointPath
+            : "/api" + endpointPath;
     }
 }

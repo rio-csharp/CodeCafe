@@ -1,25 +1,25 @@
-using CodeCafe.Application.Mcp;
-using CodeCafe.Application.Notes;
-using CodeCafe.Infrastructure.Mcp;
+using System.Security.Claims;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Identity;
+using CodeCafe.Application.Mcp;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore.Storage;
 using ModelContextProtocol.Protocol;
-using System.Security.Claims;
 
 namespace CodeCafe.Host.Mcp;
 
 public sealed class McpMutationExecutor(
     ApplicationDbContext dbContext,
     IMcpAuditService auditService,
-    ILogger<McpMutationExecutor> logger) : IMcpMutationExecutor
+    ILogger<McpMutationExecutor> logger
+) : IMcpMutationExecutor
 {
     public async Task<CallToolResult> ExecuteAsync<T>(
         ClaimsPrincipal user,
         string toolName,
         Func<CancellationToken, Task<McpMutationResult<T>>> operation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
         where T : class
     {
         var startedTransaction = dbContext.Database.CurrentTransaction is null;
@@ -39,7 +39,10 @@ public sealed class McpMutationExecutor(
                     // Roll back without the request token: when the client disconnects
                     // mid-mutation the rollback must still run so the failure response
                     // and the failure audit entry below are not lost.
-                    transaction = await RollbackAndDisposeAsync(transaction, CancellationToken.None);
+                    transaction = await RollbackAndDisposeAsync(
+                        transaction,
+                        CancellationToken.None
+                    );
                 }
 
                 dbContext.ChangeTracker.Clear();
@@ -58,7 +61,11 @@ public sealed class McpMutationExecutor(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "MCP mutation execution failed for tool {ToolName}.", toolName);
+            logger.LogError(
+                exception,
+                "MCP mutation execution failed for tool {ToolName}.",
+                toolName
+            );
 
             transaction = await TryRollbackAndDisposeAsync(transaction, toolName);
 
@@ -82,9 +89,10 @@ public sealed class McpMutationExecutor(
     private static McpAuditRecord CreateAuditRecord<T>(
         ClaimsPrincipal user,
         string toolName,
-        McpMutationResult<T> result)
-        where T : class
-        => new(
+        McpMutationResult<T> result
+    )
+        where T : class =>
+        new(
             CurrentUserClaims.GetUserId(user) ?? Guid.Empty,
             "user",
             toolName,
@@ -92,9 +100,13 @@ public sealed class McpMutationExecutor(
             result.ItemId,
             result.Succeeded,
             result.Succeeded ? "success" : result.Error!.Code,
-            result.Error?.Code);
+            result.Error?.Code
+        );
 
-    private async Task TryWriteFailureAuditAsync(McpAuditRecord auditRecord, CancellationToken cancellationToken)
+    private async Task TryWriteFailureAuditAsync(
+        McpAuditRecord auditRecord,
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -105,13 +117,15 @@ public sealed class McpMutationExecutor(
             logger.LogWarning(
                 exception,
                 "Failed to write MCP failure audit entry for tool {ToolName}.",
-                auditRecord.ToolName);
+                auditRecord.ToolName
+            );
         }
     }
 
     private static async Task<IDbContextTransaction?> CommitAndDisposeAsync(
         IDbContextTransaction transaction,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await transaction.CommitAsync(cancellationToken);
         await transaction.DisposeAsync();
@@ -120,7 +134,8 @@ public sealed class McpMutationExecutor(
 
     private static async Task<IDbContextTransaction?> RollbackAndDisposeAsync(
         IDbContextTransaction transaction,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         await transaction.RollbackAsync(cancellationToken);
         await transaction.DisposeAsync();
@@ -129,7 +144,8 @@ public sealed class McpMutationExecutor(
 
     private async Task<IDbContextTransaction?> TryRollbackAndDisposeAsync(
         IDbContextTransaction? transaction,
-        string toolName)
+        string toolName
+    )
     {
         if (transaction is null)
         {
@@ -145,7 +161,8 @@ public sealed class McpMutationExecutor(
             logger.LogWarning(
                 rollbackException,
                 "Failed to roll back MCP mutation transaction for tool {ToolName}.",
-                toolName);
+                toolName
+            );
         }
         finally
         {

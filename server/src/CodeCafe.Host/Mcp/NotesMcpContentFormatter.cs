@@ -1,12 +1,12 @@
 using System.Text;
-using CodeCafe.Application.Notes;
 using System.Text.Json;
 
 namespace CodeCafe.Host.Mcp;
 
 internal static class NotesMcpContentFormatter
 {
-    public static string Format<T>(T value, string fallbackSummary) where T : class
+    public static string Format<T>(T value, string fallbackSummary)
+        where T : class
     {
         return value switch
         {
@@ -22,12 +22,15 @@ internal static class NotesMcpContentFormatter
             DiscardUploadToolResponse response => FormatDiscardUpload(response),
             CreateItemToolResponse response => FormatCreateItem(response),
             CreatePageToolResponse response => FormatCreatePage(response),
-            UpdatePageContentToolResponse response => FormatUpdatePageContent(response, fallbackSummary),
+            UpdatePageContentToolResponse response => FormatUpdatePageContent(
+                response,
+                fallbackSummary
+            ),
             MoveItemToolResponse response => FormatMoveItem(response),
             ReorderItemsToolResponse response => FormatReorderItems(response),
             DeleteItemToolResponse response => FormatDeleteItem(response),
             DeleteNotebookToolResponse response => FormatDeleteNotebook(response),
-            _ => fallbackSummary
+            _ => fallbackSummary,
         };
     }
 
@@ -52,13 +55,18 @@ internal static class NotesMcpContentFormatter
         if (response.Details is not null && response.Details.Count > 0)
         {
             builder.AppendLine("details:");
-            builder.AppendLine(JsonSerializer.Serialize(response.Details, NotesMcpSupport.SerializerOptions));
+            builder.AppendLine(
+                JsonSerializer.Serialize(response.Details, NotesMcpSupport.SerializerOptions)
+            );
         }
 
         return builder.ToString().TrimEnd();
     }
 
-    private static string FormatListNotebooks(ListNotebooksToolResponse response, string fallbackSummary)
+    private static string FormatListNotebooks(
+        ListNotebooksToolResponse response,
+        string fallbackSummary
+    )
     {
         var builder = new StringBuilder();
         builder.AppendLine(fallbackSummary);
@@ -78,7 +86,10 @@ internal static class NotesMcpContentFormatter
         return builder.ToString().TrimEnd();
     }
 
-    private static string FormatGetNotebook(GetNotebookToolResponse response, string fallbackSummary)
+    private static string FormatGetNotebook(
+        GetNotebookToolResponse response,
+        string fallbackSummary
+    )
     {
         var builder = new StringBuilder();
         builder.AppendLine(fallbackSummary);
@@ -101,7 +112,10 @@ internal static class NotesMcpContentFormatter
         return builder.ToString().TrimEnd();
     }
 
-    private static string FormatListItems(ListNotebookItemsToolResponse response, string fallbackSummary)
+    private static string FormatListItems(
+        ListNotebookItemsToolResponse response,
+        string fallbackSummary
+    )
     {
         var builder = new StringBuilder();
         builder.AppendLine(fallbackSummary);
@@ -141,8 +155,12 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"maxTipTapDepth: {response.MaxTipTapDepth}");
         builder.AppendLine($"maxTipTapNodeCount: {response.MaxTipTapNodeCount}");
         builder.AppendLine($"maxTipTapTextLength: {response.MaxTipTapTextLength}");
-        builder.AppendLine($"supportedImportFormats: {string.Join(", ", response.SupportedImportFormats)}");
-        builder.AppendLine($"supportedHttpUploadMediaTypes: {string.Join(", ", response.SupportedHttpUploadMediaTypes)}");
+        builder.AppendLine(
+            $"supportedImportFormats: {string.Join(", ", response.SupportedImportFormats)}"
+        );
+        builder.AppendLine(
+            $"supportedHttpUploadMediaTypes: {string.Join(", ", response.SupportedHttpUploadMediaTypes)}"
+        );
         return builder.ToString().TrimEnd();
     }
 
@@ -156,7 +174,9 @@ internal static class NotesMcpContentFormatter
         builder.AppendLine($"contentType: {response.ContentType}");
         builder.AppendLine($"fields: {string.Join(", ", response.Fields)}");
         builder.AppendLine($"maxUploadBytes: {response.MaxUploadBytes}");
-        builder.AppendLine($"supportedMediaTypes: {string.Join(", ", response.SupportedMediaTypes)}");
+        builder.AppendLine(
+            $"supportedMediaTypes: {string.Join(", ", response.SupportedMediaTypes)}"
+        );
         builder.AppendLine($"nextStep: {response.NextStep}");
         return builder.ToString().TrimEnd();
     }
@@ -228,7 +248,9 @@ internal static class NotesMcpContentFormatter
 
         foreach (var result in response.Results)
         {
-            builder.AppendLine($"- {result.ResultType}: {result.ItemTitle ?? result.NotebookTitle}");
+            builder.AppendLine(
+                $"- {result.ResultType}: {result.ItemTitle ?? result.NotebookTitle}"
+            );
             builder.AppendLine($"  notebookSlug: {result.NotebookSlug}");
             builder.AppendLine($"  notebookUri: {result.NotebookUri}");
             if (!string.IsNullOrWhiteSpace(result.Path))
@@ -280,7 +302,10 @@ internal static class NotesMcpContentFormatter
         return builder.ToString().TrimEnd();
     }
 
-    private static string FormatUpdatePageContent(UpdatePageContentToolResponse response, string fallbackSummary)
+    private static string FormatUpdatePageContent(
+        UpdatePageContentToolResponse response,
+        string fallbackSummary
+    )
     {
         var builder = new StringBuilder();
         builder.AppendLine(fallbackSummary);
@@ -315,7 +340,9 @@ internal static class NotesMcpContentFormatter
     private static string FormatReorderItems(ReorderItemsToolResponse response)
     {
         var builder = new StringBuilder();
-        builder.AppendLine($"Reordered {response.Items.Count} item(s) in notebook '{response.NotebookSlug}'.");
+        builder.AppendLine(
+            $"Reordered {response.Items.Count} item(s) in notebook '{response.NotebookSlug}'."
+        );
         builder.AppendLine("Items:");
         foreach (var item in response.Items)
         {
@@ -325,12 +352,12 @@ internal static class NotesMcpContentFormatter
         return builder.ToString().TrimEnd();
     }
 
-    private static string FormatDeleteItem(DeleteItemToolResponse response)
-        => $"Deleted item '{response.Path}' from notebook '{response.NotebookSlug}'.";
+    private static string FormatDeleteItem(DeleteItemToolResponse response) =>
+        $"Deleted item '{response.Path}' from notebook '{response.NotebookSlug}'.";
 
-    private static string FormatDeleteNotebook(DeleteNotebookToolResponse response)
-        => $"Deleted notebook '{response.NotebookSlug}'.";
+    private static string FormatDeleteNotebook(DeleteNotebookToolResponse response) =>
+        $"Deleted notebook '{response.NotebookSlug}'.";
 
-    private static string Capitalize(string value)
-        => string.IsNullOrWhiteSpace(value) ? value : char.ToUpperInvariant(value[0]) + value[1..];
+    private static string Capitalize(string value) =>
+        string.IsNullOrWhiteSpace(value) ? value : char.ToUpperInvariant(value[0]) + value[1..];
 }

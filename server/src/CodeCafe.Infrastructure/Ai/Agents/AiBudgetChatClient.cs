@@ -1,6 +1,3 @@
-using CodeCafe.Application.Ai.Drafts;
-using CodeCafe.Application.Ai.Edits;
-using CodeCafe.Application.Notes;
 using Microsoft.Extensions.AI;
 
 namespace CodeCafe.Infrastructure.Ai.Agents;
@@ -15,7 +12,8 @@ internal sealed class AiBudgetChatClient(
     IChatClient innerClient,
     int maxOutputTokens,
     int maxHistoryMessages,
-    int maxHistoryChars) : DelegatingChatClient(innerClient)
+    int maxHistoryChars
+) : DelegatingChatClient(innerClient)
 {
     private readonly int maxOutputTokens = Math.Max(1, maxOutputTokens);
     private readonly int maxHistoryMessages = Math.Max(1, maxHistoryMessages);
@@ -24,23 +22,27 @@ internal sealed class AiBudgetChatClient(
     public override Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         return base.GetResponseAsync(
             TrimHistory(messages),
             ApplyOutputBudget(options),
-            cancellationToken);
+            cancellationToken
+        );
     }
 
     public override IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         return base.GetStreamingResponseAsync(
             TrimHistory(messages),
             ApplyOutputBudget(options),
-            cancellationToken);
+            cancellationToken
+        );
     }
 
     /// <summary>
@@ -94,7 +96,8 @@ internal sealed class AiBudgetChatClient(
         {
             var message = conversation[index];
             var messageChars = message.Text?.Length ?? 0;
-            var wouldExceed = kept.Count >= maxHistoryMessages
+            var wouldExceed =
+                kept.Count >= maxHistoryMessages
                 || (kept.Count > 0 && charCount + messageChars > maxHistoryChars);
             if (wouldExceed)
             {

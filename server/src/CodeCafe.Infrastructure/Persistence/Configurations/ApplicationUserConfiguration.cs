@@ -8,17 +8,12 @@ public sealed class ApplicationUserConfiguration : IEntityTypeConfiguration<Appl
 {
     public void Configure(EntityTypeBuilder<ApplicationUser> entity)
     {
-        entity.Property(user => user.DisplayName)
-            .HasMaxLength(40)
-            .IsRequired();
+        entity.Property(user => user.DisplayName).HasMaxLength(40).IsRequired();
 
-        entity.Property(user => user.CreatedAtUtc)
-            .IsRequired();
+        entity.Property(user => user.CreatedAtUtc).IsRequired();
 
         entity.Property(user => user.UpdatedAtUtc);
 
-        entity.HasIndex(user => user.NormalizedEmail)
-            .HasDatabaseName("EmailIndex")
-            .IsUnique();
+        entity.HasIndex(user => user.NormalizedEmail).HasDatabaseName("EmailIndex").IsUnique();
     }
 }

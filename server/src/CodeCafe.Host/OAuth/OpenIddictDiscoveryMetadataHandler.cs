@@ -3,12 +3,16 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace CodeCafe.Host.Rest.Auth;
 
-public sealed class OpenIddictDiscoveryMetadataHandler : IOpenIddictServerHandler<OpenIddictServerEvents.HandleConfigurationRequestContext>
+public sealed class OpenIddictDiscoveryMetadataHandler
+    : IOpenIddictServerHandler<OpenIddictServerEvents.HandleConfigurationRequestContext>
 {
-    public static OpenIddictServerHandlerDescriptor Descriptor { get; }
-        = OpenIddictServerHandlerDescriptor.CreateBuilder<OpenIddictServerEvents.HandleConfigurationRequestContext>()
+    public static OpenIddictServerHandlerDescriptor Descriptor { get; } =
+        OpenIddictServerHandlerDescriptor
+            .CreateBuilder<OpenIddictServerEvents.HandleConfigurationRequestContext>()
             .UseSingletonHandler<OpenIddictDiscoveryMetadataHandler>()
-            .SetOrder(OpenIddictServerHandlers.Discovery.AttachAdditionalMetadata.Descriptor.Order + 500)
+            .SetOrder(
+                OpenIddictServerHandlers.Discovery.AttachAdditionalMetadata.Descriptor.Order + 500
+            )
             .SetType(OpenIddictServerHandlerType.Custom)
             .Build();
 
@@ -17,7 +21,10 @@ public sealed class OpenIddictDiscoveryMetadataHandler : IOpenIddictServerHandle
         context.TokenEndpointAuthenticationMethods.Add(ClientAuthenticationMethods.None);
         if (context.Issuer is not null)
         {
-            context.Metadata["registration_endpoint"] = new Uri(context.Issuer, "/connect/register").AbsoluteUri;
+            context.Metadata["registration_endpoint"] = new Uri(
+                context.Issuer,
+                "/connect/register"
+            ).AbsoluteUri;
         }
 
         return ValueTask.CompletedTask;

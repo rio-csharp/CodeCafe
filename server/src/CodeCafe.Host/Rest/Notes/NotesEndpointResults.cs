@@ -5,7 +5,8 @@ namespace CodeCafe.Host.Rest.Notes;
 
 public static partial class NotesEndpoints
 {
-    private static int ToStatusCode(NotesFailureKind kind) => NotesFailureStatusCodes.ToStatusCode(kind);
+    private static int ToStatusCode(NotesFailureKind kind) =>
+        NotesFailureStatusCodes.ToStatusCode(kind);
 
     private static IResult ToDetailResult(NotesResult<NotebookDetailModel> result)
     {
@@ -25,7 +26,8 @@ public static partial class NotesEndpoints
         }
 
         return TypedResults.Ok<IReadOnlyList<NotebookItemResponse>>(
-            result.Value!.Select(NotesEndpointMappings.ToItemResponse).ToList());
+            result.Value!.Select(NotesEndpointMappings.ToItemResponse).ToList()
+        );
     }
 
     private static IResult ToItemResult(NotesResult<NotebookItemModel> result)
@@ -60,9 +62,8 @@ public static partial class NotesEndpoints
 
     private static IResult ToProblemResult(NotesError error)
     {
-        return TypedResults.Problem(ApiProblems.Create(
-            error.Code,
-            error.Message,
-            ToStatusCode(error.Kind)));
+        return TypedResults.Problem(
+            ApiProblems.Create(error.Code, error.Message, ToStatusCode(error.Kind))
+        );
     }
 }

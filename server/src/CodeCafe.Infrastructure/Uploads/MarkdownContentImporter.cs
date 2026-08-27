@@ -1,17 +1,18 @@
+using System.Text;
+using System.Text.Json;
 using CodeCafe.Application.Common.Configuration;
 using CodeCafe.Application.Common.Uploads;
 using CodeCafe.Application.Notes;
 using CodeCafe.Infrastructure.Mcp;
 using Microsoft.Extensions.Options;
-using System.Text;
-using System.Text.Json;
 
 namespace CodeCafe.Infrastructure.Uploads;
 
 public sealed class MarkdownContentImporter(
     IUploadStore uploadStore,
     IMcpMarkdownImporter markdownImporter,
-    IOptions<McpOptions> mcpOptionsAccessor) : IContentImporter
+    IOptions<McpOptions> mcpOptionsAccessor
+) : IContentImporter
 {
     public async Task<NotesResult<JsonElement?>> ResolveOptionalPageContentAsync(
         Guid actorId,
@@ -20,10 +21,14 @@ public sealed class MarkdownContentImporter(
         string? contentFormat,
         string errorCode,
         string invalidMessage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var hasInlineContent = inlineContentJson is not null
-            && inlineContentJson.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null;
+        var hasInlineContent =
+            inlineContentJson is not null
+            && inlineContentJson.Value.ValueKind
+                is not JsonValueKind.Undefined
+                    and not JsonValueKind.Null;
         var hasUpload = !string.IsNullOrWhiteSpace(contentUploadId);
 
         if (!hasInlineContent && !hasUpload)
@@ -38,14 +43,19 @@ public sealed class MarkdownContentImporter(
                 errorCode,
                 "Provide either inline contentJson or contentUploadId, but not both.",
                 "contentJson",
-                new Dictionary<string, object?>
-                {
-                    ["conflictingField"] = "contentUploadId"
-                });
+                new Dictionary<string, object?> { ["conflictingField"] = "contentUploadId" }
+            );
         }
 
         var resolved = hasUpload
-            ? await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken)
+            ? await ResolveUploadAsPageContentAsync(
+                actorId,
+                contentUploadId!,
+                contentFormat,
+                errorCode,
+                invalidMessage,
+                cancellationToken
+            )
             : ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage, "contentJson");
 
         if (!resolved.Succeeded)
@@ -55,7 +65,8 @@ public sealed class MarkdownContentImporter(
                 resolved.Error.Code,
                 resolved.Error.Message,
                 resolved.Error.Field,
-                resolved.Error.Details);
+                resolved.Error.Details
+            );
         }
 
         return NotesResult<JsonElement?>.Success(resolved.Value);
@@ -68,10 +79,14 @@ public sealed class MarkdownContentImporter(
         string? contentFormat,
         string errorCode,
         string invalidMessage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var hasInlineContent = inlineContentJson is not null
-            && inlineContentJson.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null;
+        var hasInlineContent =
+            inlineContentJson is not null
+            && inlineContentJson.Value.ValueKind
+                is not JsonValueKind.Undefined
+                    and not JsonValueKind.Null;
         var hasUpload = !string.IsNullOrWhiteSpace(contentUploadId);
 
         if (hasInlineContent && hasUpload)
@@ -81,23 +96,38 @@ public sealed class MarkdownContentImporter(
                 errorCode,
                 "Provide either inline contentJson or contentUploadId, but not both.",
                 "contentJson",
-                new Dictionary<string, object?>
-                {
-                    ["conflictingField"] = "contentUploadId"
-                });
+                new Dictionary<string, object?> { ["conflictingField"] = "contentUploadId" }
+            );
         }
 
         if (hasUpload)
         {
-            return await ResolveUploadAsPageContentAsync(actorId, contentUploadId!, contentFormat, errorCode, invalidMessage, cancellationToken);
+            return await ResolveUploadAsPageContentAsync(
+                actorId,
+                contentUploadId!,
+                contentFormat,
+                errorCode,
+                invalidMessage,
+                cancellationToken
+            );
         }
 
         if (!hasInlineContent)
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, "contentJson");
+            return NotesResult<JsonElement>.Failure(
+                NotesFailureKind.Validation,
+                errorCode,
+                invalidMessage,
+                "contentJson"
+            );
         }
 
-        return ResolveInlineJson(inlineContentJson!.Value, errorCode, invalidMessage, "contentJson");
+        return ResolveInlineJson(
+            inlineContentJson!.Value,
+            errorCode,
+            invalidMessage,
+            "contentJson"
+        );
     }
 
     public async Task<NotesResult<JsonElement>> ResolveRequiredBlocksAsync(
@@ -107,10 +137,14 @@ public sealed class MarkdownContentImporter(
         string? blocksFormat,
         string errorCode,
         string invalidMessage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
-        var hasInlineBlocks = inlineBlocks is not null
-            && inlineBlocks.Value.ValueKind is not JsonValueKind.Undefined and not JsonValueKind.Null;
+        var hasInlineBlocks =
+            inlineBlocks is not null
+            && inlineBlocks.Value.ValueKind
+                is not JsonValueKind.Undefined
+                    and not JsonValueKind.Null;
         var hasUpload = !string.IsNullOrWhiteSpace(blocksUploadId);
 
         if (hasInlineBlocks && hasUpload)
@@ -120,22 +154,32 @@ public sealed class MarkdownContentImporter(
                 errorCode,
                 "Provide either inline blocks or blocksUploadId, but not both.",
                 "blocks",
-                new Dictionary<string, object?>
-                {
-                    ["conflictingField"] = "blocksUploadId"
-                });
+                new Dictionary<string, object?> { ["conflictingField"] = "blocksUploadId" }
+            );
         }
 
         NotesResult<JsonElement> result;
         if (hasUpload)
         {
-            result = await ResolveUploadAsBlocksAsync(actorId, blocksUploadId!, blocksFormat, errorCode, invalidMessage, cancellationToken);
+            result = await ResolveUploadAsBlocksAsync(
+                actorId,
+                blocksUploadId!,
+                blocksFormat,
+                errorCode,
+                invalidMessage,
+                cancellationToken
+            );
         }
         else
         {
             if (!hasInlineBlocks)
             {
-                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, "blocks");
+                return NotesResult<JsonElement>.Failure(
+                    NotesFailureKind.Validation,
+                    errorCode,
+                    invalidMessage,
+                    "blocks"
+                );
             }
 
             result = ResolveInlineJson(inlineBlocks!.Value, errorCode, invalidMessage, "blocks");
@@ -152,7 +196,8 @@ public sealed class MarkdownContentImporter(
                 NotesFailureKind.Validation,
                 errorCode,
                 "Blocks must be a JSON array.",
-                "blocks");
+                "blocks"
+            );
         }
 
         return result;
@@ -172,11 +217,16 @@ public sealed class MarkdownContentImporter(
                 new Dictionary<string, object?>
                 {
                     ["maxPageContentBytes"] = maxBytes,
-                    ["actualPageContentBytes"] = currentBytes
-                });
+                    ["actualPageContentBytes"] = currentBytes,
+                }
+            );
     }
 
-    public async Task DeleteUploadAsync(Guid actorId, string? uploadId, CancellationToken cancellationToken)
+    public async Task DeleteUploadAsync(
+        Guid actorId,
+        string? uploadId,
+        CancellationToken cancellationToken
+    )
     {
         if (string.IsNullOrWhiteSpace(uploadId))
         {
@@ -192,7 +242,8 @@ public sealed class MarkdownContentImporter(
         string? contentFormat,
         string errorCode,
         string invalidMessage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var uploadResult = await uploadStore.GetAsync(actorId, contentUploadId, cancellationToken);
         if (!uploadResult.Succeeded)
@@ -204,8 +255,18 @@ public sealed class MarkdownContentImporter(
         var format = NormalizePageFormat(contentFormat, session.MediaType, session.FileName);
         return format switch
         {
-            "tiptap_json" => ParseJsonText(session.ContentText, errorCode, invalidMessage, allowArray: false, field: "contentUploadId"),
-            "markdown" => ConvertMarkdownDocument(session.ContentText, errorCode, "contentUploadId"),
+            "tiptap_json" => ParseJsonText(
+                session.ContentText,
+                errorCode,
+                invalidMessage,
+                allowArray: false,
+                field: "contentUploadId"
+            ),
+            "markdown" => ConvertMarkdownDocument(
+                session.ContentText,
+                errorCode,
+                "contentUploadId"
+            ),
             _ => NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
                 errorCode,
@@ -214,8 +275,9 @@ public sealed class MarkdownContentImporter(
                 new Dictionary<string, object?>
                 {
                     ["supportedFormats"] = new[] { "tiptap_json", "markdown" },
-                    ["receivedFormat"] = format
-                })
+                    ["receivedFormat"] = format,
+                }
+            ),
         };
     }
 
@@ -225,7 +287,8 @@ public sealed class MarkdownContentImporter(
         string? blocksFormat,
         string errorCode,
         string invalidMessage,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var uploadResult = await uploadStore.GetAsync(actorId, blocksUploadId, cancellationToken);
         if (!uploadResult.Succeeded)
@@ -237,7 +300,14 @@ public sealed class MarkdownContentImporter(
         var format = NormalizeBlocksFormat(blocksFormat, session.MediaType, session.FileName);
         return format switch
         {
-            "tiptap_blocks_json" => ParseJsonText(session.ContentText, errorCode, invalidMessage, allowArray: true, requireArray: true, field: "blocksUploadId"),
+            "tiptap_blocks_json" => ParseJsonText(
+                session.ContentText,
+                errorCode,
+                invalidMessage,
+                allowArray: true,
+                requireArray: true,
+                field: "blocksUploadId"
+            ),
             "markdown" => ConvertMarkdownBlocks(session.ContentText, errorCode, "blocksUploadId"),
             _ => NotesResult<JsonElement>.Failure(
                 NotesFailureKind.Validation,
@@ -247,8 +317,9 @@ public sealed class MarkdownContentImporter(
                 new Dictionary<string, object?>
                 {
                     ["supportedFormats"] = new[] { "tiptap_blocks_json", "markdown" },
-                    ["receivedFormat"] = format
-                })
+                    ["receivedFormat"] = format,
+                }
+            ),
         };
     }
 
@@ -256,20 +327,29 @@ public sealed class MarkdownContentImporter(
         JsonElement json,
         string errorCode,
         string invalidMessage,
-        string field)
+        string field
+    )
     {
         if (json.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null)
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
+            return NotesResult<JsonElement>.Failure(
+                NotesFailureKind.Validation,
+                errorCode,
+                invalidMessage,
+                field
+            );
         }
 
-        var rawText = json.ValueKind == JsonValueKind.String
-            ? json.GetString()
-            : json.GetRawText();
+        var rawText = json.ValueKind == JsonValueKind.String ? json.GetString() : json.GetRawText();
 
         if (string.IsNullOrWhiteSpace(rawText))
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
+            return NotesResult<JsonElement>.Failure(
+                NotesFailureKind.Validation,
+                errorCode,
+                invalidMessage,
+                field
+            );
         }
 
         var maxBytes = mcpOptionsAccessor.Value.MaxInlineContentBytes;
@@ -284,23 +364,36 @@ public sealed class MarkdownContentImporter(
                 new Dictionary<string, object?>
                 {
                     ["maxInlineContentBytes"] = maxBytes,
-                    ["actualInlineContentBytes"] = currentBytes
-                });
+                    ["actualInlineContentBytes"] = currentBytes,
+                }
+            );
         }
 
         if (json.ValueKind == JsonValueKind.String)
         {
-            return ParseJsonText(rawText, errorCode, invalidMessage, allowArray: true, field: field);
+            return ParseJsonText(
+                rawText,
+                errorCode,
+                invalidMessage,
+                allowArray: true,
+                field: field
+            );
         }
 
         return NotesResult<JsonElement>.Success(json);
     }
 
-    private NotesResult<JsonElement> ConvertMarkdownDocument(string markdown, string errorCode, string field)
+    private NotesResult<JsonElement> ConvertMarkdownDocument(
+        string markdown,
+        string errorCode,
+        string field
+    )
     {
         try
         {
-            return NotesResult<JsonElement>.Success(markdownImporter.ConvertMarkdownToDocument(markdown));
+            return NotesResult<JsonElement>.Success(
+                markdownImporter.ConvertMarkdownToDocument(markdown)
+            );
         }
         catch (Exception ex)
         {
@@ -309,18 +402,22 @@ public sealed class MarkdownContentImporter(
                 "markdown_conversion_failed",
                 $"Markdown could not be converted: {ex.Message}",
                 field,
-                new Dictionary<string, object?>
-                {
-                    ["importFormat"] = "markdown"
-                });
+                new Dictionary<string, object?> { ["importFormat"] = "markdown" }
+            );
         }
     }
 
-    private NotesResult<JsonElement> ConvertMarkdownBlocks(string markdown, string errorCode, string field)
+    private NotesResult<JsonElement> ConvertMarkdownBlocks(
+        string markdown,
+        string errorCode,
+        string field
+    )
     {
         try
         {
-            return NotesResult<JsonElement>.Success(markdownImporter.ConvertMarkdownToBlocks(markdown));
+            return NotesResult<JsonElement>.Success(
+                markdownImporter.ConvertMarkdownToBlocks(markdown)
+            );
         }
         catch (Exception ex)
         {
@@ -329,10 +426,8 @@ public sealed class MarkdownContentImporter(
                 "markdown_conversion_failed",
                 $"Markdown could not be converted: {ex.Message}",
                 field,
-                new Dictionary<string, object?>
-                {
-                    ["importFormat"] = "markdown"
-                });
+                new Dictionary<string, object?> { ["importFormat"] = "markdown" }
+            );
         }
     }
 
@@ -342,7 +437,8 @@ public sealed class MarkdownContentImporter(
         string invalidMessage,
         bool allowArray,
         bool requireArray = false,
-        string? field = null)
+        string? field = null
+    )
     {
         try
         {
@@ -350,32 +446,56 @@ public sealed class MarkdownContentImporter(
             var value = document.RootElement.Clone();
             if (!allowArray && value.ValueKind == JsonValueKind.Array)
             {
-                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
+                return NotesResult<JsonElement>.Failure(
+                    NotesFailureKind.Validation,
+                    errorCode,
+                    invalidMessage,
+                    field
+                );
             }
 
             if (requireArray && value.ValueKind != JsonValueKind.Array)
             {
-                return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, "Blocks must be a JSON array.", field);
+                return NotesResult<JsonElement>.Failure(
+                    NotesFailureKind.Validation,
+                    errorCode,
+                    "Blocks must be a JSON array.",
+                    field
+                );
             }
 
             return NotesResult<JsonElement>.Success(value);
         }
         catch (JsonException)
         {
-            return NotesResult<JsonElement>.Failure(NotesFailureKind.Validation, errorCode, invalidMessage, field);
+            return NotesResult<JsonElement>.Failure(
+                NotesFailureKind.Validation,
+                errorCode,
+                invalidMessage,
+                field
+            );
         }
     }
 
-    private static NotesResult<JsonElement> ToNotesResult(UploadError error, string fallbackCode, string field)
+    private static NotesResult<JsonElement> ToNotesResult(
+        UploadError error,
+        string fallbackCode,
+        string field
+    )
     {
         return NotesResult<JsonElement>.Failure(
             NotesFailureKind.Validation,
             string.IsNullOrWhiteSpace(error.Code) ? fallbackCode : error.Code,
             error.Message,
-            field);
+            field
+        );
     }
 
-    private static string NormalizePageFormat(string? requestedFormat, string mediaType, string? fileName)
+    private static string NormalizePageFormat(
+        string? requestedFormat,
+        string mediaType,
+        string? fileName
+    )
     {
         if (!string.IsNullOrWhiteSpace(requestedFormat))
         {
@@ -390,7 +510,11 @@ public sealed class MarkdownContentImporter(
         return "tiptap_json";
     }
 
-    private static string NormalizeBlocksFormat(string? requestedFormat, string mediaType, string? fileName)
+    private static string NormalizeBlocksFormat(
+        string? requestedFormat,
+        string mediaType,
+        string? fileName
+    )
     {
         if (!string.IsNullOrWhiteSpace(requestedFormat))
         {

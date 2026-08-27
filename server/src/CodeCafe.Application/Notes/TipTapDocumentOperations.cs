@@ -7,9 +7,11 @@ namespace CodeCafe.Application.Notes;
 
 public static class TipTapDocumentOperations
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions SerializerOptions = new(
+        JsonSerializerDefaults.Web
+    )
     {
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
     };
 
     public static JsonElement AppendBlocks(JsonElement? existingContentJson, JsonElement blocks)
@@ -35,12 +37,19 @@ public static class TipTapDocumentOperations
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
     }
 
-    public static JsonElement ReplaceBlockAtIndex(JsonElement? existingContentJson, int index, JsonElement block)
+    public static JsonElement ReplaceBlockAtIndex(
+        JsonElement? existingContentJson,
+        int index,
+        JsonElement block
+    )
     {
         var (root, content) = GetDocumentContentArray(existingContentJson);
         if (index < 0 || index >= content.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Block index {index} is out of range. Document has {content.Count} block(s)."
+            );
         }
 
         try
@@ -55,7 +64,11 @@ public static class TipTapDocumentOperations
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
     }
 
-    public static JsonElement InsertBlocksAtIndex(JsonElement? existingContentJson, int index, JsonElement blocks)
+    public static JsonElement InsertBlocksAtIndex(
+        JsonElement? existingContentJson,
+        int index,
+        JsonElement blocks
+    )
     {
         if (blocks.ValueKind != JsonValueKind.Array)
         {
@@ -65,7 +78,10 @@ public static class TipTapDocumentOperations
         var (root, content) = GetDocumentContentArray(existingContentJson);
         if (index < 0 || index > content.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Block index {index} is out of range. Document has {content.Count} block(s)."
+            );
         }
 
         var nodes = new List<JsonNode?>();
@@ -94,14 +110,22 @@ public static class TipTapDocumentOperations
         var (root, content) = GetDocumentContentArray(existingContentJson);
         if (index < 0 || index >= content.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Block index {index} is out of range. Document has {content.Count} block(s)."
+            );
         }
 
         content.RemoveAt(index);
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
     }
 
-    public static JsonElement ReplaceTextInDocument(JsonElement? existingContentJson, string searchText, string replacementText, bool replaceAll)
+    public static JsonElement ReplaceTextInDocument(
+        JsonElement? existingContentJson,
+        string searchText,
+        string replacementText,
+        bool replaceAll
+    )
     {
         if (string.IsNullOrEmpty(searchText))
         {
@@ -114,13 +138,19 @@ public static class TipTapDocumentOperations
         var replaced = ReplaceTextInNode(root, searchText, replacementText, replaceAll);
         if (!replaced)
         {
-            throw new ArgumentException($"Text '{searchText}' was not found in the document.", nameof(searchText));
+            throw new ArgumentException(
+                $"Text '{searchText}' was not found in the document.",
+                nameof(searchText)
+            );
         }
 
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
     }
 
-    public static JsonElement ApplyOperations(JsonElement? existingContentJson, JsonElement operations)
+    public static JsonElement ApplyOperations(
+        JsonElement? existingContentJson,
+        JsonElement operations
+    )
     {
         if (operations.ValueKind != JsonValueKind.Array)
         {
@@ -142,12 +172,11 @@ public static class TipTapDocumentOperations
         return content.Count;
     }
 
-    public static JsonElement CreateEmptyDocument()
-        => JsonSerializer.SerializeToElement(new
-        {
-            type = "doc",
-            content = Array.Empty<object>()
-        }, SerializerOptions);
+    public static JsonElement CreateEmptyDocument() =>
+        JsonSerializer.SerializeToElement(
+            new { type = "doc", content = Array.Empty<object>() },
+            SerializerOptions
+        );
 
     private static void ApplyOperationToRoot(JsonObject root, JsonElement operation)
     {
@@ -156,29 +185,39 @@ public static class TipTapDocumentOperations
             throw new ArgumentException("Each operation must be a JSON object.", nameof(operation));
         }
 
-        if (!operation.TryGetProperty("type", out var typeProperty)
-            || typeProperty.ValueKind != JsonValueKind.String)
+        if (
+            !operation.TryGetProperty("type", out var typeProperty)
+            || typeProperty.ValueKind != JsonValueKind.String
+        )
         {
-            throw new ArgumentException("Each operation must include a string type.", nameof(operation));
+            throw new ArgumentException(
+                "Each operation must include a string type.",
+                nameof(operation)
+            );
         }
 
         var type = typeProperty.GetString()?.Trim().ToLowerInvariant();
         switch (type)
         {
             case "append_blocks":
-                AppendBlocksToRoot(root, RequiredProperty(operation, "blocks", JsonValueKind.Array));
+                AppendBlocksToRoot(
+                    root,
+                    RequiredProperty(operation, "blocks", JsonValueKind.Array)
+                );
                 break;
             case "replace_block_at_index":
                 ReplaceBlockInRoot(
                     root,
                     RequiredInt(operation, "index"),
-                    RequiredProperty(operation, "block", JsonValueKind.Object));
+                    RequiredProperty(operation, "block", JsonValueKind.Object)
+                );
                 break;
             case "insert_blocks_at_index":
                 InsertBlocksInRoot(
                     root,
                     RequiredInt(operation, "index"),
-                    RequiredProperty(operation, "blocks", JsonValueKind.Array));
+                    RequiredProperty(operation, "blocks", JsonValueKind.Array)
+                );
                 break;
             case "delete_block_at_index":
                 DeleteBlockInRoot(root, RequiredInt(operation, "index"));
@@ -188,7 +227,8 @@ public static class TipTapDocumentOperations
                     root,
                     RequiredString(operation, "searchText"),
                     RequiredString(operation, "replacementText"),
-                    OptionalBoolean(operation, "replaceAll"));
+                    OptionalBoolean(operation, "replaceAll")
+                );
                 break;
             case "replace_text_in_block":
                 ReplaceTextInBlockInRoot(
@@ -196,10 +236,14 @@ public static class TipTapDocumentOperations
                     RequiredInt(operation, "index"),
                     RequiredString(operation, "searchText"),
                     RequiredString(operation, "replacementText"),
-                    OptionalBoolean(operation, "replaceAll"));
+                    OptionalBoolean(operation, "replaceAll")
+                );
                 break;
             default:
-                throw new ArgumentException($"Unsupported operation type '{type}'.", nameof(operation));
+                throw new ArgumentException(
+                    $"Unsupported operation type '{type}'.",
+                    nameof(operation)
+                );
         }
     }
 
@@ -245,7 +289,10 @@ public static class TipTapDocumentOperations
         var content = GetContentArray(root);
         if (index < 0 || index >= content.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Block index {index} is out of range. Document has {content.Count} block(s)."
+            );
         }
 
         try
@@ -263,7 +310,10 @@ public static class TipTapDocumentOperations
         var content = GetContentArray(root);
         if (index < 0 || index > content.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Block index {index} is out of range. Document has {content.Count} block(s)."
+            );
         }
 
         var nodes = ParseBlocks(blocks);
@@ -278,13 +328,21 @@ public static class TipTapDocumentOperations
         var content = GetContentArray(root);
         if (index < 0 || index >= content.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Block index {index} is out of range. Document has {content.Count} block(s)."
+            );
         }
 
         content.RemoveAt(index);
     }
 
-    private static void ReplaceTextInDocumentInRoot(JsonObject root, string searchText, string replacementText, bool replaceAll)
+    private static void ReplaceTextInDocumentInRoot(
+        JsonObject root,
+        string searchText,
+        string replacementText,
+        bool replaceAll
+    )
     {
         if (string.IsNullOrEmpty(searchText))
         {
@@ -294,11 +352,20 @@ public static class TipTapDocumentOperations
         replacementText ??= string.Empty;
         if (!ReplaceTextInNode(root, searchText, replacementText, replaceAll))
         {
-            throw new ArgumentException($"Text '{searchText}' was not found in the document.", nameof(searchText));
+            throw new ArgumentException(
+                $"Text '{searchText}' was not found in the document.",
+                nameof(searchText)
+            );
         }
     }
 
-    private static void ReplaceTextInBlockInRoot(JsonObject root, int index, string searchText, string replacementText, bool replaceAll)
+    private static void ReplaceTextInBlockInRoot(
+        JsonObject root,
+        int index,
+        string searchText,
+        string replacementText,
+        bool replaceAll
+    )
     {
         if (string.IsNullOrEmpty(searchText))
         {
@@ -309,16 +376,28 @@ public static class TipTapDocumentOperations
         var content = GetContentArray(root);
         if (index < 0 || index >= content.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Block index {index} is out of range. Document has {content.Count} block(s)."
+            );
         }
 
         if (!ReplaceTextInNode(content[index], searchText, replacementText, replaceAll))
         {
-            throw new ArgumentException($"Text '{searchText}' was not found in block {index}.", nameof(searchText));
+            throw new ArgumentException(
+                $"Text '{searchText}' was not found in block {index}.",
+                nameof(searchText)
+            );
         }
     }
 
-    public static JsonElement ReplaceTextInBlock(JsonElement? existingContentJson, int index, string searchText, string replacementText, bool replaceAll)
+    public static JsonElement ReplaceTextInBlock(
+        JsonElement? existingContentJson,
+        int index,
+        string searchText,
+        string replacementText,
+        bool replaceAll
+    )
     {
         if (string.IsNullOrEmpty(searchText))
         {
@@ -330,32 +409,34 @@ public static class TipTapDocumentOperations
         var (root, content) = GetDocumentContentArray(existingContentJson);
         if (index < 0 || index >= content.Count)
         {
-            throw new ArgumentOutOfRangeException(nameof(index), $"Block index {index} is out of range. Document has {content.Count} block(s).");
+            throw new ArgumentOutOfRangeException(
+                nameof(index),
+                $"Block index {index} is out of range. Document has {content.Count} block(s)."
+            );
         }
 
         var block = content[index];
         if (!ReplaceTextInNode(block, searchText, replacementText, replaceAll))
         {
-            throw new ArgumentException($"Text '{searchText}' was not found in block {index}.", nameof(searchText));
+            throw new ArgumentException(
+                $"Text '{searchText}' was not found in block {index}.",
+                nameof(searchText)
+            );
         }
 
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
     }
 
-    private static (JsonObject Root, JsonArray Content) GetDocumentContentArray(JsonElement? existingContentJson)
+    private static (JsonObject Root, JsonArray Content) GetDocumentContentArray(
+        JsonElement? existingContentJson
+    )
     {
-        var root = existingContentJson is null || existingContentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
-            ? new JsonObject
-            {
-                ["type"] = "doc",
-                ["content"] = new JsonArray()
-            }
-            : JsonNode.Parse(existingContentJson.Value.GetRawText())?.AsObject()
-              ?? new JsonObject
-              {
-                  ["type"] = "doc",
-                  ["content"] = new JsonArray()
-              };
+        var root =
+            existingContentJson is null
+            || existingContentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+                ? new JsonObject { ["type"] = "doc", ["content"] = new JsonArray() }
+                : JsonNode.Parse(existingContentJson.Value.GetRawText())?.AsObject()
+                    ?? new JsonObject { ["type"] = "doc", ["content"] = new JsonArray() };
 
         root["type"] ??= "doc";
         if (root["content"] is null)
@@ -365,18 +446,30 @@ public static class TipTapDocumentOperations
 
         if (root["content"] is not JsonArray content)
         {
-            throw new ArgumentException("Document 'content' must be a JSON array.", nameof(existingContentJson));
+            throw new ArgumentException(
+                "Document 'content' must be a JSON array.",
+                nameof(existingContentJson)
+            );
         }
 
         return (root, content);
     }
 
-    private static JsonElement RequiredProperty(JsonElement operation, string propertyName, JsonValueKind expectedKind)
+    private static JsonElement RequiredProperty(
+        JsonElement operation,
+        string propertyName,
+        JsonValueKind expectedKind
+    )
     {
-        if (!operation.TryGetProperty(propertyName, out var property)
-            || property.ValueKind != expectedKind)
+        if (
+            !operation.TryGetProperty(propertyName, out var property)
+            || property.ValueKind != expectedKind
+        )
         {
-            throw new ArgumentException($"Operation property '{propertyName}' must be a {expectedKind}.", propertyName);
+            throw new ArgumentException(
+                $"Operation property '{propertyName}' must be a {expectedKind}.",
+                propertyName
+            );
         }
 
         return property;
@@ -384,11 +477,16 @@ public static class TipTapDocumentOperations
 
     private static int RequiredInt(JsonElement operation, string propertyName)
     {
-        if (!operation.TryGetProperty(propertyName, out var property)
+        if (
+            !operation.TryGetProperty(propertyName, out var property)
             || property.ValueKind != JsonValueKind.Number
-            || !property.TryGetInt32(out var value))
+            || !property.TryGetInt32(out var value)
+        )
         {
-            throw new ArgumentException($"Operation property '{propertyName}' must be an integer.", propertyName);
+            throw new ArgumentException(
+                $"Operation property '{propertyName}' must be an integer.",
+                propertyName
+            );
         }
 
         return value;
@@ -396,10 +494,15 @@ public static class TipTapDocumentOperations
 
     private static string RequiredString(JsonElement operation, string propertyName)
     {
-        if (!operation.TryGetProperty(propertyName, out var property)
-            || property.ValueKind != JsonValueKind.String)
+        if (
+            !operation.TryGetProperty(propertyName, out var property)
+            || property.ValueKind != JsonValueKind.String
+        )
         {
-            throw new ArgumentException($"Operation property '{propertyName}' must be a string.", propertyName);
+            throw new ArgumentException(
+                $"Operation property '{propertyName}' must be a string.",
+                propertyName
+            );
         }
 
         return property.GetString() ?? string.Empty;
@@ -413,21 +516,35 @@ public static class TipTapDocumentOperations
         }
 
         return property.ValueKind == JsonValueKind.True
-            || (property.ValueKind == JsonValueKind.False ? false : throw new ArgumentException($"Operation property '{propertyName}' must be a boolean.", propertyName));
+            || (
+                property.ValueKind == JsonValueKind.False
+                    ? false
+                    : throw new ArgumentException(
+                        $"Operation property '{propertyName}' must be a boolean.",
+                        propertyName
+                    )
+            );
     }
 
-    private static bool ReplaceTextInNode(JsonNode? node, string searchText, string replacementText, bool replaceAll)
+    private static bool ReplaceTextInNode(
+        JsonNode? node,
+        string searchText,
+        string replacementText,
+        bool replaceAll
+    )
     {
         var replaced = false;
         if (node is JsonObject obj)
         {
-            if (obj.TryGetPropertyValue("type", out var typeNode)
+            if (
+                obj.TryGetPropertyValue("type", out var typeNode)
                 && typeNode is JsonValue typeValue
                 && typeValue.TryGetValue<string>(out var type)
                 && string.Equals(type, "text", StringComparison.Ordinal)
                 && obj.TryGetPropertyValue("text", out var textNode)
                 && textNode is JsonValue textValue
-                && textValue.TryGetValue<string>(out var text))
+                && textValue.TryGetValue<string>(out var text)
+            )
             {
                 var newText = replaceAll
                     ? text.Replace(searchText, replacementText, StringComparison.Ordinal)
@@ -445,7 +562,10 @@ public static class TipTapDocumentOperations
 
             foreach (var property in obj.ToList())
             {
-                if (property.Value is not null && ReplaceTextInNode(property.Value, searchText, replacementText, replaceAll))
+                if (
+                    property.Value is not null
+                    && ReplaceTextInNode(property.Value, searchText, replacementText, replaceAll)
+                )
                 {
                     replaced = true;
                     if (!replaceAll)
@@ -478,6 +598,10 @@ public static class TipTapDocumentOperations
         var index = text.IndexOf(searchText, StringComparison.Ordinal);
         return index < 0
             ? text
-            : string.Concat(text.AsSpan(0, index), replacementText, text.AsSpan(index + searchText.Length));
+            : string.Concat(
+                text.AsSpan(0, index),
+                replacementText,
+                text.AsSpan(index + searchText.Length)
+            );
     }
 }

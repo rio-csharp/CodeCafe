@@ -12,27 +12,19 @@ public sealed class AiEditProposalConfiguration : IEntityTypeConfiguration<AiEdi
 
         entity.HasKey(proposal => proposal.Id);
 
-        entity.Property(proposal => proposal.Id)
-            .ValueGeneratedNever();
+        entity.Property(proposal => proposal.Id).ValueGeneratedNever();
 
-        entity.Property(proposal => proposal.ActorUserId)
-            .IsRequired();
+        entity.Property(proposal => proposal.ActorUserId).IsRequired();
 
-        entity.Property(proposal => proposal.NotebookId)
-            .IsRequired();
+        entity.Property(proposal => proposal.NotebookId).IsRequired();
 
-        entity.Property(proposal => proposal.NotebookSlug)
-            .HasMaxLength(180)
-            .IsRequired();
+        entity.Property(proposal => proposal.NotebookSlug).HasMaxLength(180).IsRequired();
 
-        entity.Property(proposal => proposal.PayloadJson)
-            .IsRequired();
+        entity.Property(proposal => proposal.PayloadJson).IsRequired();
 
-        entity.Property(proposal => proposal.ExpiresAtUtc)
-            .IsRequired();
+        entity.Property(proposal => proposal.ExpiresAtUtc).IsRequired();
 
-        entity.Property(proposal => proposal.CreatedAtUtc)
-            .IsRequired();
+        entity.Property(proposal => proposal.CreatedAtUtc).IsRequired();
 
         entity.Property(proposal => proposal.UpdatedAtUtc);
 

@@ -19,7 +19,10 @@ public sealed class AiFailureKindMappingTests
     [InlineData(NotesFailureKind.Forbidden, AiFailureKind.Forbidden)]
     [InlineData(NotesFailureKind.NotFound, AiFailureKind.NotFound)]
     [InlineData(NotesFailureKind.Conflict, AiFailureKind.Conflict)]
-    public void NotesFailures_WidenToTheMatchingAiKind(NotesFailureKind notesKind, AiFailureKind expected)
+    public void NotesFailures_WidenToTheMatchingAiKind(
+        NotesFailureKind notesKind,
+        AiFailureKind expected
+    )
     {
         // Without this, the same underlying failure could surface as a 409 through the Notes endpoints
         // and a 400 through the AI endpoints.
@@ -50,15 +53,17 @@ public sealed class AiFailureKindMappingTests
 
         Assert.True(
             statusCodeMembers.Count == 0,
-            "AiFlowError must stay transport-neutral, but exposes: " + string.Join(", ", statusCodeMembers));
+            "AiFlowError must stay transport-neutral, but exposes: "
+                + string.Join(", ", statusCodeMembers)
+        );
     }
 
     [Fact]
     public void ApplicationAssembly_DoesNotReferenceAspNetCore()
     {
         // The structural version of the same rule: use cases must be compilable without a web stack.
-        var references = typeof(AiFlowError).Assembly
-            .GetReferencedAssemblies()
+        var references = typeof(AiFlowError)
+            .Assembly.GetReferencedAssemblies()
             .Select(reference => reference.Name)
             .OfType<string>()
             .Where(name => name.StartsWith("Microsoft.AspNetCore", StringComparison.Ordinal))
@@ -67,7 +72,8 @@ public sealed class AiFailureKindMappingTests
         Assert.True(
             references.Count == 0,
             "CodeCafe.Application must not reference AspNetCore, but references: "
-            + string.Join(", ", references));
+                + string.Join(", ", references)
+        );
     }
 
     [Fact]
@@ -84,7 +90,7 @@ public sealed class AiFailureKindMappingTests
             StatusCodes.Status422UnprocessableEntity,
             StatusCodes.Status429TooManyRequests,
             StatusCodes.Status502BadGateway,
-            StatusCodes.Status504GatewayTimeout
+            StatusCodes.Status504GatewayTimeout,
         };
 
         Assert.Equal(expected.Length, Enum.GetValues<AiFailureKind>().Length);

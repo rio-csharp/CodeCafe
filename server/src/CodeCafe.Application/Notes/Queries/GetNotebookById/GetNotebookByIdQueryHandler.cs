@@ -2,13 +2,13 @@ using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Notes.Queries.GetNotebookById;
 
-public sealed class GetNotebookByIdQueryHandler(
-    INotebookReadService notebookReadService)
+public sealed class GetNotebookByIdQueryHandler(INotebookReadService notebookReadService)
     : IQueryHandler<GetNotebookByIdQuery, NotesResult<NotebookDetailModel>>
 {
     public async Task<NotesResult<NotebookDetailModel>> Handle(
         GetNotebookByIdQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         return await notebookReadService.GetNotebookByIdAsync(
             request.NotebookId,
@@ -16,6 +16,7 @@ public sealed class GetNotebookByIdQueryHandler(
             cancellationToken,
             request.IncludeArchived,
             request.IncludeItems,
-            request.IncludeContent);
+            request.IncludeContent
+        );
     }
 }

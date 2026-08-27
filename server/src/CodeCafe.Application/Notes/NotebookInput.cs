@@ -1,5 +1,5 @@
-using CodeCafe.Domain.Notes;
 using System.Text.Json;
+using CodeCafe.Domain.Notes;
 
 namespace CodeCafe.Application.Notes;
 
@@ -30,14 +30,12 @@ public static class NotebookInput
             return true;
         }
 
-        return Enum.TryParse(value, ignoreCase: true, out visibility)
-            && Enum.IsDefined(visibility);
+        return Enum.TryParse(value, ignoreCase: true, out visibility) && Enum.IsDefined(visibility);
     }
 
     public static bool TryParseItemType(string value, out NotebookItemType type)
     {
-        return Enum.TryParse(value, ignoreCase: true, out type)
-            && Enum.IsDefined(type);
+        return Enum.TryParse(value, ignoreCase: true, out type) && Enum.IsDefined(type);
     }
 
     public static bool IsOptionalGuid(JsonElement value)

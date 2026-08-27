@@ -1,7 +1,7 @@
+using CodeCafe.Application.Common.Identity;
 using CodeCafe.Application.Notes.Commands.AddNotebookFavorite;
 using CodeCafe.Application.Notes.Commands.RemoveNotebookFavorite;
 using CodeCafe.Application.Notes.Queries.GetNotebookFavoriteStatus;
-using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,23 +11,25 @@ public static partial class NotesEndpoints
 {
     private static void MapFavoriteEndpoints(RouteGroupBuilder group)
     {
-        group.MapGet("/{notebookId:guid}/favorite", GetFavoriteStatusAsync)
-            .RequireAuthorization();
-        group.MapPost("/{notebookId:guid}/favorite", AddFavoriteAsync)
-            .RequireAuthorization();
-        group.MapDelete("/{notebookId:guid}/favorite", RemoveFavoriteAsync)
-            .RequireAuthorization();
+        group.MapGet("/{notebookId:guid}/favorite", GetFavoriteStatusAsync).RequireAuthorization();
+        group.MapPost("/{notebookId:guid}/favorite", AddFavoriteAsync).RequireAuthorization();
+        group.MapDelete("/{notebookId:guid}/favorite", RemoveFavoriteAsync).RequireAuthorization();
     }
 
     private static async Task<IResult> GetFavoriteStatusAsync(
         [FromServices] ISender sender,
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
-            new GetNotebookFavoriteStatusQuery(notebookId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
-            cancellationToken);
+            new GetNotebookFavoriteStatusQuery(
+                notebookId,
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty
+            ),
+            cancellationToken
+        );
 
         return ToFavoriteResult(result);
     }
@@ -36,11 +38,16 @@ public static partial class NotesEndpoints
         [FromServices] ISender sender,
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
-            new AddNotebookFavoriteCommand(notebookId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
-            cancellationToken);
+            new AddNotebookFavoriteCommand(
+                notebookId,
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty
+            ),
+            cancellationToken
+        );
 
         return ToFavoriteResult(result);
     }
@@ -49,11 +56,16 @@ public static partial class NotesEndpoints
         [FromServices] ISender sender,
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
-            new RemoveNotebookFavoriteCommand(notebookId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
-            cancellationToken);
+            new RemoveNotebookFavoriteCommand(
+                notebookId,
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty
+            ),
+            cancellationToken
+        );
 
         return ToFavoriteResult(result);
     }

@@ -9,7 +9,5 @@ namespace CodeCafe.Application.Common.Identity;
 public sealed class CurrentUserNotAuthenticatedException : Exception
 {
     public CurrentUserNotAuthenticatedException()
-        : base("The current request has no authenticated user.")
-    {
-    }
+        : base("The current request has no authenticated user.") { }
 }

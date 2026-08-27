@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Mvc.Testing;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CodeCafe.Api.Tests;
 
@@ -49,7 +49,9 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.False(string.IsNullOrWhiteSpace(document.RootElement.GetProperty("token").GetString()));
+        Assert.False(
+            string.IsNullOrWhiteSpace(document.RootElement.GetProperty("token").GetString())
+        );
     }
 
     [Fact]
@@ -57,16 +59,24 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = CreateCookieClient();
 
-        using var response = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/auth/register", new
-        {
-            email = "new.user@example.com",
-            password = "Password123!",
-            displayName = "New User"
-        });
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/auth/register",
+            new
+            {
+                email = "new.user@example.com",
+                password = "Password123!",
+                displayName = "New User",
+            }
+        );
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("new.user@example.com", document.RootElement.GetProperty("user").GetProperty("email").GetString());
+        Assert.Equal(
+            "new.user@example.com",
+            document.RootElement.GetProperty("user").GetProperty("email").GetString()
+        );
     }
 
     [Fact]
@@ -74,15 +84,19 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = CreateCookieClient();
 
-        using var response = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/auth/login", new
-        {
-            email = "yao@example.com",
-            password = "Password123!"
-        });
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/auth/login",
+            new { email = "yao@example.com", password = "Password123!" }
+        );
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("yao@example.com", document.RootElement.GetProperty("user").GetProperty("email").GetString());
+        Assert.Equal(
+            "yao@example.com",
+            document.RootElement.GetProperty("user").GetProperty("email").GetString()
+        );
     }
 
     [Fact]
@@ -99,13 +113,19 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     public async Task Me_WhenAuthenticated_ReturnsCurrentUser()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
         using var response = await client.GetAsync("/api/auth/me");
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("yao@example.com", document.RootElement.GetProperty("user").GetProperty("email").GetString());
+        Assert.Equal(
+            "yao@example.com",
+            document.RootElement.GetProperty("user").GetProperty("email").GetString()
+        );
     }
 
     [Fact]
@@ -113,7 +133,12 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = CreateCookieClient();
 
-        using var response = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/auth/logout", new { });
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/auth/logout",
+            new { }
+        );
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -122,12 +147,15 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     public async Task CreateNotebook_WithoutCsrfToken_ReturnsProblemDetails()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
-        using var response = await client.PostAsJsonAsync("/api/notes", new
-        {
-            title = "Missing CSRF Notebook"
-        });
+        using var response = await client.PostAsJsonAsync(
+            "/api/notes",
+            new { title = "Missing CSRF Notebook" }
+        );
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -140,17 +168,25 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = CreateCookieClient();
 
-        using var response = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/auth/register", new
-        {
-            email = "existing.user@example.com",
-            password = "Password123!",
-            displayName = "Existing User"
-        });
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/auth/register",
+            new
+            {
+                email = "existing.user@example.com",
+                password = "Password123!",
+                displayName = "Existing User",
+            }
+        );
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Equal("email_already_registered", document.RootElement.GetProperty("code").GetString());
+        Assert.Equal(
+            "email_already_registered",
+            document.RootElement.GetProperty("code").GetString()
+        );
     }
 
     [Fact]
@@ -172,7 +208,9 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync("/api/notes/public/architecture-notes?includeItems=true");
+        using var response = await client.GetAsync(
+            "/api/notes/public/architecture-notes?includeItems=true"
+        );
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -200,7 +238,9 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync("/api/notes/public/architecture-notes?includeItems=false");
+        using var response = await client.GetAsync(
+            "/api/notes/public/architecture-notes?includeItems=false"
+        );
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -223,7 +263,10 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     public async Task MyNotes_WhenAuthenticated_ReturnsOwnedSummaries()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
         using var response = await client.GetAsync("/api/notes/mine");
 
@@ -238,9 +281,14 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     public async Task NotebookByGuid_WhenAuthenticated_ReturnsDetail()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
-        using var response = await client.GetAsync("/api/notes/11111111-1111-1111-1111-111111111111");
+        using var response = await client.GetAsync(
+            "/api/notes/11111111-1111-1111-1111-111111111111"
+        );
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -279,7 +327,9 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = _factory.CreateClient();
 
-        using var response = await client.GetAsync("/api/notes/public/architecture-notes/items/overview");
+        using var response = await client.GetAsync(
+            "/api/notes/public/architecture-notes/items/overview"
+        );
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -291,11 +341,12 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     {
         using var client = CreateCookieClient();
 
-        using var response = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/notes", new
-        {
-            title = "New Notebook",
-            visibility = "public"
-        });
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/notes",
+            new { title = "New Notebook", visibility = "public" }
+        );
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -304,29 +355,45 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     public async Task CreateNotebook_WhenAuthenticated_ReturnsCreatedNotebook()
     {
         using var client = CreateCookieClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
-        using var response = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/notes", new
-        {
-            title = "New Notebook",
-            description = "Created from endpoint test",
-            visibility = "public"
-        });
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/notes",
+            new
+            {
+                title = "New Notebook",
+                description = "Created from endpoint test",
+                visibility = "public",
+            }
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.Equal("New Notebook", document.RootElement.GetProperty("title").GetString());
         Assert.Equal("public", document.RootElement.GetProperty("visibility").GetString());
-        Assert.Equal("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", document.RootElement.GetProperty("ownerId").GetGuid().ToString());
+        Assert.Equal(
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            document.RootElement.GetProperty("ownerId").GetGuid().ToString()
+        );
     }
 
     [Fact]
     public async Task FavoriteStatus_WhenAuthenticated_ReturnsFavoritePayload()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
-        using var response = await client.GetAsync("/api/notes/11111111-1111-1111-1111-111111111111/favorite");
+        using var response = await client.GetAsync(
+            "/api/notes/11111111-1111-1111-1111-111111111111/favorite"
+        );
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -338,9 +405,14 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     public async Task NotebookItems_WhenAuthenticated_ReturnsItemList()
     {
         using var client = _factory.CreateClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
-        using var response = await client.GetAsync("/api/notes/11111111-1111-1111-1111-111111111111/items");
+        using var response = await client.GetAsync(
+            "/api/notes/11111111-1111-1111-1111-111111111111/items"
+        );
 
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -352,18 +424,23 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     public async Task CreateNotebookItem_WhenAuthenticated_ReturnsCreatedItem()
     {
         using var client = CreateCookieClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
-        using var response = await SendWithCsrfAsync(client, HttpMethod.Post, "/api/notes/11111111-1111-1111-1111-111111111111/items", new
-        {
-            type = "page",
-            title = "New Item",
-            sortOrder = 2,
-            contentJson = new
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Post,
+            "/api/notes/11111111-1111-1111-1111-111111111111/items",
+            new
             {
-                type = "doc"
+                type = "page",
+                title = "New Item",
+                sortOrder = 2,
+                contentJson = new { type = "doc" },
             }
-        });
+        );
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -374,9 +451,17 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
     public async Task DeleteNotebook_WhenAuthenticated_ReturnsNoContent()
     {
         using var client = CreateCookieClient();
-        client.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        client.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
 
-        using var response = await SendWithCsrfAsync(client, HttpMethod.Delete, "/api/notes/11111111-1111-1111-1111-111111111111", new { });
+        using var response = await SendWithCsrfAsync(
+            client,
+            HttpMethod.Delete,
+            "/api/notes/11111111-1111-1111-1111-111111111111",
+            new { }
+        );
 
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
@@ -387,12 +472,16 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
         // The mutation-store double used to be a singleton, so this delete removed the seeded
         // notebook for every test that ran after it and the suite depended on declaration order.
         using var deleteClient = CreateCookieClient();
-        deleteClient.DefaultRequestHeaders.Add(TestAuthHandler.UserIdHeader, "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        deleteClient.DefaultRequestHeaders.Add(
+            TestAuthHandler.UserIdHeader,
+            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+        );
         using var deleteResponse = await SendWithCsrfAsync(
             deleteClient,
             HttpMethod.Delete,
             "/api/notes/11111111-1111-1111-1111-111111111111",
-            new { });
+            new { }
+        );
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
 
         using var readClient = _factory.CreateClient();
@@ -403,22 +492,22 @@ public sealed class ApiEndpointTests : IClassFixture<ApiTestFactory>
 
     private HttpClient CreateCookieClient()
     {
-        return _factory.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            HandleCookies = true
-        });
+        return _factory.CreateClient(
+            new WebApplicationFactoryClientOptions { HandleCookies = true }
+        );
     }
 
     private static async Task<HttpResponseMessage> SendWithCsrfAsync(
         HttpClient client,
         HttpMethod method,
         string requestUri,
-        object body)
+        object body
+    )
     {
         var csrf = await GetCsrfTokenAsync(client);
         var request = new HttpRequestMessage(method, requestUri)
         {
-            Content = JsonContent.Create(body)
+            Content = JsonContent.Create(body),
         };
         request.Headers.Add("X-CSRF-TOKEN", csrf);
         return await client.SendAsync(request);

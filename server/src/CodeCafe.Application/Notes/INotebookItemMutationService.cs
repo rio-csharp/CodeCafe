@@ -12,7 +12,8 @@ public interface INotebookItemMutationService
         string title,
         int sortOrder,
         JsonElement? contentJson,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     Task<NotesResult<NotebookItemModel>> UpdateNotebookItemAsync(
         Guid notebookId,
@@ -23,17 +24,34 @@ public interface INotebookItemMutationService
         int? sortOrder,
         JsonElement contentJson,
         CancellationToken cancellationToken,
-        DateTimeOffset? expectedUpdatedAtUtc = null);
+        DateTimeOffset? expectedUpdatedAtUtc = null
+    );
 
     Task<NotesResult<IReadOnlyList<NotebookItemModel>>> ReorderNotebookItemsAsync(
         Guid notebookId,
         Guid currentUserId,
         IReadOnlyList<ReorderNotebookItemModel> items,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
-    Task<NotesResult> DeleteNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken);
+    Task<NotesResult> DeleteNotebookItemAsync(
+        Guid notebookId,
+        Guid itemId,
+        Guid currentUserId,
+        CancellationToken cancellationToken
+    );
 
-    Task<NotesResult<NotebookItemModel>> ArchiveNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken);
+    Task<NotesResult<NotebookItemModel>> ArchiveNotebookItemAsync(
+        Guid notebookId,
+        Guid itemId,
+        Guid currentUserId,
+        CancellationToken cancellationToken
+    );
 
-    Task<NotesResult<NotebookItemModel>> RestoreNotebookItemAsync(Guid notebookId, Guid itemId, Guid currentUserId, CancellationToken cancellationToken);
+    Task<NotesResult<NotebookItemModel>> RestoreNotebookItemAsync(
+        Guid notebookId,
+        Guid itemId,
+        Guid currentUserId,
+        CancellationToken cancellationToken
+    );
 }

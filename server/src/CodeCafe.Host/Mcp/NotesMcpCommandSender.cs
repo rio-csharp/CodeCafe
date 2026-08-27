@@ -1,6 +1,5 @@
-using CodeCafe.Application.Common.Uploads;
-using CodeCafe.Application.Notes;
 using CodeCafe.Application.Common.Messaging;
+using CodeCafe.Application.Notes;
 using FluentValidation;
 using MediatR;
 
@@ -11,7 +10,8 @@ internal static class NotesMcpCommandSender
     public static async Task<NotesResult<T>> SendAsync<T>(
         ISender sender,
         ICommand<NotesResult<T>> command,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -22,14 +22,16 @@ internal static class NotesMcpCommandSender
             return NotesResult<T>.Failure(
                 NotesFailureKind.Validation,
                 "validation_error",
-                BuildMessage(exception));
+                BuildMessage(exception)
+            );
         }
     }
 
     public static async Task<NotesResult> SendAsync(
         ISender sender,
         ICommand<NotesResult> command,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
@@ -40,10 +42,11 @@ internal static class NotesMcpCommandSender
             return NotesResult.Failure(
                 NotesFailureKind.Validation,
                 "validation_error",
-                BuildMessage(exception));
+                BuildMessage(exception)
+            );
         }
     }
 
-    private static string BuildMessage(ValidationException exception)
-        => string.Join(" ", exception.Errors.Select(error => error.ErrorMessage).Distinct());
+    private static string BuildMessage(ValidationException exception) =>
+        string.Join(" ", exception.Errors.Select(error => error.ErrorMessage).Distinct());
 }

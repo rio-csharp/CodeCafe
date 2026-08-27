@@ -1,6 +1,6 @@
-using CodeCafe.Application.Notes;
 using System.Text;
 using System.Text.Json;
+using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Infrastructure.Notes;
 
@@ -8,7 +8,10 @@ public sealed class TipTapPlainTextExtractor : ITipTapPlainTextExtractor
 {
     public string? Extract(JsonElement? contentJson)
     {
-        if (contentJson is null || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        if (
+            contentJson is null
+            || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+        )
         {
             return null;
         }
@@ -29,8 +32,10 @@ public sealed class TipTapPlainTextExtractor : ITipTapPlainTextExtractor
 
         AppendSelfText(node, builder);
 
-        if (node.TryGetProperty("content", out var contentElement)
-            && contentElement.ValueKind == JsonValueKind.Array)
+        if (
+            node.TryGetProperty("content", out var contentElement)
+            && contentElement.ValueKind == JsonValueKind.Array
+        )
         {
             var childCount = contentElement.GetArrayLength();
             var index = 0;
@@ -49,16 +54,20 @@ public sealed class TipTapPlainTextExtractor : ITipTapPlainTextExtractor
 
     internal static void AppendSelfText(JsonElement node, StringBuilder builder)
     {
-        if (!node.TryGetProperty("type", out var typeElement)
-            || typeElement.ValueKind != JsonValueKind.String)
+        if (
+            !node.TryGetProperty("type", out var typeElement)
+            || typeElement.ValueKind != JsonValueKind.String
+        )
         {
             return;
         }
 
         var type = typeElement.GetString();
-        if (string.Equals(type, "text", StringComparison.Ordinal)
+        if (
+            string.Equals(type, "text", StringComparison.Ordinal)
             && node.TryGetProperty("text", out var textElement)
-            && textElement.ValueKind == JsonValueKind.String)
+            && textElement.ValueKind == JsonValueKind.String
+        )
         {
             builder.Append(textElement.GetString());
         }
@@ -83,7 +92,10 @@ public sealed class TipTapPlainTextExtractor : ITipTapPlainTextExtractor
             return false;
         }
 
-        if (!node.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
+        if (
+            !node.TryGetProperty("type", out var typeElement)
+            || typeElement.ValueKind != JsonValueKind.String
+        )
         {
             return false;
         }

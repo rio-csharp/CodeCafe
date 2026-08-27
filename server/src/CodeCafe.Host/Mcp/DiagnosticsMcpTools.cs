@@ -1,8 +1,6 @@
-using CodeCafe.Host.Mcp;
-using CodeCafe.Application.Notes;
+using System.ComponentModel;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using System.ComponentModel;
 
 namespace CodeCafe.Host.Mcp;
 
@@ -16,21 +14,16 @@ public sealed class DiagnosticsMcpTools
         Destructive = false,
         OpenWorld = false,
         UseStructuredContent = true,
-        OutputSchemaType = typeof(DiagnosticsStatusResponse))]
+        OutputSchemaType = typeof(DiagnosticsStatusResponse)
+    )]
     [Description("Return the current MCP adapter status for diagnostics and smoke testing.")]
     public CallToolResult GetStatus()
     {
         var payload = new DiagnosticsStatusResponse("ok", "mcp");
         return new CallToolResult
         {
-            Content =
-            [
-                new TextContentBlock
-                {
-                    Text = "CodeCafe MCP adapter is healthy."
-                }
-            ],
-            StructuredContent = McpJson.SerializeToElement(payload)
+            Content = [new TextContentBlock { Text = "CodeCafe MCP adapter is healthy." }],
+            StructuredContent = McpJson.SerializeToElement(payload),
         };
     }
 }

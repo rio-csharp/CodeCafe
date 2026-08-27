@@ -6,4 +6,5 @@ public sealed record CreateNotebookCommand(
     Guid CurrentUserId,
     string Title,
     string? Description,
-    string? Visibility) : ICommand<NotesResult<NotebookDetailModel>>;
+    string? Visibility
+) : ICommand<NotesResult<NotebookDetailModel>>;

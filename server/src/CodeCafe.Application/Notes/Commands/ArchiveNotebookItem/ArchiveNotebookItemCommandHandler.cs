@@ -3,17 +3,19 @@ using CodeCafe.Application.Common.Messaging;
 namespace CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
 
 public sealed class ArchiveNotebookItemCommandHandler(
-    INotebookItemMutationService notebookItemMutationService)
-    : ICommandHandler<ArchiveNotebookItemCommand, NotesResult<NotebookItemModel>>
+    INotebookItemMutationService notebookItemMutationService
+) : ICommandHandler<ArchiveNotebookItemCommand, NotesResult<NotebookItemModel>>
 {
     public async Task<NotesResult<NotebookItemModel>> Handle(
         ArchiveNotebookItemCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         return await notebookItemMutationService.ArchiveNotebookItemAsync(
             request.NotebookId,
             request.ItemId,
             request.CurrentUserId,
-            cancellationToken);
+            cancellationToken
+        );
     }
 }

@@ -6,11 +6,8 @@ public sealed class AuthenticateUserCommandValidator : AbstractValidator<Authent
 {
     public AuthenticateUserCommandValidator()
     {
-        RuleFor(command => command.Email)
-            .NotEmpty()
-            .EmailAddress();
+        RuleFor(command => command.Email).NotEmpty().EmailAddress();
 
-        RuleFor(command => command.Password)
-            .NotEmpty();
+        RuleFor(command => command.Password).NotEmpty();
     }
 }

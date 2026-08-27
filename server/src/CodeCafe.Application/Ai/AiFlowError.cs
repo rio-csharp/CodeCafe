@@ -13,22 +13,23 @@ public sealed record AiFlowError(
     string Message,
     AiFailureKind Kind,
     string? Field = null,
-    IReadOnlyDictionary<string, object?>? Details = null)
+    IReadOnlyDictionary<string, object?>? Details = null
+)
 {
-    public static AiFlowError FromNotesError(NotesError error)
-        => new(error.Code, error.Message, ToAiFailureKind(error.Kind), error.Field, error.Details);
+    public static AiFlowError FromNotesError(NotesError error) =>
+        new(error.Code, error.Message, ToAiFailureKind(error.Kind), error.Field, error.Details);
 
     /// <summary>
     /// Widens a Notes failure into the AI taxonomy. The AI flows call into Notes use cases, so their
     /// failures have to be expressible here without inventing a status code at the call site.
     /// </summary>
-    public static AiFailureKind ToAiFailureKind(NotesFailureKind kind)
-        => kind switch
+    public static AiFailureKind ToAiFailureKind(NotesFailureKind kind) =>
+        kind switch
         {
             NotesFailureKind.Validation => AiFailureKind.Validation,
             NotesFailureKind.Forbidden => AiFailureKind.Forbidden,
             NotesFailureKind.NotFound => AiFailureKind.NotFound,
             NotesFailureKind.Conflict => AiFailureKind.Conflict,
-            _ => AiFailureKind.Validation
+            _ => AiFailureKind.Validation,
         };
 }

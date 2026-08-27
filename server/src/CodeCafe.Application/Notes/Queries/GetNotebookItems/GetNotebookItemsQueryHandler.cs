@@ -2,27 +2,29 @@ using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Notes.Queries.GetNotebookItems;
 
-public sealed class GetNotebookItemsQueryHandler(
-    INotebookReadService notebookReadService)
+public sealed class GetNotebookItemsQueryHandler(INotebookReadService notebookReadService)
     : IQueryHandler<GetNotebookItemsQuery, NotesResult<IReadOnlyList<NotebookItemModel>>>
 {
     public async Task<NotesResult<IReadOnlyList<NotebookItemModel>>> Handle(
         GetNotebookItemsQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (request.IncludeArchived)
         {
             var notebook = await notebookReadService.GetNotebookByIdAsync(
                 request.NotebookId,
                 request.CurrentUserId,
-                cancellationToken);
+                cancellationToken
+            );
 
             if (!notebook.Succeeded)
             {
                 return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
                     notebook.Error!.Kind,
                     notebook.Error.Code,
-                    notebook.Error.Message);
+                    notebook.Error.Message
+                );
             }
 
             if (notebook.Value!.OwnerId != request.CurrentUserId)
@@ -30,7 +32,8 @@ public sealed class GetNotebookItemsQueryHandler(
                 return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
                     NotesFailureKind.Forbidden,
                     "notebook_forbidden",
-                    "Only the notebook owner can view archived items.");
+                    "Only the notebook owner can view archived items."
+                );
             }
         }
 
@@ -40,6 +43,7 @@ public sealed class GetNotebookItemsQueryHandler(
             request.Search,
             cancellationToken,
             request.IncludeArchived,
-            request.IncludeContent);
+            request.IncludeContent
+        );
     }
 }

@@ -7,8 +7,12 @@ public sealed class NotebookReadServiceTests
 {
     private static readonly Guid OwnerId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
     private static readonly Guid OtherUserId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-    private static readonly Guid PublicNotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-    private static readonly Guid PrivateNotebookId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+    private static readonly Guid PublicNotebookId = Guid.Parse(
+        "11111111-1111-1111-1111-111111111111"
+    );
+    private static readonly Guid PrivateNotebookId = Guid.Parse(
+        "22222222-2222-2222-2222-222222222222"
+    );
     private static readonly Guid PageItemId = Guid.Parse("33333333-3333-3333-3333-333333333333");
     private static readonly Guid FolderItemId = Guid.Parse("44444444-4444-4444-4444-444444444444");
 
@@ -20,12 +24,52 @@ public sealed class NotebookReadServiceTests
         seed.AddUser(OwnerId, "Yao");
         seed.AddUser(OtherUserId, "Mei");
 
-        seed.AddNotebook(PublicNotebookId, OwnerId, "Architecture Notes", "architecture-notes", NotebookVisibility.Public, true);
-        seed.AddNotebook(PrivateNotebookId, OwnerId, "Secret Notes", "secret-notes", NotebookVisibility.Private, false);
+        seed.AddNotebook(
+            PublicNotebookId,
+            OwnerId,
+            "Architecture Notes",
+            "architecture-notes",
+            NotebookVisibility.Public,
+            true
+        );
+        seed.AddNotebook(
+            PrivateNotebookId,
+            OwnerId,
+            "Secret Notes",
+            "secret-notes",
+            NotebookVisibility.Private,
+            false
+        );
 
-        seed.AddItem(FolderItemId, PublicNotebookId, NotebookItemType.Folder, "Chapters", "chapters", 0);
-        seed.AddItem(PageItemId, PublicNotebookId, NotebookItemType.Page, "Overview", "chapters/overview", 1, parentId: FolderItemId, plainTextContent: "Hexagonal architecture overview");
-        seed.AddItem(Guid.NewGuid(), PublicNotebookId, NotebookItemType.Page, "Archived Page", "chapters/archived", 2, parentId: FolderItemId, plainTextContent: "old", isArchived: true);
+        seed.AddItem(
+            FolderItemId,
+            PublicNotebookId,
+            NotebookItemType.Folder,
+            "Chapters",
+            "chapters",
+            0
+        );
+        seed.AddItem(
+            PageItemId,
+            PublicNotebookId,
+            NotebookItemType.Page,
+            "Overview",
+            "chapters/overview",
+            1,
+            parentId: FolderItemId,
+            plainTextContent: "Hexagonal architecture overview"
+        );
+        seed.AddItem(
+            Guid.NewGuid(),
+            PublicNotebookId,
+            NotebookItemType.Page,
+            "Archived Page",
+            "chapters/archived",
+            2,
+            parentId: FolderItemId,
+            plainTextContent: "old",
+            isArchived: true
+        );
 
         seed.AddFavorite(PublicNotebookId, OtherUserId);
         seed.SaveChanges();
@@ -40,7 +84,11 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var result = await service.GetPublicNotebooksAsync(null, OtherUserId, CancellationToken.None);
+        var result = await service.GetPublicNotebooksAsync(
+            null,
+            OtherUserId,
+            CancellationToken.None
+        );
 
         var notebook = Assert.Single(result);
         Assert.Equal("architecture-notes", notebook.Slug);
@@ -61,8 +109,20 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        Assert.Single(await service.GetPublicNotebooksAsync("architecture", OtherUserId, CancellationToken.None));
-        Assert.Empty(await service.GetPublicNotebooksAsync("nonexistent", OtherUserId, CancellationToken.None));
+        Assert.Single(
+            await service.GetPublicNotebooksAsync(
+                "architecture",
+                OtherUserId,
+                CancellationToken.None
+            )
+        );
+        Assert.Empty(
+            await service.GetPublicNotebooksAsync(
+                "nonexistent",
+                OtherUserId,
+                CancellationToken.None
+            )
+        );
     }
 
     [Fact]
@@ -72,16 +132,47 @@ public sealed class NotebookReadServiceTests
         await using (var seed = harness.CreateContext())
         {
             seed.AddUser(OwnerId, "Yao");
-            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Alpha", "alpha", NotebookVisibility.Public, true);
-            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Beta", "beta", NotebookVisibility.Public, true);
-            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Gamma", "gamma", NotebookVisibility.Public, true);
+            seed.AddNotebook(
+                Guid.NewGuid(),
+                OwnerId,
+                "Alpha",
+                "alpha",
+                NotebookVisibility.Public,
+                true
+            );
+            seed.AddNotebook(
+                Guid.NewGuid(),
+                OwnerId,
+                "Beta",
+                "beta",
+                NotebookVisibility.Public,
+                true
+            );
+            seed.AddNotebook(
+                Guid.NewGuid(),
+                OwnerId,
+                "Gamma",
+                "gamma",
+                NotebookVisibility.Public,
+                true
+            );
             await seed.SaveChangesAsync();
         }
 
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        Assert.Equal(2, (await service.GetPublicNotebooksAsync(null, OtherUserId, CancellationToken.None, limit: 2)).Count);
+        Assert.Equal(
+            2,
+            (
+                await service.GetPublicNotebooksAsync(
+                    null,
+                    OtherUserId,
+                    CancellationToken.None,
+                    limit: 2
+                )
+            ).Count
+        );
     }
 
     [Fact]
@@ -105,14 +196,28 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var byTitle = await service.SearchVisibleNotebookItemsAsync(OtherUserId, "Overview", CancellationToken.None);
+        var byTitle = await service.SearchVisibleNotebookItemsAsync(
+            OtherUserId,
+            "Overview",
+            CancellationToken.None
+        );
         Assert.Single(byTitle);
 
-        var byContent = await service.SearchVisibleNotebookItemsAsync(OtherUserId, "Hexagonal", CancellationToken.None);
+        var byContent = await service.SearchVisibleNotebookItemsAsync(
+            OtherUserId,
+            "Hexagonal",
+            CancellationToken.None
+        );
         Assert.Single(byContent);
 
         // "old" lives only on the archived item, which must not surface.
-        Assert.Empty(await service.SearchVisibleNotebookItemsAsync(OtherUserId, "old", CancellationToken.None));
+        Assert.Empty(
+            await service.SearchVisibleNotebookItemsAsync(
+                OtherUserId,
+                "old",
+                CancellationToken.None
+            )
+        );
     }
 
     [Fact]
@@ -122,14 +227,26 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var forbidden = await service.GetNotebookByIdAsync(PrivateNotebookId, OtherUserId, CancellationToken.None);
+        var forbidden = await service.GetNotebookByIdAsync(
+            PrivateNotebookId,
+            OtherUserId,
+            CancellationToken.None
+        );
         Assert.False(forbidden.Succeeded);
         Assert.Equal(NotesFailureKind.Forbidden, forbidden.Error!.Kind);
 
-        var allowed = await service.GetNotebookByIdAsync(PrivateNotebookId, OwnerId, CancellationToken.None);
+        var allowed = await service.GetNotebookByIdAsync(
+            PrivateNotebookId,
+            OwnerId,
+            CancellationToken.None
+        );
         Assert.True(allowed.Succeeded);
 
-        var missing = await service.GetNotebookByIdAsync(Guid.NewGuid(), OwnerId, CancellationToken.None);
+        var missing = await service.GetNotebookByIdAsync(
+            Guid.NewGuid(),
+            OwnerId,
+            CancellationToken.None
+        );
         Assert.Equal(NotesFailureKind.NotFound, missing.Error!.Kind);
     }
 
@@ -140,11 +257,22 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var active = await service.GetNotebookItemsAsync(PublicNotebookId, OwnerId, null, CancellationToken.None);
+        var active = await service.GetNotebookItemsAsync(
+            PublicNotebookId,
+            OwnerId,
+            null,
+            CancellationToken.None
+        );
         Assert.True(active.Succeeded);
         Assert.Equal(2, active.Value!.Count);
 
-        var withArchived = await service.GetNotebookItemsAsync(PublicNotebookId, OwnerId, null, CancellationToken.None, includeArchived: true);
+        var withArchived = await service.GetNotebookItemsAsync(
+            PublicNotebookId,
+            OwnerId,
+            null,
+            CancellationToken.None,
+            includeArchived: true
+        );
         Assert.Equal(3, withArchived.Value!.Count);
     }
 
@@ -155,7 +283,13 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var result = await service.GetNotebookItemsAsync(PublicNotebookId, OtherUserId, null, CancellationToken.None, includeArchived: true);
+        var result = await service.GetNotebookItemsAsync(
+            PublicNotebookId,
+            OtherUserId,
+            null,
+            CancellationToken.None,
+            includeArchived: true
+        );
 
         Assert.False(result.Succeeded);
         Assert.Equal(NotesFailureKind.Forbidden, result.Error!.Kind);
@@ -169,11 +303,19 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var found = await service.GetPublicNotebookItemAsync("architecture-notes", "chapters/overview", CancellationToken.None);
+        var found = await service.GetPublicNotebookItemAsync(
+            "architecture-notes",
+            "chapters/overview",
+            CancellationToken.None
+        );
         Assert.True(found.Succeeded);
         Assert.Equal("Overview", found.Value!.Title);
 
-        var missing = await service.GetPublicNotebookItemAsync("architecture-notes", "chapters/missing", CancellationToken.None);
+        var missing = await service.GetPublicNotebookItemAsync(
+            "architecture-notes",
+            "chapters/missing",
+            CancellationToken.None
+        );
         Assert.Equal(NotesFailureKind.NotFound, missing.Error!.Kind);
     }
 
@@ -184,7 +326,11 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var result = await service.GetNotebookSummaryBySlugAsync("architecture-notes", OtherUserId, CancellationToken.None);
+        var result = await service.GetNotebookSummaryBySlugAsync(
+            "architecture-notes",
+            OtherUserId,
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.Equal("architecture-notes", result.Value!.Slug);
@@ -199,8 +345,18 @@ public sealed class NotebookReadServiceTests
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var ownerResult = await service.GetNotebookSummaryBySlugAsync("architecture-notes", OwnerId, CancellationToken.None, includeArchived: true);
-        var otherUserResult = await service.GetNotebookSummaryBySlugAsync("architecture-notes", OtherUserId, CancellationToken.None, includeArchived: true);
+        var ownerResult = await service.GetNotebookSummaryBySlugAsync(
+            "architecture-notes",
+            OwnerId,
+            CancellationToken.None,
+            includeArchived: true
+        );
+        var otherUserResult = await service.GetNotebookSummaryBySlugAsync(
+            "architecture-notes",
+            OtherUserId,
+            CancellationToken.None,
+            includeArchived: true
+        );
 
         Assert.True(ownerResult.Succeeded);
         Assert.Equal(3, ownerResult.Value!.ItemCount);
@@ -225,7 +381,8 @@ public sealed class NotebookReadServiceTests
             parentId: FolderItemId,
             type: "page",
             offset: 0,
-            limit: 1);
+            limit: 1
+        );
 
         Assert.True(result.Succeeded);
         Assert.Equal(1, result.Value!.TotalCount);
@@ -248,22 +405,30 @@ public sealed class NotebookReadServiceTests
             OwnerId,
             null,
             CancellationToken.None,
-            includeContent: false);
+            includeContent: false
+        );
 
         Assert.True(withoutContent.Succeeded);
         Assert.Equal(2, withoutContent.Value!.Count);
-        Assert.All(withoutContent.Value, item =>
-        {
-            Assert.Null(item.ContentJson);
-            Assert.Null(item.PlainTextContent);
-        });
+        Assert.All(
+            withoutContent.Value,
+            item =>
+            {
+                Assert.Null(item.ContentJson);
+                Assert.Null(item.PlainTextContent);
+            }
+        );
 
         var withContent = await service.GetNotebookItemsAsync(
             PublicNotebookId,
             OwnerId,
             null,
-            CancellationToken.None);
-        Assert.Contains(withContent.Value!, item => item.PlainTextContent == "Hexagonal architecture overview");
+            CancellationToken.None
+        );
+        Assert.Contains(
+            withContent.Value!,
+            item => item.PlainTextContent == "Hexagonal architecture overview"
+        );
     }
 
     [Fact]
@@ -278,25 +443,33 @@ public sealed class NotebookReadServiceTests
             OwnerId,
             CancellationToken.None,
             includeItems: true,
-            includeContent: false);
+            includeContent: false
+        );
 
         Assert.True(result.Succeeded);
         Assert.Equal(2, result.Value!.Items.Count);
         Assert.Equal(2, result.Value.ItemCount);
         Assert.Equal(1, result.Value.PageCount);
-        Assert.All(result.Value.Items, item =>
-        {
-            Assert.Null(item.ContentJson);
-            Assert.Null(item.PlainTextContent);
-        });
+        Assert.All(
+            result.Value.Items,
+            item =>
+            {
+                Assert.Null(item.ContentJson);
+                Assert.Null(item.PlainTextContent);
+            }
+        );
 
         var withContent = await service.GetNotebookByIdAsync(
             PublicNotebookId,
             OwnerId,
             CancellationToken.None,
             includeItems: true,
-            includeContent: true);
-        Assert.Contains(withContent.Value!.Items, item => item.PlainTextContent == "Hexagonal architecture overview");
+            includeContent: true
+        );
+        Assert.Contains(
+            withContent.Value!.Items,
+            item => item.PlainTextContent == "Hexagonal architecture overview"
+        );
     }
 
     [Fact]
@@ -313,14 +486,19 @@ public sealed class NotebookReadServiceTests
                 "chapters/long",
                 3,
                 parentId: FolderItemId,
-                plainTextContent: new string('x', NotebookContextModel.TextPreviewChars + 100));
+                plainTextContent: new string('x', NotebookContextModel.TextPreviewChars + 100)
+            );
             await seed.SaveChangesAsync();
         }
 
         await using var context = harness.CreateContext();
         var service = harness.CreateReadService(context);
 
-        var result = await service.GetNotebookContextAsync("architecture-notes", OwnerId, CancellationToken.None);
+        var result = await service.GetNotebookContextAsync(
+            "architecture-notes",
+            OwnerId,
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.True(result.Value!.CanEdit);
@@ -331,7 +509,11 @@ public sealed class NotebookReadServiceTests
         var overview = Assert.Single(result.Value.Items, item => item.Path == "chapters/overview");
         Assert.Equal("Hexagonal architecture overview", overview.TextPreview);
 
-        var forbidden = await service.GetNotebookContextAsync("secret-notes", OtherUserId, CancellationToken.None);
+        var forbidden = await service.GetNotebookContextAsync(
+            "secret-notes",
+            OtherUserId,
+            CancellationToken.None
+        );
         Assert.False(forbidden.Succeeded);
         Assert.Equal(NotesFailureKind.Forbidden, forbidden.Error!.Kind);
     }
@@ -343,9 +525,30 @@ public sealed class NotebookReadServiceTests
         await using (var seed = harness.CreateContext())
         {
             seed.AddUser(OwnerId, "Yao");
-            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Alpha", "alpha", NotebookVisibility.Public, true);
-            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Beta", "beta", NotebookVisibility.Public, true);
-            seed.AddNotebook(Guid.NewGuid(), OwnerId, "Gamma", "gamma", NotebookVisibility.Public, true);
+            seed.AddNotebook(
+                Guid.NewGuid(),
+                OwnerId,
+                "Alpha",
+                "alpha",
+                NotebookVisibility.Public,
+                true
+            );
+            seed.AddNotebook(
+                Guid.NewGuid(),
+                OwnerId,
+                "Beta",
+                "beta",
+                NotebookVisibility.Public,
+                true
+            );
+            seed.AddNotebook(
+                Guid.NewGuid(),
+                OwnerId,
+                "Gamma",
+                "gamma",
+                NotebookVisibility.Public,
+                true
+            );
             await seed.SaveChangesAsync();
         }
 
@@ -355,11 +558,22 @@ public sealed class NotebookReadServiceTests
         var all = await service.GetPublicNotebooksAsync(null, OtherUserId, CancellationToken.None);
         Assert.Equal(3, all.Count);
 
-        var page = await service.GetPublicNotebooksAsync(null, OtherUserId, CancellationToken.None, limit: 1, offset: 1);
+        var page = await service.GetPublicNotebooksAsync(
+            null,
+            OtherUserId,
+            CancellationToken.None,
+            limit: 1,
+            offset: 1
+        );
         var pagedNotebook = Assert.Single(page);
         Assert.Equal("Beta", pagedNotebook.Title);
 
-        var rest = await service.GetPublicNotebooksAsync(null, OtherUserId, CancellationToken.None, offset: 2);
+        var rest = await service.GetPublicNotebooksAsync(
+            null,
+            OtherUserId,
+            CancellationToken.None,
+            offset: 2
+        );
         var remainingNotebook = Assert.Single(rest);
         Assert.Equal("Gamma", remainingNotebook.Title);
     }

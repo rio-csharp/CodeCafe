@@ -14,7 +14,7 @@ public sealed class NotebookItemTreeTests
         {
             CreateItem(rootId, null, "root"),
             CreateItem(childId, rootId, "root/child"),
-            CreateItem(grandChildId, childId, "root/child/grand-child")
+            CreateItem(grandChildId, childId, "root/child/grand-child"),
         };
 
         Assert.True(NotebookItemTree.WouldCreateCycle(items, childId, grandChildId));
@@ -31,7 +31,7 @@ public sealed class NotebookItemTreeTests
         {
             CreateItem(aId, bId, "a"),
             CreateItem(bId, aId, "b"),
-            CreateItem(movedId, null, "moved")
+            CreateItem(movedId, null, "moved"),
         };
 
         // Must not loop forever; treated as a cycle.
@@ -44,16 +44,8 @@ public sealed class NotebookItemTreeTests
         // Reorder batch that swaps two folders: a -> b and b -> a.
         var aId = Guid.NewGuid();
         var bId = Guid.NewGuid();
-        var items = new[]
-        {
-            CreateItem(aId, null, "a"),
-            CreateItem(bId, null, "b")
-        };
-        var overrides = new List<(Guid ItemId, Guid? ParentId)>
-        {
-            (aId, bId),
-            (bId, aId)
-        };
+        var items = new[] { CreateItem(aId, null, "a"), CreateItem(bId, null, "b") };
+        var overrides = new List<(Guid ItemId, Guid? ParentId)> { (aId, bId), (bId, aId) };
 
         Assert.True(NotebookItemTree.WouldCreateCycle(items, aId, bId, overrides));
         Assert.True(NotebookItemTree.WouldCreateCycle(items, bId, aId, overrides));
@@ -69,12 +61,9 @@ public sealed class NotebookItemTreeTests
         {
             CreateItem(aId, null, "a"),
             CreateItem(bId, aId, "a/b"),
-            CreateItem(rootId, null, "root")
+            CreateItem(rootId, null, "root"),
         };
-        var overrides = new List<(Guid ItemId, Guid? ParentId)>
-        {
-            (bId, rootId)
-        };
+        var overrides = new List<(Guid ItemId, Guid? ParentId)> { (bId, rootId) };
 
         Assert.False(NotebookItemTree.WouldCreateCycle(items, bId, rootId, overrides));
     }
@@ -83,10 +72,7 @@ public sealed class NotebookItemTreeTests
     public void GeneratePath_Uses_Deterministic_Suffix()
     {
         var itemId = Guid.NewGuid();
-        var items = new[]
-        {
-            CreateItem(Guid.NewGuid(), null, "hello-world")
-        };
+        var items = new[] { CreateItem(Guid.NewGuid(), null, "hello-world") };
 
         var path = NotebookItemTree.GeneratePath(items, null, "Hello World", itemId);
 
@@ -100,7 +86,7 @@ public sealed class NotebookItemTreeTests
         var items = new[]
         {
             CreateItem(Guid.NewGuid(), null, "hello-world"),
-            CreateItem(Guid.NewGuid(), null, "other")
+            CreateItem(Guid.NewGuid(), null, "other"),
         };
 
         var path = NotebookItemTree.GeneratePath(items, null, "Hello World", itemId);
@@ -124,10 +110,7 @@ public sealed class NotebookItemTreeTests
     public void GeneratePath_Ignores_Self_When_Title_Unchanged()
     {
         var itemId = Guid.NewGuid();
-        var items = new[]
-        {
-            CreateItem(itemId, null, "hello-world", "Hello World")
-        };
+        var items = new[] { CreateItem(itemId, null, "hello-world", "Hello World") };
 
         var path = NotebookItemTree.GeneratePath(items, null, "Hello World", itemId);
 
@@ -138,8 +121,15 @@ public sealed class NotebookItemTreeTests
     public void GeneratePath_Falls_Back_To_Unique_Slug_After_Ten_Conflicts()
     {
         var itemId = Guid.NewGuid();
-        var items = Enumerable.Range(0, 10)
-            .Select(attempt => CreateItem(Guid.NewGuid(), null, NotebookSlugGenerator.WithSuffix("hello-world", attempt)))
+        var items = Enumerable
+            .Range(0, 10)
+            .Select(attempt =>
+                CreateItem(
+                    Guid.NewGuid(),
+                    null,
+                    NotebookSlugGenerator.WithSuffix("hello-world", attempt)
+                )
+            )
             .ToArray();
 
         var path = NotebookItemTree.GeneratePath(items, null, "Hello World", itemId);
@@ -159,7 +149,8 @@ public sealed class NotebookItemTreeTests
     {
         Assert.Equal(
             NotebookItemParentViolation.NotFound,
-            NotebookItemTree.ValidateParentCandidate(parent: null, parentId: Guid.NewGuid()));
+            NotebookItemTree.ValidateParentCandidate(parent: null, parentId: Guid.NewGuid())
+        );
     }
 
     [Fact]
@@ -169,7 +160,8 @@ public sealed class NotebookItemTreeTests
 
         Assert.Equal(
             NotebookItemParentViolation.NotFolder,
-            NotebookItemTree.ValidateParentCandidate(parent, parent.Id));
+            NotebookItemTree.ValidateParentCandidate(parent, parent.Id)
+        );
     }
 
     [Fact]
@@ -187,7 +179,8 @@ public sealed class NotebookItemTreeTests
 
         Assert.Equal(
             NotebookItemRestoreViolation.NotArchived,
-            NotebookItemTree.ValidateRestore([item], item));
+            NotebookItemTree.ValidateRestore([item], item)
+        );
     }
 
     [Fact]
@@ -197,7 +190,8 @@ public sealed class NotebookItemTreeTests
 
         Assert.Equal(
             NotebookItemRestoreViolation.ParentNotFound,
-            NotebookItemTree.ValidateRestore([item], item));
+            NotebookItemTree.ValidateRestore([item], item)
+        );
     }
 
     [Fact]
@@ -210,7 +204,8 @@ public sealed class NotebookItemTreeTests
 
         Assert.Equal(
             NotebookItemRestoreViolation.ParentArchived,
-            NotebookItemTree.ValidateRestore(items, item));
+            NotebookItemTree.ValidateRestore(items, item)
+        );
     }
 
     [Fact]
@@ -247,7 +242,7 @@ public sealed class NotebookItemTreeTests
         {
             CreateItem(rootId, null, "old-root"),
             CreateItem(childId, rootId, "old-root/child"),
-            CreateItem(grandChildId, childId, "old-root/child/grand-child")
+            CreateItem(grandChildId, childId, "old-root/child/grand-child"),
         };
 
         NotebookItemTree.ApplyDescendantPathUpdate(items, rootId, "old-root", "new-root");
@@ -266,7 +261,7 @@ public sealed class NotebookItemTreeTests
         {
             CreateItem(rootId, null, "folder"),
             CreateItem(targetId, null, "archive"),
-            CreateItem(childId, rootId, "folder/page")
+            CreateItem(childId, rootId, "folder/page"),
         };
 
         NotebookItemTree.ApplyDescendantPathUpdate(items, rootId, "folder", "archive/folder");
@@ -287,7 +282,7 @@ public sealed class NotebookItemTreeTests
             CreateItem(rootId, null, "root"),
             CreateItem(childId, rootId, "root/child"),
             CreateItem(grandChildId, childId, "root/child/grand-child"),
-            CreateItem(otherId, null, "other")
+            CreateItem(otherId, null, "other"),
         };
 
         var descendantIds = NotebookItemTree.GetDescendantIds(items, rootId);
@@ -304,7 +299,8 @@ public sealed class NotebookItemTreeTests
         string path,
         string? title = null,
         NotebookItemType type = NotebookItemType.Page,
-        bool archived = false)
+        bool archived = false
+    )
     {
         return new NotebookItem
         {
@@ -315,7 +311,7 @@ public sealed class NotebookItemTreeTests
             Title = title ?? path.Split('/')[^1],
             Slug = path.Split('/')[^1],
             Path = path,
-            IsArchived = archived
+            IsArchived = archived,
         };
     }
 }

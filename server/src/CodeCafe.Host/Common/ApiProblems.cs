@@ -8,17 +8,15 @@ public static class ApiProblems
         string code,
         string detail,
         int statusCode,
-        string? title = null)
+        string? title = null
+    )
     {
         return new ProblemDetails
         {
             Status = statusCode,
             Title = title ?? GetDefaultTitle(statusCode),
             Detail = detail,
-            Extensions =
-            {
-                ["code"] = code
-            }
+            Extensions = { ["code"] = code },
         };
     }
 
@@ -27,16 +25,20 @@ public static class ApiProblems
         IEnumerable<IGrouping<string, string>> errors,
         int statusCode,
         string? detail = null,
-        string? title = null)
+        string? title = null
+    )
     {
         var validationProblem = new HttpValidationProblemDetails(
             errors.ToDictionary(
                 group => string.IsNullOrWhiteSpace(group.Key) ? "$" : group.Key,
-                group => group.Where(message => !string.IsNullOrWhiteSpace(message)).Distinct().ToArray()))
+                group =>
+                    group.Where(message => !string.IsNullOrWhiteSpace(message)).Distinct().ToArray()
+            )
+        )
         {
             Status = statusCode,
             Title = title ?? GetDefaultTitle(statusCode),
-            Detail = detail ?? "One or more validation errors occurred."
+            Detail = detail ?? "One or more validation errors occurred.",
         };
         validationProblem.Extensions["code"] = code;
         return validationProblem;
@@ -55,7 +57,7 @@ public static class ApiProblems
             StatusCodes.Status499ClientClosedRequest => "Client Closed Request",
             StatusCodes.Status500InternalServerError => "Internal Server Error",
             StatusCodes.Status504GatewayTimeout => "Gateway Timeout",
-            _ => "Request Failed"
+            _ => "Request Failed",
         };
     }
 }

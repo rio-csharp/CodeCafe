@@ -1,5 +1,5 @@
-using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Domain.Notes;
+using CodeCafe.Infrastructure.Identity;
 using CodeCafe.Infrastructure.Persistence;
 
 namespace CodeCafe.Infrastructure.Tests;
@@ -10,7 +10,11 @@ namespace CodeCafe.Infrastructure.Tests;
 /// </summary>
 internal static class NotesSeed
 {
-    public static ApplicationUser AddUser(this ApplicationDbContext context, Guid id, string displayName)
+    public static ApplicationUser AddUser(
+        this ApplicationDbContext context,
+        Guid id,
+        string displayName
+    )
     {
         var user = new ApplicationUser
         {
@@ -20,7 +24,7 @@ internal static class NotesSeed
             NormalizedUserName = $"{displayName}@EXAMPLE.COM".ToUpperInvariant(),
             Email = $"{displayName}@example.com",
             NormalizedEmail = $"{displayName}@EXAMPLE.COM".ToUpperInvariant(),
-            CreatedAtUtc = DateTimeOffset.Parse("2026-05-01T00:00:00+00:00")
+            CreatedAtUtc = DateTimeOffset.Parse("2026-05-01T00:00:00+00:00"),
         };
 
         context.Users.Add(user);
@@ -34,7 +38,8 @@ internal static class NotesSeed
         string title,
         string slug,
         NotebookVisibility visibility,
-        bool isPublished)
+        bool isPublished
+    )
     {
         var notebook = new Notebook
         {
@@ -47,7 +52,7 @@ internal static class NotesSeed
             IsPublished = isPublished,
             CreatedAtUtc = DateTimeOffset.Parse("2026-05-10T00:00:00+00:00"),
             UpdatedAtUtc = DateTimeOffset.Parse("2026-05-20T00:00:00+00:00"),
-            PublishedAtUtc = isPublished ? DateTimeOffset.Parse("2026-05-20T00:00:00+00:00") : null
+            PublishedAtUtc = isPublished ? DateTimeOffset.Parse("2026-05-20T00:00:00+00:00") : null,
         };
 
         context.Notebooks.Add(notebook);
@@ -64,7 +69,8 @@ internal static class NotesSeed
         int sortOrder,
         Guid? parentId = null,
         string? plainTextContent = null,
-        bool isArchived = false)
+        bool isArchived = false
+    )
     {
         var item = new NotebookItem
         {
@@ -82,21 +88,25 @@ internal static class NotesSeed
             ArchivedAtUtc = isArchived ? DateTimeOffset.Parse("2026-05-25T00:00:00+00:00") : null,
             CreatedAtUtc = DateTimeOffset.Parse("2026-05-15T00:00:00+00:00"),
             UpdatedAtUtc = DateTimeOffset.Parse("2026-05-18T00:00:00+00:00"),
-            Revision = 1
+            Revision = 1,
         };
 
         context.NotebookItems.Add(item);
         return item;
     }
 
-    public static NotebookFavorite AddFavorite(this ApplicationDbContext context, Guid notebookId, Guid userId)
+    public static NotebookFavorite AddFavorite(
+        this ApplicationDbContext context,
+        Guid notebookId,
+        Guid userId
+    )
     {
         var favorite = new NotebookFavorite
         {
             Id = Guid.NewGuid(),
             NotebookId = notebookId,
             UserId = userId,
-            CreatedAtUtc = DateTimeOffset.Parse("2026-05-22T00:00:00+00:00")
+            CreatedAtUtc = DateTimeOffset.Parse("2026-05-22T00:00:00+00:00"),
         };
 
         context.NotebookFavorites.Add(favorite);

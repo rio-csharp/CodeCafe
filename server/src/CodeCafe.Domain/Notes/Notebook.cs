@@ -51,8 +51,6 @@ public sealed class Notebook : IAuditableEntity
             return;
         }
 
-        PublishedAtUtc = wasPublished
-            ? PublishedAtUtc ?? now
-            : now;
+        PublishedAtUtc = wasPublished ? PublishedAtUtc ?? now : now;
     }
 }

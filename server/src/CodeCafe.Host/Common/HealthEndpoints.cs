@@ -9,17 +9,25 @@ public static class HealthEndpoints
     {
         var group = endpoints.MapGroup("/health");
 
-        group.MapHealthChecks("/live", new HealthCheckOptions
-        {
-            Predicate = registration => registration.Tags.Contains("live"),
-            ResponseWriter = (httpContext, report) => WriteHealthResponseAsync(httpContext, report, healthyStatus: "ok")
-        });
+        group.MapHealthChecks(
+            "/live",
+            new HealthCheckOptions
+            {
+                Predicate = registration => registration.Tags.Contains("live"),
+                ResponseWriter = (httpContext, report) =>
+                    WriteHealthResponseAsync(httpContext, report, healthyStatus: "ok"),
+            }
+        );
 
-        group.MapHealthChecks("/ready", new HealthCheckOptions
-        {
-            Predicate = registration => registration.Tags.Contains("ready"),
-            ResponseWriter = (httpContext, report) => WriteHealthResponseAsync(httpContext, report, healthyStatus: "ready")
-        });
+        group.MapHealthChecks(
+            "/ready",
+            new HealthCheckOptions
+            {
+                Predicate = registration => registration.Tags.Contains("ready"),
+                ResponseWriter = (httpContext, report) =>
+                    WriteHealthResponseAsync(httpContext, report, healthyStatus: "ready"),
+            }
+        );
 
         return endpoints;
     }
@@ -27,27 +35,31 @@ public static class HealthEndpoints
     private static Task WriteHealthResponseAsync(
         HttpContext httpContext,
         HealthReport report,
-        string healthyStatus)
+        string healthyStatus
+    )
     {
         httpContext.Response.ContentType = "application/json";
 
-        return httpContext.Response.WriteAsJsonAsync(new
-        {
-            status = report.Status switch
+        return httpContext.Response.WriteAsJsonAsync(
+            new
             {
-                HealthStatus.Healthy => healthyStatus,
-                HealthStatus.Degraded => "degraded",
-                HealthStatus.Unhealthy => "unhealthy",
-                _ => report.Status.ToString().ToLowerInvariant()
-            },
-            adapter = "api",
-            checks = report.Entries.ToDictionary(
-                entry => entry.Key,
-                entry => new
+                status = report.Status switch
                 {
-                    status = entry.Value.Status.ToString().ToLowerInvariant(),
-                    description = entry.Value.Description
-                })
-        });
+                    HealthStatus.Healthy => healthyStatus,
+                    HealthStatus.Degraded => "degraded",
+                    HealthStatus.Unhealthy => "unhealthy",
+                    _ => report.Status.ToString().ToLowerInvariant(),
+                },
+                adapter = "api",
+                checks = report.Entries.ToDictionary(
+                    entry => entry.Key,
+                    entry => new
+                    {
+                        status = entry.Value.Status.ToString().ToLowerInvariant(),
+                        description = entry.Value.Description,
+                    }
+                ),
+            }
+        );
     }
 }

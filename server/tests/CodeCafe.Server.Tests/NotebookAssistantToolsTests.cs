@@ -1,12 +1,11 @@
-using CodeCafe.Infrastructure.Ai.Agents;
+using System.Security.Claims;
 using CodeCafe.Application.Ai;
-using CodeCafe.Infrastructure.Ai;
 using CodeCafe.Application.Notes;
 using CodeCafe.Host.Common;
+using CodeCafe.Infrastructure.Ai;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using System.Security.Claims;
 using Xunit;
 
 namespace CodeCafe.Host.Tests;
@@ -14,9 +13,15 @@ namespace CodeCafe.Host.Tests;
 public sealed class NotebookAssistantToolsTests
 {
     private static readonly Guid CurrentUserId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-    private static readonly Guid SharedNotebookId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-    private static readonly Guid PrivateNotebookId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-    private static readonly Guid PublicNotebookId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid SharedNotebookId = Guid.Parse(
+        "11111111-1111-1111-1111-111111111111"
+    );
+    private static readonly Guid PrivateNotebookId = Guid.Parse(
+        "22222222-2222-2222-2222-222222222222"
+    );
+    private static readonly Guid PublicNotebookId = Guid.Parse(
+        "33333333-3333-3333-3333-333333333333"
+    );
 
     [Fact]
     public async Task ListNotebooksAsync_ReturnsOwnedAndPublicNotebooksWithoutDuplicatingOwnedPublicNotebook()
@@ -30,13 +35,15 @@ public sealed class NotebookAssistantToolsTests
                     "Architecture Notes",
                     "architecture-notes",
                     canEdit: true,
-                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00")),
+                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00")
+                ),
                 CreateNotebookSummary(
                     PrivateNotebookId,
                     "Private Drafts",
                     "private-drafts",
                     canEdit: true,
-                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"))
+                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-01T00:00:00+00:00")
+                ),
             ],
             PublicNotebooks =
             [
@@ -45,14 +52,16 @@ public sealed class NotebookAssistantToolsTests
                     "Architecture Notes",
                     "architecture-notes",
                     canEdit: false,
-                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00")),
+                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00")
+                ),
                 CreateNotebookSummary(
                     PublicNotebookId,
                     "Published Patterns",
                     "published-patterns",
                     canEdit: false,
-                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-03T00:00:00+00:00"))
-            ]
+                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-03T00:00:00+00:00")
+                ),
+            ],
         };
         var tools = CreateTools(readService, maxToolResults: 10);
 
@@ -61,8 +70,14 @@ public sealed class NotebookAssistantToolsTests
         Assert.True(result.Succeeded);
         Assert.Null(result.Error);
         Assert.Equal(3, result.TotalCount);
-        Assert.Equal(["published-patterns", "architecture-notes", "private-drafts"], result.Notebooks.Select(notebook => notebook.Slug));
-        var architectureNotes = Assert.Single(result.Notebooks, notebook => notebook.Slug == "architecture-notes");
+        Assert.Equal(
+            ["published-patterns", "architecture-notes", "private-drafts"],
+            result.Notebooks.Select(notebook => notebook.Slug)
+        );
+        var architectureNotes = Assert.Single(
+            result.Notebooks,
+            notebook => notebook.Slug == "architecture-notes"
+        );
         Assert.True(architectureNotes.CanEdit);
         Assert.Equal(CurrentUserId, readService.MyNotebookUserIds.Single());
         Assert.Equal(CurrentUserId, readService.PublicNotebookUserIds.Single());
@@ -80,7 +95,8 @@ public sealed class NotebookAssistantToolsTests
                     "Architecture Notes",
                     "architecture-notes",
                     canEdit: true,
-                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00"))
+                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00")
+                ),
             ],
             PublicNotebooks =
             [
@@ -89,12 +105,16 @@ public sealed class NotebookAssistantToolsTests
                     "Published Patterns",
                     "published-patterns",
                     canEdit: false,
-                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-03T00:00:00+00:00"))
-            ]
+                    lastActivityAtUtc: DateTimeOffset.Parse("2026-06-03T00:00:00+00:00")
+                ),
+            ],
         };
         var tools = CreateTools(readService, maxToolResults: 1);
 
-        var result = await tools.ListNotebooksAsync(limit: 5, cancellationToken: CancellationToken.None);
+        var result = await tools.ListNotebooksAsync(
+            limit: 5,
+            cancellationToken: CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         var notebook = Assert.Single(result.Notebooks);
@@ -106,7 +126,11 @@ public sealed class NotebookAssistantToolsTests
     [Fact]
     public async Task ListNotebooksAsync_ReturnsAuthenticationErrorWhenUserIsMissing()
     {
-        var tools = CreateTools(new FakeNotebookReadService(), maxToolResults: 10, authenticated: false);
+        var tools = CreateTools(
+            new FakeNotebookReadService(),
+            maxToolResults: 10,
+            authenticated: false
+        );
 
         var result = await tools.ListNotebooksAsync(cancellationToken: CancellationToken.None);
 
@@ -127,12 +151,17 @@ public sealed class NotebookAssistantToolsTests
                     "Architecture Notes",
                     "guides/overview",
                     "Overview",
-                    "Use adapter boundaries for AI integration.")
-            ]
+                    "Use adapter boundaries for AI integration."
+                ),
+            ],
         };
         var tools = CreateTools(readService, maxToolResults: 3);
 
-        var result = await tools.SearchNotesAsync("adapter boundaries", limit: 9, cancellationToken: CancellationToken.None);
+        var result = await tools.SearchNotesAsync(
+            "adapter boundaries",
+            limit: 9,
+            cancellationToken: CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         var item = Assert.Single(result.Results);
@@ -162,11 +191,12 @@ public sealed class NotebookAssistantToolsTests
     {
         var readService = new FakeNotebookReadService
         {
-            NotebookBySlugResult = NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail(
-                [
+            NotebookBySlugResult = NotesResult<NotebookDetailModel>.Success(
+                CreateNotebookDetail([
                     CreateNotebookItem("overview", "Overview", "A".PadRight(24, 'A')),
-                    CreateNotebookItem("deep-dive", "Deep Dive", "B".PadRight(24, 'B'))
-                ]))
+                    CreateNotebookItem("deep-dive", "Deep Dive", "B".PadRight(24, 'B')),
+                ])
+            ),
         };
         var tools = CreateTools(readService, maxToolResults: 1, maxToolContentChars: 12);
 
@@ -174,14 +204,18 @@ public sealed class NotebookAssistantToolsTests
             "architecture-notes",
             includeItems: true,
             itemLimit: 5,
-            cancellationToken: CancellationToken.None);
+            cancellationToken: CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.Equal("architecture-notes", result.Notebook?.Summary.Slug);
         var item = Assert.Single(result.Notebook!.Items);
         Assert.Equal("overview", item.Path);
         Assert.Equal("AAAAAAAAAAAA\n[truncated]", item.PlainTextContent);
-        Assert.Equal(("architecture-notes", CurrentUserId, false, true), readService.NotebookBySlugCalls.Single());
+        Assert.Equal(
+            ("architecture-notes", CurrentUserId, false, true),
+            readService.NotebookBySlugCalls.Single()
+        );
     }
 
     [Fact]
@@ -192,11 +226,15 @@ public sealed class NotebookAssistantToolsTests
             NotebookBySlugResult = NotesResult<NotebookDetailModel>.Failure(
                 NotesFailureKind.Forbidden,
                 "notebook_forbidden",
-                "You do not have access to this notebook.")
+                "You do not have access to this notebook."
+            ),
         };
         var tools = CreateTools(readService, maxToolResults: 10);
 
-        var result = await tools.GetNotebookAsync("private-notes", cancellationToken: CancellationToken.None);
+        var result = await tools.GetNotebookAsync(
+            "private-notes",
+            cancellationToken: CancellationToken.None
+        );
 
         Assert.False(result.Succeeded);
         Assert.Equal("notebook_forbidden", result.Error?.Code);
@@ -208,17 +246,19 @@ public sealed class NotebookAssistantToolsTests
     {
         var readService = new FakeNotebookReadService
         {
-            NotebookBySlugResult = NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail(
-                [
-                    CreateNotebookItem("guides/overview", "Overview", "Current page body")
-                ]))
+            NotebookBySlugResult = NotesResult<NotebookDetailModel>.Success(
+                CreateNotebookDetail([
+                    CreateNotebookItem("guides/overview", "Overview", "Current page body"),
+                ])
+            ),
         };
         var tools = CreateTools(readService, maxToolResults: 10);
 
         var result = await tools.GetPageAsync(
             "architecture-notes",
             "/guides/overview/",
-            cancellationToken: CancellationToken.None);
+            cancellationToken: CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.Null(result.Error);
@@ -231,14 +271,17 @@ public sealed class NotebookAssistantToolsTests
     {
         var readService = new FakeNotebookReadService
         {
-            NotebookBySlugResult = NotesResult<NotebookDetailModel>.Success(CreateNotebookDetail([]))
+            NotebookBySlugResult = NotesResult<NotebookDetailModel>.Success(
+                CreateNotebookDetail([])
+            ),
         };
         var tools = CreateTools(readService, maxToolResults: 10);
 
         var result = await tools.GetPageAsync(
             "architecture-notes",
             "guides/missing",
-            cancellationToken: CancellationToken.None);
+            cancellationToken: CancellationToken.None
+        );
 
         Assert.False(result.Succeeded);
         Assert.Equal("notebook_item_not_found", result.Error?.Code);
@@ -249,15 +292,18 @@ public sealed class NotebookAssistantToolsTests
         FakeNotebookReadService readService,
         int maxToolResults,
         int maxToolContentChars = 4000,
-        bool authenticated = true)
+        bool authenticated = true
+    )
     {
         var httpContext = new DefaultHttpContext();
         if (authenticated)
         {
-            httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
-            [
-                new Claim(ClaimTypes.NameIdentifier, CurrentUserId.ToString())
-            ], "test"));
+            httpContext.User = new ClaimsPrincipal(
+                new ClaimsIdentity(
+                    [new Claim(ClaimTypes.NameIdentifier, CurrentUserId.ToString())],
+                    "test"
+                )
+            );
         }
 
         var serviceProvider = new ServiceCollection()
@@ -266,12 +312,17 @@ public sealed class NotebookAssistantToolsTests
 
         return new NotebookAssistantTools(
             serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            new HttpContextCurrentUserAccessor(new HttpContextAccessor { HttpContext = httpContext }),
-            Options.Create(new AiOptions
-            {
-                MaxToolResults = maxToolResults,
-                MaxToolContentChars = maxToolContentChars
-            }));
+            new HttpContextCurrentUserAccessor(
+                new HttpContextAccessor { HttpContext = httpContext }
+            ),
+            Options.Create(
+                new AiOptions
+                {
+                    MaxToolResults = maxToolResults,
+                    MaxToolContentChars = maxToolContentChars,
+                }
+            )
+        );
     }
 
     private static NotebookSummaryModel CreateNotebookSummary(
@@ -279,8 +330,9 @@ public sealed class NotebookAssistantToolsTests
         string title,
         string slug,
         bool canEdit,
-        DateTimeOffset lastActivityAtUtc)
-        => new(
+        DateTimeOffset lastActivityAtUtc
+    ) =>
+        new(
             id,
             CurrentUserId,
             title,
@@ -298,10 +350,13 @@ public sealed class NotebookAssistantToolsTests
             LastActivityAtUtc: lastActivityAtUtc,
             CreatedAtUtc: lastActivityAtUtc,
             UpdatedAtUtc: lastActivityAtUtc,
-            PublishedAtUtc: lastActivityAtUtc);
+            PublishedAtUtc: lastActivityAtUtc
+        );
 
-    private static NotebookDetailModel CreateNotebookDetail(IReadOnlyList<NotebookItemModel> items)
-        => new(
+    private static NotebookDetailModel CreateNotebookDetail(
+        IReadOnlyList<NotebookItemModel> items
+    ) =>
+        new(
             SharedNotebookId,
             CurrentUserId,
             "Architecture Notes",
@@ -320,14 +375,16 @@ public sealed class NotebookAssistantToolsTests
             CreatedAtUtc: DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
             UpdatedAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00"),
             PublishedAtUtc: null,
-            Items: items);
+            Items: items
+        );
 
     private static NotebookItemModel CreateNotebookItem(
         string path,
         string title,
         string plainTextContent,
-        string type = "page")
-        => new(
+        string type = "page"
+    ) =>
+        new(
             Guid.NewGuid(),
             SharedNotebookId,
             ParentId: null,
@@ -343,15 +400,17 @@ public sealed class NotebookAssistantToolsTests
             ArchivedAtUtc: null,
             ArchivedByUserId: null,
             CreatedAtUtc: DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-            UpdatedAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00"));
+            UpdatedAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00")
+        );
 
     private static NotebookItemSearchModel CreateSearchResult(
         string notebookSlug,
         string notebookTitle,
         string path,
         string title,
-        string plainTextContent)
-        => new(
+        string plainTextContent
+    ) =>
+        new(
             SharedNotebookId,
             notebookSlug,
             notebookTitle,
@@ -362,7 +421,8 @@ public sealed class NotebookAssistantToolsTests
             Type: "page",
             plainTextContent,
             CreatedAtUtc: DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
-            UpdatedAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00"));
+            UpdatedAtUtc: DateTimeOffset.Parse("2026-06-02T00:00:00+00:00")
+        );
 
     private sealed class FakeNotebookReadService : INotebookReadService
     {
@@ -376,7 +436,8 @@ public sealed class NotebookAssistantToolsTests
             NotesResult<NotebookDetailModel>.Failure(
                 NotesFailureKind.NotFound,
                 "notebook_not_found",
-                "Notebook was not found.");
+                "Notebook was not found."
+            );
 
         public List<Guid> MyNotebookUserIds { get; } = [];
 
@@ -392,14 +453,20 @@ public sealed class NotebookAssistantToolsTests
 
         public List<int?> SearchLimits { get; } = [];
 
-        public List<(string Slug, Guid UserId, bool IncludeArchived, bool IncludeItems)> NotebookBySlugCalls { get; } = [];
+        public List<(
+            string Slug,
+            Guid UserId,
+            bool IncludeArchived,
+            bool IncludeItems
+        )> NotebookBySlugCalls { get; } = [];
 
         public Task<IReadOnlyList<NotebookSummaryModel>> GetPublicNotebooksAsync(
             string? search,
             Guid currentUserId,
             CancellationToken cancellationToken,
             int? limit = null,
-            int? offset = null)
+            int? offset = null
+        )
         {
             PublicNotebookUserIds.Add(currentUserId);
             PublicNotebookLimits.Add(limit);
@@ -411,7 +478,8 @@ public sealed class NotebookAssistantToolsTests
             string? search,
             CancellationToken cancellationToken,
             int? limit = null,
-            int? offset = null)
+            int? offset = null
+        )
         {
             MyNotebookUserIds.Add(currentUserId);
             MyNotebookLimits.Add(limit);
@@ -422,7 +490,8 @@ public sealed class NotebookAssistantToolsTests
             Guid currentUserId,
             string search,
             CancellationToken cancellationToken,
-            int? limit = null)
+            int? limit = null
+        )
         {
             SearchUserIds.Add(currentUserId);
             SearchQueries.Add(search);
@@ -436,28 +505,40 @@ public sealed class NotebookAssistantToolsTests
             CancellationToken cancellationToken,
             bool includeArchived = false,
             bool includeItems = true,
-            bool includeContent = true)
-            => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(
-                NotesFailureKind.NotFound,
-                "notebook_not_found",
-                "Notebook was not found."));
+            bool includeContent = true
+        ) =>
+            Task.FromResult(
+                NotesResult<NotebookDetailModel>.Failure(
+                    NotesFailureKind.NotFound,
+                    "notebook_not_found",
+                    "Notebook was not found."
+                )
+            );
 
         public Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(
             string slug,
-            CancellationToken cancellationToken)
-            => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
-                NotesFailureKind.NotFound,
-                "notebook_not_found",
-                "Notebook was not found."));
+            CancellationToken cancellationToken
+        ) =>
+            Task.FromResult(
+                NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
+                    NotesFailureKind.NotFound,
+                    "notebook_not_found",
+                    "Notebook was not found."
+                )
+            );
 
         public Task<NotesResult<NotebookItemModel>> GetPublicNotebookItemAsync(
             string slug,
             string path,
-            CancellationToken cancellationToken)
-            => Task.FromResult(NotesResult<NotebookItemModel>.Failure(
-                NotesFailureKind.NotFound,
-                "notebook_item_not_found",
-                "Notebook item was not found."));
+            CancellationToken cancellationToken
+        ) =>
+            Task.FromResult(
+                NotesResult<NotebookItemModel>.Failure(
+                    NotesFailureKind.NotFound,
+                    "notebook_item_not_found",
+                    "Notebook item was not found."
+                )
+            );
 
         public Task<NotesResult<NotebookDetailModel>> GetNotebookByIdAsync(
             Guid notebookId,
@@ -465,11 +546,15 @@ public sealed class NotebookAssistantToolsTests
             CancellationToken cancellationToken,
             bool includeArchived = false,
             bool includeItems = true,
-            bool includeContent = true)
-            => Task.FromResult(NotesResult<NotebookDetailModel>.Failure(
-                NotesFailureKind.NotFound,
-                "notebook_not_found",
-                "Notebook was not found."));
+            bool includeContent = true
+        ) =>
+            Task.FromResult(
+                NotesResult<NotebookDetailModel>.Failure(
+                    NotesFailureKind.NotFound,
+                    "notebook_not_found",
+                    "Notebook was not found."
+                )
+            );
 
         public Task<NotesResult<NotebookDetailModel>> GetNotebookBySlugAsync(
             string slug,
@@ -477,7 +562,8 @@ public sealed class NotebookAssistantToolsTests
             CancellationToken cancellationToken,
             bool includeArchived = false,
             bool includeItems = true,
-            bool includeContent = true)
+            bool includeContent = true
+        )
         {
             NotebookBySlugCalls.Add((slug, currentUserId, includeArchived, includeItems));
             return Task.FromResult(NotebookBySlugResult);
@@ -490,21 +576,29 @@ public sealed class NotebookAssistantToolsTests
             CancellationToken cancellationToken,
             bool includeArchived = false,
             bool includeContent = true,
-            int? limit = null)
-            => Task.FromResult(NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
-                NotesFailureKind.NotFound,
-                "notebook_not_found",
-                "Notebook was not found."));
+            int? limit = null
+        ) =>
+            Task.FromResult(
+                NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
+                    NotesFailureKind.NotFound,
+                    "notebook_not_found",
+                    "Notebook was not found."
+                )
+            );
 
         public Task<NotesResult<NotebookItemModel>> GetNotebookItemByIdAsync(
             Guid notebookId,
             Guid itemId,
             Guid currentUserId,
             CancellationToken cancellationToken,
-            bool includeArchived = false)
-            => Task.FromResult(NotesResult<NotebookItemModel>.Failure(
-                NotesFailureKind.NotFound,
-                "notebook_item_not_found",
-                "Notebook item was not found."));
+            bool includeArchived = false
+        ) =>
+            Task.FromResult(
+                NotesResult<NotebookItemModel>.Failure(
+                    NotesFailureKind.NotFound,
+                    "notebook_item_not_found",
+                    "Notebook item was not found."
+                )
+            );
     }
 }

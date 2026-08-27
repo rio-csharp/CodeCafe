@@ -9,7 +9,8 @@ namespace CodeCafe.Application.Ai;
 public sealed class AiProviderException(
     AiFailureKind kind,
     string message,
-    Exception? innerException = null) : Exception(message, innerException)
+    Exception? innerException = null
+) : Exception(message, innerException)
 {
     /// <summary>
     /// <see cref="AiFailureKind.Upstream"/> when the provider errored or was unreachable,

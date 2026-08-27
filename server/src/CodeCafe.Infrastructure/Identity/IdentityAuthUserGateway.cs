@@ -8,16 +8,22 @@ namespace CodeCafe.Infrastructure.Identity;
 /// conformance only: <see cref="UserManager{TUser}"/> exposes no
 /// cancellation-token overloads, so cancellation is not honored here.
 /// </remarks>
-public sealed class IdentityAuthUserGateway(
-    UserManager<ApplicationUser> userManager) : IAuthUserGateway
+public sealed class IdentityAuthUserGateway(UserManager<ApplicationUser> userManager)
+    : IAuthUserGateway
 {
-    public async Task<AuthUserModel?> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
+    public async Task<AuthUserModel?> FindByEmailAsync(
+        string normalizedEmail,
+        CancellationToken cancellationToken
+    )
     {
         var user = await userManager.FindByEmailAsync(normalizedEmail);
         return ToModel(user);
     }
 
-    public async Task<AuthUserModel?> FindByIdAsync(Guid userId, CancellationToken cancellationToken)
+    public async Task<AuthUserModel?> FindByIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken
+    )
     {
         var user = await userManager.FindByIdAsync(userId.ToString());
         return ToModel(user);
@@ -27,14 +33,15 @@ public sealed class IdentityAuthUserGateway(
         string normalizedEmail,
         string displayName,
         string password,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var user = new ApplicationUser
         {
             UserName = normalizedEmail,
             Email = normalizedEmail,
             DisplayName = displayName,
-            EmailConfirmed = false
+            EmailConfirmed = false,
         };
 
         var result = await userManager.CreateAsync(user, password);
@@ -57,7 +64,8 @@ public sealed class IdentityAuthUserGateway(
         string normalizedEmail,
         string password,
         bool lockoutOnFailure,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var user = await userManager.FindByEmailAsync(normalizedEmail);
         if (user is null)
@@ -65,7 +73,8 @@ public sealed class IdentityAuthUserGateway(
             _ = userManager.PasswordHasher.VerifyHashedPassword(
                 TimingPaddingUser,
                 TimingPaddingPasswordHash,
-                password);
+                password
+            );
             return AuthPasswordVerificationResult.Failure(isLockedOut: false);
         }
 
@@ -92,7 +101,8 @@ public sealed class IdentityAuthUserGateway(
         // AccessFailedAsync updates LockoutEnd on the tracked entity when the
         // failure threshold is reached, so the lockout state can be read off
         // the entity without querying the store again.
-        var isLockedOut = userManager.SupportsUserLockout
+        var isLockedOut =
+            userManager.SupportsUserLockout
             && user.LockoutEnd.HasValue
             && user.LockoutEnd.Value > DateTimeOffset.UtcNow;
         return AuthPasswordVerificationResult.Failure(isLockedOut);
@@ -102,9 +112,6 @@ public sealed class IdentityAuthUserGateway(
     {
         return user is null
             ? null
-            : new AuthUserModel(
-                user.Id,
-                user.Email ?? string.Empty,
-                user.DisplayName);
+            : new AuthUserModel(user.Id, user.Email ?? string.Empty, user.DisplayName);
     }
 }

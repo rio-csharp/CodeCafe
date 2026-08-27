@@ -1,24 +1,21 @@
-using CodeCafe.Host.AgUi;
-using CodeCafe.Application.Ai;
+using System.Text;
+using System.Text.Json;
 using CodeCafe.Application.Ai.Edits.Commands.ApplyNotebookEditProposal;
 using CodeCafe.Application.Ai.Edits.Commands.CreateNotebookEditProposal;
 using CodeCafe.Application.Ai.Edits.Commands.DiscardNotebookEditProposal;
 using CodeCafe.Application.Ai.Edits.Queries.GetNotebookEditProposal;
 using CodeCafe.Application.Common.Identity;
+using CodeCafe.Host.AgUi;
 using MediatR;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using System.Text;
-using System.Text.Json;
 
 namespace CodeCafe.Application.Ai.Edits;
 
 public static class AiNotebookEditEndpoints
 {
-    public static IEndpointRouteBuilder MapAiNotebookEditEndpoints(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapAiNotebookEditEndpoints(
+        this IEndpointRouteBuilder endpoints
+    )
     {
         var options = endpoints.ServiceProvider.GetRequiredService<IOptions<AiOptions>>().Value;
         if (!options.Enabled)
@@ -27,16 +24,23 @@ public static class AiNotebookEditEndpoints
         }
 
         var basePath = options.EditEndpointPath.TrimEnd('/');
-        endpoints.MapPost(basePath, CreateNotebookEditProposalAsync)
+        endpoints
+            .MapPost(basePath, CreateNotebookEditProposalAsync)
             .RequireAuthorization()
             .RequireRateLimiting("ai");
-        endpoints.MapGet(basePath + "/proposals/{proposalId:guid}", GetNotebookEditProposalAsync)
+        endpoints
+            .MapGet(basePath + "/proposals/{proposalId:guid}", GetNotebookEditProposalAsync)
             .RequireAuthorization()
             .RequireRateLimiting("ai");
-        endpoints.MapPost(basePath + "/proposals/{proposalId:guid}/apply", ApplyNotebookEditProposalAsync)
+        endpoints
+            .MapPost(
+                basePath + "/proposals/{proposalId:guid}/apply",
+                ApplyNotebookEditProposalAsync
+            )
             .RequireAuthorization()
             .RequireRateLimiting("ai");
-        endpoints.MapDelete(basePath + "/proposals/{proposalId:guid}", DiscardNotebookEditProposalAsync)
+        endpoints
+            .MapDelete(basePath + "/proposals/{proposalId:guid}", DiscardNotebookEditProposalAsync)
             .RequireAuthorization()
             .RequireRateLimiting("ai");
 
@@ -48,12 +52,17 @@ public static class AiNotebookEditEndpoints
         ICurrentUserAccessor currentUserAccessor,
         ISender sender,
         IOptions<AiOptions> aiOptionsAccessor,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to generate notebook edits.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError(
+                "authenticated_actor_required",
+                "Authentication is required to generate notebook edits.",
+                StatusCodes.Status401Unauthorized
+            );
         }
 
         var result = await sender.Send(
@@ -66,18 +75,23 @@ public static class AiNotebookEditEndpoints
                 request.Locale,
                 request.Apply,
                 request.ParentPath,
-                request.ExpectedUpdatedAtUtc),
-            cancellationToken);
+                request.ExpectedUpdatedAtUtc
+            ),
+            cancellationToken
+        );
         if (!result.Succeeded)
         {
             return AiProblemResults.ToError(result.Error!);
         }
 
-        return TypedResults.Ok(ToResponse(
-            result.Proposal!,
-            aiOptionsAccessor.Value.EditEndpointPath,
-            result.Applied,
-            result.SavedAtUtc));
+        return TypedResults.Ok(
+            ToResponse(
+                result.Proposal!,
+                aiOptionsAccessor.Value.EditEndpointPath,
+                result.Applied,
+                result.SavedAtUtc
+            )
+        );
     }
 
     private static async Task<IResult> GetNotebookEditProposalAsync(
@@ -85,27 +99,36 @@ public static class AiNotebookEditEndpoints
         ICurrentUserAccessor currentUserAccessor,
         ISender sender,
         IOptions<AiOptions> aiOptionsAccessor,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to preview notebook edits.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError(
+                "authenticated_actor_required",
+                "Authentication is required to preview notebook edits.",
+                StatusCodes.Status401Unauthorized
+            );
         }
 
         var result = await sender.Send(
             new GetNotebookEditProposalQuery(proposalId, actorId),
-            cancellationToken);
+            cancellationToken
+        );
         if (!result.Succeeded)
         {
             return AiProblemResults.ToError(result.Error!);
         }
 
-        return TypedResults.Ok(ToResponse(
-            result.Proposal!,
-            aiOptionsAccessor.Value.EditEndpointPath,
-            applied: false,
-            savedAtUtc: null));
+        return TypedResults.Ok(
+            ToResponse(
+                result.Proposal!,
+                aiOptionsAccessor.Value.EditEndpointPath,
+                applied: false,
+                savedAtUtc: null
+            )
+        );
     }
 
     private static async Task<IResult> ApplyNotebookEditProposalAsync(
@@ -113,44 +136,59 @@ public static class AiNotebookEditEndpoints
         ICurrentUserAccessor currentUserAccessor,
         ISender sender,
         IOptions<AiOptions> aiOptionsAccessor,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to apply notebook edits.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError(
+                "authenticated_actor_required",
+                "Authentication is required to apply notebook edits.",
+                StatusCodes.Status401Unauthorized
+            );
         }
 
         var result = await sender.Send(
             new ApplyNotebookEditProposalCommand(proposalId, actorId),
-            cancellationToken);
+            cancellationToken
+        );
         if (!result.Succeeded)
         {
             return AiProblemResults.ToError(result.Error!);
         }
 
-        return TypedResults.Ok(ToResponse(
-            result.Proposal!,
-            aiOptionsAccessor.Value.EditEndpointPath,
-            result.Applied,
-            result.SavedAtUtc));
+        return TypedResults.Ok(
+            ToResponse(
+                result.Proposal!,
+                aiOptionsAccessor.Value.EditEndpointPath,
+                result.Applied,
+                result.SavedAtUtc
+            )
+        );
     }
 
     private static async Task<IResult> DiscardNotebookEditProposalAsync(
         Guid proposalId,
         ICurrentUserAccessor currentUserAccessor,
         ISender sender,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var actorId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         if (actorId == Guid.Empty)
         {
-            return AiProblemResults.ToError("authenticated_actor_required", "Authentication is required to discard notebook edits.", StatusCodes.Status401Unauthorized);
+            return AiProblemResults.ToError(
+                "authenticated_actor_required",
+                "Authentication is required to discard notebook edits.",
+                StatusCodes.Status401Unauthorized
+            );
         }
 
         var error = await sender.Send(
             new DiscardNotebookEditProposalCommand(proposalId, actorId),
-            cancellationToken);
+            cancellationToken
+        );
         if (error is not null)
         {
             return AiProblemResults.ToError(error);
@@ -163,7 +201,8 @@ public static class AiNotebookEditEndpoints
         AiNotebookEditProposal proposal,
         string editEndpointPath,
         bool applied,
-        DateTimeOffset? savedAtUtc)
+        DateTimeOffset? savedAtUtc
+    )
     {
         var basePath = editEndpointPath.TrimEnd('/');
         return new AiNotebookEditResponse(
@@ -192,11 +231,12 @@ public static class AiNotebookEditEndpoints
             proposal.AfterPlainTextContent?.Length ?? 0,
             CountTipTapNodes(proposal.AfterContentJson),
             proposal.GeneratedAtUtc,
-            savedAtUtc);
+            savedAtUtc
+        );
     }
 
-    private static int GetUtf8ByteCount(string? value)
-        => string.IsNullOrEmpty(value) ? 0 : Encoding.UTF8.GetByteCount(value);
+    private static int GetUtf8ByteCount(string? value) =>
+        string.IsNullOrEmpty(value) ? 0 : Encoding.UTF8.GetByteCount(value);
 
     private static int CountTipTapNodes(JsonElement node)
     {
@@ -206,8 +246,10 @@ public static class AiNotebookEditEndpoints
         }
 
         var count = 1;
-        if (node.TryGetProperty("content", out var contentElement)
-            && contentElement.ValueKind == JsonValueKind.Array)
+        if (
+            node.TryGetProperty("content", out var contentElement)
+            && contentElement.ValueKind == JsonValueKind.Array
+        )
         {
             foreach (var child in contentElement.EnumerateArray())
             {
@@ -227,4 +269,5 @@ public sealed record AiNotebookEditRequest(
     string? Locale,
     bool Apply = false,
     string? ParentPath = null,
-    DateTimeOffset? ExpectedUpdatedAtUtc = null);
+    DateTimeOffset? ExpectedUpdatedAtUtc = null
+);

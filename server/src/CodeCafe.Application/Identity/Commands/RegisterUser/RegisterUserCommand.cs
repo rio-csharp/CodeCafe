@@ -6,4 +6,5 @@ public sealed record RegisterUserCommand(
     bool RegistrationEnabled,
     string Email,
     string Password,
-    string DisplayName) : ICommand<AuthResult<AuthUserModel>>;
+    string DisplayName
+) : ICommand<AuthResult<AuthUserModel>>;

@@ -1,4 +1,3 @@
-using CodeCafe.Application.Ai;
 using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Application.Ai.Edits;
@@ -23,19 +22,16 @@ public sealed class AiEditProposalFlowResult
     public static AiEditProposalFlowResult Success(
         AiNotebookEditProposal proposal,
         bool applied,
-        DateTimeOffset? savedAtUtc) =>
+        DateTimeOffset? savedAtUtc
+    ) =>
         new()
         {
             Proposal = proposal,
             Applied = applied,
-            SavedAtUtc = savedAtUtc
+            SavedAtUtc = savedAtUtc,
         };
 
-    public static AiEditProposalFlowResult Failure(AiFlowError error) =>
-        new()
-        {
-            Error = error
-        };
+    public static AiEditProposalFlowResult Failure(AiFlowError error) => new() { Error = error };
 
     public static AiEditProposalFlowResult Failure(NotesError error) =>
         Failure(AiFlowError.FromNotesError(error));

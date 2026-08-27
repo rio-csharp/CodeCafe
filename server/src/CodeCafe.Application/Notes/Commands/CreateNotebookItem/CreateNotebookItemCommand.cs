@@ -1,5 +1,5 @@
-using CodeCafe.Application.Common.Messaging;
 using System.Text.Json;
+using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Notes.Commands.CreateNotebookItem;
 
@@ -10,4 +10,5 @@ public sealed record CreateNotebookItemCommand(
     string Type,
     string Title,
     int SortOrder,
-    JsonElement? ContentJson) : ICommand<NotesResult<NotebookItemModel>>;
+    JsonElement? ContentJson
+) : ICommand<NotesResult<NotebookItemModel>>;

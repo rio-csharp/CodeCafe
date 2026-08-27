@@ -2,13 +2,13 @@ using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Identity.Queries.GetCurrentUser;
 
-public sealed class GetCurrentUserQueryHandler(
-    IAuthUserGateway authUserGateway)
+public sealed class GetCurrentUserQueryHandler(IAuthUserGateway authUserGateway)
     : IQueryHandler<GetCurrentUserQuery, AuthResult<AuthUserModel>>
 {
     public async Task<AuthResult<AuthUserModel>> Handle(
         GetCurrentUserQuery request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (request.UserId == Guid.Empty)
         {
@@ -16,9 +16,7 @@ public sealed class GetCurrentUserQueryHandler(
         }
 
         var user = await authUserGateway.FindByIdAsync(request.UserId, cancellationToken);
-        return user is null
-            ? Unauthorized()
-            : AuthResult<AuthUserModel>.Success(user);
+        return user is null ? Unauthorized() : AuthResult<AuthUserModel>.Success(user);
     }
 
     private static AuthResult<AuthUserModel> Unauthorized()
@@ -26,6 +24,7 @@ public sealed class GetCurrentUserQueryHandler(
         return AuthResult<AuthUserModel>.Failure(
             AuthFailureKind.Unauthorized,
             "unauthorized",
-            "Authentication is required.");
+            "Authentication is required."
+        );
     }
 }

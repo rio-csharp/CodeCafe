@@ -20,7 +20,8 @@ public sealed record NotebookSummaryModel(
     DateTimeOffset LastActivityAtUtc,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc,
-    DateTimeOffset? PublishedAtUtc);
+    DateTimeOffset? PublishedAtUtc
+);
 
 public sealed record NotebookDetailModel(
     Guid Id,
@@ -41,12 +42,10 @@ public sealed record NotebookDetailModel(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc,
     DateTimeOffset? PublishedAtUtc,
-    IReadOnlyList<NotebookItemModel> Items);
+    IReadOnlyList<NotebookItemModel> Items
+);
 
-public sealed record NotebookFavoriteModel(
-    Guid NotebookId,
-    bool IsFavorited,
-    int FavoriteCount);
+public sealed record NotebookFavoriteModel(Guid NotebookId, bool IsFavorited, int FavoriteCount);
 
 /// <summary>
 /// The AI context projection plus the full active-page item, both derived from a single notebook
@@ -56,7 +55,8 @@ public sealed record NotebookFavoriteModel(
 public sealed record NotebookContextWithItem(
     NotebookContextModel Context,
     NotebookItemModel? ActivePage,
-    bool ActivePageFound);
+    bool ActivePageFound
+);
 
 public sealed record NotebookItemModel(
     Guid Id,
@@ -74,7 +74,8 @@ public sealed record NotebookItemModel(
     DateTimeOffset? ArchivedAtUtc,
     Guid? ArchivedByUserId,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record NotebookItemSearchModel(
     Guid NotebookId,
@@ -87,11 +88,10 @@ public sealed record NotebookItemSearchModel(
     string Type,
     string? PlainTextContent,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
-public sealed record NotebookItemsPageModel(
-    int TotalCount,
-    IReadOnlyList<NotebookItemModel> Items);
+public sealed record NotebookItemsPageModel(int TotalCount, IReadOnlyList<NotebookItemModel> Items);
 
 public sealed record NotebookContextItemModel(
     Guid Id,
@@ -100,7 +100,8 @@ public sealed record NotebookContextItemModel(
     string Title,
     string Path,
     int SortOrder,
-    string? TextPreview);
+    string? TextPreview
+);
 
 public sealed record NotebookContextModel(
     Guid Id,
@@ -109,12 +110,10 @@ public sealed record NotebookContextModel(
     string Slug,
     string? Description,
     bool CanEdit,
-    IReadOnlyList<NotebookContextItemModel> Items)
+    IReadOnlyList<NotebookContextItemModel> Items
+)
 {
     public const int TextPreviewChars = 1000;
 }
 
-public sealed record ReorderNotebookItemModel(
-    Guid ItemId,
-    Guid? ParentId,
-    int SortOrder);
+public sealed record ReorderNotebookItemModel(Guid ItemId, Guid? ParentId, int SortOrder);

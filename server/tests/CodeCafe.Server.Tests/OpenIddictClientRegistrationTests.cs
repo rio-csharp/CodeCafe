@@ -1,6 +1,6 @@
-using CodeCafe.Host.Rest.Auth;
-using CodeCafe.Host.Common;
 using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Host.Common;
+using CodeCafe.Host.Rest.Auth;
 using OpenIddict.Abstractions;
 using Xunit;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -15,9 +15,15 @@ public sealed class OpenIddictClientRegistrationTests
     [InlineData("codecafe-01234567-89ab-cdef-0123-456789abcdef", false)]
     [InlineData("other-0123456789abcdef0123456789abcdef", false)]
     [InlineData("", false)]
-    public void IsDynamicallyRegisteredClientId_MatchesOnlyGeneratedClientIds(string clientId, bool expected)
+    public void IsDynamicallyRegisteredClientId_MatchesOnlyGeneratedClientIds(
+        string clientId,
+        bool expected
+    )
     {
-        Assert.Equal(expected, OpenIddictClientRegistration.IsDynamicallyRegisteredClientId(clientId));
+        Assert.Equal(
+            expected,
+            OpenIddictClientRegistration.IsDynamicallyRegisteredClientId(clientId)
+        );
     }
 
     [Fact]
@@ -25,7 +31,8 @@ public sealed class OpenIddictClientRegistrationTests
     {
         var scopes = OpenIddictClientRegistration.NormalizeAllowedScopes(
             [" notes.write ", "notes.read", "notes.write", "openid", ""],
-            CreateMcpOptions());
+            CreateMcpOptions()
+        );
 
         Assert.Equal(["notes.write", "notes.read", "openid"], scopes);
     }
@@ -35,11 +42,14 @@ public sealed class OpenIddictClientRegistrationTests
     {
         var mcpOptions = CreateMcpOptions();
 
-        Assert.False(OpenIddictClientRegistration.AreAllowedScopesValid(["notes.delete"], mcpOptions));
+        Assert.False(
+            OpenIddictClientRegistration.AreAllowedScopesValid(["notes.delete"], mcpOptions)
+        );
         Assert.False(OpenIddictClientRegistration.AreAllowedScopesValid(["openid"], mcpOptions));
         Assert.False(OpenIddictClientRegistration.AreAllowedScopesValid([], mcpOptions));
         Assert.Throws<InvalidOperationException>(() =>
-            OpenIddictClientRegistration.NormalizeAllowedScopes(["notes.delete"], mcpOptions));
+            OpenIddictClientRegistration.NormalizeAllowedScopes(["notes.delete"], mcpOptions)
+        );
     }
 
     [Fact]
@@ -51,7 +61,8 @@ public sealed class OpenIddictClientRegistrationTests
             ["http://localhost/callback"],
             ["notes.read"],
             CreateMcpOptions(),
-            new AuthorizationServerOptions());
+            new AuthorizationServerOptions()
+        );
 
         Assert.Contains(Permissions.Prefixes.Scope + Scopes.OpenId, descriptor.Permissions);
         Assert.Contains(Permissions.Prefixes.Scope + Scopes.Profile, descriptor.Permissions);
@@ -77,18 +88,17 @@ public sealed class OpenIddictClientRegistrationTests
             ClientType = ClientTypes.Public,
             ClientId = "codecafe-0123456789abcdef0123456789abcdef",
             ConsentType = ConsentTypes.Implicit,
-            DisplayName = "Existing Client"
+            DisplayName = "Existing Client",
         };
         existing.RedirectUris.Add(new Uri("http://localhost/callback"));
-        existing.Permissions.UnionWith(
-        [
+        existing.Permissions.UnionWith([
             Permissions.Endpoints.Authorization,
             Permissions.Endpoints.Token,
             Permissions.GrantTypes.AuthorizationCode,
             Permissions.GrantTypes.RefreshToken,
             Permissions.ResponseTypes.Code,
             Permissions.Prefixes.Scope + "notes.read",
-            Permissions.Prefixes.Scope + "notes.write"
+            Permissions.Prefixes.Scope + "notes.write",
         ]);
 
         var desired = new OpenIddictApplicationDescriptor
@@ -97,17 +107,16 @@ public sealed class OpenIddictClientRegistrationTests
             ClientType = ClientTypes.Public,
             ClientId = existing.ClientId,
             ConsentType = ConsentTypes.Implicit,
-            DisplayName = existing.DisplayName
+            DisplayName = existing.DisplayName,
         };
         desired.RedirectUris.Add(new Uri("http://localhost/callback"));
-        desired.Permissions.UnionWith(
-        [
+        desired.Permissions.UnionWith([
             Permissions.Endpoints.Authorization,
             Permissions.Endpoints.Token,
             Permissions.GrantTypes.AuthorizationCode,
             Permissions.GrantTypes.RefreshToken,
             Permissions.ResponseTypes.Code,
-            Permissions.Prefixes.Scope + "notes.read"
+            Permissions.Prefixes.Scope + "notes.read",
         ]);
 
         var changed = OpenIddictClientRegistration.ReconcileDescriptor(existing, desired);
@@ -122,7 +131,7 @@ public sealed class OpenIddictClientRegistrationTests
         return new McpOptions
         {
             RequiredReadScopes = ["notes.read"],
-            RequiredWriteScopes = ["notes.write"]
+            RequiredWriteScopes = ["notes.write"],
         };
     }
 }

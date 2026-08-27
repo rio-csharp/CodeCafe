@@ -14,8 +14,8 @@ namespace CodeCafe.Host.Common;
 /// </summary>
 public sealed class DynamicClientCleanupHostedService(
     IServiceScopeFactory scopeFactory,
-    ILogger<DynamicClientCleanupHostedService> logger)
-    : BackgroundService
+    ILogger<DynamicClientCleanupHostedService> logger
+) : BackgroundService
 {
     private static readonly TimeSpan InitialDelay = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan Interval = TimeSpan.FromHours(24);
@@ -34,26 +34,32 @@ public sealed class DynamicClientCleanupHostedService(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.LogWarning(exception, "Dynamic OAuth client cleanup failed; retrying at the next interval.");
+                logger.LogWarning(
+                    exception,
+                    "Dynamic OAuth client cleanup failed; retrying at the next interval."
+                );
             }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
+        } while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
     internal async Task CleanupAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var applicationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var applicationManager =
+            scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
-        var registeredClients = await dbContext.Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
+        var registeredClients = await dbContext
+            .Set<OpenIddictEntityFrameworkCoreApplication<Guid>>()
             .AsNoTracking()
             .Where(application => application.ClientId != null)
             .Select(application => new { application.Id, application.ClientId })
             .ToListAsync(cancellationToken);
 
         var dynamicClientIds = registeredClients
-            .Where(application => OpenIddictClientRegistration.IsDynamicallyRegisteredClientId(application.ClientId))
+            .Where(application =>
+                OpenIddictClientRegistration.IsDynamicallyRegisteredClientId(application.ClientId)
+            )
             .Select(application => application.Id)
             .ToArray();
 
@@ -65,11 +71,16 @@ public sealed class DynamicClientCleanupHostedService(
         var cutoff = (DateTimeOffset.UtcNow - StaleAfter).UtcDateTime;
 
         // Stale = has tokens and none of them is still valid (or never expires).
-        var staleIds = await dbContext.Set<OpenIddictEntityFrameworkCoreToken<Guid>>()
-            .Where(token => token.Application != null && dynamicClientIds.Contains(token.Application.Id))
+        var staleIds = await dbContext
+            .Set<OpenIddictEntityFrameworkCoreToken<Guid>>()
+            .Where(token =>
+                token.Application != null && dynamicClientIds.Contains(token.Application.Id)
+            )
             .GroupBy(token => token.Application!.Id)
-            .Where(group => !group.Any(token => token.ExpirationDate == null)
-                && group.Max(token => token.ExpirationDate) < cutoff)
+            .Where(group =>
+                !group.Any(token => token.ExpirationDate == null)
+                && group.Max(token => token.ExpirationDate) < cutoff
+            )
             .Select(group => group.Key)
             .ToListAsync(cancellationToken);
 
@@ -81,7 +92,10 @@ public sealed class DynamicClientCleanupHostedService(
             // the sweep (and every run after it, since it would stay first in line forever).
             try
             {
-                var application = await applicationManager.FindByIdAsync(staleId.ToString(), cancellationToken);
+                var application = await applicationManager.FindByIdAsync(
+                    staleId.ToString(),
+                    cancellationToken
+                );
                 if (application is null)
                 {
                     continue;
@@ -95,10 +109,18 @@ public sealed class DynamicClientCleanupHostedService(
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 failed++;
-                logger.LogWarning(exception, "Failed to remove stale dynamically registered OAuth client {ApplicationId}; continuing with the remaining clients.", staleId);
+                logger.LogWarning(
+                    exception,
+                    "Failed to remove stale dynamically registered OAuth client {ApplicationId}; continuing with the remaining clients.",
+                    staleId
+                );
             }
         }
 
-        logger.LogInformation("Removed {DeletedCount} stale dynamically registered OAuth clients ({FailedCount} failed).", deleted, failed);
+        logger.LogInformation(
+            "Removed {DeletedCount} stale dynamically registered OAuth clients ({FailedCount} failed).",
+            deleted,
+            failed
+        );
     }
 }

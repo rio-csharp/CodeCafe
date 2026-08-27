@@ -2,20 +2,21 @@ using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Identity.Commands.RegisterUser;
 
-public sealed class RegisterUserCommandHandler(
-    IAuthUserGateway authUserGateway)
+public sealed class RegisterUserCommandHandler(IAuthUserGateway authUserGateway)
     : ICommandHandler<RegisterUserCommand, AuthResult<AuthUserModel>>
 {
     public async Task<AuthResult<AuthUserModel>> Handle(
         RegisterUserCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (!request.RegistrationEnabled)
         {
             return AuthResult<AuthUserModel>.Failure(
                 AuthFailureKind.Forbidden,
                 "registration_disabled",
-                "Registration is currently disabled.");
+                "Registration is currently disabled."
+            );
         }
 
         var email = AuthInput.NormalizeEmail(request.Email);
@@ -27,14 +28,16 @@ public sealed class RegisterUserCommandHandler(
             return AuthResult<AuthUserModel>.Failure(
                 AuthFailureKind.Conflict,
                 "email_already_registered",
-                "A user with this email already exists.");
+                "A user with this email already exists."
+            );
         }
 
         var createUserResult = await authUserGateway.CreateUserAsync(
             email,
             displayName,
             request.Password,
-            cancellationToken);
+            cancellationToken
+        );
 
         if (!createUserResult.Succeeded)
         {
@@ -42,11 +45,13 @@ public sealed class RegisterUserCommandHandler(
                 ? AuthResult<AuthUserModel>.Failure(
                     AuthFailureKind.Conflict,
                     "email_already_registered",
-                    "A user with this email already exists.")
+                    "A user with this email already exists."
+                )
                 : AuthResult<AuthUserModel>.Failure(
                     AuthFailureKind.Validation,
                     "registration_failed",
-                    "Registration failed. Please check the submitted values.");
+                    "Registration failed. Please check the submitted values."
+                );
         }
 
         return AuthResult<AuthUserModel>.Success(createUserResult.User!);

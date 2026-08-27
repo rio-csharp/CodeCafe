@@ -1,41 +1,49 @@
-using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common;
+using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Notes.Commands.UpdateNotebook;
 
 public sealed class UpdateNotebookCommandHandler(
     INotebookMutationStore notebookMutationStore,
     INotebookReadService notebookReadService,
-    IDateTimeProvider dateTimeProvider)
-    : ICommandHandler<UpdateNotebookCommand, NotesResult<NotebookDetailModel>>
+    IDateTimeProvider dateTimeProvider
+) : ICommandHandler<UpdateNotebookCommand, NotesResult<NotebookDetailModel>>
 {
     public async Task<NotesResult<NotebookDetailModel>> Handle(
         UpdateNotebookCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         if (!NotebookInput.TryParseVisibility(request.Visibility, out var parsedVisibility))
         {
             return NotesResult<NotebookDetailModel>.Failure(
                 NotesFailureKind.Validation,
                 "invalid_visibility",
-                "Visibility must be public, private, or unlisted.");
+                "Visibility must be public, private, or unlisted."
+            );
         }
 
         var notebook = await notebookMutationStore.GetOwnedNotebookAsync(
             request.NotebookId,
             request.CurrentUserId,
-            cancellationToken);
+            cancellationToken
+        );
         if (notebook is null)
         {
-            return await notebookMutationStore.NotebookExistsAsync(request.NotebookId, cancellationToken)
+            return await notebookMutationStore.NotebookExistsAsync(
+                request.NotebookId,
+                cancellationToken
+            )
                 ? NotesResult<NotebookDetailModel>.Failure(
                     NotesFailureKind.Forbidden,
                     "notebook_forbidden",
-                    "Only the notebook owner can modify it.")
+                    "Only the notebook owner can modify it."
+                )
                 : NotesResult<NotebookDetailModel>.Failure(
                     NotesFailureKind.NotFound,
                     "notebook_not_found",
-                    "Notebook was not found.");
+                    "Notebook was not found."
+                );
         }
 
         var trimmedTitle = request.Title.Trim();
@@ -46,7 +54,8 @@ public sealed class UpdateNotebookCommandHandler(
             notebook.Slug = await notebookMutationStore.GenerateUniqueNotebookSlugAsync(
                 trimmedTitle,
                 notebook.Id,
-                cancellationToken);
+                cancellationToken
+            );
         }
 
         notebook.SetDescription(NotebookInput.NormalizeOptionalText(request.Description));
@@ -54,6 +63,10 @@ public sealed class UpdateNotebookCommandHandler(
 
         await notebookMutationStore.SaveNotebookAsync(notebook, trimmedTitle, cancellationToken);
 
-        return await notebookReadService.GetNotebookByIdAsync(notebook.Id, request.CurrentUserId, cancellationToken);
+        return await notebookReadService.GetNotebookByIdAsync(
+            notebook.Id,
+            request.CurrentUserId,
+            cancellationToken
+        );
     }
 }

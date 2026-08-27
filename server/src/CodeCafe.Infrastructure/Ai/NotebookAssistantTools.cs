@@ -1,26 +1,28 @@
-using CodeCafe.Application.Ai.Drafts;
-using CodeCafe.Application.Ai.Edits;
+using System.ComponentModel;
 using CodeCafe.Application.Ai;
 using CodeCafe.Application.Common.Identity;
 using CodeCafe.Application.Notes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using System.ComponentModel;
 
 namespace CodeCafe.Infrastructure.Ai;
 
 public sealed class NotebookAssistantTools(
     IServiceScopeFactory serviceScopeFactory,
     ICurrentUserAccessor currentUserAccessor,
-    IOptions<AiOptions> aiOptionsAccessor)
+    IOptions<AiOptions> aiOptionsAccessor
+)
 {
     private readonly AiOptions _options = aiOptionsAccessor.Value;
 
-    [Description("List notebooks the current user can access, optionally filtered by a search query.")]
+    [Description(
+        "List notebooks the current user can access, optionally filtered by a search query."
+    )]
     public async Task<ListNotebooksToolResponse> ListNotebooksAsync(
         [Description("Optional notebook title or description search query.")] string? query = null,
         [Description("Maximum number of notebooks to return.")] int? limit = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (!TryGetCurrentUserId(out var currentUserId, out var authError))
         {
@@ -34,12 +36,14 @@ public sealed class NotebookAssistantTools(
             currentUserId,
             query,
             cancellationToken,
-            normalizedLimit);
+            normalizedLimit
+        );
         var publicNotebooks = await notebookReadService.GetPublicNotebooksAsync(
             query,
             currentUserId,
             cancellationToken,
-            normalizedLimit);
+            normalizedLimit
+        );
 
         return ListNotebooksToolResponse.Success(
             ownedNotebooks
@@ -50,14 +54,16 @@ public sealed class NotebookAssistantTools(
                 .ThenBy(notebook => notebook.Title, StringComparer.OrdinalIgnoreCase)
                 .Take(normalizedLimit)
                 .Select(ToNotebookSummary)
-                .ToList());
+                .ToList()
+        );
     }
 
     [Description("Search notebook items visible to the current user.")]
     public async Task<SearchNotesToolResponse> SearchNotesAsync(
         [Description("Required search query for page titles or plain text content.")] string query,
         [Description("Maximum number of search results to return.")] int? limit = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (!TryGetCurrentUserId(out var currentUserId, out var authError))
         {
@@ -66,9 +72,9 @@ public sealed class NotebookAssistantTools(
 
         if (string.IsNullOrWhiteSpace(query))
         {
-            return SearchNotesToolResponse.Failure(new NotebookAssistantToolError(
-                "invalid_search",
-                "Search query is required."));
+            return SearchNotesToolResponse.Failure(
+                new NotebookAssistantToolError("invalid_search", "Search query is required.")
+            );
         }
 
         using var scope = serviceScopeFactory.CreateScope();
@@ -77,10 +83,10 @@ public sealed class NotebookAssistantTools(
             currentUserId,
             query,
             cancellationToken,
-            NormalizeLimit(limit));
+            NormalizeLimit(limit)
+        );
 
-        return SearchNotesToolResponse.Success(
-            results.Select(ToSearchResult).ToList());
+        return SearchNotesToolResponse.Success(results.Select(ToSearchResult).ToList());
     }
 
     [Description("Load notebook metadata and item summaries by notebook slug.")]
@@ -88,7 +94,8 @@ public sealed class NotebookAssistantTools(
         [Description("Notebook slug.")] string slug,
         [Description("Whether to include item summaries.")] bool includeItems = true,
         [Description("Maximum number of item summaries to return.")] int? itemLimit = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (!TryGetCurrentUserId(out var currentUserId, out var authError))
         {
@@ -97,9 +104,9 @@ public sealed class NotebookAssistantTools(
 
         if (string.IsNullOrWhiteSpace(slug))
         {
-            return GetNotebookToolResponse.Failure(new NotebookAssistantToolError(
-                "invalid_slug",
-                "Notebook slug is required."));
+            return GetNotebookToolResponse.Failure(
+                new NotebookAssistantToolError("invalid_slug", "Notebook slug is required.")
+            );
         }
 
         using var scope = serviceScopeFactory.CreateScope();
@@ -108,7 +115,8 @@ public sealed class NotebookAssistantTools(
             slug,
             currentUserId,
             cancellationToken,
-            includeItems: includeItems);
+            includeItems: includeItems
+        );
 
         if (!result.Succeeded)
         {
@@ -116,18 +124,22 @@ public sealed class NotebookAssistantTools(
         }
 
         var notebook = result.Value!;
-        return GetNotebookToolResponse.Success(new NotebookDetailForAi(
-            ToNotebookSummary(notebook),
-            includeItems
-                ? notebook.Items.Take(NormalizeLimit(itemLimit)).Select(ToNotebookItem).ToList()
-                : []));
+        return GetNotebookToolResponse.Success(
+            new NotebookDetailForAi(
+                ToNotebookSummary(notebook),
+                includeItems
+                    ? notebook.Items.Take(NormalizeLimit(itemLimit)).Select(ToNotebookItem).ToList()
+                    : []
+            )
+        );
     }
 
     [Description("Load one visible notebook page or folder by notebook slug and item path.")]
     public async Task<GetPageToolResponse> GetPageAsync(
         [Description("Notebook slug.")] string notebookSlug,
         [Description("Item path inside the notebook.")] string path,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default
+    )
     {
         if (!TryGetCurrentUserId(out var currentUserId, out var authError))
         {
@@ -136,9 +148,12 @@ public sealed class NotebookAssistantTools(
 
         if (string.IsNullOrWhiteSpace(notebookSlug) || string.IsNullOrWhiteSpace(path))
         {
-            return GetPageToolResponse.Failure(new NotebookAssistantToolError(
-                "invalid_page_reference",
-                "Notebook slug and page path are required."));
+            return GetPageToolResponse.Failure(
+                new NotebookAssistantToolError(
+                    "invalid_page_reference",
+                    "Notebook slug and page path are required."
+                )
+            );
         }
 
         using var scope = serviceScopeFactory.CreateScope();
@@ -147,7 +162,8 @@ public sealed class NotebookAssistantTools(
             notebookSlug,
             path,
             currentUserId,
-            cancellationToken);
+            cancellationToken
+        );
 
         if (!result.Succeeded)
         {
@@ -157,9 +173,12 @@ public sealed class NotebookAssistantTools(
         var item = result.Value!;
         if (!string.Equals(item.Type, "page", StringComparison.OrdinalIgnoreCase))
         {
-            return GetPageToolResponse.Failure(new NotebookAssistantToolError(
-                "notebook_item_not_found",
-                $"The item at path '{path}' is not a page."));
+            return GetPageToolResponse.Failure(
+                new NotebookAssistantToolError(
+                    "notebook_item_not_found",
+                    $"The item at path '{path}' is not a page."
+                )
+            );
         }
 
         return GetPageToolResponse.Success(ToNotebookItem(item));
@@ -177,7 +196,8 @@ public sealed class NotebookAssistantTools(
         currentUserId = Guid.Empty;
         error = new NotebookAssistantToolError(
             "authentication_required",
-            "Authentication is required to read notebooks.");
+            "Authentication is required to read notebooks."
+        );
         return false;
     }
 
@@ -201,7 +221,8 @@ public sealed class NotebookAssistantTools(
             notebook.FolderCount,
             notebook.PageCount,
             notebook.LastActivityAtUtc,
-            notebook.PublishedAtUtc);
+            notebook.PublishedAtUtc
+        );
     }
 
     private NotebookSummaryForAi ToNotebookSummary(NotebookDetailModel notebook)
@@ -218,7 +239,8 @@ public sealed class NotebookAssistantTools(
             notebook.FolderCount,
             notebook.PageCount,
             notebook.LastActivityAtUtc,
-            notebook.PublishedAtUtc);
+            notebook.PublishedAtUtc
+        );
     }
 
     private NotebookItemForAi ToNotebookItem(NotebookItemModel item)
@@ -231,7 +253,8 @@ public sealed class NotebookAssistantTools(
             item.ContentFormat,
             Truncate(item.PlainTextContent),
             item.CreatedAtUtc,
-            item.UpdatedAtUtc);
+            item.UpdatedAtUtc
+        );
     }
 
     private NotebookSearchResultForAi ToSearchResult(NotebookItemSearchModel item)
@@ -245,7 +268,8 @@ public sealed class NotebookAssistantTools(
             item.Path,
             Truncate(item.PlainTextContent),
             item.CreatedAtUtc,
-            item.UpdatedAtUtc);
+            item.UpdatedAtUtc
+        );
     }
 
     private string? Truncate(string? value)
@@ -261,62 +285,65 @@ public sealed class NotebookAssistantTools(
             : string.Concat(value.AsSpan(0, maxLength), "\n[truncated]");
     }
 
-    private static NotebookAssistantToolError ToToolError(NotesError error)
-        => new(error.Code, error.Message);
+    private static NotebookAssistantToolError ToToolError(NotesError error) =>
+        new(error.Code, error.Message);
 }
 
-public sealed record NotebookAssistantToolError(
-    string Code,
-    string Message);
+public sealed record NotebookAssistantToolError(string Code, string Message);
 
 public sealed record ListNotebooksToolResponse(
     bool Succeeded,
     NotebookAssistantToolError? Error,
     int TotalCount,
-    IReadOnlyList<NotebookSummaryForAi> Notebooks)
+    IReadOnlyList<NotebookSummaryForAi> Notebooks
+)
 {
-    public static ListNotebooksToolResponse Success(IReadOnlyList<NotebookSummaryForAi> notebooks)
-        => new(true, null, notebooks.Count, notebooks);
+    public static ListNotebooksToolResponse Success(
+        IReadOnlyList<NotebookSummaryForAi> notebooks
+    ) => new(true, null, notebooks.Count, notebooks);
 
-    public static ListNotebooksToolResponse Failure(NotebookAssistantToolError error)
-        => new(false, error, 0, []);
+    public static ListNotebooksToolResponse Failure(NotebookAssistantToolError error) =>
+        new(false, error, 0, []);
 }
 
 public sealed record SearchNotesToolResponse(
     bool Succeeded,
     NotebookAssistantToolError? Error,
     int TotalCount,
-    IReadOnlyList<NotebookSearchResultForAi> Results)
+    IReadOnlyList<NotebookSearchResultForAi> Results
+)
 {
-    public static SearchNotesToolResponse Success(IReadOnlyList<NotebookSearchResultForAi> results)
-        => new(true, null, results.Count, results);
+    public static SearchNotesToolResponse Success(
+        IReadOnlyList<NotebookSearchResultForAi> results
+    ) => new(true, null, results.Count, results);
 
-    public static SearchNotesToolResponse Failure(NotebookAssistantToolError error)
-        => new(false, error, 0, []);
+    public static SearchNotesToolResponse Failure(NotebookAssistantToolError error) =>
+        new(false, error, 0, []);
 }
 
 public sealed record GetNotebookToolResponse(
     bool Succeeded,
     NotebookAssistantToolError? Error,
-    NotebookDetailForAi? Notebook)
+    NotebookDetailForAi? Notebook
+)
 {
-    public static GetNotebookToolResponse Success(NotebookDetailForAi notebook)
-        => new(true, null, notebook);
+    public static GetNotebookToolResponse Success(NotebookDetailForAi notebook) =>
+        new(true, null, notebook);
 
-    public static GetNotebookToolResponse Failure(NotebookAssistantToolError error)
-        => new(false, error, null);
+    public static GetNotebookToolResponse Failure(NotebookAssistantToolError error) =>
+        new(false, error, null);
 }
 
 public sealed record GetPageToolResponse(
     bool Succeeded,
     NotebookAssistantToolError? Error,
-    NotebookItemForAi? Item)
+    NotebookItemForAi? Item
+)
 {
-    public static GetPageToolResponse Success(NotebookItemForAi item)
-        => new(true, null, item);
+    public static GetPageToolResponse Success(NotebookItemForAi item) => new(true, null, item);
 
-    public static GetPageToolResponse Failure(NotebookAssistantToolError error)
-        => new(false, error, null);
+    public static GetPageToolResponse Failure(NotebookAssistantToolError error) =>
+        new(false, error, null);
 }
 
 public sealed record NotebookSummaryForAi(
@@ -331,11 +358,13 @@ public sealed record NotebookSummaryForAi(
     int FolderCount,
     int PageCount,
     DateTimeOffset LastActivityAtUtc,
-    DateTimeOffset? PublishedAtUtc);
+    DateTimeOffset? PublishedAtUtc
+);
 
 public sealed record NotebookDetailForAi(
     NotebookSummaryForAi Summary,
-    IReadOnlyList<NotebookItemForAi> Items);
+    IReadOnlyList<NotebookItemForAi> Items
+);
 
 public sealed record NotebookItemForAi(
     string Type,
@@ -345,7 +374,8 @@ public sealed record NotebookItemForAi(
     string? ContentFormat,
     string? PlainTextContent,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
 public sealed record NotebookSearchResultForAi(
     string NotebookTitle,
@@ -356,4 +386,5 @@ public sealed record NotebookSearchResultForAi(
     string Path,
     string? PlainTextSnippet,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);

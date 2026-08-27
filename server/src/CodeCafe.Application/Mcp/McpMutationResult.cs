@@ -1,4 +1,3 @@
-using CodeCafe.Application.Mcp;
 using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Application.Mcp;
@@ -11,7 +10,8 @@ public sealed record McpMutationResult<T>
         NotesError? error,
         string? successText,
         Guid? notebookId,
-        Guid? itemId)
+        Guid? itemId
+    )
     {
         Value = value;
         Error = error;
@@ -36,12 +36,12 @@ public sealed record McpMutationResult<T>
         T value,
         string successText,
         Guid? notebookId,
-        Guid? itemId)
-        => new(value, error: null, successText, notebookId, itemId);
+        Guid? itemId
+    ) => new(value, error: null, successText, notebookId, itemId);
 
     public static McpMutationResult<T> Failure(
         NotesError error,
         Guid? notebookId = null,
-        Guid? itemId = null)
-        => new(value: null, error, successText: null, notebookId, itemId);
+        Guid? itemId = null
+    ) => new(value: null, error, successText: null, notebookId, itemId);
 }

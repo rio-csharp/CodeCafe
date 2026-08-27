@@ -1,12 +1,9 @@
-using CodeCafe.Infrastructure.Uploads;
-using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Application.Common.Uploads;
-using CodeCafe.Application.Mcp;
-using CodeCafe.Host.Mcp;
-using CodeCafe.Application.Notes;
-using CodeCafe.Application.Common.Configuration;
-using Microsoft.Extensions.Options;
 using System.Text.Json;
+using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Application.Common.Uploads;
+using CodeCafe.Infrastructure.Mcp;
+using CodeCafe.Infrastructure.Uploads;
+using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Host.Mcp.Tests;
 
@@ -16,7 +13,8 @@ public sealed class MarkdownContentImporterTests
     public async Task ResolveRequiredPageContentAsync_AllowsInlineHeadingNodes()
     {
         var service = CreateService();
-        using var document = JsonDocument.Parse("""
+        using var document = JsonDocument.Parse(
+            """
             {
               "type": "doc",
               "content": [
@@ -27,7 +25,8 @@ public sealed class MarkdownContentImporterTests
                 }
               ]
             }
-            """);
+            """
+        );
 
         var result = await service.ResolveRequiredPageContentAsync(
             Guid.NewGuid(),
@@ -36,7 +35,8 @@ public sealed class MarkdownContentImporterTests
             contentFormat: null,
             "invalid_content_json",
             "invalid content",
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         var heading = result.Value.GetProperty("content")[0];
@@ -48,7 +48,8 @@ public sealed class MarkdownContentImporterTests
     public async Task ResolveRequiredBlocksAsync_AllowsInlineHeadingNodes()
     {
         var service = CreateService();
-        using var blocks = JsonDocument.Parse("""
+        using var blocks = JsonDocument.Parse(
+            """
             [
               {
                 "type": "heading",
@@ -56,7 +57,8 @@ public sealed class MarkdownContentImporterTests
                 "content": [{ "type": "text", "text": "Append title" }]
               }
             ]
-            """);
+            """
+        );
 
         var result = await service.ResolveRequiredBlocksAsync(
             Guid.NewGuid(),
@@ -65,7 +67,8 @@ public sealed class MarkdownContentImporterTests
             blocksFormat: null,
             "invalid_blocks",
             "invalid blocks",
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         var heading = result.Value[0];
@@ -85,7 +88,8 @@ public sealed class MarkdownContentImporterTests
             "# Page title\n\nFirst paragraph.",
             30,
             DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow
+        );
         var service = CreateService(new TestUploadStore(upload));
 
         var result = await service.ResolveRequiredPageContentAsync(
@@ -95,7 +99,8 @@ public sealed class MarkdownContentImporterTests
             contentFormat: "markdown",
             "invalid_content_json",
             "invalid content",
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         var firstNode = result.Value.GetProperty("content")[0];
@@ -103,30 +108,34 @@ public sealed class MarkdownContentImporterTests
         Assert.Equal(1, firstNode.GetProperty("attrs").GetProperty("level").GetInt32());
         Assert.Equal(
             "Page title",
-            firstNode.GetProperty("content")[0].GetProperty("text").GetString());
+            firstNode.GetProperty("content")[0].GetProperty("text").GetString()
+        );
         var secondNode = result.Value.GetProperty("content")[1];
         Assert.Equal("paragraph", secondNode.GetProperty("type").GetString());
         Assert.Equal(
             "First paragraph.",
-            secondNode.GetProperty("content")[0].GetProperty("text").GetString());
+            secondNode.GetProperty("content")[0].GetProperty("text").GetString()
+        );
     }
 
-    private static MarkdownContentImporter CreateService()
-        => new(
+    private static MarkdownContentImporter CreateService() =>
+        new(
             new TestUploadStore(),
             new MarkdigMcpMarkdownImporter(),
-            Options.Create(new McpOptions()));
+            Options.Create(new McpOptions())
+        );
 
-    private static MarkdownContentImporter CreateService(IUploadStore uploadStore)
-        => new(
-            uploadStore,
-            new MarkdigMcpMarkdownImporter(),
-            Options.Create(new McpOptions()));
+    private static MarkdownContentImporter CreateService(IUploadStore uploadStore) =>
+        new(uploadStore, new MarkdigMcpMarkdownImporter(), Options.Create(new McpOptions()));
 
     private sealed class TestUploadStore(UploadSession? session = null) : IUploadStore
     {
-        public Task<UploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken)
-            => throw new NotSupportedException();
+        public Task<UploadStatus> CreateAsync(
+            Guid actorId,
+            string? fileName,
+            string mediaType,
+            CancellationToken cancellationToken
+        ) => throw new NotSupportedException();
 
         public Task<UploadResult<UploadStatus>> CreateTextAsync(
             Guid actorId,
@@ -134,8 +143,8 @@ public sealed class MarkdownContentImporterTests
             string mediaType,
             string contentText,
             int maxUploadBytes,
-            CancellationToken cancellationToken)
-            => throw new NotSupportedException();
+            CancellationToken cancellationToken
+        ) => throw new NotSupportedException();
 
         public Task<UploadResult<UploadStatus>> AppendTextAsync(
             Guid actorId,
@@ -143,16 +152,27 @@ public sealed class MarkdownContentImporterTests
             string chunkText,
             int maxChunkBytes,
             int maxUploadBytes,
-            CancellationToken cancellationToken)
-            => throw new NotSupportedException();
+            CancellationToken cancellationToken
+        ) => throw new NotSupportedException();
 
-        public Task<UploadResult<UploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
-            => Task.FromResult(
+        public Task<UploadResult<UploadSession>> GetAsync(
+            Guid actorId,
+            string uploadId,
+            CancellationToken cancellationToken
+        ) =>
+            Task.FromResult(
                 session is not null && session.ActorId == actorId && session.UploadId == uploadId
                     ? UploadResult<UploadSession>.Success(session)
-                    : UploadResult<UploadSession>.Failure("upload_not_found", "Upload session was not found."));
+                    : UploadResult<UploadSession>.Failure(
+                        "upload_not_found",
+                        "Upload session was not found."
+                    )
+            );
 
-        public Task<bool> DeleteAsync(Guid actorId, string uploadId, CancellationToken cancellationToken)
-            => Task.FromResult(false);
+        public Task<bool> DeleteAsync(
+            Guid actorId,
+            string uploadId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(false);
     }
 }

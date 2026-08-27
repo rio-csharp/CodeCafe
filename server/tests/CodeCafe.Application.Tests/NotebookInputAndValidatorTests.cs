@@ -1,9 +1,9 @@
+using System.Text.Json;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
 using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
 using CodeCafe.Application.Notes.Commands.UpdateNotebook;
 using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
-using System.Text.Json;
 
 namespace CodeCafe.Application.Tests;
 
@@ -80,7 +80,13 @@ public sealed class NotebookInputAndValidatorTests
     public void UpdateNotebookValidator_Rejects_Invalid_Visibility()
     {
         var validator = new UpdateNotebookCommandValidator();
-        var command = new UpdateNotebookCommand(Guid.NewGuid(), Guid.NewGuid(), "Title", null, "secret");
+        var command = new UpdateNotebookCommand(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Title",
+            null,
+            "secret"
+        );
 
         var result = validator.Validate(command);
 
@@ -91,7 +97,13 @@ public sealed class NotebookInputAndValidatorTests
     public void UpdateNotebookValidator_Rejects_Missing_Visibility()
     {
         var validator = new UpdateNotebookCommandValidator();
-        var command = new UpdateNotebookCommand(Guid.NewGuid(), Guid.NewGuid(), "Title", null, string.Empty);
+        var command = new UpdateNotebookCommand(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Title",
+            null,
+            string.Empty
+        );
 
         var result = validator.Validate(command);
 
@@ -102,7 +114,15 @@ public sealed class NotebookInputAndValidatorTests
     public void CreateNotebookItemValidator_Rejects_Invalid_ItemType()
     {
         var validator = new CreateNotebookItemCommandValidator();
-        var command = new CreateNotebookItemCommand(Guid.NewGuid(), Guid.NewGuid(), null, "article", "Title", 0, null);
+        var command = new CreateNotebookItemCommand(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            null,
+            "article",
+            "Title",
+            0,
+            null
+        );
 
         var result = validator.Validate(command);
 
@@ -122,7 +142,8 @@ public sealed class NotebookInputAndValidatorTests
             "Title",
             parentDocument.RootElement.Clone(),
             null,
-            contentDocument.RootElement.Clone());
+            contentDocument.RootElement.Clone()
+        );
 
         var result = validator.Validate(command);
 

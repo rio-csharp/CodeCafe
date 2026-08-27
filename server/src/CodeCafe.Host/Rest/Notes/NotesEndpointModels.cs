@@ -21,7 +21,8 @@ public sealed record NotebookSummaryResponse(
     DateTimeOffset LastActivityAtUtc,
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc,
-    DateTimeOffset? PublishedAtUtc);
+    DateTimeOffset? PublishedAtUtc
+);
 
 public sealed record NotebookDetailResponse(
     Guid Id,
@@ -42,7 +43,8 @@ public sealed record NotebookDetailResponse(
     DateTimeOffset CreatedAtUtc,
     DateTimeOffset? UpdatedAtUtc,
     DateTimeOffset? PublishedAtUtc,
-    IReadOnlyList<NotebookItemResponse> Items);
+    IReadOnlyList<NotebookItemResponse> Items
+);
 
 public sealed record NotebookItemResponse(
     Guid Id,
@@ -60,44 +62,43 @@ public sealed record NotebookItemResponse(
     DateTimeOffset? ArchivedAtUtc,
     Guid? ArchivedByUserId,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset? UpdatedAtUtc);
+    DateTimeOffset? UpdatedAtUtc
+);
 
-public sealed record NotebookFavoriteResponse(
-    Guid NotebookId,
-    bool IsFavorited,
-    int FavoriteCount);
+public sealed record NotebookFavoriteResponse(Guid NotebookId, bool IsFavorited, int FavoriteCount);
 
 public sealed record CreateNotebookRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     [StringLength(1000)] string? Description,
-    string? Visibility);
+    string? Visibility
+);
 
 public sealed record UpdateNotebookRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     [StringLength(1000)] string? Description,
-    [Required] string Visibility);
+    [Required] string Visibility
+);
 
 public sealed record CreateNotebookItemRequest(
     Guid? ParentId,
     [Required] string Type,
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     int SortOrder,
-    JsonElement? ContentJson);
+    JsonElement? ContentJson
+);
 
 public sealed record UpdateNotebookItemRequest(
     [Required, StringLength(160, MinimumLength = 1)] string Title,
     JsonElement ParentId,
     int? SortOrder,
     JsonElement ContentJson,
-    DateTimeOffset? ExpectedUpdatedAtUtc = null);
+    DateTimeOffset? ExpectedUpdatedAtUtc = null
+);
 
 public sealed record ReorderNotebookItemsRequest(
-    [Required] IReadOnlyList<ReorderNotebookItemRequest> Items);
+    [Required] IReadOnlyList<ReorderNotebookItemRequest> Items
+);
 
-public sealed record ReorderNotebookItemRequest(
-    Guid ItemId,
-    Guid? ParentId,
-    int SortOrder);
+public sealed record ReorderNotebookItemRequest(Guid ItemId, Guid? ParentId, int SortOrder);
 
-public sealed record ReorderNotebookItemsResponse(
-    IReadOnlyList<NotebookItemResponse> Items);
+public sealed record ReorderNotebookItemsResponse(IReadOnlyList<NotebookItemResponse> Items);

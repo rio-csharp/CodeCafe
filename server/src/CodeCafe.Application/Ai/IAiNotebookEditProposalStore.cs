@@ -1,15 +1,25 @@
 using System.Text.Json;
-using CodeCafe.Domain.Ai;
 
 namespace CodeCafe.Application.Ai;
 
 public interface IAiNotebookEditProposalStore
 {
-    Task<AiNotebookEditProposal> SaveAsync(AiNotebookEditProposal proposal, CancellationToken cancellationToken);
+    Task<AiNotebookEditProposal> SaveAsync(
+        AiNotebookEditProposal proposal,
+        CancellationToken cancellationToken
+    );
 
-    Task<AiNotebookEditProposal?> TryGetAsync(Guid proposalId, Guid actorId, CancellationToken cancellationToken);
+    Task<AiNotebookEditProposal?> TryGetAsync(
+        Guid proposalId,
+        Guid actorId,
+        CancellationToken cancellationToken
+    );
 
-    Task<AiNotebookEditProposal?> TryConsumeAsync(Guid proposalId, Guid actorId, CancellationToken cancellationToken);
+    Task<AiNotebookEditProposal?> TryConsumeAsync(
+        Guid proposalId,
+        Guid actorId,
+        CancellationToken cancellationToken
+    );
 
     Task RemoveAsync(Guid proposalId, CancellationToken cancellationToken);
 }
@@ -35,4 +45,5 @@ public sealed record AiNotebookEditProposal(
     DateTimeOffset SourcePageUpdatedAtUtc,
     DateTimeOffset GeneratedAtUtc,
     DateTimeOffset ExpiresAtUtc,
-    string Summary);
+    string Summary
+);

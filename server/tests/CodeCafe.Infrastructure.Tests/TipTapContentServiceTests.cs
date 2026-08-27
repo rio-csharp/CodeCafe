@@ -1,7 +1,7 @@
-using CodeCafe.Application.Notes;
-using CodeCafe.Infrastructure.Notes;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using CodeCafe.Application.Notes;
+using CodeCafe.Infrastructure.Notes;
 
 namespace CodeCafe.Infrastructure.Tests;
 
@@ -11,7 +11,8 @@ public sealed class TipTapContentServiceTests
     public void NormalizePageContent_PreservesLeadingHeadingNodes()
     {
         var service = new TipTapContentService();
-        using var document = JsonDocument.Parse("""
+        using var document = JsonDocument.Parse(
+            """
             {
               "type": "doc",
               "content": [
@@ -26,7 +27,8 @@ public sealed class TipTapContentServiceTests
                 }
               ]
             }
-            """);
+            """
+        );
 
         var result = service.NormalizePageContent(document.RootElement);
 
@@ -35,7 +37,10 @@ public sealed class TipTapContentServiceTests
         var firstNode = normalized.RootElement.GetProperty("content")[0];
         Assert.Equal("heading", firstNode.GetProperty("type").GetString());
         Assert.Equal(1, firstNode.GetProperty("attrs").GetProperty("level").GetInt32());
-        Assert.Equal("async-await intro", firstNode.GetProperty("content")[0].GetProperty("text").GetString());
+        Assert.Equal(
+            "async-await intro",
+            firstNode.GetProperty("content")[0].GetProperty("text").GetString()
+        );
     }
 
     [Fact]
@@ -45,17 +50,10 @@ public sealed class TipTapContentServiceTests
         var content = new JsonArray();
         for (var i = 0; i < ITipTapContentService.MaxNodeCount; i++)
         {
-            content.Add(new JsonObject
-            {
-                ["type"] = "paragraph"
-            });
+            content.Add(new JsonObject { ["type"] = "paragraph" });
         }
 
-        var root = new JsonObject
-        {
-            ["type"] = "doc",
-            ["content"] = content
-        };
+        var root = new JsonObject { ["type"] = "doc", ["content"] = content };
         var document = JsonSerializer.SerializeToElement(root);
 
         var result = service.NormalizePageContent(document);
@@ -63,15 +61,22 @@ public sealed class TipTapContentServiceTests
         Assert.False(result.Succeeded);
         Assert.Equal("invalid_tiptap_document", result.Error!.Code);
         Assert.Equal("contentJson", result.Error.Field);
-        Assert.Equal(ITipTapContentService.MaxNodeCount, result.Error.Details!["maxTipTapNodeCount"]);
-        Assert.Equal(ITipTapContentService.MaxNodeCount + 1, result.Error.Details["actualTipTapNodeCount"]);
+        Assert.Equal(
+            ITipTapContentService.MaxNodeCount,
+            result.Error.Details!["maxTipTapNodeCount"]
+        );
+        Assert.Equal(
+            ITipTapContentService.MaxNodeCount + 1,
+            result.Error.Details["actualTipTapNodeCount"]
+        );
     }
 
     [Fact]
     public void NormalizePageContent_RemovesEmptyTextNodes()
     {
         var service = new TipTapContentService();
-        using var document = JsonDocument.Parse("""
+        using var document = JsonDocument.Parse(
+            """
             {
               "type": "doc",
               "content": [
@@ -84,14 +89,17 @@ public sealed class TipTapContentServiceTests
                 }
               ]
             }
-            """);
+            """
+        );
 
         var result = service.NormalizePageContent(document.RootElement);
 
         Assert.True(result.Succeeded);
         Assert.DoesNotContain("\"text\":\"\"", result.Value!.ContentJson, StringComparison.Ordinal);
         using var normalized = JsonDocument.Parse(result.Value.ContentJson!);
-        var paragraphContent = normalized.RootElement.GetProperty("content")[0].GetProperty("content");
+        var paragraphContent = normalized
+            .RootElement.GetProperty("content")[0]
+            .GetProperty("content");
         Assert.Single(paragraphContent.EnumerateArray());
         Assert.Equal("Hello", paragraphContent[0].GetProperty("text").GetString());
     }
@@ -100,39 +108,48 @@ public sealed class TipTapContentServiceTests
     public void NormalizePageContent_ReturnsDetailsWhenTextLimitIsExceeded()
     {
         var service = new TipTapContentService();
-        var document = JsonSerializer.SerializeToElement(new JsonObject
-        {
-            ["type"] = "doc",
-            ["content"] = new JsonArray
+        var document = JsonSerializer.SerializeToElement(
+            new JsonObject
             {
-                new JsonObject
+                ["type"] = "doc",
+                ["content"] = new JsonArray
                 {
-                    ["type"] = "paragraph",
-                    ["content"] = new JsonArray
+                    new JsonObject
                     {
-                        new JsonObject
+                        ["type"] = "paragraph",
+                        ["content"] = new JsonArray
                         {
-                            ["type"] = "text",
-                            ["text"] = new string('a', ITipTapContentService.MaxTextLength + 1)
-                        }
-                    }
-                }
+                            new JsonObject
+                            {
+                                ["type"] = "text",
+                                ["text"] = new string('a', ITipTapContentService.MaxTextLength + 1),
+                            },
+                        },
+                    },
+                },
             }
-        });
+        );
 
         var result = service.NormalizePageContent(document);
 
         Assert.False(result.Succeeded);
         Assert.Equal("invalid_tiptap_document", result.Error!.Code);
-        Assert.Equal(ITipTapContentService.MaxTextLength, result.Error.Details!["maxTipTapTextLength"]);
-        Assert.Equal(ITipTapContentService.MaxTextLength + 1, result.Error.Details["actualTipTapTextLength"]);
+        Assert.Equal(
+            ITipTapContentService.MaxTextLength,
+            result.Error.Details!["maxTipTapTextLength"]
+        );
+        Assert.Equal(
+            ITipTapContentService.MaxTextLength + 1,
+            result.Error.Details["actualTipTapTextLength"]
+        );
     }
 
     [Fact]
     public void NormalizePageContent_PreservesHardBreaksInPlainText()
     {
         var service = new TipTapContentService();
-        using var document = JsonDocument.Parse("""
+        using var document = JsonDocument.Parse(
+            """
             {
               "type": "doc",
               "content": [
@@ -146,7 +163,8 @@ public sealed class TipTapContentServiceTests
                 }
               ]
             }
-            """);
+            """
+        );
 
         var result = service.NormalizePageContent(document.RootElement);
 
@@ -161,25 +179,27 @@ public sealed class TipTapContentServiceTests
     public void NormalizePageContent_PreservesCurlyDoubleQuotesInStoredJsonAndPlainText()
     {
         var service = new TipTapContentService();
-        var document = JsonSerializer.SerializeToElement(new JsonObject
-        {
-            ["type"] = "doc",
-            ["content"] = new JsonArray
+        var document = JsonSerializer.SerializeToElement(
+            new JsonObject
             {
-                new JsonObject
+                ["type"] = "doc",
+                ["content"] = new JsonArray
                 {
-                    ["type"] = "paragraph",
-                    ["content"] = new JsonArray
+                    new JsonObject
                     {
-                        new JsonObject
+                        ["type"] = "paragraph",
+                        ["content"] = new JsonArray
                         {
-                            ["type"] = "text",
-                            ["text"] = "Quote: \u201Cvalue\u201D"
-                        }
-                    }
-                }
+                            new JsonObject
+                            {
+                                ["type"] = "text",
+                                ["text"] = "Quote: \u201Cvalue\u201D",
+                            },
+                        },
+                    },
+                },
             }
-        });
+        );
 
         var result = service.NormalizePageContent(document);
 
@@ -187,8 +207,16 @@ public sealed class TipTapContentServiceTests
         Assert.Equal("Quote: \u201Cvalue\u201D", result.Value!.PlainTextContent);
         Assert.Contains("\u201C", result.Value.ContentJson, StringComparison.Ordinal);
         Assert.Contains("\u201D", result.Value.ContentJson, StringComparison.Ordinal);
-        Assert.DoesNotContain("\\u201C", result.Value.ContentJson, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("\\u201D", result.Value.ContentJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(
+            "\\u201C",
+            result.Value.ContentJson,
+            StringComparison.OrdinalIgnoreCase
+        );
+        Assert.DoesNotContain(
+            "\\u201D",
+            result.Value.ContentJson,
+            StringComparison.OrdinalIgnoreCase
+        );
     }
 
     [Fact]
@@ -196,14 +224,16 @@ public sealed class TipTapContentServiceTests
     {
         var service = new TipTapContentService();
         using var document = JsonDocument.Parse(
-            "{ \"type\": \"doc\", \"content\": [ { \"type\": \"heading\", \"attrs\": { \"level\": 1.0 }, \"content\": [ { \"type\": \"text\", \"text\": \"T\\u00edtle \\u201Cq\\u201D\" } ] } ] }");
+            "{ \"type\": \"doc\", \"content\": [ { \"type\": \"heading\", \"attrs\": { \"level\": 1.0 }, \"content\": [ { \"type\": \"text\", \"text\": \"T\\u00edtle \\u201Cq\\u201D\" } ] } ] }"
+        );
 
         var result = service.NormalizePageContent(document.RootElement);
 
         Assert.True(result.Succeeded);
         Assert.Equal(
             "{\"type\":\"doc\",\"content\":[{\"type\":\"heading\",\"attrs\":{\"level\":1.0},\"content\":[{\"type\":\"text\",\"text\":\"Títle “q”\"}]}]}",
-            result.Value!.ContentJson);
+            result.Value!.ContentJson
+        );
         Assert.Equal("Títle “q”", result.Value.PlainTextContent);
     }
 
@@ -237,7 +267,8 @@ public sealed class TipTapContentServiceTests
     public void NormalizePageContent_SkipsRemovedEmptyTextNodesWhenSeparatingPlainText()
     {
         var service = new TipTapContentService();
-        using var document = JsonDocument.Parse("""
+        using var document = JsonDocument.Parse(
+            """
             {
               "type": "doc",
               "content": [
@@ -246,7 +277,8 @@ public sealed class TipTapContentServiceTests
                 { "type": "paragraph", "content": [{ "type": "text", "text": "Two" }] }
               ]
             }
-            """);
+            """
+        );
 
         var result = service.NormalizePageContent(document.RootElement);
 
@@ -270,7 +302,11 @@ public sealed class TipTapContentServiceTests
         var result = service.NormalizePageContent(document);
 
         Assert.True(result.Succeeded);
-        Assert.DoesNotContain("\"type\":\"link\"", result.Value!.ContentJson, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "\"type\":\"link\"",
+            result.Value!.ContentJson,
+            StringComparison.Ordinal
+        );
         Assert.Equal("click me", result.Value.PlainTextContent);
         using var normalized = JsonDocument.Parse(result.Value.ContentJson!);
         var textNode = normalized.RootElement.GetProperty("content")[0].GetProperty("content")[0];
@@ -309,22 +345,20 @@ public sealed class TipTapContentServiceTests
     public void NormalizePageContent_RemovesSrcFromImagesWithUnsafeUrls(string src)
     {
         var service = new TipTapContentService();
-        var document = JsonSerializer.SerializeToElement(new JsonObject
-        {
-            ["type"] = "doc",
-            ["content"] = new JsonArray
+        var document = JsonSerializer.SerializeToElement(
+            new JsonObject
             {
-                new JsonObject
+                ["type"] = "doc",
+                ["content"] = new JsonArray
                 {
-                    ["type"] = "image",
-                    ["attrs"] = new JsonObject
+                    new JsonObject
                     {
-                        ["src"] = src,
-                        ["alt"] = "pic"
-                    }
-                }
+                        ["type"] = "image",
+                        ["attrs"] = new JsonObject { ["src"] = src, ["alt"] = "pic" },
+                    },
+                },
             }
-        });
+        );
 
         var result = service.NormalizePageContent(document);
 
@@ -344,22 +378,20 @@ public sealed class TipTapContentServiceTests
     public void NormalizePageContent_KeepsImageSrcForAllowedUrls(string src)
     {
         var service = new TipTapContentService();
-        var document = JsonSerializer.SerializeToElement(new JsonObject
-        {
-            ["type"] = "doc",
-            ["content"] = new JsonArray
+        var document = JsonSerializer.SerializeToElement(
+            new JsonObject
             {
-                new JsonObject
+                ["type"] = "doc",
+                ["content"] = new JsonArray
                 {
-                    ["type"] = "image",
-                    ["attrs"] = new JsonObject
+                    new JsonObject
                     {
-                        ["src"] = src,
-                        ["alt"] = "pic"
-                    }
-                }
+                        ["type"] = "image",
+                        ["attrs"] = new JsonObject { ["src"] = src, ["alt"] = "pic" },
+                    },
+                },
             }
-        });
+        );
 
         var result = service.NormalizePageContent(document);
 
@@ -373,18 +405,20 @@ public sealed class TipTapContentServiceTests
     public void NormalizePageContent_RemovesSrcFromYoutubeEmbedsWithUnsafeUrls()
     {
         var service = new TipTapContentService();
-        var document = JsonSerializer.SerializeToElement(new JsonObject
-        {
-            ["type"] = "doc",
-            ["content"] = new JsonArray
+        var document = JsonSerializer.SerializeToElement(
+            new JsonObject
             {
-                new JsonObject
+                ["type"] = "doc",
+                ["content"] = new JsonArray
                 {
-                    ["type"] = "youtube",
-                    ["attrs"] = new JsonObject { ["src"] = "javascript:alert(1)" }
-                }
+                    new JsonObject
+                    {
+                        ["type"] = "youtube",
+                        ["attrs"] = new JsonObject { ["src"] = "javascript:alert(1)" },
+                    },
+                },
             }
-        });
+        );
 
         var result = service.NormalizePageContent(document);
 
@@ -398,32 +432,34 @@ public sealed class TipTapContentServiceTests
 
     private static JsonElement CreateDocumentWithLinkedText(string href)
     {
-        return JsonSerializer.SerializeToElement(new JsonObject
-        {
-            ["type"] = "doc",
-            ["content"] = new JsonArray
+        return JsonSerializer.SerializeToElement(
+            new JsonObject
             {
-                new JsonObject
+                ["type"] = "doc",
+                ["content"] = new JsonArray
                 {
-                    ["type"] = "paragraph",
-                    ["content"] = new JsonArray
+                    new JsonObject
                     {
-                        new JsonObject
+                        ["type"] = "paragraph",
+                        ["content"] = new JsonArray
                         {
-                            ["type"] = "text",
-                            ["text"] = "click me",
-                            ["marks"] = new JsonArray
+                            new JsonObject
                             {
-                                new JsonObject
+                                ["type"] = "text",
+                                ["text"] = "click me",
+                                ["marks"] = new JsonArray
                                 {
-                                    ["type"] = "link",
-                                    ["attrs"] = new JsonObject { ["href"] = href }
-                                }
-                            }
-                        }
-                    }
-                }
+                                    new JsonObject
+                                    {
+                                        ["type"] = "link",
+                                        ["attrs"] = new JsonObject { ["href"] = href },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             }
-        });
+        );
     }
 }

@@ -6,7 +6,12 @@ namespace CodeCafe.Application.Common.Uploads;
 /// </summary>
 public interface IUploadStore
 {
-    Task<UploadStatus> CreateAsync(Guid actorId, string? fileName, string mediaType, CancellationToken cancellationToken);
+    Task<UploadStatus> CreateAsync(
+        Guid actorId,
+        string? fileName,
+        string mediaType,
+        CancellationToken cancellationToken
+    );
 
     Task<UploadResult<UploadStatus>> CreateTextAsync(
         Guid actorId,
@@ -14,7 +19,8 @@ public interface IUploadStore
         string mediaType,
         string contentText,
         int maxUploadBytes,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     Task<UploadResult<UploadStatus>> AppendTextAsync(
         Guid actorId,
@@ -22,9 +28,14 @@ public interface IUploadStore
         string chunkText,
         int maxChunkBytes,
         int maxUploadBytes,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
-    Task<UploadResult<UploadSession>> GetAsync(Guid actorId, string uploadId, CancellationToken cancellationToken);
+    Task<UploadResult<UploadSession>> GetAsync(
+        Guid actorId,
+        string uploadId,
+        CancellationToken cancellationToken
+    );
 
     Task<bool> DeleteAsync(Guid actorId, string uploadId, CancellationToken cancellationToken);
 }
@@ -36,7 +47,8 @@ public sealed record UploadStatus(
     string MediaType,
     int BytesReceived,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc
+);
 
 public sealed record UploadSession(
     string UploadId,
@@ -46,7 +58,8 @@ public sealed record UploadSession(
     string ContentText,
     int BytesReceived,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc
+);
 
 public sealed record UploadError(string Code, string Message);
 
@@ -56,5 +69,6 @@ public sealed record UploadResult<T>(T? Value, UploadError? Error)
 
     public static UploadResult<T> Success(T value) => new(value, null);
 
-    public static UploadResult<T> Failure(string code, string message) => new(default, new UploadError(code, message));
+    public static UploadResult<T> Failure(string code, string message) =>
+        new(default, new UploadError(code, message));
 }

@@ -6,12 +6,9 @@ public sealed class CreateNotebookCommandValidator : AbstractValidator<CreateNot
 {
     public CreateNotebookCommandValidator()
     {
-        RuleFor(command => command.Title)
-            .NotEmpty()
-            .MaximumLength(160);
+        RuleFor(command => command.Title).NotEmpty().MaximumLength(160);
 
-        RuleFor(command => command.Description)
-            .MaximumLength(1000);
+        RuleFor(command => command.Description).MaximumLength(1000);
 
         RuleFor(command => command.Visibility)
             .Must(value => NotebookInput.TryParseVisibility(value, out _))

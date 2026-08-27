@@ -1,5 +1,5 @@
-using CodeCafe.Host.Common;
 using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Host.Common;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -8,21 +8,24 @@ namespace CodeCafe.Host.Rest.Auth;
 public static class OpenIddictClientRegistration
 {
     private const string DynamicClientIdPrefix = "codecafe-";
-    private const string InvalidAllowedScopesMessage = "Allowed scopes must contain at least one configured MCP read/write scope and no unsupported scopes.";
+    private const string InvalidAllowedScopesMessage =
+        "Allowed scopes must contain at least one configured MCP read/write scope and no unsupported scopes.";
     private static readonly string[] DefaultProtocolScopes =
     [
         Scopes.OpenId,
         Scopes.Profile,
         Scopes.Email,
-        Scopes.OfflineAccess
+        Scopes.OfflineAccess,
     ];
 
     public static string CreateDynamicClientId() => $"{DynamicClientIdPrefix}{Guid.NewGuid():N}";
 
     public static bool IsDynamicallyRegisteredClientId(string? clientId)
     {
-        if (string.IsNullOrWhiteSpace(clientId)
-            || !clientId.StartsWith(DynamicClientIdPrefix, StringComparison.Ordinal))
+        if (
+            string.IsNullOrWhiteSpace(clientId)
+            || !clientId.StartsWith(DynamicClientIdPrefix, StringComparison.Ordinal)
+        )
         {
             return false;
         }
@@ -37,7 +40,8 @@ public static class OpenIddictClientRegistration
         IEnumerable<string> redirectUris,
         IEnumerable<string> allowedScopes,
         McpOptions mcpOptions,
-        AuthorizationServerOptions authorizationServerOptions)
+        AuthorizationServerOptions authorizationServerOptions
+    )
     {
         var descriptor = new OpenIddictApplicationDescriptor
         {
@@ -45,7 +49,7 @@ public static class OpenIddictClientRegistration
             ClientType = ClientTypes.Public,
             ClientId = clientId,
             ConsentType = ConsentTypes.Implicit,
-            DisplayName = string.IsNullOrWhiteSpace(displayName) ? clientId : displayName
+            DisplayName = string.IsNullOrWhiteSpace(displayName) ? clientId : displayName,
         };
 
         foreach (var redirectUri in redirectUris)
@@ -56,13 +60,12 @@ public static class OpenIddictClientRegistration
             }
         }
 
-        descriptor.Permissions.UnionWith(
-        [
+        descriptor.Permissions.UnionWith([
             Permissions.Endpoints.Authorization,
             Permissions.Endpoints.Token,
             Permissions.GrantTypes.AuthorizationCode,
             Permissions.GrantTypes.RefreshToken,
-            Permissions.ResponseTypes.Code
+            Permissions.ResponseTypes.Code,
         ]);
 
         foreach (var scopeName in GetGrantedScopes(allowedScopes, mcpOptions))
@@ -70,15 +73,26 @@ public static class OpenIddictClientRegistration
             descriptor.Permissions.Add(Permissions.Prefixes.Scope + scopeName);
         }
 
-        descriptor.AddAudiencePermissions(McpResourceIdentifiers.GetAudienceValues(mcpOptions, authorizationServerOptions));
-        descriptor.AddResourcePermissions(McpResourceIdentifiers.GetResourceValues(mcpOptions, authorizationServerOptions));
+        descriptor.AddAudiencePermissions(
+            McpResourceIdentifiers.GetAudienceValues(mcpOptions, authorizationServerOptions)
+        );
+        descriptor.AddResourcePermissions(
+            McpResourceIdentifiers.GetResourceValues(mcpOptions, authorizationServerOptions)
+        );
 
         return descriptor;
     }
 
     public static bool IsSupportedLoopbackRedirectUri(Uri redirectUri)
     {
-        if (!redirectUri.IsAbsoluteUri || !string.Equals(redirectUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+        if (
+            !redirectUri.IsAbsoluteUri
+            || !string.Equals(
+                redirectUri.Scheme,
+                Uri.UriSchemeHttp,
+                StringComparison.OrdinalIgnoreCase
+            )
+        )
         {
             return false;
         }
@@ -112,29 +126,54 @@ public static class OpenIddictClientRegistration
 
     public static bool ReconcileDescriptor(
         OpenIddictApplicationDescriptor existingDescriptor,
-        OpenIddictApplicationDescriptor desiredDescriptor)
+        OpenIddictApplicationDescriptor desiredDescriptor
+    )
     {
         var changed = false;
 
-        if (!string.Equals(existingDescriptor.DisplayName, desiredDescriptor.DisplayName, StringComparison.Ordinal))
+        if (
+            !string.Equals(
+                existingDescriptor.DisplayName,
+                desiredDescriptor.DisplayName,
+                StringComparison.Ordinal
+            )
+        )
         {
             existingDescriptor.DisplayName = desiredDescriptor.DisplayName;
             changed = true;
         }
 
-        if (!string.Equals(existingDescriptor.ApplicationType, desiredDescriptor.ApplicationType, StringComparison.Ordinal))
+        if (
+            !string.Equals(
+                existingDescriptor.ApplicationType,
+                desiredDescriptor.ApplicationType,
+                StringComparison.Ordinal
+            )
+        )
         {
             existingDescriptor.ApplicationType = desiredDescriptor.ApplicationType;
             changed = true;
         }
 
-        if (!string.Equals(existingDescriptor.ClientType, desiredDescriptor.ClientType, StringComparison.Ordinal))
+        if (
+            !string.Equals(
+                existingDescriptor.ClientType,
+                desiredDescriptor.ClientType,
+                StringComparison.Ordinal
+            )
+        )
         {
             existingDescriptor.ClientType = desiredDescriptor.ClientType;
             changed = true;
         }
 
-        if (!string.Equals(existingDescriptor.ConsentType, desiredDescriptor.ConsentType, StringComparison.Ordinal))
+        if (
+            !string.Equals(
+                existingDescriptor.ConsentType,
+                desiredDescriptor.ConsentType,
+                StringComparison.Ordinal
+            )
+        )
         {
             existingDescriptor.ConsentType = desiredDescriptor.ConsentType;
             changed = true;
@@ -145,12 +184,18 @@ public static class OpenIddictClientRegistration
         return changed;
     }
 
-    public static bool AreAllowedScopesValid(IEnumerable<string> allowedScopes, McpOptions mcpOptions)
+    public static bool AreAllowedScopesValid(
+        IEnumerable<string> allowedScopes,
+        McpOptions mcpOptions
+    )
     {
         return TryNormalizeAllowedScopes(allowedScopes, mcpOptions, out _);
     }
 
-    public static IReadOnlyList<string> NormalizeAllowedScopes(IEnumerable<string> allowedScopes, McpOptions mcpOptions)
+    public static IReadOnlyList<string> NormalizeAllowedScopes(
+        IEnumerable<string> allowedScopes,
+        McpOptions mcpOptions
+    )
     {
         return TryNormalizeAllowedScopes(allowedScopes, mcpOptions, out var normalizedScopes)
             ? normalizedScopes
@@ -159,8 +204,8 @@ public static class OpenIddictClientRegistration
 
     public static IReadOnlyList<string> GetDynamicClientAllowedScopes(McpOptions mcpOptions)
     {
-        return mcpOptions.RequiredReadScopes
-            .Concat(mcpOptions.RequiredWriteScopes)
+        return mcpOptions
+            .RequiredReadScopes.Concat(mcpOptions.RequiredWriteScopes)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
     }
@@ -168,10 +213,11 @@ public static class OpenIddictClientRegistration
     private static bool TryNormalizeAllowedScopes(
         IEnumerable<string> allowedScopes,
         McpOptions mcpOptions,
-        out IReadOnlyList<string> normalizedScopes)
+        out IReadOnlyList<string> normalizedScopes
+    )
     {
-        var protectedScopes = mcpOptions.RequiredReadScopes
-            .Concat(mcpOptions.RequiredWriteScopes)
+        var protectedScopes = mcpOptions
+            .RequiredReadScopes.Concat(mcpOptions.RequiredWriteScopes)
             .ToHashSet(StringComparer.Ordinal);
 
         var supportedScopes = protectedScopes
@@ -193,7 +239,8 @@ public static class OpenIddictClientRegistration
 
     private static IReadOnlyList<string> GetGrantedScopes(
         IEnumerable<string> allowedScopes,
-        McpOptions mcpOptions)
+        McpOptions mcpOptions
+    )
     {
         return NormalizeAllowedScopes(allowedScopes, mcpOptions)
             .Concat(DefaultProtocolScopes)
@@ -204,8 +251,14 @@ public static class OpenIddictClientRegistration
     private static bool ReplaceUris(ICollection<Uri> existingValues, IEnumerable<Uri> desiredValues)
     {
         var desiredArray = desiredValues.ToArray();
-        var existing = existingValues.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
-        var desired = desiredArray.Select(uri => uri.AbsoluteUri).OrderBy(value => value, StringComparer.Ordinal).ToArray();
+        var existing = existingValues
+            .Select(uri => uri.AbsoluteUri)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+        var desired = desiredArray
+            .Select(uri => uri.AbsoluteUri)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
         if (existing.SequenceEqual(desired, StringComparer.Ordinal))
         {
             return false;
@@ -220,7 +273,10 @@ public static class OpenIddictClientRegistration
         return true;
     }
 
-    private static bool ReplaceStrings(ICollection<string> existingValues, IEnumerable<string> desiredValues)
+    private static bool ReplaceStrings(
+        ICollection<string> existingValues,
+        IEnumerable<string> desiredValues
+    )
     {
         var desiredArray = desiredValues.Distinct(StringComparer.Ordinal).ToArray();
         var existing = existingValues.OrderBy(value => value, StringComparer.Ordinal).ToArray();

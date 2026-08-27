@@ -8,4 +8,5 @@ public sealed record McpAuditRecord(
     Guid? ItemId,
     bool Succeeded,
     string ResultCode,
-    string? ErrorCode);
+    string? ErrorCode
+);

@@ -18,12 +18,8 @@ public sealed class AuthorizationServerOptions
             ClientId = "codecafe-claude",
             DisplayName = "Claude Code",
             AllowedScopes = ["notes.read", "notes.write"],
-            RedirectUris =
-            [
-                "http://localhost/callback",
-                "http://127.0.0.1/callback"
-            ]
-        }
+            RedirectUris = ["http://localhost/callback", "http://127.0.0.1/callback"],
+        },
     ];
 
     public string SigningCertificatePath { get; set; } = string.Empty;
@@ -40,8 +36,10 @@ public sealed class AuthorizationServerOptions
 
     public void ApplyEnvironmentDefaults(IHostEnvironment environment)
     {
-        if (string.IsNullOrWhiteSpace(FrontendBaseUrl)
-            && (environment.IsDevelopment() || environment.IsEnvironment("Testing")))
+        if (
+            string.IsNullOrWhiteSpace(FrontendBaseUrl)
+            && (environment.IsDevelopment() || environment.IsEnvironment("Testing"))
+        )
         {
             FrontendBaseUrl = DevelopmentFrontendBaseUrl;
         }

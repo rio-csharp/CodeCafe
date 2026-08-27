@@ -1,7 +1,5 @@
-using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Application.Mcp;
-using CodeCafe.Host.Mcp;
 using System.Text.Json;
+using CodeCafe.Infrastructure.Mcp;
 
 namespace CodeCafe.Host.Mcp.Tests;
 
@@ -41,7 +39,9 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
-        var blocks = importer.ConvertMarkdownToBlocks("A paragraph with **bold** and [a link](https://example.com).");
+        var blocks = importer.ConvertMarkdownToBlocks(
+            "A paragraph with **bold** and [a link](https://example.com)."
+        );
 
         Assert.Equal(JsonValueKind.Array, blocks.ValueKind);
         Assert.Contains("\"type\":\"link\"", blocks.GetRawText(), StringComparison.Ordinal);
@@ -78,20 +78,36 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
-        var document = importer.ConvertMarkdownToDocument("**释义** | 陷入，沉溺于（某种情感或生活方式）");
+        var document = importer.ConvertMarkdownToDocument(
+            "**释义** | 陷入，沉溺于（某种情感或生活方式）"
+        );
 
         var paragraphContent = document.GetProperty("content")[0].GetProperty("content");
         Assert.Equal("释义", paragraphContent[0].GetProperty("text").GetString());
-        Assert.Equal(" | 陷入，沉溺于（某种情感或生活方式）", string.Concat(
-            paragraphContent.EnumerateArray().Skip(1).Select(node => node.GetProperty("text").GetString())));
-        Assert.DoesNotContain("PipeTableDelimiterInline", document.GetRawText(), StringComparison.Ordinal);
+        Assert.Equal(
+            " | 陷入，沉溺于（某种情感或生活方式）",
+            string.Concat(
+                paragraphContent
+                    .EnumerateArray()
+                    .Skip(1)
+                    .Select(node => node.GetProperty("text").GetString())
+            )
+        );
+        Assert.DoesNotContain(
+            "PipeTableDelimiterInline",
+            document.GetRawText(),
+            StringComparison.Ordinal
+        );
     }
 
     [Theory]
     [InlineData("# Page title", 1)]
     [InlineData("##### Heading five", 5)]
     [InlineData("###### Heading six", 6)]
-    public void ConvertMarkdownToDocument_PreservesHeadingLevelsForMcpImports(string markdown, int expectedLevel)
+    public void ConvertMarkdownToDocument_PreservesHeadingLevelsForMcpImports(
+        string markdown,
+        int expectedLevel
+    )
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
@@ -111,7 +127,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
     [InlineData("^^^\n![Alt](https://example.com/a.png)\n^^^ Figure caption", "Figure caption")]
     public void ConvertMarkdownToDocument_DoesNotLeakMarkdigTypeNames(
         string markdown,
-        string expectedPlainText)
+        string expectedPlainText
+    )
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
@@ -127,7 +144,9 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
-        var document = importer.ConvertMarkdownToDocument("Text with a footnote[^1].\n\n[^1]: Footnote **body**");
+        var document = importer.ConvertMarkdownToDocument(
+            "Text with a footnote[^1].\n\n[^1]: Footnote **body**"
+        );
         var raw = document.GetRawText();
         var text = ExtractText(document);
 
@@ -145,11 +164,10 @@ public sealed class MarkdigMcpMarkdownImporterTests
 
         var textNode = document.GetProperty("content")[0].GetProperty("content")[0];
         Assert.Equal("https://example.com", textNode.GetProperty("text").GetString());
-        Assert.Equal("https://example.com", textNode
-            .GetProperty("marks")[0]
-            .GetProperty("attrs")
-            .GetProperty("href")
-            .GetString());
+        Assert.Equal(
+            "https://example.com",
+            textNode.GetProperty("marks")[0].GetProperty("attrs").GetProperty("href").GetString()
+        );
     }
 
     [Fact]
@@ -158,7 +176,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
         var importer = new MarkdigMcpMarkdownImporter();
 
         var document = importer.ConvertMarkdownToDocument(
-            "~~strike~~ ~sub~ ^super^ ++insert++ ==mark== \"\"citation\"\"");
+            "~~strike~~ ~sub~ ^super^ ++insert++ ==mark== \"\"citation\"\""
+        );
         var raw = document.GetRawText();
 
         Assert.Contains("\"type\":\"strike\"", raw, StringComparison.Ordinal);
@@ -174,7 +193,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
     [InlineData("[$x$](https://example.com)", "$x$")]
     public void ConvertMarkdownToDocument_DoesNotCombineCodeWithExclusiveMarks(
         string markdown,
-        string expectedText)
+        string expectedText
+    )
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
@@ -204,7 +224,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
         var importer = new MarkdigMcpMarkdownImporter();
 
         var document = importer.ConvertMarkdownToDocument(
-            "before ![Alt](https://example.com/a.png) after");
+            "before ![Alt](https://example.com/a.png) after"
+        );
         var blocks = document.GetProperty("content");
 
         Assert.Equal(3, blocks.GetArrayLength());
@@ -219,7 +240,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
         var importer = new MarkdigMcpMarkdownImporter();
 
         var document = importer.ConvertMarkdownToDocument(
-            "- [x] before ![Alt](https://example.com/a.png) after");
+            "- [x] before ![Alt](https://example.com/a.png) after"
+        );
         var itemContent = document
             .GetProperty("content")[0]
             .GetProperty("content")[0]
@@ -237,7 +259,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
         var importer = new MarkdigMcpMarkdownImporter();
 
         var document = importer.ConvertMarkdownToDocument(
-            "# before ![Alt](https://example.com/a.png) after");
+            "# before ![Alt](https://example.com/a.png) after"
+        );
         var heading = document.GetProperty("content")[0];
 
         Assert.Equal("heading", heading.GetProperty("type").GetString());
@@ -251,7 +274,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
         var importer = new MarkdigMcpMarkdownImporter();
 
         var document = importer.ConvertMarkdownToDocument(
-            "![A &amp; B](https://example.com/a.png)");
+            "![A &amp; B](https://example.com/a.png)"
+        );
 
         var image = document.GetProperty("content")[0];
         Assert.Equal("A & B", image.GetProperty("attrs").GetProperty("alt").GetString());
@@ -279,7 +303,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
     public void ConvertMarkdownToDocument_PreservesOrderedListAttributes(
         string markdown,
         int expectedStart,
-        string? expectedType)
+        string? expectedType
+    )
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
@@ -306,7 +331,10 @@ public sealed class MarkdigMcpMarkdownImporterTests
 
         var document = importer.ConvertMarkdownToDocument("- ordinary\n- [x] completed");
 
-        Assert.Equal("bulletList", document.GetProperty("content")[0].GetProperty("type").GetString());
+        Assert.Equal(
+            "bulletList",
+            document.GetProperty("content")[0].GetProperty("type").GetString()
+        );
     }
 
     [Theory]
@@ -314,7 +342,8 @@ public sealed class MarkdigMcpMarkdownImporterTests
     [InlineData("- [x] ![Alt](https://example.com/a.png)", "taskList")]
     public void ConvertMarkdownToDocument_KeepsImageOnlyListItemsSchemaCompatible(
         string markdown,
-        string expectedListType)
+        string expectedListType
+    )
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
@@ -346,10 +375,22 @@ public sealed class MarkdigMcpMarkdownImporterTests
         var table = document.GetProperty("content")[0];
         var rows = table.GetProperty("content");
 
-        Assert.Equal(2, rows[0].GetProperty("content")[0].GetProperty("attrs").GetProperty("colspan").GetInt32());
-        Assert.Equal(2, rows[0].GetProperty("content")[1].GetProperty("attrs").GetProperty("rowspan").GetInt32());
-        Assert.Equal(2, rows[1].GetProperty("content")[0].GetProperty("attrs").GetProperty("rowspan").GetInt32());
-        Assert.Equal(2, rows[2].GetProperty("content")[0].GetProperty("attrs").GetProperty("colspan").GetInt32());
+        Assert.Equal(
+            2,
+            rows[0].GetProperty("content")[0].GetProperty("attrs").GetProperty("colspan").GetInt32()
+        );
+        Assert.Equal(
+            2,
+            rows[0].GetProperty("content")[1].GetProperty("attrs").GetProperty("rowspan").GetInt32()
+        );
+        Assert.Equal(
+            2,
+            rows[1].GetProperty("content")[0].GetProperty("attrs").GetProperty("rowspan").GetInt32()
+        );
+        Assert.Equal(
+            2,
+            rows[2].GetProperty("content")[0].GetProperty("attrs").GetProperty("colspan").GetInt32()
+        );
     }
 
     [Fact]
@@ -357,11 +398,13 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
-        var document = importer.ConvertMarkdownToDocument("""
+        var document = importer.ConvertMarkdownToDocument(
+            """
             | left | center | right |
             | :--- | :----: | ----: |
             | a | b | c |
-            """);
+            """
+        );
         var rows = document.GetProperty("content")[0].GetProperty("content");
 
         foreach (var row in rows.EnumerateArray())
@@ -392,13 +435,15 @@ public sealed class MarkdigMcpMarkdownImporterTests
         var importer = new MarkdigMcpMarkdownImporter();
 
         var document = importer.ConvertMarkdownToDocument(
-            "![video](https://youtu.be/dQw4w9WgXcQ/?feature=share)");
+            "![video](https://youtu.be/dQw4w9WgXcQ/?feature=share)"
+        );
         var youtube = document.GetProperty("content")[0];
 
         Assert.Equal("youtube", youtube.GetProperty("type").GetString());
         Assert.Equal(
             "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-            youtube.GetProperty("attrs").GetProperty("src").GetString());
+            youtube.GetProperty("attrs").GetProperty("src").GetString()
+        );
     }
 
     [Fact]
@@ -407,9 +452,14 @@ public sealed class MarkdigMcpMarkdownImporterTests
         var importer = new MarkdigMcpMarkdownImporter();
 
         var document = importer.ConvertMarkdownToDocument(
-            "![video](https://youtu.be/dQw4w9WgXcQ/extra)");
+            "![video](https://youtu.be/dQw4w9WgXcQ/extra)"
+        );
 
-        Assert.DoesNotContain("\"type\":\"youtube\"", document.GetRawText(), StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "\"type\":\"youtube\"",
+            document.GetRawText(),
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
@@ -423,8 +473,15 @@ public sealed class MarkdigMcpMarkdownImporterTests
 
         Assert.Equal("text", text.GetProperty("type").GetString());
         Assert.Equal("video", text.GetProperty("text").GetString());
-        Assert.Equal(mediaUrl, text.GetProperty("marks")[0].GetProperty("attrs").GetProperty("href").GetString());
-        Assert.DoesNotContain("\"type\":\"image\"", document.GetRawText(), StringComparison.Ordinal);
+        Assert.Equal(
+            mediaUrl,
+            text.GetProperty("marks")[0].GetProperty("attrs").GetProperty("href").GetString()
+        );
+        Assert.DoesNotContain(
+            "\"type\":\"image\"",
+            document.GetRawText(),
+            StringComparison.Ordinal
+        );
     }
 
     [Fact]
@@ -445,14 +502,20 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
-        var document = importer.ConvertMarkdownToDocument("""
+        var document = importer.ConvertMarkdownToDocument(
+            """
             Reference [docs][docs-ref].
 
             [docs-ref]: https://example.com/docs "Docs"
-            """);
+            """
+        );
 
         var raw = document.GetRawText();
-        Assert.DoesNotContain("Markdig.Syntax.LinkReferenceDefinitionGroup", raw, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "Markdig.Syntax.LinkReferenceDefinitionGroup",
+            raw,
+            StringComparison.Ordinal
+        );
         Assert.Contains("https://example.com/docs", raw, StringComparison.Ordinal);
         Assert.Single(document.GetProperty("content").EnumerateArray());
     }
@@ -462,10 +525,12 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
-        var document = importer.ConvertMarkdownToDocument("""
+        var document = importer.ConvertMarkdownToDocument(
+            """
             - [x] Done
             - [ ] Todo
-            """);
+            """
+        );
 
         var taskList = document.GetProperty("content")[0];
         Assert.Equal("taskList", taskList.GetProperty("type").GetString());
@@ -489,10 +554,12 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
-        var document = importer.ConvertMarkdownToDocument("""
+        var document = importer.ConvertMarkdownToDocument(
+            """
             ```csharp
             ```
-            """);
+            """
+        );
 
         Assert.DoesNotContain("\"text\":\"\"", document.GetRawText(), StringComparison.Ordinal);
     }
@@ -540,7 +607,10 @@ public sealed class MarkdigMcpMarkdownImporterTests
 
         Assert.DoesNotContain("\"type\":\"link\"", document.GetRawText(), StringComparison.Ordinal);
         var paragraph = document.GetProperty("content")[0];
-        Assert.Equal("click me", paragraph.GetProperty("content")[0].GetProperty("text").GetString());
+        Assert.Equal(
+            "click me",
+            paragraph.GetProperty("content")[0].GetProperty("text").GetString()
+        );
     }
 
     [Theory]
@@ -581,11 +651,16 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         var importer = new MarkdigMcpMarkdownImporter();
 
-        var document = importer.ConvertMarkdownToDocument("![alt text](https://cdn.example.com/a.png)");
+        var document = importer.ConvertMarkdownToDocument(
+            "![alt text](https://cdn.example.com/a.png)"
+        );
 
         var image = document.GetProperty("content")[0];
         Assert.Equal("image", image.GetProperty("type").GetString());
-        Assert.Equal("https://cdn.example.com/a.png", image.GetProperty("attrs").GetProperty("src").GetString());
+        Assert.Equal(
+            "https://cdn.example.com/a.png",
+            image.GetProperty("attrs").GetProperty("src").GetString()
+        );
     }
 
     [Fact]
@@ -628,10 +703,12 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
-            if (element.TryGetProperty("type", out var type)
+            if (
+                element.TryGetProperty("type", out var type)
                 && type.GetString() == "text"
                 && element.TryGetProperty("text", out var textProperty)
-                && textProperty.GetString() == text)
+                && textProperty.GetString() == text
+            )
             {
                 return element;
             }
@@ -664,9 +741,11 @@ public sealed class MarkdigMcpMarkdownImporterTests
     {
         if (element.ValueKind == JsonValueKind.Object)
         {
-            if (element.TryGetProperty("type", out var type)
+            if (
+                element.TryGetProperty("type", out var type)
                 && type.GetString() == "text"
-                && element.TryGetProperty("text", out var text))
+                && element.TryGetProperty("text", out var text)
+            )
             {
                 parts.Add(text.GetString() ?? string.Empty);
             }

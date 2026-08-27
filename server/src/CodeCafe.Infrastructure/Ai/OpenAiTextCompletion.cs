@@ -1,10 +1,7 @@
-using CodeCafe.Application.Ai.Drafts;
-using CodeCafe.Application.Ai.Edits;
 using CodeCafe.Application.Ai;
-using CodeCafe.Application.Notes;
+using OpenAI;
 using OpenAI.Chat;
 using OpenAI.Responses;
-using OpenAI;
 using Polly;
 using Polly.Retry;
 
@@ -12,28 +9,39 @@ namespace CodeCafe.Infrastructure.Ai;
 
 internal static class OpenAiTextCompletion
 {
-    private static readonly ResiliencePipeline<string> RetryPipeline = new ResiliencePipelineBuilder<string>()
-        .AddRetry(new RetryStrategyOptions<string>
-        {
-            MaxRetryAttempts = 2,
-            Delay = TimeSpan.FromMilliseconds(500),
-            BackoffType = DelayBackoffType.Exponential,
-            UseJitter = true,
-            ShouldHandle = new PredicateBuilder<string>()
-                .HandleInner<HttpRequestException>()
-                .HandleInner<System.ClientModel.ClientResultException>(ex =>
+    private static readonly ResiliencePipeline<string> RetryPipeline =
+        new ResiliencePipelineBuilder<string>()
+            .AddRetry(
+                new RetryStrategyOptions<string>
                 {
-                    // Retry only on transient HTTP errors (5xx, network failure), not on client errors (4xx)
-                    if (ex.InnerException is HttpRequestException httpEx)
-                    {
-                        return httpEx.StatusCode is null or >= System.Net.HttpStatusCode.InternalServerError;
-                    }
-                    // Retry on network failures wrapped in ClientResultException
-                    return ex.Message.Contains("network", StringComparison.OrdinalIgnoreCase)
-                        || ex.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase);
-                })
-        })
-        .Build();
+                    MaxRetryAttempts = 2,
+                    Delay = TimeSpan.FromMilliseconds(500),
+                    BackoffType = DelayBackoffType.Exponential,
+                    UseJitter = true,
+                    ShouldHandle = new PredicateBuilder<string>()
+                        .HandleInner<HttpRequestException>()
+                        .HandleInner<System.ClientModel.ClientResultException>(ex =>
+                        {
+                            // Retry only on transient HTTP errors (5xx, network failure), not on client errors (4xx)
+                            if (ex.InnerException is HttpRequestException httpEx)
+                            {
+                                return httpEx.StatusCode
+                                    is null
+                                        or >= System.Net.HttpStatusCode.InternalServerError;
+                            }
+                            // Retry on network failures wrapped in ClientResultException
+                            return ex.Message.Contains(
+                                    "network",
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                                || ex.Message.Contains(
+                                    "timeout",
+                                    StringComparison.OrdinalIgnoreCase
+                                );
+                        }),
+                }
+            )
+            .Build();
 
     /// <summary>
     /// Single boundary where provider SDK failures become <see cref="AiProviderException"/>. Both
@@ -46,16 +54,34 @@ internal static class OpenAiTextCompletion
         string instructions,
         string userPrompt,
         string endUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         try
         {
-            return await RetryPipeline.ExecuteAsync(async ct =>
-            {
-                return options.WireFormat == AiWireFormat.Responses
-                    ? await CompleteWithResponsesApiAsync(openAiClient, options, instructions, userPrompt, endUserId, ct)
-                    : await CompleteWithChatCompletionsAsync(openAiClient, options, instructions, userPrompt, endUserId, ct);
-            }, cancellationToken);
+            return await RetryPipeline.ExecuteAsync(
+                async ct =>
+                {
+                    return options.WireFormat == AiWireFormat.Responses
+                        ? await CompleteWithResponsesApiAsync(
+                            openAiClient,
+                            options,
+                            instructions,
+                            userPrompt,
+                            endUserId,
+                            ct
+                        )
+                        : await CompleteWithChatCompletionsAsync(
+                            openAiClient,
+                            options,
+                            instructions,
+                            userPrompt,
+                            endUserId,
+                            ct
+                        );
+                },
+                cancellationToken
+            );
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -63,15 +89,17 @@ internal static class OpenAiTextCompletion
             // cancel; reporting that as a timeout is more accurate than letting it escape unhandled.
             throw new AiProviderException(
                 AiFailureKind.Timeout,
-                "The AI provider did not respond within the configured network timeout.");
+                "The AI provider did not respond within the configured network timeout."
+            );
         }
-        catch (Exception exception) when (
-            exception is System.ClientModel.ClientResultException or HttpRequestException)
+        catch (Exception exception)
+            when (exception is System.ClientModel.ClientResultException or HttpRequestException)
         {
             throw new AiProviderException(
                 AiFailureKind.Upstream,
                 "The AI provider returned an error or was unreachable.",
-                exception);
+                exception
+            );
         }
     }
 
@@ -81,25 +109,25 @@ internal static class OpenAiTextCompletion
         string instructions,
         string userPrompt,
         string endUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var client = openAiClient.GetChatClient(options.Model);
         var completionResult = await client.CompleteChatAsync(
-            [
-                new SystemChatMessage(instructions),
-                new UserChatMessage(userPrompt)
-            ],
+            [new SystemChatMessage(instructions), new UserChatMessage(userPrompt)],
             new ChatCompletionOptions
             {
                 MaxOutputTokenCount = Math.Max(1, options.MaxDraftOutputTokens),
-                EndUserId = endUserId
+                EndUserId = endUserId,
             },
-            cancellationToken);
+            cancellationToken
+        );
 
         return string.Concat(
-            completionResult.Value.Content
-                .Where(part => !string.IsNullOrEmpty(part.Text))
-                .Select(part => part.Text));
+            completionResult
+                .Value.Content.Where(part => !string.IsNullOrEmpty(part.Text))
+                .Select(part => part.Text)
+        );
     }
 
     private static async Task<string> CompleteWithResponsesApiAsync(
@@ -108,7 +136,8 @@ internal static class OpenAiTextCompletion
         string instructions,
         string userPrompt,
         string endUserId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var client = openAiClient.GetResponsesClient();
         var responseResult = await client.CreateResponseAsync(
@@ -118,9 +147,10 @@ internal static class OpenAiTextCompletion
                 Instructions = instructions,
                 InputItems = { ResponseItem.CreateUserMessageItem(userPrompt) },
                 MaxOutputTokenCount = Math.Max(1, options.MaxDraftOutputTokens),
-                EndUserId = endUserId
+                EndUserId = endUserId,
             },
-            cancellationToken);
+            cancellationToken
+        );
 
         return ExtractOutputText(responseResult.Value);
     }
@@ -128,10 +158,11 @@ internal static class OpenAiTextCompletion
     private static string ExtractOutputText(ResponseResult response)
     {
         return string.Concat(
-            response.OutputItems
-                .OfType<MessageResponseItem>()
+            response
+                .OutputItems.OfType<MessageResponseItem>()
                 .SelectMany(item => item.Content)
                 .Where(part => !string.IsNullOrEmpty(part.Text))
-                .Select(part => part.Text));
+                .Select(part => part.Text)
+        );
     }
 }

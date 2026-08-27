@@ -13,10 +13,7 @@ public sealed class RegisterUserCommandValidator : AbstractValidator<RegisterUse
             // rejected as a 400 instead of failing the insert with a 500.
             .MaximumLength(256);
 
-        RuleFor(command => command.Password)
-            .NotEmpty()
-            .MinimumLength(8)
-            .MaximumLength(128);
+        RuleFor(command => command.Password).NotEmpty().MinimumLength(8).MaximumLength(128);
 
         RuleFor(command => command.DisplayName)
             .Must(displayName => !string.IsNullOrWhiteSpace(displayName))

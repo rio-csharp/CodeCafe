@@ -1,5 +1,8 @@
-using CodeCafe.Infrastructure.Mcp;
-using CodeCafe.Application.Mcp;
+using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Unicode;
 using CodeCafe.Application.Notes;
 using Markdig;
 using Markdig.Extensions.Abbreviations;
@@ -10,11 +13,6 @@ using Markdig.Extensions.Tables;
 using Markdig.Extensions.TaskLists;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Text.Unicode;
 
 namespace CodeCafe.Infrastructure.Mcp;
 
@@ -27,9 +25,11 @@ public interface IMcpMarkdownImporter
 
 public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions SerializerOptions = new(
+        JsonSerializerDefaults.Web
+    )
     {
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
     };
     private static readonly MarkdownPipeline Pipeline = new MarkdownPipelineBuilder()
         .UseAdvancedExtensions()
@@ -42,24 +42,22 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         "m.youtube.com",
         "youtu.be",
         "youtube-nocookie.com",
-        "www.youtube-nocookie.com"
+        "www.youtube-nocookie.com",
     };
-    private static readonly HashSet<string> OtherMediaProviderHosts = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> OtherMediaProviderHosts = new(
+        StringComparer.OrdinalIgnoreCase
+    )
     {
         "vimeo.com",
         "music.yandex.ru",
-        "ok.ru"
+        "ok.ru",
     };
 
     public JsonElement ConvertMarkdownToDocument(string markdown)
     {
         var document = Markdown.Parse(markdown ?? string.Empty, Pipeline);
         var content = EnsureNonEmptyBlocks(ConvertBlocks(document));
-        var root = new JsonObject
-        {
-            ["type"] = "doc",
-            ["content"] = content
-        };
+        var root = new JsonObject { ["type"] = "doc", ["content"] = content };
 
         return JsonSerializer.SerializeToElement(root, SerializerOptions);
     }
@@ -98,7 +96,7 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 {
                     ["type"] = "heading",
                     ["attrs"] = new JsonObject { ["level"] = Math.Clamp(heading.Level, 1, 6) },
-                    ["content"] = ConvertInlineContainer(heading.Inline)
+                    ["content"] = ConvertInlineContainer(heading.Inline),
                 };
                 yield break;
 
@@ -113,7 +111,7 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 yield return new JsonObject
                 {
                     ["type"] = "blockquote",
-                    ["content"] = EnsureNonEmptyBlocks(ConvertBlocks(quote))
+                    ["content"] = EnsureNonEmptyBlocks(ConvertBlocks(quote)),
                 };
                 yield break;
 
@@ -142,7 +140,9 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 yield break;
 
             case HtmlBlock html:
-                yield return CreateParagraphFromText(ExtractLeafBlockLines(html).TrimEnd('\r', '\n'));
+                yield return CreateParagraphFromText(
+                    ExtractLeafBlockLines(html).TrimEnd('\r', '\n')
+                );
                 yield break;
 
             // Advanced Markdig extensions introduce additional leaf and container block
@@ -170,15 +170,17 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         }
     }
 
-    private static IEnumerable<JsonNode> ConvertParagraph(ParagraphBlock paragraph)
-        => ConvertInlineSequenceToBlocks(
+    private static IEnumerable<JsonNode> ConvertParagraph(ParagraphBlock paragraph) =>
+        ConvertInlineSequenceToBlocks(
             paragraph.Inline ?? Enumerable.Empty<Inline>(),
-            emitEmptyParagraph: paragraph.Inline?.FirstChild is null);
+            emitEmptyParagraph: paragraph.Inline?.FirstChild is null
+        );
 
     private static IEnumerable<JsonNode> ConvertInlineSequenceToBlocks(
         IEnumerable<Inline> inlines,
         bool trimLeadingText = false,
-        bool emitEmptyParagraph = false)
+        bool emitEmptyParagraph = false
+    )
     {
         var inlineContent = new JsonArray();
         var processedFirstNode = false;
@@ -186,9 +188,8 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         {
             foreach (var node in ConvertInline(inline, activeMarks: null))
             {
-                var converted = trimLeadingText && !processedFirstNode
-                    ? TrimLeadingTextNode(node)
-                    : node;
+                var converted =
+                    trimLeadingText && !processedFirstNode ? TrimLeadingTextNode(node) : node;
                 if (converted is null)
                 {
                     continue;
@@ -217,12 +218,8 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         }
     }
 
-    private static JsonObject CreateParagraph(JsonArray content)
-        => new()
-        {
-            ["type"] = "paragraph",
-            ["content"] = content
-        };
+    private static JsonObject CreateParagraph(JsonArray content) =>
+        new() { ["type"] = "paragraph", ["content"] = content };
 
     private static JsonArray EnsureNonEmptyBlocks(JsonArray content)
     {
@@ -234,10 +231,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         return content;
     }
 
-    private static bool IsBlockNode(JsonNode node)
-        => node is JsonObject obj
-           && TryGetString(obj, "type", out var type)
-           && type is "image" or "youtube";
+    private static bool IsBlockNode(JsonNode node) =>
+        node is JsonObject obj
+        && TryGetString(obj, "type", out var type)
+        && type is "image" or "youtube";
 
     private static JsonObject ConvertList(ListBlock list)
     {
@@ -251,18 +248,16 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         var items = new JsonArray();
         foreach (var child in listItems)
         {
-            items.Add(new JsonObject
-            {
-                ["type"] = "listItem",
-                ["content"] = EnsureLeadingParagraph(ConvertBlocks(child))
-            });
+            items.Add(
+                new JsonObject
+                {
+                    ["type"] = "listItem",
+                    ["content"] = EnsureLeadingParagraph(ConvertBlocks(child)),
+                }
+            );
         }
 
-        var node = new JsonObject
-        {
-            ["type"] = listType,
-            ["content"] = items
-        };
+        var node = new JsonObject { ["type"] = listType, ["content"] = items };
 
         if (list.IsOrdered)
         {
@@ -292,30 +287,28 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         foreach (var child in listItems)
         {
             var isTaskItem = TryGetTaskListItem(child, out var isChecked);
-            var content = isTaskItem
-                ? ConvertTaskItemBlocks(child)
-                : ConvertBlocks(child);
-            items.Add(new JsonObject
-            {
-                ["type"] = "taskItem",
-                ["attrs"] = new JsonObject { ["checked"] = isTaskItem && isChecked },
-                ["content"] = EnsureLeadingParagraph(content)
-            });
+            var content = isTaskItem ? ConvertTaskItemBlocks(child) : ConvertBlocks(child);
+            items.Add(
+                new JsonObject
+                {
+                    ["type"] = "taskItem",
+                    ["attrs"] = new JsonObject { ["checked"] = isTaskItem && isChecked },
+                    ["content"] = EnsureLeadingParagraph(content),
+                }
+            );
         }
 
-        return new JsonObject
-        {
-            ["type"] = "taskList",
-            ["content"] = items
-        };
+        return new JsonObject { ["type"] = "taskList", ["content"] = items };
     }
 
     private static JsonArray EnsureLeadingParagraph(JsonArray content)
     {
-        if (content.Count == 0
+        if (
+            content.Count == 0
             || content[0] is not JsonObject firstBlock
             || !TryGetString(firstBlock, "type", out var firstType)
-            || !string.Equals(firstType, "paragraph", StringComparison.Ordinal))
+            || !string.Equals(firstType, "paragraph", StringComparison.Ordinal)
+        )
         {
             content.Insert(0, CreateParagraph(new JsonArray()));
         }
@@ -323,14 +316,15 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         return content;
     }
 
-    private static bool IsTaskListItem(ListItemBlock item)
-        => TryGetTaskListItem(item, out _);
+    private static bool IsTaskListItem(ListItemBlock item) => TryGetTaskListItem(item, out _);
 
     private static bool TryGetTaskListItem(ListItemBlock item, out bool isChecked)
     {
         isChecked = false;
-        if (item.FirstOrDefault() is not ParagraphBlock paragraph
-            || paragraph.Inline?.FirstChild is not TaskList taskList)
+        if (
+            item.FirstOrDefault() is not ParagraphBlock paragraph
+            || paragraph.Inline?.FirstChild is not TaskList taskList
+        )
         {
             return false;
         }
@@ -345,12 +339,19 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         var removedTaskMarker = false;
         foreach (var block in item)
         {
-            if (!removedTaskMarker && block is ParagraphBlock paragraph && IsTaskParagraph(paragraph))
+            if (
+                !removedTaskMarker
+                && block is ParagraphBlock paragraph
+                && IsTaskParagraph(paragraph)
+            )
             {
                 var remainingInlines = paragraph.Inline?.Skip(1) ?? Enumerable.Empty<Inline>();
-                foreach (var converted in ConvertInlineSequenceToBlocks(
-                             remainingInlines,
-                             trimLeadingText: true))
+                foreach (
+                    var converted in ConvertInlineSequenceToBlocks(
+                        remainingInlines,
+                        trimLeadingText: true
+                    )
+                )
                 {
                     blocks.Add(converted);
                 }
@@ -367,18 +368,14 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
         if (blocks.Count == 0)
         {
-            blocks.Add(new JsonObject
-            {
-                ["type"] = "paragraph",
-                ["content"] = new JsonArray()
-            });
+            blocks.Add(new JsonObject { ["type"] = "paragraph", ["content"] = new JsonArray() });
         }
 
         return blocks;
     }
 
-    private static bool IsTaskParagraph(ParagraphBlock paragraph)
-        => paragraph.Inline?.FirstChild is TaskList;
+    private static bool IsTaskParagraph(ParagraphBlock paragraph) =>
+        paragraph.Inline?.FirstChild is TaskList;
 
     private static JsonObject ConvertTable(Table table)
     {
@@ -392,7 +389,7 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 var cellNode = new JsonObject
                 {
                     ["type"] = rowObj.IsHeader ? "tableHeader" : "tableCell",
-                    ["content"] = NormalizeTableCellContent(ConvertBlocks(cell))
+                    ["content"] = NormalizeTableCellContent(ConvertBlocks(cell)),
                 };
                 var attrs = new JsonObject();
                 if (cell.ColumnSpan > 1)
@@ -406,8 +403,11 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 }
 
                 var columnIndex = cell.ColumnIndex >= 0 ? cell.ColumnIndex : logicalColumnIndex;
-                if (columnIndex < table.ColumnDefinitions.Count
-                    && ConvertTableAlignment(table.ColumnDefinitions[columnIndex].Alignment) is { } alignment)
+                if (
+                    columnIndex < table.ColumnDefinitions.Count
+                    && ConvertTableAlignment(table.ColumnDefinitions[columnIndex].Alignment)
+                        is { } alignment
+                )
                 {
                     attrs["align"] = alignment;
                 }
@@ -421,27 +421,19 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 logicalColumnIndex = columnIndex + Math.Max(cell.ColumnSpan, 1);
             }
 
-            rows.Add(new JsonObject
-            {
-                ["type"] = "tableRow",
-                ["content"] = cells
-            });
+            rows.Add(new JsonObject { ["type"] = "tableRow", ["content"] = cells });
         }
 
-        return new JsonObject
-        {
-            ["type"] = "table",
-            ["content"] = rows
-        };
+        return new JsonObject { ["type"] = "table", ["content"] = rows };
     }
 
-    private static string? ConvertTableAlignment(TableColumnAlign? alignment)
-        => alignment switch
+    private static string? ConvertTableAlignment(TableColumnAlign? alignment) =>
+        alignment switch
         {
             TableColumnAlign.Left => "left",
             TableColumnAlign.Center => "center",
             TableColumnAlign.Right => "right",
-            _ => null
+            _ => null,
         };
 
     private static JsonArray NormalizeTableCellContent(JsonArray content)
@@ -453,11 +445,7 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
         return new JsonArray
         {
-            new JsonObject
-            {
-                ["type"] = "paragraph",
-                ["content"] = new JsonArray()
-            }
+            new JsonObject { ["type"] = "paragraph", ["content"] = new JsonArray() },
         };
     }
 
@@ -466,18 +454,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         var content = new JsonArray();
         if (!string.IsNullOrEmpty(text))
         {
-            content.Add(new JsonObject
-            {
-                ["type"] = "text",
-                ["text"] = text
-            });
+            content.Add(new JsonObject { ["type"] = "text", ["text"] = text });
         }
 
-        var node = new JsonObject
-        {
-            ["type"] = "codeBlock",
-            ["content"] = content
-        };
+        var node = new JsonObject { ["type"] = "codeBlock", ["content"] = content };
 
         var language = NormalizeInfoString(info);
         if (!string.IsNullOrWhiteSpace(language))
@@ -505,29 +485,23 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         var content = new JsonArray();
         if (!string.IsNullOrEmpty(text))
         {
-            content.Add(new JsonObject
-            {
-                ["type"] = "text",
-                ["text"] = text
-            });
+            content.Add(new JsonObject { ["type"] = "text", ["text"] = text });
         }
 
-        return new JsonObject
-        {
-            ["type"] = "paragraph",
-            ["content"] = content
-        };
+        return new JsonObject { ["type"] = "paragraph", ["content"] = content };
     }
 
-    private static JsonArray ConvertInlineContainer(ContainerInline? container, IReadOnlyList<JsonObject>? marks = null)
+    private static JsonArray ConvertInlineContainer(
+        ContainerInline? container,
+        IReadOnlyList<JsonObject>? marks = null
+    )
     {
         var nodes = new JsonArray();
         foreach (var node in ConvertInlineChildren(container, marks))
         {
             if (IsBlockNode(node))
             {
-                if (node is JsonObject blockNode
-                    && blockNode["attrs"] is JsonObject attrs)
+                if (node is JsonObject blockNode && blockNode["attrs"] is JsonObject attrs)
                 {
                     if (TryGetString(attrs, "alt", out var alt) && !string.IsNullOrEmpty(alt))
                     {
@@ -548,7 +522,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         return nodes;
     }
 
-    private static IEnumerable<JsonNode> ConvertInlineChildren(ContainerInline? container, IReadOnlyList<JsonObject>? marks = null)
+    private static IEnumerable<JsonNode> ConvertInlineChildren(
+        ContainerInline? container,
+        IReadOnlyList<JsonObject>? marks = null
+    )
     {
         if (container is null)
         {
@@ -564,7 +541,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         }
     }
 
-    private static IEnumerable<JsonNode> ConvertInline(Inline inline, IReadOnlyList<JsonObject>? activeMarks)
+    private static IEnumerable<JsonNode> ConvertInline(
+        Inline inline,
+        IReadOnlyList<JsonObject>? activeMarks
+    )
     {
         switch (inline)
         {
@@ -592,7 +572,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                     yield break;
                 }
 
-                yield return CreateTextNode(code.Content, AddMark(activeMarks, new JsonObject { ["type"] = "code" }));
+                yield return CreateTextNode(
+                    code.Content,
+                    AddMark(activeMarks, new JsonObject { ["type"] = "code" })
+                );
                 yield break;
 
             case MathInline math:
@@ -601,7 +584,8 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 {
                     yield return CreateTextNode(
                         $"{new string(math.Delimiter, math.DelimiterCount)}{mathContent}{new string(math.Delimiter, math.DelimiterCount)}",
-                        AddMark(activeMarks, new JsonObject { ["type"] = "code" }));
+                        AddMark(activeMarks, new JsonObject { ["type"] = "code" })
+                    );
                 }
                 yield break;
 
@@ -614,15 +598,20 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 yield break;
 
             case AutolinkInline autolink:
-                var href = autolink.IsEmail && !autolink.Url.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)
-                    ? $"mailto:{autolink.Url}"
-                    : autolink.Url;
+                var href =
+                    autolink.IsEmail
+                    && !autolink.Url.StartsWith("mailto:", StringComparison.OrdinalIgnoreCase)
+                        ? $"mailto:{autolink.Url}"
+                        : autolink.Url;
                 var autolinkMarks = ContentUrlPolicy.IsAllowedLinkUrl(href)
-                    ? AddMark(activeMarks, new JsonObject
-                    {
-                        ["type"] = "link",
-                        ["attrs"] = new JsonObject { ["href"] = href }
-                    })
+                    ? AddMark(
+                        activeMarks,
+                        new JsonObject
+                        {
+                            ["type"] = "link",
+                            ["attrs"] = new JsonObject { ["href"] = href },
+                        }
+                    )
                     : activeMarks;
                 yield return CreateTextNode(autolink.Url, autolinkMarks);
                 yield break;
@@ -659,7 +648,7 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                     yield return new JsonObject
                     {
                         ["type"] = "youtube",
-                        ["attrs"] = new JsonObject { ["src"] = youtubeUrl }
+                        ["attrs"] = new JsonObject { ["src"] = youtubeUrl },
                     };
                     yield break;
                 }
@@ -689,12 +678,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
                 }
 
                 imageAttributes["alt"] = ExtractInlineText(link);
-                imageAttributes["title"] = string.IsNullOrWhiteSpace(link.Title) ? null : link.Title;
-                yield return new JsonObject
-                {
-                    ["type"] = "image",
-                    ["attrs"] = imageAttributes
-                };
+                imageAttributes["title"] = string.IsNullOrWhiteSpace(link.Title)
+                    ? null
+                    : link.Title;
+                yield return new JsonObject { ["type"] = "image", ["attrs"] = imageAttributes };
                 yield break;
 
             case LinkInline link:
@@ -745,20 +732,22 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         }
     }
 
-    private static JsonObject CreateLinkMark(string href)
-        => new()
+    private static JsonObject CreateLinkMark(string href) =>
+        new()
         {
             ["type"] = "link",
-            ["attrs"] = new JsonObject { ["href"] = href }
+            ["attrs"] = new JsonObject { ["href"] = href },
         };
 
     private static bool TryGetYouTubeUrl(string? value, out string url)
     {
         url = string.Empty;
-        if (string.IsNullOrWhiteSpace(value)
+        if (
+            string.IsNullOrWhiteSpace(value)
             || !Uri.TryCreate(value, UriKind.Absolute, out var uri)
             || !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)
-            || !YouTubeHosts.Contains(uri.Host))
+            || !YouTubeHosts.Contains(uri.Host)
+        )
         {
             return false;
         }
@@ -773,7 +762,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         {
             videoId = segments[1];
         }
-        else if (segments.Length == 1 && string.Equals(segments[0], "watch", StringComparison.OrdinalIgnoreCase))
+        else if (
+            segments.Length == 1
+            && string.Equals(segments[0], "watch", StringComparison.OrdinalIgnoreCase)
+        )
         {
             videoId = GetQueryParameter(uri.Query, "v");
         }
@@ -782,9 +774,13 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
             videoId = null;
         }
 
-        if (videoId is null
+        if (
+            videoId is null
             || videoId.Length < 6
-            || videoId.Any(character => !char.IsAsciiLetterOrDigit(character) && character is not '_' and not '-'))
+            || videoId.Any(character =>
+                !char.IsAsciiLetterOrDigit(character) && character is not '_' and not '-'
+            )
+        )
         {
             return false;
         }
@@ -799,7 +795,13 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         {
             var separator = pair.IndexOf('=');
             var key = separator >= 0 ? pair[..separator] : pair;
-            if (!string.Equals(Uri.UnescapeDataString(key.Replace('+', ' ')), name, StringComparison.Ordinal))
+            if (
+                !string.Equals(
+                    Uri.UnescapeDataString(key.Replace('+', ' ')),
+                    name,
+                    StringComparison.Ordinal
+                )
+            )
             {
                 continue;
             }
@@ -813,8 +815,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
     private static bool IsUnsupportedMediaLink(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)
-            || !Uri.TryCreate(value, UriKind.RelativeOrAbsolute, out var uri))
+        if (
+            string.IsNullOrWhiteSpace(value)
+            || !Uri.TryCreate(value, UriKind.RelativeOrAbsolute, out var uri)
+        )
         {
             return false;
         }
@@ -838,10 +842,12 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
     private static JsonNode? TrimLeadingTextNode(JsonNode node)
     {
-        if (node is not JsonObject obj
+        if (
+            node is not JsonObject obj
             || !TryGetString(obj, "type", out var type)
             || !string.Equals(type, "text", StringComparison.Ordinal)
-            || !TryGetString(obj, "text", out var text))
+            || !TryGetString(obj, "text", out var text)
+        )
         {
             return node;
         }
@@ -865,9 +871,11 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
     private static bool TryGetString(JsonObject obj, string propertyName, out string value)
     {
         value = string.Empty;
-        if (obj[propertyName] is not JsonValue jsonValue
+        if (
+            obj[propertyName] is not JsonValue jsonValue
             || !jsonValue.TryGetValue<string?>(out var candidate)
-            || candidate is null)
+            || candidate is null
+        )
         {
             return false;
         }
@@ -878,11 +886,7 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
 
     private static JsonObject CreateTextNode(string text, IReadOnlyList<JsonObject>? marks)
     {
-        var node = new JsonObject
-        {
-            ["type"] = "text",
-            ["text"] = text
-        };
+        var node = new JsonObject { ["type"] = "text", ["text"] = text };
 
         if (marks is { Count: > 0 })
         {
@@ -904,17 +908,20 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         return node;
     }
 
-    private static bool HasMark(IEnumerable<JsonObject> marks, string type)
-        => marks.Any(mark => IsMarkType(mark, type));
+    private static bool HasMark(IEnumerable<JsonObject> marks, string type) =>
+        marks.Any(mark => IsMarkType(mark, type));
 
-    private static bool IsMarkType(JsonObject mark, string type)
-        => TryGetString(mark, "type", out var markType)
-           && string.Equals(markType, type, StringComparison.Ordinal);
+    private static bool IsMarkType(JsonObject mark, string type) =>
+        TryGetString(mark, "type", out var markType)
+        && string.Equals(markType, type, StringComparison.Ordinal);
 
-    private static string GetMarkType(JsonObject mark)
-        => TryGetString(mark, "type", out var type) ? type : string.Empty;
+    private static string GetMarkType(JsonObject mark) =>
+        TryGetString(mark, "type", out var type) ? type : string.Empty;
 
-    private static IReadOnlyList<JsonObject> AddEmphasisMarks(IReadOnlyList<JsonObject>? marks, EmphasisInline emphasis)
+    private static IReadOnlyList<JsonObject> AddEmphasisMarks(
+        IReadOnlyList<JsonObject>? marks,
+        EmphasisInline emphasis
+    )
     {
         var result = marks?.ToList() ?? [];
         var markType = emphasis.DelimiterChar switch
@@ -927,7 +934,7 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
             '"' => "italic",
             '*' or '_' when emphasis.DelimiterCount >= 2 => "bold",
             '*' or '_' => "italic",
-            _ => null
+            _ => null,
         };
 
         if (markType is not null)
@@ -938,7 +945,10 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         return result;
     }
 
-    private static IReadOnlyList<JsonObject> AddMark(IReadOnlyList<JsonObject>? marks, JsonObject mark)
+    private static IReadOnlyList<JsonObject> AddMark(
+        IReadOnlyList<JsonObject>? marks,
+        JsonObject mark
+    )
     {
         var result = marks?.ToList() ?? [];
         result.Add(mark);
@@ -976,9 +986,9 @@ public sealed class MarkdigMcpMarkdownImporter : IMcpMarkdownImporter
         return builder.ToString();
     }
 
-    private static string ExtractLeafBlockLines(LeafBlock block)
-        => block.Lines.Count > 0 ? block.Lines.ToString() : string.Empty;
+    private static string ExtractLeafBlockLines(LeafBlock block) =>
+        block.Lines.Count > 0 ? block.Lines.ToString() : string.Empty;
 
-    private static bool IsMarkdigInfrastructureBlock(Block block)
-        => block is LinkReferenceDefinitionGroup;
+    private static bool IsMarkdigInfrastructureBlock(Block block) =>
+        block is LinkReferenceDefinitionGroup;
 }

@@ -16,7 +16,8 @@ public sealed class AuthHandlerTests
 
         var result = await handler.Handle(
             new RegisterUserCommand(false, "new.user@example.com", "Password123!", "New User"),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.False(result.Succeeded);
         Assert.Equal(AuthFailureKind.Forbidden, result.Error?.Kind);
@@ -28,13 +29,23 @@ public sealed class AuthHandlerTests
     {
         var gateway = new StubAuthUserGateway
         {
-            ExistingUser = new AuthUserModel(Guid.NewGuid(), "existing.user@example.com", "Existing User")
+            ExistingUser = new AuthUserModel(
+                Guid.NewGuid(),
+                "existing.user@example.com",
+                "Existing User"
+            ),
         };
         var handler = new RegisterUserCommandHandler(gateway);
 
         var result = await handler.Handle(
-            new RegisterUserCommand(true, "existing.user@example.com", "Password123!", "Existing User"),
-            CancellationToken.None);
+            new RegisterUserCommand(
+                true,
+                "existing.user@example.com",
+                "Password123!",
+                "Existing User"
+            ),
+            CancellationToken.None
+        );
 
         Assert.False(result.Succeeded);
         Assert.Equal(AuthFailureKind.Conflict, result.Error?.Kind);
@@ -48,15 +59,17 @@ public sealed class AuthHandlerTests
         var gateway = new StubAuthUserGateway
         {
             ExistingUser = existingUser,
-            PasswordVerificationResult = AuthPasswordVerificationResult.Success(existingUser)
+            PasswordVerificationResult = AuthPasswordVerificationResult.Success(existingUser),
         };
         var handler = new AuthenticateUserCommandHandler(
             gateway,
-            NullLogger<AuthenticateUserCommandHandler>.Instance);
+            NullLogger<AuthenticateUserCommandHandler>.Instance
+        );
 
         var result = await handler.Handle(
             new AuthenticateUserCommand("yao@example.com", "Password123!", ClientIp: null),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.True(result.Succeeded);
         Assert.Equal(existingUser, result.Value);
@@ -70,7 +83,8 @@ public sealed class AuthHandlerTests
 
         var result = await handler.Handle(
             new GetCurrentUserQuery(Guid.NewGuid()),
-            CancellationToken.None);
+            CancellationToken.None
+        );
 
         Assert.False(result.Succeeded);
         Assert.Equal(AuthFailureKind.Unauthorized, result.Error?.Kind);
@@ -83,7 +97,9 @@ public sealed class AuthHandlerTests
         public AuthUserModel? UserById { get; init; }
 
         public AuthCreateUserResult CreateUserResult { get; init; } =
-            AuthCreateUserResult.Success(new AuthUserModel(Guid.NewGuid(), "created@example.com", "Created User"));
+            AuthCreateUserResult.Success(
+                new AuthUserModel(Guid.NewGuid(), "created@example.com", "Created User")
+            );
 
         public AuthPasswordVerificationResult PasswordVerificationResult { get; init; } =
             AuthPasswordVerificationResult.Failure(isLockedOut: false);
@@ -92,17 +108,22 @@ public sealed class AuthHandlerTests
 
         public bool VerifyPasswordCalled { get; private set; }
 
-        public Task<AuthUserModel?> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
-            => Task.FromResult(ExistingUser);
+        public Task<AuthUserModel?> FindByEmailAsync(
+            string normalizedEmail,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(ExistingUser);
 
-        public Task<AuthUserModel?> FindByIdAsync(Guid userId, CancellationToken cancellationToken)
-            => Task.FromResult(UserById);
+        public Task<AuthUserModel?> FindByIdAsync(
+            Guid userId,
+            CancellationToken cancellationToken
+        ) => Task.FromResult(UserById);
 
         public Task<AuthCreateUserResult> CreateUserAsync(
             string normalizedEmail,
             string displayName,
             string password,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             CreateUserCalled = true;
             return Task.FromResult(CreateUserResult);
@@ -112,7 +133,8 @@ public sealed class AuthHandlerTests
             string normalizedEmail,
             string password,
             bool lockoutOnFailure,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken
+        )
         {
             VerifyPasswordCalled = true;
             return Task.FromResult(PasswordVerificationResult);

@@ -1,5 +1,5 @@
-using CodeCafe.Application.Common.Messaging;
 using System.Text.Json;
+using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
 
@@ -11,4 +11,5 @@ public sealed record UpdateNotebookItemCommand(
     JsonElement ParentId,
     int? SortOrder,
     JsonElement ContentJson,
-    DateTimeOffset? ExpectedUpdatedAtUtc = null) : ICommand<NotesResult<NotebookItemModel>>;
+    DateTimeOffset? ExpectedUpdatedAtUtc = null
+) : ICommand<NotesResult<NotebookItemModel>>;

@@ -1,4 +1,3 @@
-using CodeCafe.Host.Common;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 
@@ -13,8 +12,8 @@ namespace CodeCafe.Host.Common;
 public sealed class OpenIddictPruningHostedService(
     IServiceScopeFactory scopeFactory,
     IOptions<OpenIddictPruningOptions> options,
-    ILogger<OpenIddictPruningHostedService> logger)
-    : BackgroundService
+    ILogger<OpenIddictPruningHostedService> logger
+) : BackgroundService
 {
     private static readonly TimeSpan InitialDelay = TimeSpan.FromMinutes(15);
 
@@ -31,22 +30,28 @@ public sealed class OpenIddictPruningHostedService(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.LogWarning(exception, "OpenIddict token/authorization pruning failed; retrying at the next interval.");
+                logger.LogWarning(
+                    exception,
+                    "OpenIddict token/authorization pruning failed; retrying at the next interval."
+                );
             }
-        }
-        while (await timer.WaitForNextTickAsync(stoppingToken));
+        } while (await timer.WaitForNextTickAsync(stoppingToken));
     }
 
     internal async Task PruneAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var tokenManager = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
-        var authorizationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        var authorizationManager =
+            scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
 
         var threshold = DateTimeOffset.UtcNow - TimeSpan.FromDays(options.Value.PruneThresholdDays);
         await tokenManager.PruneAsync(threshold, cancellationToken);
         await authorizationManager.PruneAsync(threshold, cancellationToken);
 
-        logger.LogInformation("Pruned OpenIddict tokens and authorizations older than {Threshold:u}.", threshold);
+        logger.LogInformation(
+            "Pruned OpenIddict tokens and authorizations older than {Threshold:u}.",
+            threshold
+        );
     }
 }

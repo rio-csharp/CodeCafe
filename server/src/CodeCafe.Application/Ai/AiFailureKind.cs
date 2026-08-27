@@ -32,5 +32,5 @@ public enum AiFailureKind
     Upstream,
 
     /// <summary>The AI provider did not answer in time. Maps to 504.</summary>
-    Timeout
+    Timeout,
 }

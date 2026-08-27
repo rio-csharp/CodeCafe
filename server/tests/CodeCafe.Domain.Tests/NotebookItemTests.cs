@@ -58,7 +58,7 @@ public sealed class NotebookItemTests
             Type = NotebookItemType.Page,
             Title = "Original",
             Slug = "original",
-            Path = "original"
+            Path = "original",
         };
     }
 }

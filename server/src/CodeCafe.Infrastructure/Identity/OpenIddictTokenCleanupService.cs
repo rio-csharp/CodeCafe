@@ -11,7 +11,8 @@ namespace CodeCafe.Infrastructure.Identity;
 /// </summary>
 public sealed class OpenIddictTokenCleanupService(
     IServiceProvider serviceProvider,
-    ILogger<OpenIddictTokenCleanupService> logger) : BackgroundService
+    ILogger<OpenIddictTokenCleanupService> logger
+) : BackgroundService
 {
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
 
@@ -29,7 +30,11 @@ public sealed class OpenIddictTokenCleanupService(
             }
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
-                logger.LogError(exception, "OpenIddict token cleanup failed. Will retry in {Interval}.", CheckInterval);
+                logger.LogError(
+                    exception,
+                    "OpenIddict token cleanup failed. Will retry in {Interval}.",
+                    CheckInterval
+                );
             }
 
             await Task.Delay(CheckInterval, stoppingToken);
@@ -40,7 +45,8 @@ public sealed class OpenIddictTokenCleanupService(
     {
         using var scope = serviceProvider.CreateScope();
         var tokenManager = scope.ServiceProvider.GetRequiredService<IOpenIddictTokenManager>();
-        var authorizationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
+        var authorizationManager =
+            scope.ServiceProvider.GetRequiredService<IOpenIddictAuthorizationManager>();
 
         // Prune tokens that expired more than 14 days ago; keeping a buffer allows
         // debugging recent authentication issues without losing the token trail.
@@ -49,14 +55,18 @@ public sealed class OpenIddictTokenCleanupService(
 
         // Prune authorizations that have no remaining valid tokens attached; orphaned
         // authorizations serve no purpose and only consume database space.
-        var prunedAuthorizations = await authorizationManager.PruneAsync(threshold, cancellationToken);
+        var prunedAuthorizations = await authorizationManager.PruneAsync(
+            threshold,
+            cancellationToken
+        );
 
         if (prunedTokens > 0 || prunedAuthorizations > 0)
         {
             logger.LogInformation(
                 "OpenIddict cleanup completed. Pruned {TokenCount} tokens and {AuthorizationCount} authorizations.",
                 prunedTokens,
-                prunedAuthorizations);
+                prunedAuthorizations
+            );
         }
     }
 }

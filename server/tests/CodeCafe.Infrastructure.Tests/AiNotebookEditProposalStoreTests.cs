@@ -1,7 +1,6 @@
-using CodeCafe.Infrastructure.Ai;
-using CodeCafe.Application.Ai;
-using CodeCafe.Application.Ai.Edits;
 using System.Text.Json;
+using CodeCafe.Application.Ai;
+using CodeCafe.Infrastructure.Ai;
 
 namespace CodeCafe.Infrastructure.Tests;
 
@@ -32,11 +31,17 @@ public sealed class AiNotebookEditProposalStoreTests
         Assert.Equal(proposal.Title, loaded.Title);
         Assert.Equal(proposal.PagePath, loaded.PagePath);
         Assert.Equal(proposal.ParentPath, loaded.ParentPath);
-        Assert.Equal(proposal.BeforeContentJson!.Value.GetRawText(), loaded.BeforeContentJson!.Value.GetRawText());
+        Assert.Equal(
+            proposal.BeforeContentJson!.Value.GetRawText(),
+            loaded.BeforeContentJson!.Value.GetRawText()
+        );
         Assert.Equal(proposal.BeforePlainTextContent, loaded.BeforePlainTextContent);
         Assert.Equal(proposal.AfterContentJson.GetRawText(), loaded.AfterContentJson.GetRawText());
         Assert.Equal(proposal.AfterPlainTextContent, loaded.AfterPlainTextContent);
-        Assert.Equal(proposal.OperationsJson!.Value.GetRawText(), loaded.OperationsJson!.Value.GetRawText());
+        Assert.Equal(
+            proposal.OperationsJson!.Value.GetRawText(),
+            loaded.OperationsJson!.Value.GetRawText()
+        );
         Assert.Equal(proposal.SourcePageUpdatedAtUtc, loaded.SourcePageUpdatedAtUtc);
         Assert.Equal(proposal.GeneratedAtUtc, loaded.GeneratedAtUtc);
         Assert.Equal(proposal.ExpiresAtUtc, loaded.ExpiresAtUtc);
@@ -52,12 +57,19 @@ public sealed class AiNotebookEditProposalStoreTests
 
         using (var createContext = harness.CreateContext())
         {
-            await new DatabaseAiNotebookEditProposalStore(createContext).SaveAsync(proposal, CancellationToken.None);
+            await new DatabaseAiNotebookEditProposalStore(createContext).SaveAsync(
+                proposal,
+                CancellationToken.None
+            );
         }
 
         using (var readContext = harness.CreateContext())
         {
-            var loaded = await new DatabaseAiNotebookEditProposalStore(readContext).TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None);
+            var loaded = await new DatabaseAiNotebookEditProposalStore(readContext).TryGetAsync(
+                proposal.ProposalId,
+                actorId,
+                CancellationToken.None
+            );
             Assert.NotNull(loaded);
             Assert.Equal(proposal.ProposalId, loaded.ProposalId);
         }
@@ -72,7 +84,11 @@ public sealed class AiNotebookEditProposalStoreTests
         var proposal = CreateProposal(Guid.NewGuid());
         await store.SaveAsync(proposal, CancellationToken.None);
 
-        var loaded = await store.TryGetAsync(proposal.ProposalId, Guid.NewGuid(), CancellationToken.None);
+        var loaded = await store.TryGetAsync(
+            proposal.ProposalId,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         Assert.Null(loaded);
     }
@@ -84,7 +100,11 @@ public sealed class AiNotebookEditProposalStoreTests
         using var context = harness.CreateContext();
         var store = new DatabaseAiNotebookEditProposalStore(context);
 
-        var loaded = await store.TryGetAsync(Guid.NewGuid(), Guid.NewGuid(), CancellationToken.None);
+        var loaded = await store.TryGetAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         Assert.Null(loaded);
     }
@@ -114,7 +134,11 @@ public sealed class AiNotebookEditProposalStoreTests
         var proposal = CreateProposal(actorId, DateTimeOffset.UtcNow.AddMinutes(-1));
         await store.SaveAsync(proposal, CancellationToken.None);
 
-        var consumed = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
+        var consumed = await store.TryConsumeAsync(
+            proposal.ProposalId,
+            actorId,
+            CancellationToken.None
+        );
 
         Assert.Null(consumed);
         Assert.Contains(context.AiEditProposals, entry => entry.Id == proposal.ProposalId);
@@ -130,7 +154,11 @@ public sealed class AiNotebookEditProposalStoreTests
         var proposal = CreateProposal(actorId);
         await store.SaveAsync(proposal, CancellationToken.None);
 
-        var consumed = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
+        var consumed = await store.TryConsumeAsync(
+            proposal.ProposalId,
+            actorId,
+            CancellationToken.None
+        );
 
         Assert.NotNull(consumed);
         Assert.Equal(proposal.ProposalId, consumed.ProposalId);
@@ -149,8 +177,16 @@ public sealed class AiNotebookEditProposalStoreTests
         var proposal = CreateProposal(actorId);
         await store.SaveAsync(proposal, CancellationToken.None);
 
-        var first = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
-        var second = await store.TryConsumeAsync(proposal.ProposalId, actorId, CancellationToken.None);
+        var first = await store.TryConsumeAsync(
+            proposal.ProposalId,
+            actorId,
+            CancellationToken.None
+        );
+        var second = await store.TryConsumeAsync(
+            proposal.ProposalId,
+            actorId,
+            CancellationToken.None
+        );
 
         Assert.NotNull(first);
         Assert.Null(second);
@@ -166,10 +202,16 @@ public sealed class AiNotebookEditProposalStoreTests
         var proposal = CreateProposal(actorId);
         await store.SaveAsync(proposal, CancellationToken.None);
 
-        var consumed = await store.TryConsumeAsync(proposal.ProposalId, Guid.NewGuid(), CancellationToken.None);
+        var consumed = await store.TryConsumeAsync(
+            proposal.ProposalId,
+            Guid.NewGuid(),
+            CancellationToken.None
+        );
 
         Assert.Null(consumed);
-        Assert.NotNull(await store.TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None));
+        Assert.NotNull(
+            await store.TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None)
+        );
     }
 
     [Fact]
@@ -222,29 +264,54 @@ public sealed class AiNotebookEditProposalStoreTests
 
         using (var createContext = harness.CreateContext())
         {
-            await new DatabaseAiNotebookEditProposalStore(createContext).SaveAsync(proposal, CancellationToken.None);
+            await new DatabaseAiNotebookEditProposalStore(createContext).SaveAsync(
+                proposal,
+                CancellationToken.None
+            );
         }
 
         using (var readContext = harness.CreateContext())
         {
-            Assert.NotNull(await new DatabaseAiNotebookEditProposalStore(readContext).TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None));
+            Assert.NotNull(
+                await new DatabaseAiNotebookEditProposalStore(readContext).TryGetAsync(
+                    proposal.ProposalId,
+                    actorId,
+                    CancellationToken.None
+                )
+            );
         }
 
         using (var discardContext = harness.CreateContext())
         {
-            await new DatabaseAiNotebookEditProposalStore(discardContext).RemoveAsync(proposal.ProposalId, CancellationToken.None);
+            await new DatabaseAiNotebookEditProposalStore(discardContext).RemoveAsync(
+                proposal.ProposalId,
+                CancellationToken.None
+            );
         }
 
         using (var verifyContext = harness.CreateContext())
         {
-            Assert.Null(await new DatabaseAiNotebookEditProposalStore(verifyContext).TryGetAsync(proposal.ProposalId, actorId, CancellationToken.None));
+            Assert.Null(
+                await new DatabaseAiNotebookEditProposalStore(verifyContext).TryGetAsync(
+                    proposal.ProposalId,
+                    actorId,
+                    CancellationToken.None
+                )
+            );
         }
     }
 
-    private static AiNotebookEditProposal CreateProposal(Guid actorId, DateTimeOffset? expiresAtUtc = null)
+    private static AiNotebookEditProposal CreateProposal(
+        Guid actorId,
+        DateTimeOffset? expiresAtUtc = null
+    )
     {
-        using var beforeDocument = JsonDocument.Parse("""{"type":"doc","content":[{"type":"paragraph"}]}""");
-        using var afterDocument = JsonDocument.Parse("""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"hello"}]}]}""");
+        using var beforeDocument = JsonDocument.Parse(
+            """{"type":"doc","content":[{"type":"paragraph"}]}"""
+        );
+        using var afterDocument = JsonDocument.Parse(
+            """{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"hello"}]}]}"""
+        );
         using var operationsDocument = JsonDocument.Parse("""[{"op":"replace","index":0}]""");
 
         return new AiNotebookEditProposal(
@@ -268,6 +335,7 @@ public sealed class AiNotebookEditProposalStoreTests
             DateTimeOffset.Parse("2026-06-01T00:00:00+00:00"),
             DateTimeOffset.Parse("2026-06-01T00:05:00+00:00"),
             expiresAtUtc ?? DateTimeOffset.UtcNow.AddMinutes(30),
-            "Update 'folder/page'.");
+            "Update 'folder/page'."
+        );
     }
 }

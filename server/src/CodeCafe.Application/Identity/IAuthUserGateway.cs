@@ -2,7 +2,10 @@ namespace CodeCafe.Application.Identity;
 
 public interface IAuthUserGateway
 {
-    Task<AuthUserModel?> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken);
+    Task<AuthUserModel?> FindByEmailAsync(
+        string normalizedEmail,
+        CancellationToken cancellationToken
+    );
 
     Task<AuthUserModel?> FindByIdAsync(Guid userId, CancellationToken cancellationToken);
 
@@ -10,7 +13,8 @@ public interface IAuthUserGateway
         string normalizedEmail,
         string displayName,
         string password,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     /// <summary>
     /// Verifies the password for the account with the given email in a single
@@ -20,13 +24,15 @@ public interface IAuthUserGateway
         string normalizedEmail,
         string password,
         bool lockoutOnFailure,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 }
 
 public sealed record AuthCreateUserResult(
     bool Succeeded,
     AuthUserModel? User,
-    IReadOnlyList<string> ErrorCodes)
+    IReadOnlyList<string> ErrorCodes
+)
 {
     public static AuthCreateUserResult Success(AuthUserModel user) =>
         new(true, user, Array.Empty<string>());
@@ -38,9 +44,12 @@ public sealed record AuthCreateUserResult(
 public sealed record AuthPasswordVerificationResult(
     bool Succeeded,
     bool IsLockedOut,
-    AuthUserModel? User)
+    AuthUserModel? User
+)
 {
-    public static AuthPasswordVerificationResult Success(AuthUserModel user) => new(true, false, user);
+    public static AuthPasswordVerificationResult Success(AuthUserModel user) =>
+        new(true, false, user);
 
-    public static AuthPasswordVerificationResult Failure(bool isLockedOut) => new(false, isLockedOut, null);
+    public static AuthPasswordVerificationResult Failure(bool isLockedOut) =>
+        new(false, isLockedOut, null);
 }

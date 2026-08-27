@@ -1,3 +1,4 @@
+using CodeCafe.Application.Common.Identity;
 using CodeCafe.Application.Notes.Commands.CreateNotebook;
 using CodeCafe.Application.Notes.Commands.DeleteNotebook;
 using CodeCafe.Application.Notes.Commands.UpdateNotebook;
@@ -5,7 +6,6 @@ using CodeCafe.Application.Notes.Queries.GetMyNotebooks;
 using CodeCafe.Application.Notes.Queries.GetNotebookById;
 using CodeCafe.Application.Notes.Queries.GetNotebookBySlug;
 using CodeCafe.Host.Common;
-using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,18 +18,12 @@ public static partial class NotesEndpoints
 
     private static void MapNotebookEndpoints(RouteGroupBuilder group)
     {
-        group.MapGet("/mine", GetMyNotebooksAsync)
-            .RequireAuthorization();
-        group.MapGet("/{notebookId:guid}", GetNotebookByIdAsync)
-            .AllowAnonymous();
-        group.MapGet("/{slug}", GetNotebookBySlugAsync)
-            .AllowAnonymous();
-        group.MapPost("/", CreateNotebookAsync)
-            .RequireAuthorization();
-        group.MapPut("/{notebookId:guid}", UpdateNotebookAsync)
-            .RequireAuthorization();
-        group.MapDelete("/{notebookId:guid}", DeleteNotebookAsync)
-            .RequireAuthorization();
+        group.MapGet("/mine", GetMyNotebooksAsync).RequireAuthorization();
+        group.MapGet("/{notebookId:guid}", GetNotebookByIdAsync).AllowAnonymous();
+        group.MapGet("/{slug}", GetNotebookBySlugAsync).AllowAnonymous();
+        group.MapPost("/", CreateNotebookAsync).RequireAuthorization();
+        group.MapPut("/{notebookId:guid}", UpdateNotebookAsync).RequireAuthorization();
+        group.MapDelete("/{notebookId:guid}", DeleteNotebookAsync).RequireAuthorization();
     }
 
     private static async Task<IResult> GetMyNotebooksAsync(
@@ -38,18 +32,22 @@ public static partial class NotesEndpoints
         [FromQuery] string? search,
         [FromQuery] int? limit,
         [FromQuery] int? offset,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var notebooks = await sender.Send(
             new GetMyNotebooksQuery(
                 currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 search,
                 NormalizeNotebookListLimit(limit),
-                NormalizeNotebookListOffset(offset)),
-            cancellationToken);
+                NormalizeNotebookListOffset(offset)
+            ),
+            cancellationToken
+        );
 
         return TypedResults.Ok<IReadOnlyList<NotebookSummaryResponse>>(
-            notebooks.Select(NotesEndpointMappings.ToSummaryResponse).ToList());
+            notebooks.Select(NotesEndpointMappings.ToSummaryResponse).ToList()
+        );
     }
 
     private static async Task<IResult> GetNotebookByIdAsync(
@@ -58,15 +56,18 @@ public static partial class NotesEndpoints
         Guid notebookId,
         [FromQuery] bool? includeItems,
         [FromQuery] bool? includeContent,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new GetNotebookByIdQuery(
                 notebookId,
                 currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 IncludeItems: includeItems ?? false,
-                IncludeContent: includeContent ?? false),
-            cancellationToken);
+                IncludeContent: includeContent ?? false
+            ),
+            cancellationToken
+        );
 
         return ToDetailResult(result);
     }
@@ -77,15 +78,18 @@ public static partial class NotesEndpoints
         string slug,
         [FromQuery] bool? includeItems,
         [FromQuery] bool? includeContent,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new GetNotebookBySlugQuery(
                 slug,
                 currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 IncludeItems: includeItems ?? false,
-                IncludeContent: includeContent ?? false),
-            cancellationToken);
+                IncludeContent: includeContent ?? false
+            ),
+            cancellationToken
+        );
 
         return ToDetailResult(result);
     }
@@ -94,22 +98,28 @@ public static partial class NotesEndpoints
         [FromServices] ISender sender,
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         CreateNotebookRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new CreateNotebookCommand(
                 currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 request.Title,
                 request.Description,
-                request.Visibility),
-            cancellationToken);
+                request.Visibility
+            ),
+            cancellationToken
+        );
 
         if (!result.Succeeded)
         {
-            return TypedResults.Problem(ApiProblems.Create(
-                result.Error!.Code,
-                result.Error.Message,
-                ToStatusCode(result.Error.Kind)));
+            return TypedResults.Problem(
+                ApiProblems.Create(
+                    result.Error!.Code,
+                    result.Error.Message,
+                    ToStatusCode(result.Error.Kind)
+                )
+            );
         }
 
         var response = NotesEndpointMappings.ToDetailResponse(result.Value!);
@@ -121,7 +131,8 @@ public static partial class NotesEndpoints
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         UpdateNotebookRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new UpdateNotebookCommand(
@@ -129,8 +140,10 @@ public static partial class NotesEndpoints
                 currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 request.Title,
                 request.Description,
-                request.Visibility),
-            cancellationToken);
+                request.Visibility
+            ),
+            cancellationToken
+        );
 
         return ToDetailResult(result);
     }
@@ -149,11 +162,16 @@ public static partial class NotesEndpoints
         [FromServices] ISender sender,
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
-            new DeleteNotebookCommand(notebookId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
-            cancellationToken);
+            new DeleteNotebookCommand(
+                notebookId,
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty
+            ),
+            cancellationToken
+        );
 
         return ToCommandResult(result);
     }

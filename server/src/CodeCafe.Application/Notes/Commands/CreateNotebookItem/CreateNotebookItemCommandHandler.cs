@@ -3,12 +3,13 @@ using CodeCafe.Application.Common.Messaging;
 namespace CodeCafe.Application.Notes.Commands.CreateNotebookItem;
 
 public sealed class CreateNotebookItemCommandHandler(
-    INotebookItemMutationService notebookItemMutationService)
-    : ICommandHandler<CreateNotebookItemCommand, NotesResult<NotebookItemModel>>
+    INotebookItemMutationService notebookItemMutationService
+) : ICommandHandler<CreateNotebookItemCommand, NotesResult<NotebookItemModel>>
 {
     public async Task<NotesResult<NotebookItemModel>> Handle(
         CreateNotebookItemCommand request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         return await notebookItemMutationService.CreateNotebookItemAsync(
             request.NotebookId,
@@ -18,6 +19,7 @@ public sealed class CreateNotebookItemCommandHandler(
             request.Title,
             request.SortOrder,
             request.ContentJson,
-            cancellationToken);
+            cancellationToken
+        );
     }
 }

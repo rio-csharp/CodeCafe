@@ -1,9 +1,9 @@
+using CodeCafe.Application.Common.Identity;
 using CodeCafe.Application.Identity;
 using CodeCafe.Application.Identity.Commands.AuthenticateUser;
 using CodeCafe.Application.Identity.Commands.RegisterUser;
 using CodeCafe.Application.Identity.Queries.GetCurrentUser;
 using CodeCafe.Host.Common;
-using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Mvc;
@@ -15,21 +15,16 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/api/auth")
-            .WithTags("Auth");
+        var group = endpoints.MapGroup("/api/auth").WithTags("Auth");
 
-        group.MapGet("/csrf", GetCsrfAsync)
-            .AllowAnonymous();
-        group.MapPost("/register", RegisterAsync)
+        group.MapGet("/csrf", GetCsrfAsync).AllowAnonymous();
+        group
+            .MapPost("/register", RegisterAsync)
             .AllowAnonymous()
             .RequireRateLimiting("registration");
-        group.MapPost("/login", LoginAsync)
-            .AllowAnonymous()
-            .RequireRateLimiting("login");
-        group.MapPost("/logout", LogoutAsync)
-            .RequireAuthorization();
-        group.MapGet("/me", MeAsync)
-            .RequireAuthorization();
+        group.MapPost("/login", LoginAsync).AllowAnonymous().RequireRateLimiting("login");
+        group.MapPost("/logout", LogoutAsync).RequireAuthorization();
+        group.MapGet("/me", MeAsync).RequireAuthorization();
 
         return endpoints;
     }
@@ -37,10 +32,7 @@ public static class AuthEndpoints
     private static IResult GetCsrfAsync(HttpContext httpContext, IAntiforgery antiforgery)
     {
         var tokens = antiforgery.GetAndStoreTokens(httpContext);
-        return TypedResults.Ok(new
-        {
-            token = tokens.RequestToken
-        });
+        return TypedResults.Ok(new { token = tokens.RequestToken });
     }
 
     private static async Task<IResult> RegisterAsync(
@@ -51,7 +43,8 @@ public static class AuthEndpoints
         [FromServices] IOptions<AuthOptions> authOptions,
         RegisterRequest request,
         HttpContext httpContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var clientIp = clientIpAddressAccessor.GetClientIpAddress(httpContext);
         var logger = loggerFactory.CreateLogger("CodeCafe.Api.Auth");
@@ -60,15 +53,18 @@ public static class AuthEndpoints
                 authOptions.Value.RegistrationEnabled,
                 request.Email,
                 request.Password,
-                request.DisplayName),
-            cancellationToken);
+                request.DisplayName
+            ),
+            cancellationToken
+        );
 
         if (!result.Succeeded)
         {
             logger.LogInformation(
                 "Registration rejected. Code={Code}; ClientIp={ClientIp}",
                 result.Error!.Code,
-                clientIp);
+                clientIp
+            );
             return ToResult(result);
         }
 
@@ -76,7 +72,8 @@ public static class AuthEndpoints
         logger.LogInformation(
             "User registered. UserId={UserId}; ClientIp={ClientIp}",
             result.Value.Id,
-            clientIp);
+            clientIp
+        );
 
         return ToResult(result);
     }
@@ -88,20 +85,23 @@ public static class AuthEndpoints
         [FromServices] ILoggerFactory loggerFactory,
         LoginRequest request,
         HttpContext httpContext,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var clientIp = clientIpAddressAccessor.GetClientIpAddress(httpContext);
         var logger = loggerFactory.CreateLogger("CodeCafe.Api.Auth");
         var result = await sender.Send(
             new AuthenticateUserCommand(request.Email, request.Password, clientIp),
-            cancellationToken);
+            cancellationToken
+        );
 
         if (!result.Succeeded)
         {
             logger.LogInformation(
                 "Login failed. Code={Code}; ClientIp={ClientIp}",
                 result.Error!.Code,
-                clientIp);
+                clientIp
+            );
             return ToResult(result);
         }
 
@@ -109,12 +109,15 @@ public static class AuthEndpoints
         logger.LogInformation(
             "User logged in. UserId={UserId}; ClientIp={ClientIp}",
             result.Value.Id,
-            clientIp);
+            clientIp
+        );
 
         return ToResult(result);
     }
 
-    private static async Task<IResult> LogoutAsync([FromServices] IAuthSessionService authSessionService)
+    private static async Task<IResult> LogoutAsync(
+        [FromServices] IAuthSessionService authSessionService
+    )
     {
         await authSessionService.SignOutAsync();
         return TypedResults.Ok(new LogoutResponse(true));
@@ -123,7 +126,8 @@ public static class AuthEndpoints
     private static async Task<IResult> MeAsync(
         [FromServices] ISender sender,
         [FromServices] ICurrentUserAccessor currentUserAccessor,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var currentUserId = currentUserAccessor.GetCurrentUserId() ?? Guid.Empty;
         var result = await sender.Send(new GetCurrentUserQuery(currentUserId), cancellationToken);
@@ -137,10 +141,13 @@ public static class AuthEndpoints
             return TypedResults.Ok(new AuthResponse(ToUserResponse(result.Value!)));
         }
 
-        return TypedResults.Problem(ApiProblems.Create(
-            result.Error!.Code,
-            result.Error.Message,
-            ToStatusCode(result.Error.Kind)));
+        return TypedResults.Problem(
+            ApiProblems.Create(
+                result.Error!.Code,
+                result.Error.Message,
+                ToStatusCode(result.Error.Kind)
+            )
+        );
     }
 
     private static int ToStatusCode(AuthFailureKind kind)
@@ -152,7 +159,7 @@ public static class AuthEndpoints
             AuthFailureKind.Forbidden => StatusCodes.Status403Forbidden,
             AuthFailureKind.Conflict => StatusCodes.Status409Conflict,
             AuthFailureKind.NotFound => StatusCodes.Status404NotFound,
-            _ => StatusCodes.Status400BadRequest
+            _ => StatusCodes.Status400BadRequest,
         };
     }
 

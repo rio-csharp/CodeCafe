@@ -5,7 +5,8 @@ public static class NotebookItemTree
     public static NotebookItem? FindRequestedParent(
         IReadOnlyList<NotebookItem> notebookItems,
         Guid itemId,
-        Guid? parentId)
+        Guid? parentId
+    )
     {
         if (parentId is null)
         {
@@ -19,7 +20,10 @@ public static class NotebookItemTree
     /// Validates a resolved parent candidate for an item. A null <paramref name="parentId"/>
     /// always denotes a valid root-level placement.
     /// </summary>
-    public static NotebookItemParentViolation? ValidateParentCandidate(NotebookItem? parent, Guid? parentId)
+    public static NotebookItemParentViolation? ValidateParentCandidate(
+        NotebookItem? parent,
+        Guid? parentId
+    )
     {
         if (parentId is null)
         {
@@ -40,7 +44,8 @@ public static class NotebookItemTree
         IReadOnlyList<NotebookItem> notebookItems,
         Guid itemId,
         Guid proposedParentId,
-        IReadOnlyList<(Guid ItemId, Guid? ParentId)>? pendingParentOverrides = null)
+        IReadOnlyList<(Guid ItemId, Guid? ParentId)>? pendingParentOverrides = null
+    )
     {
         var parentMap = notebookItems.ToDictionary(item => item.Id, item => item.ParentId);
         if (pendingParentOverrides is not null)
@@ -82,14 +87,16 @@ public static class NotebookItemTree
         IReadOnlyList<NotebookItem> notebookItems,
         string? parentPath,
         string title,
-        Guid currentItemId)
+        Guid currentItemId
+    )
     {
         var slugBudget = NotebookItemPath.GetSlugBudget(parentPath);
         if (slugBudget <= 0)
         {
             throw new ArgumentException(
                 "Parent path leaves no room for a child slug; check NotebookItemPath.HasRoomForChild first.",
-                nameof(parentPath));
+                nameof(parentPath)
+            );
         }
 
         var baseSlug = NotebookSlugGenerator.FromTitle(title, "page", slugBudget);
@@ -112,11 +119,14 @@ public static class NotebookItemTree
         IReadOnlyList<NotebookItem> notebookItems,
         Guid itemId,
         string oldPath,
-        string newPath)
+        string newPath
+    )
     {
-        foreach (var descendant in notebookItems.Where(item =>
-                     item.Id != itemId
-                     && item.Path.StartsWith(oldPath + "/", StringComparison.Ordinal)))
+        foreach (
+            var descendant in notebookItems.Where(item =>
+                item.Id != itemId && item.Path.StartsWith(oldPath + "/", StringComparison.Ordinal)
+            )
+        )
         {
             descendant.Path = newPath + descendant.Path[oldPath.Length..];
         }
@@ -129,7 +139,8 @@ public static class NotebookItemTree
     /// </summary>
     public static NotebookItemRestoreViolation? ValidateRestore(
         IReadOnlyList<NotebookItem> notebookItems,
-        NotebookItem item)
+        NotebookItem item
+    )
     {
         if (!item.IsArchived)
         {

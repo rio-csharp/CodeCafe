@@ -1,5 +1,5 @@
-using CodeCafe.Host.Common;
 using CodeCafe.Application.Common.Configuration;
+using CodeCafe.Host.Common;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
 
@@ -9,58 +9,102 @@ public sealed class OpenIddictSeedHostedService(
     IServiceScopeFactory serviceScopeFactory,
     IOptions<AuthorizationServerOptions> authorizationServerOptionsAccessor,
     IOptions<McpOptions> mcpOptionsAccessor,
-    ILogger<OpenIddictSeedHostedService> logger)
-    : IHostedService
+    ILogger<OpenIddictSeedHostedService> logger
+) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         await using var scope = serviceScopeFactory.CreateAsyncScope();
 
-        var applicationManager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+        var applicationManager =
+            scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
         var scopeManager = scope.ServiceProvider.GetRequiredService<IOpenIddictScopeManager>();
         var authorizationServerOptions = authorizationServerOptionsAccessor.Value;
         var mcpOptions = mcpOptionsAccessor.Value;
-        var mcpAudienceIdentifiers = McpResourceIdentifiers.GetAudienceValues(mcpOptions, authorizationServerOptions);
+        var mcpAudienceIdentifiers = McpResourceIdentifiers.GetAudienceValues(
+            mcpOptions,
+            authorizationServerOptions
+        );
 
-        await EnsureScopeAsync(scopeManager, mcpOptions.RequiredReadScopes, mcpAudienceIdentifiers, cancellationToken);
-        await EnsureScopeAsync(scopeManager, mcpOptions.RequiredWriteScopes, mcpAudienceIdentifiers, cancellationToken);
+        await EnsureScopeAsync(
+            scopeManager,
+            mcpOptions.RequiredReadScopes,
+            mcpAudienceIdentifiers,
+            cancellationToken
+        );
+        await EnsureScopeAsync(
+            scopeManager,
+            mcpOptions.RequiredWriteScopes,
+            mcpAudienceIdentifiers,
+            cancellationToken
+        );
 
         foreach (var client in authorizationServerOptions.PublicClients)
         {
-            var existingApplication = await applicationManager.FindByClientIdAsync(client.ClientId, cancellationToken);
+            var existingApplication = await applicationManager.FindByClientIdAsync(
+                client.ClientId,
+                cancellationToken
+            );
             if (existingApplication is null)
             {
-                var descriptor = CreateApplicationDescriptor(client, mcpOptions, authorizationServerOptions);
+                var descriptor = CreateApplicationDescriptor(
+                    client,
+                    mcpOptions,
+                    authorizationServerOptions
+                );
                 await applicationManager.CreateAsync(descriptor, cancellationToken);
 
                 logger.LogInformation(
                     "Seeded OpenIddict client application. ClientId={ClientId}; RedirectUris={RedirectUris}",
                     descriptor.ClientId,
-                    string.Join(", ", descriptor.RedirectUris.Select(uri => uri.AbsoluteUri)));
+                    string.Join(", ", descriptor.RedirectUris.Select(uri => uri.AbsoluteUri))
+                );
 
                 continue;
             }
 
             var existingDescriptor = new OpenIddictApplicationDescriptor();
-            await applicationManager.PopulateAsync(existingDescriptor, existingApplication, cancellationToken);
-            var desiredDescriptor = CreateApplicationDescriptor(client, mcpOptions, authorizationServerOptions);
-            var changed = OpenIddictClientRegistration.ReconcileDescriptor(existingDescriptor, desiredDescriptor);
+            await applicationManager.PopulateAsync(
+                existingDescriptor,
+                existingApplication,
+                cancellationToken
+            );
+            var desiredDescriptor = CreateApplicationDescriptor(
+                client,
+                mcpOptions,
+                authorizationServerOptions
+            );
+            var changed = OpenIddictClientRegistration.ReconcileDescriptor(
+                existingDescriptor,
+                desiredDescriptor
+            );
 
             if (changed)
             {
-                await applicationManager.UpdateAsync(existingApplication, existingDescriptor, cancellationToken);
+                await applicationManager.UpdateAsync(
+                    existingApplication,
+                    existingDescriptor,
+                    cancellationToken
+                );
 
                 logger.LogInformation(
                     "Updated OpenIddict client application. ClientId={ClientId}; RedirectUris={RedirectUris}",
                     existingDescriptor.ClientId,
-                    string.Join(", ", existingDescriptor.RedirectUris.Select(uri => uri.AbsoluteUri)));
+                    string.Join(
+                        ", ",
+                        existingDescriptor.RedirectUris.Select(uri => uri.AbsoluteUri)
+                    )
+                );
             }
         }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
-    private static bool ReplaceStrings(ICollection<string> existingValues, IEnumerable<string> desiredValues)
+    private static bool ReplaceStrings(
+        ICollection<string> existingValues,
+        IEnumerable<string> desiredValues
+    )
     {
         var desiredArray = desiredValues.Distinct(StringComparer.Ordinal).ToArray();
         var existing = existingValues.OrderBy(value => value, StringComparer.Ordinal).ToArray();
@@ -83,7 +127,8 @@ public sealed class OpenIddictSeedHostedService(
         IOpenIddictScopeManager scopeManager,
         IEnumerable<string> scopeNames,
         IReadOnlyCollection<string> resources,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         foreach (var scopeName in scopeNames.Distinct(StringComparer.Ordinal))
         {
@@ -93,7 +138,7 @@ public sealed class OpenIddictSeedHostedService(
                 var scopeDescriptor = new OpenIddictScopeDescriptor
                 {
                     DisplayName = scopeName,
-                    Name = scopeName
+                    Name = scopeName,
                 };
                 foreach (var resource in resources)
                 {
@@ -116,7 +161,8 @@ public sealed class OpenIddictSeedHostedService(
     private static OpenIddictApplicationDescriptor CreateApplicationDescriptor(
         OAuthClientOptions client,
         McpOptions mcpOptions,
-        AuthorizationServerOptions authorizationServerOptions)
+        AuthorizationServerOptions authorizationServerOptions
+    )
     {
         return OpenIddictClientRegistration.CreatePublicNativeDescriptor(
             client.ClientId,
@@ -124,6 +170,7 @@ public sealed class OpenIddictSeedHostedService(
             client.RedirectUris,
             client.AllowedScopes,
             mcpOptions,
-            authorizationServerOptions);
+            authorizationServerOptions
+        );
     }
 }

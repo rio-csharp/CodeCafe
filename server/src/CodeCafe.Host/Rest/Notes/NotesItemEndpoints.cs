@@ -1,3 +1,4 @@
+using CodeCafe.Application.Common.Identity;
 using CodeCafe.Application.Notes;
 using CodeCafe.Application.Notes.Commands.ArchiveNotebookItem;
 using CodeCafe.Application.Notes.Commands.CreateNotebookItem;
@@ -7,7 +8,6 @@ using CodeCafe.Application.Notes.Commands.RestoreNotebookItem;
 using CodeCafe.Application.Notes.Commands.UpdateNotebookItem;
 using CodeCafe.Application.Notes.Queries.GetNotebookItemById;
 using CodeCafe.Application.Notes.Queries.GetNotebookItems;
-using CodeCafe.Application.Common.Identity;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,21 +17,25 @@ public static partial class NotesEndpoints
 {
     private static void MapItemEndpoints(RouteGroupBuilder group)
     {
-        group.MapGet("/{notebookId:guid}/items", GetNotebookItemsAsync)
+        group.MapGet("/{notebookId:guid}/items", GetNotebookItemsAsync).AllowAnonymous();
+        group
+            .MapGet("/{notebookId:guid}/items/{itemId:guid}", GetNotebookItemByIdAsync)
             .AllowAnonymous();
-        group.MapGet("/{notebookId:guid}/items/{itemId:guid}", GetNotebookItemByIdAsync)
-            .AllowAnonymous();
-        group.MapPost("/{notebookId:guid}/items", CreateNotebookItemAsync)
+        group.MapPost("/{notebookId:guid}/items", CreateNotebookItemAsync).RequireAuthorization();
+        group
+            .MapPut("/{notebookId:guid}/items/reorder", ReorderNotebookItemsAsync)
             .RequireAuthorization();
-        group.MapPut("/{notebookId:guid}/items/reorder", ReorderNotebookItemsAsync)
+        group
+            .MapPut("/{notebookId:guid}/items/{itemId:guid}", UpdateNotebookItemAsync)
             .RequireAuthorization();
-        group.MapPut("/{notebookId:guid}/items/{itemId:guid}", UpdateNotebookItemAsync)
+        group
+            .MapPost("/{notebookId:guid}/items/{itemId:guid}/archive", ArchiveNotebookItemAsync)
             .RequireAuthorization();
-        group.MapPost("/{notebookId:guid}/items/{itemId:guid}/archive", ArchiveNotebookItemAsync)
+        group
+            .MapPost("/{notebookId:guid}/items/{itemId:guid}/restore", RestoreNotebookItemAsync)
             .RequireAuthorization();
-        group.MapPost("/{notebookId:guid}/items/{itemId:guid}/restore", RestoreNotebookItemAsync)
-            .RequireAuthorization();
-        group.MapDelete("/{notebookId:guid}/items/{itemId:guid}", DeleteNotebookItemAsync)
+        group
+            .MapDelete("/{notebookId:guid}/items/{itemId:guid}", DeleteNotebookItemAsync)
             .RequireAuthorization();
     }
 
@@ -42,7 +46,8 @@ public static partial class NotesEndpoints
         [FromQuery] string? search,
         [FromQuery] bool? includeArchived,
         [FromQuery] bool? includeContent,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new GetNotebookItemsQuery(
@@ -50,8 +55,10 @@ public static partial class NotesEndpoints
                 currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
                 search,
                 includeArchived ?? false,
-                includeContent ?? false),
-            cancellationToken);
+                includeContent ?? false
+            ),
+            cancellationToken
+        );
 
         return ToListResult(result);
     }
@@ -62,15 +69,18 @@ public static partial class NotesEndpoints
         Guid notebookId,
         Guid itemId,
         [FromQuery] bool? includeArchived,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new GetNotebookItemByIdQuery(
                 notebookId,
                 itemId,
                 currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
-                includeArchived ?? false),
-            cancellationToken);
+                includeArchived ?? false
+            ),
+            cancellationToken
+        );
 
         return ToItemResult(result);
     }
@@ -80,7 +90,8 @@ public static partial class NotesEndpoints
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         CreateNotebookItemRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new CreateNotebookItemCommand(
@@ -90,8 +101,10 @@ public static partial class NotesEndpoints
                 request.Type,
                 request.Title,
                 request.SortOrder,
-                request.ContentJson),
-            cancellationToken);
+                request.ContentJson
+            ),
+            cancellationToken
+        );
 
         if (!result.Succeeded)
         {
@@ -100,7 +113,8 @@ public static partial class NotesEndpoints
 
         return TypedResults.Created(
             $"/api/notes/{notebookId}/items/{result.Value!.Id}",
-            NotesEndpointMappings.ToItemResponse(result.Value!));
+            NotesEndpointMappings.ToItemResponse(result.Value!)
+        );
     }
 
     private static async Task<IResult> UpdateNotebookItemAsync(
@@ -109,7 +123,8 @@ public static partial class NotesEndpoints
         Guid notebookId,
         Guid itemId,
         UpdateNotebookItemRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new UpdateNotebookItemCommand(
@@ -120,8 +135,10 @@ public static partial class NotesEndpoints
                 request.ParentId,
                 request.SortOrder,
                 request.ContentJson,
-                request.ExpectedUpdatedAtUtc),
-            cancellationToken);
+                request.ExpectedUpdatedAtUtc
+            ),
+            cancellationToken
+        );
 
         return ToItemResult(result);
     }
@@ -131,22 +148,34 @@ public static partial class NotesEndpoints
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         ReorderNotebookItemsRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
             new ReorderNotebookItemsCommand(
                 notebookId,
                 currentUserAccessor.GetCurrentUserId() ?? Guid.Empty,
-                request.Items.Select(item => new ReorderNotebookItemModel(item.ItemId, item.ParentId, item.SortOrder)).ToList()),
-            cancellationToken);
+                request
+                    .Items.Select(item => new ReorderNotebookItemModel(
+                        item.ItemId,
+                        item.ParentId,
+                        item.SortOrder
+                    ))
+                    .ToList()
+            ),
+            cancellationToken
+        );
 
         if (!result.Succeeded)
         {
             return ToProblemResult(result.Error!);
         }
 
-        return TypedResults.Ok(new ReorderNotebookItemsResponse(
-            result.Value!.Select(NotesEndpointMappings.ToItemResponse).ToList()));
+        return TypedResults.Ok(
+            new ReorderNotebookItemsResponse(
+                result.Value!.Select(NotesEndpointMappings.ToItemResponse).ToList()
+            )
+        );
     }
 
     private static async Task<IResult> ArchiveNotebookItemAsync(
@@ -154,11 +183,17 @@ public static partial class NotesEndpoints
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         Guid itemId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
-            new ArchiveNotebookItemCommand(notebookId, itemId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
-            cancellationToken);
+            new ArchiveNotebookItemCommand(
+                notebookId,
+                itemId,
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty
+            ),
+            cancellationToken
+        );
 
         return ToItemResult(result);
     }
@@ -168,11 +203,17 @@ public static partial class NotesEndpoints
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         Guid itemId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
-            new RestoreNotebookItemCommand(notebookId, itemId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
-            cancellationToken);
+            new RestoreNotebookItemCommand(
+                notebookId,
+                itemId,
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty
+            ),
+            cancellationToken
+        );
 
         return ToItemResult(result);
     }
@@ -182,11 +223,17 @@ public static partial class NotesEndpoints
         [FromServices] ICurrentUserAccessor currentUserAccessor,
         Guid notebookId,
         Guid itemId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var result = await sender.Send(
-            new DeleteNotebookItemCommand(notebookId, itemId, currentUserAccessor.GetCurrentUserId() ?? Guid.Empty),
-            cancellationToken);
+            new DeleteNotebookItemCommand(
+                notebookId,
+                itemId,
+                currentUserAccessor.GetCurrentUserId() ?? Guid.Empty
+            ),
+            cancellationToken
+        );
 
         return ToCommandResult(result);
     }

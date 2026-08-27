@@ -28,11 +28,15 @@ public sealed class NotebookItemPathTests
         // against a 180-character column.
         var baseSlug = NotebookSlugGenerator.FromTitle(new string('a', MaxTitleLength), "page");
 
-        var slug = NotebookSlugGenerator.WithUniqueSuffix(baseSlug, NotebookSlugGenerator.MaxSlugLength);
+        var slug = NotebookSlugGenerator.WithUniqueSuffix(
+            baseSlug,
+            NotebookSlugGenerator.MaxSlugLength
+        );
 
         Assert.True(
             slug.Length <= NotebookSlugGenerator.MaxSlugLength,
-            $"Expected at most {NotebookSlugGenerator.MaxSlugLength} characters, got {slug.Length}.");
+            $"Expected at most {NotebookSlugGenerator.MaxSlugLength} characters, got {slug.Length}."
+        );
     }
 
     [Fact]
@@ -40,8 +44,14 @@ public sealed class NotebookItemPathTests
     {
         var baseSlug = new string('a', NotebookSlugGenerator.MaxSlugLength);
 
-        var first = NotebookSlugGenerator.WithUniqueSuffix(baseSlug, NotebookSlugGenerator.MaxSlugLength);
-        var second = NotebookSlugGenerator.WithUniqueSuffix(baseSlug, NotebookSlugGenerator.MaxSlugLength);
+        var first = NotebookSlugGenerator.WithUniqueSuffix(
+            baseSlug,
+            NotebookSlugGenerator.MaxSlugLength
+        );
+        var second = NotebookSlugGenerator.WithUniqueSuffix(
+            baseSlug,
+            NotebookSlugGenerator.MaxSlugLength
+        );
 
         Assert.NotEqual(first, second);
     }
@@ -92,7 +102,8 @@ public sealed class NotebookItemPathTests
 
         Assert.True(
             path.Length <= NotebookItemPath.MaxPathLength,
-            $"Expected at most {NotebookItemPath.MaxPathLength} characters, got {path.Length}.");
+            $"Expected at most {NotebookItemPath.MaxPathLength} characters, got {path.Length}."
+        );
     }
 
     [Fact]
@@ -102,17 +113,22 @@ public sealed class NotebookItemPathTests
         var title = new string('b', MaxTitleLength);
         var slugBudget = NotebookItemPath.GetSlugBudget(parentPath);
         var baseSlug = NotebookSlugGenerator.FromTitle(title, "page", slugBudget);
-        var existing = Enumerable.Range(0, 10)
-            .Select(attempt => CreateItem(
-                Guid.NewGuid(),
-                $"{parentPath}/{NotebookSlugGenerator.WithSuffix(baseSlug, attempt, slugBudget)}"))
+        var existing = Enumerable
+            .Range(0, 10)
+            .Select(attempt =>
+                CreateItem(
+                    Guid.NewGuid(),
+                    $"{parentPath}/{NotebookSlugGenerator.WithSuffix(baseSlug, attempt, slugBudget)}"
+                )
+            )
             .ToArray();
 
         var path = NotebookItemTree.GeneratePath(existing, parentPath, title, Guid.NewGuid());
 
         Assert.True(
             path.Length <= NotebookItemPath.MaxPathLength,
-            $"Expected at most {NotebookItemPath.MaxPathLength} characters, got {path.Length}.");
+            $"Expected at most {NotebookItemPath.MaxPathLength} characters, got {path.Length}."
+        );
         Assert.DoesNotContain(existing, item => item.Path == path);
     }
 
@@ -123,8 +139,9 @@ public sealed class NotebookItemPathTests
         // is the backstop that keeps an over-long path from reaching the database.
         var nearLimitParent = new string('a', NotebookItemPath.MaxPathLength - 4);
 
-        Assert.Throws<ArgumentException>(
-            () => NotebookItemTree.GeneratePath([], nearLimitParent, "Page", Guid.NewGuid()));
+        Assert.Throws<ArgumentException>(() =>
+            NotebookItemTree.GeneratePath([], nearLimitParent, "Page", Guid.NewGuid())
+        );
     }
 
     [Fact]
@@ -132,7 +149,10 @@ public sealed class NotebookItemPathTests
     {
         var folderId = Guid.NewGuid();
         var oldPath = "f";
-        var deepDescendant = CreateItem(Guid.NewGuid(), $"{oldPath}/{new string('c', NotebookItemPath.MaxPathLength - 10)}");
+        var deepDescendant = CreateItem(
+            Guid.NewGuid(),
+            $"{oldPath}/{new string('c', NotebookItemPath.MaxPathLength - 10)}"
+        );
         var items = new[] { CreateItem(folderId, oldPath), deepDescendant };
         var newPath = new string('n', 40);
 
@@ -144,7 +164,10 @@ public sealed class NotebookItemPathTests
     {
         var folderId = Guid.NewGuid();
         var oldPath = new string('o', 100);
-        var deepDescendant = CreateItem(Guid.NewGuid(), $"{oldPath}/{new string('c', NotebookItemPath.MaxPathLength - 200)}");
+        var deepDescendant = CreateItem(
+            Guid.NewGuid(),
+            $"{oldPath}/{new string('c', NotebookItemPath.MaxPathLength - 200)}"
+        );
         var items = new[] { CreateItem(folderId, oldPath), deepDescendant };
 
         Assert.True(NotebookItemPath.DescendantsFitAfterMove(items, folderId, oldPath, "short"));
@@ -156,10 +179,15 @@ public sealed class NotebookItemPathTests
         var folderId = Guid.NewGuid();
         var oldPath = "f";
         // Same prefix character but not a descendant of "f/".
-        var unrelated = CreateItem(Guid.NewGuid(), new string('f', NotebookItemPath.MaxPathLength - 2));
+        var unrelated = CreateItem(
+            Guid.NewGuid(),
+            new string('f', NotebookItemPath.MaxPathLength - 2)
+        );
         var items = new[] { CreateItem(folderId, oldPath), unrelated };
 
-        Assert.True(NotebookItemPath.DescendantsFitAfterMove(items, folderId, oldPath, new string('n', 40)));
+        Assert.True(
+            NotebookItemPath.DescendantsFitAfterMove(items, folderId, oldPath, new string('n', 40))
+        );
     }
 
     private static NotebookItem CreateItem(Guid id, string path)
@@ -171,7 +199,7 @@ public sealed class NotebookItemPathTests
             Type = NotebookItemType.Page,
             Title = path.Split('/')[^1],
             Slug = path.Split('/')[^1],
-            Path = path
+            Path = path,
         };
     }
 }

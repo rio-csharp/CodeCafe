@@ -20,9 +20,15 @@ public sealed class NotebookTests
     public void ApplyVisibility_Clears_PublishedAt_When_Made_Private()
     {
         var notebook = CreateNotebook();
-        notebook.ApplyVisibility(NotebookVisibility.Public, new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero));
+        notebook.ApplyVisibility(
+            NotebookVisibility.Public,
+            new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero)
+        );
 
-        notebook.ApplyVisibility(NotebookVisibility.Private, new DateTimeOffset(2026, 6, 2, 12, 0, 0, TimeSpan.Zero));
+        notebook.ApplyVisibility(
+            NotebookVisibility.Private,
+            new DateTimeOffset(2026, 6, 2, 12, 0, 0, TimeSpan.Zero)
+        );
 
         Assert.False(notebook.IsPublished);
         Assert.Null(notebook.PublishedAtUtc);
@@ -47,7 +53,7 @@ public sealed class NotebookTests
             Id = Guid.NewGuid(),
             OwnerId = Guid.NewGuid(),
             Title = "Original",
-            Slug = "original"
+            Slug = "original",
         };
     }
 }

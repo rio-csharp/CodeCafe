@@ -1,23 +1,28 @@
-using CodeCafe.Application.Notes;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Unicode;
+using CodeCafe.Application.Notes;
 using static CodeCafe.Application.Notes.ITipTapContentService;
 
 namespace CodeCafe.Infrastructure.Notes;
 
 public sealed class TipTapContentService : ITipTapContentService
 {
-    private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions SerializerOptions = new(
+        JsonSerializerDefaults.Web
+    )
     {
-        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All)
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
     };
 
     public NotesResult<TipTapContentModel> NormalizePageContent(JsonElement? contentJson)
     {
-        if (contentJson is null || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        if (
+            contentJson is null
+            || contentJson.Value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined
+        )
         {
             return NotesResult<TipTapContentModel>.Success(new TipTapContentModel(null, null));
         }
@@ -52,7 +57,8 @@ public sealed class TipTapContentService : ITipTapContentService
                     validation.Error.Code,
                     validation.Error.Message,
                     validation.Error.Field,
-                    validation.Error.Details);
+                    validation.Error.Details
+                );
             }
 
             var normalizedJson = state.RequiresRewrite
@@ -60,7 +66,9 @@ public sealed class TipTapContentService : ITipTapContentService
                 : JsonSerializer.Serialize(document.RootElement, SerializerOptions);
             var plainTextContent = NotebookInput.NormalizeOptionalText(state.PlainText.ToString());
 
-            return NotesResult<TipTapContentModel>.Success(new TipTapContentModel(normalizedJson, plainTextContent));
+            return NotesResult<TipTapContentModel>.Success(
+                new TipTapContentModel(normalizedJson, plainTextContent)
+            );
         }
     }
 
@@ -69,7 +77,8 @@ public sealed class TipTapContentService : ITipTapContentService
             NotesFailureKind.Validation,
             "invalid_tiptap_document",
             "ContentJson must be a TipTap document object.",
-            "contentJson");
+            "contentJson"
+        );
 
     private static NotesResult ProcessDocument(JsonElement document, ValidationState state)
     {
@@ -104,7 +113,12 @@ public sealed class TipTapContentService : ITipTapContentService
         return ProcessNode(document, depth: 0, state, isRootNode: true);
     }
 
-    private static NotesResult ProcessNode(JsonElement node, int depth, ValidationState state, bool isRootNode = false)
+    private static NotesResult ProcessNode(
+        JsonElement node,
+        int depth,
+        ValidationState state,
+        bool isRootNode = false
+    )
     {
         if (depth > MaxDepth)
         {
@@ -113,8 +127,9 @@ public sealed class TipTapContentService : ITipTapContentService
                 details: new Dictionary<string, object?>
                 {
                     ["maxTipTapDepth"] = MaxDepth,
-                    ["actualDepth"] = depth
-                });
+                    ["actualDepth"] = depth,
+                }
+            );
         }
 
         if (node.ValueKind != JsonValueKind.Object)
@@ -130,8 +145,9 @@ public sealed class TipTapContentService : ITipTapContentService
                 details: new Dictionary<string, object?>
                 {
                     ["maxTipTapNodeCount"] = MaxNodeCount,
-                    ["actualTipTapNodeCount"] = state.NodeCount
-                });
+                    ["actualTipTapNodeCount"] = state.NodeCount,
+                }
+            );
         }
 
         if (!TryGetNodeType(node, out var type))
@@ -141,7 +157,10 @@ public sealed class TipTapContentService : ITipTapContentService
 
         if (type == "text")
         {
-            if (!node.TryGetProperty("text", out var textElement) || textElement.ValueKind != JsonValueKind.String)
+            if (
+                !node.TryGetProperty("text", out var textElement)
+                || textElement.ValueKind != JsonValueKind.String
+            )
             {
                 return Invalid("Text nodes must have string text.");
             }
@@ -159,22 +178,27 @@ public sealed class TipTapContentService : ITipTapContentService
                     details: new Dictionary<string, object?>
                     {
                         ["maxTipTapTextLength"] = MaxTextLength,
-                        ["actualTipTapTextLength"] = state.TextLength
-                    });
+                        ["actualTipTapTextLength"] = state.TextLength,
+                    }
+                );
             }
         }
 
-        if (node.TryGetProperty("attrs", out var attrsElement)
-            && attrsElement.ValueKind is not JsonValueKind.Object and not JsonValueKind.Null)
+        if (
+            node.TryGetProperty("attrs", out var attrsElement)
+            && attrsElement.ValueKind is not JsonValueKind.Object and not JsonValueKind.Null
+        )
         {
             return Invalid("TipTap node attrs must be an object when provided.");
         }
 
-        if (type is "image" or "youtube"
+        if (
+            type is "image" or "youtube"
             && attrsElement.ValueKind == JsonValueKind.Object
             && attrsElement.TryGetProperty("src", out var srcElement)
             && srcElement.ValueKind == JsonValueKind.String
-            && !ContentUrlPolicy.IsAllowedResourceUrl(srcElement.GetString()))
+            && !ContentUrlPolicy.IsAllowedResourceUrl(srcElement.GetString())
+        )
         {
             // The rewrite removes unsafe src attributes from image and embed nodes.
             state.RequiresRewrite = true;
@@ -233,7 +257,9 @@ public sealed class TipTapContentService : ITipTapContentService
             }
 
             keptIndex++;
-            if (TipTapPlainTextExtractor.ShouldAppendSeparator(child, keptIndex - 1, keptChildCount))
+            if (
+                TipTapPlainTextExtractor.ShouldAppendSeparator(child, keptIndex - 1, keptChildCount)
+            )
             {
                 state.PlainText.AppendLine();
             }
@@ -264,11 +290,13 @@ public sealed class TipTapContentService : ITipTapContentService
             return Invalid("TipTap mark attrs must be an object when provided.");
         }
 
-        if (markType == "link"
+        if (
+            markType == "link"
             && attrsElement.ValueKind == JsonValueKind.Object
             && attrsElement.TryGetProperty("href", out var hrefElement)
             && hrefElement.ValueKind == JsonValueKind.String
-            && !ContentUrlPolicy.IsAllowedLinkUrl(hrefElement.GetString()))
+            && !ContentUrlPolicy.IsAllowedLinkUrl(hrefElement.GetString())
+        )
         {
             // The rewrite removes link marks with unsafe hrefs but keeps their text.
             state.RequiresRewrite = true;
@@ -327,11 +355,13 @@ public sealed class TipTapContentService : ITipTapContentService
                 for (var index = content.Count - 1; index >= 0; index--)
                 {
                     var child = content[index];
-                    if (child is JsonObject childObject
+                    if (
+                        child is JsonObject childObject
                         && TryGetString(childObject, "type", out var type)
                         && string.Equals(type, "text", StringComparison.Ordinal)
                         && TryGetString(childObject, "text", out var text)
-                        && string.Equals(text, string.Empty, StringComparison.Ordinal))
+                        && string.Equals(text, string.Empty, StringComparison.Ordinal)
+                    )
                     {
                         content.RemoveAt(index);
                         continue;
@@ -361,24 +391,30 @@ public sealed class TipTapContentService : ITipTapContentService
             {
                 for (var index = marks.Count - 1; index >= 0; index--)
                 {
-                    if (marks[index] is JsonObject mark
+                    if (
+                        marks[index] is JsonObject mark
                         && TryGetString(mark, "type", out var markType)
                         && string.Equals(markType, "link", StringComparison.Ordinal)
                         && mark["attrs"] is JsonObject linkAttrs
                         && TryGetString(linkAttrs, "href", out var href)
-                        && !ContentUrlPolicy.IsAllowedLinkUrl(href))
+                        && !ContentUrlPolicy.IsAllowedLinkUrl(href)
+                    )
                     {
                         marks.RemoveAt(index);
                     }
                 }
             }
 
-            if (TryGetString(obj, "type", out var nodeType)
-                && (string.Equals(nodeType, "image", StringComparison.Ordinal)
-                    || string.Equals(nodeType, "youtube", StringComparison.Ordinal))
+            if (
+                TryGetString(obj, "type", out var nodeType)
+                && (
+                    string.Equals(nodeType, "image", StringComparison.Ordinal)
+                    || string.Equals(nodeType, "youtube", StringComparison.Ordinal)
+                )
                 && obj["attrs"] is JsonObject attrs
                 && TryGetString(attrs, "src", out var src)
-                && !ContentUrlPolicy.IsAllowedResourceUrl(src))
+                && !ContentUrlPolicy.IsAllowedResourceUrl(src)
+            )
             {
                 attrs.Remove("src");
             }
@@ -407,7 +443,10 @@ public sealed class TipTapContentService : ITipTapContentService
     {
         type = string.Empty;
 
-        if (!node.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
+        if (
+            !node.TryGetProperty("type", out var typeElement)
+            || typeElement.ValueKind != JsonValueKind.String
+        )
         {
             return false;
         }
@@ -419,20 +458,24 @@ public sealed class TipTapContentService : ITipTapContentService
     private static NotesResult Invalid(
         string message,
         string? field = "contentJson",
-        IReadOnlyDictionary<string, object?>? details = null) =>
+        IReadOnlyDictionary<string, object?>? details = null
+    ) =>
         NotesResult.Failure(
             NotesFailureKind.Validation,
             "invalid_tiptap_document",
             message,
             field,
-            details);
+            details
+        );
 
     private static bool TryGetString(JsonObject obj, string propertyName, out string value)
     {
         value = string.Empty;
-        if (obj[propertyName] is not JsonValue jsonValue
+        if (
+            obj[propertyName] is not JsonValue jsonValue
             || !jsonValue.TryGetValue<string?>(out var candidate)
-            || candidate is null)
+            || candidate is null
+        )
         {
             return false;
         }

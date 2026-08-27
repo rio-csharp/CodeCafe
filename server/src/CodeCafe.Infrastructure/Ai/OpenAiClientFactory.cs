@@ -1,9 +1,6 @@
-using CodeCafe.Application.Ai.Drafts;
-using CodeCafe.Application.Ai.Edits;
-using CodeCafe.Application.Ai;
-using CodeCafe.Application.Notes;
-using OpenAI;
 using System.ClientModel;
+using CodeCafe.Application.Ai;
+using OpenAI;
 
 namespace CodeCafe.Infrastructure.Ai;
 
@@ -15,7 +12,7 @@ public static class OpenAiClientFactory
         // unobserved TaskCanceledException instead of a timeout the handlers can map to 504.
         var clientOptions = new OpenAIClientOptions
         {
-            NetworkTimeout = TimeSpan.FromSeconds(Math.Max(1, options.NetworkTimeoutSeconds))
+            NetworkTimeout = TimeSpan.FromSeconds(Math.Max(1, options.NetworkTimeoutSeconds)),
         };
 
         if (!string.IsNullOrWhiteSpace(options.BaseUrl))
@@ -28,17 +25,19 @@ public static class OpenAiClientFactory
 
     public static Uri NormalizeEndpoint(string baseUrl)
     {
-        if (!Uri.TryCreate(baseUrl.Trim(), UriKind.Absolute, out var endpoint)
-            || endpoint.Scheme is not ("http" or "https"))
+        if (
+            !Uri.TryCreate(baseUrl.Trim(), UriKind.Absolute, out var endpoint)
+            || endpoint.Scheme is not ("http" or "https")
+        )
         {
-            throw new InvalidOperationException("Ai:BaseUrl must be an absolute HTTP or HTTPS URL.");
+            throw new InvalidOperationException(
+                "Ai:BaseUrl must be an absolute HTTP or HTTPS URL."
+            );
         }
 
         var builder = new UriBuilder(endpoint);
         var path = builder.Path.TrimEnd('/');
-        builder.Path = string.IsNullOrWhiteSpace(path) || path == "/"
-            ? "/v1"
-            : path;
+        builder.Path = string.IsNullOrWhiteSpace(path) || path == "/" ? "/v1" : path;
         return builder.Uri;
     }
 }

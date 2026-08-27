@@ -1,5 +1,5 @@
-using CodeCafe.Application.Notes;
 using System.Text.Json;
+using CodeCafe.Application.Notes;
 
 namespace CodeCafe.Application.Common.Uploads;
 
@@ -16,7 +16,8 @@ public interface IContentImporter
         string? contentFormat,
         string errorCode,
         string invalidMessage,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     Task<NotesResult<JsonElement>> ResolveRequiredPageContentAsync(
         Guid actorId,
@@ -25,7 +26,8 @@ public interface IContentImporter
         string? contentFormat,
         string errorCode,
         string invalidMessage,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     Task<NotesResult<JsonElement>> ResolveRequiredBlocksAsync(
         Guid actorId,
@@ -34,7 +36,8 @@ public interface IContentImporter
         string? blocksFormat,
         string errorCode,
         string invalidMessage,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken
+    );
 
     NotesResult EnforcePageContentSize(JsonElement contentJson, string errorCode);
 

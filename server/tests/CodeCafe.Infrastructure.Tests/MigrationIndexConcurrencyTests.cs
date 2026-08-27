@@ -15,7 +15,7 @@ public sealed class MigrationIndexConcurrencyTests
     /// </summary>
     private static readonly HashSet<string> GrandfatheredMigrations = new(StringComparer.Ordinal)
     {
-        "20260718224927_AddNotebookTrigramIndexes.cs"
+        "20260718224927_AddNotebookTrigramIndexes.cs",
     };
 
     [Fact]
@@ -32,7 +32,8 @@ public sealed class MigrationIndexConcurrencyTests
             }
 
             var source = File.ReadAllText(file);
-            var declaresGinIndex = source.Contains("Npgsql:IndexMethod", StringComparison.Ordinal)
+            var declaresGinIndex =
+                source.Contains("Npgsql:IndexMethod", StringComparison.Ordinal)
                 || Regex.IsMatch(source, @"USING\s+gin", RegexOptions.IgnoreCase);
             if (!declaresGinIndex)
             {
@@ -48,8 +49,9 @@ public sealed class MigrationIndexConcurrencyTests
         Assert.True(
             offenders.Count == 0,
             "These migrations build a GIN index without CONCURRENTLY, which blocks writes for the "
-            + "duration of the build. Use migrationBuilder.Sql(\"CREATE INDEX CONCURRENTLY IF NOT "
-            + $"EXISTS ...\", suppressTransaction: true) instead: {string.Join(", ", offenders)}");
+                + "duration of the build. Use migrationBuilder.Sql(\"CREATE INDEX CONCURRENTLY IF NOT "
+                + $"EXISTS ...\", suppressTransaction: true) instead: {string.Join(", ", offenders)}"
+        );
     }
 
     [Fact]
@@ -70,7 +72,8 @@ public sealed class MigrationIndexConcurrencyTests
         Assert.True(
             offenders.Count == 0,
             "CREATE INDEX CONCURRENTLY cannot run inside a transaction; pass suppressTransaction: true "
-            + $"to migrationBuilder.Sql in: {string.Join(", ", offenders)}");
+                + $"to migrationBuilder.Sql in: {string.Join(", ", offenders)}"
+        );
     }
 
     [Fact]
@@ -78,7 +81,9 @@ public sealed class MigrationIndexConcurrencyTests
     {
         // Keeps the allowlist honest: a renamed or deleted migration must not silently keep exempting
         // a file that no longer exists.
-        var names = EnumerateMigrationFiles().Select(Path.GetFileName).ToHashSet(StringComparer.Ordinal);
+        var names = EnumerateMigrationFiles()
+            .Select(Path.GetFileName)
+            .ToHashSet(StringComparer.Ordinal);
 
         foreach (var grandfathered in GrandfatheredMigrations)
         {
@@ -89,9 +94,13 @@ public sealed class MigrationIndexConcurrencyTests
     private static IEnumerable<string> EnumerateMigrationFiles()
     {
         var directory = FindMigrationsDirectory();
-        return Directory.EnumerateFiles(directory, "*.cs")
-            .Where(file => !file.EndsWith(".Designer.cs", StringComparison.Ordinal)
-                && !Path.GetFileName(file).Equals("ApplicationDbContextModelSnapshot.cs", StringComparison.Ordinal));
+        return Directory
+            .EnumerateFiles(directory, "*.cs")
+            .Where(file =>
+                !file.EndsWith(".Designer.cs", StringComparison.Ordinal)
+                && !Path.GetFileName(file)
+                    .Equals("ApplicationDbContextModelSnapshot.cs", StringComparison.Ordinal)
+            );
     }
 
     private static string FindMigrationsDirectory()
@@ -105,7 +114,8 @@ public sealed class MigrationIndexConcurrencyTests
                 "src",
                 "CodeCafe.Infrastructure",
                 "Persistence",
-                "Migrations");
+                "Migrations"
+            );
             if (Directory.Exists(candidate))
             {
                 return candidate;
@@ -114,6 +124,8 @@ public sealed class MigrationIndexConcurrencyTests
             current = current.Parent;
         }
 
-        throw new DirectoryNotFoundException("Could not locate the EF migrations directory from the test output path.");
+        throw new DirectoryNotFoundException(
+            "Could not locate the EF migrations directory from the test output path."
+        );
     }
 }

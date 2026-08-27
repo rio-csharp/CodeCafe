@@ -1,6 +1,5 @@
 using CodeCafe.Host.Rest.Auth;
 using CodeCafe.Host.Rest.Notes;
-using CodeCafe.Host.Common;
 
 namespace CodeCafe.Host.Common;
 

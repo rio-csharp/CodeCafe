@@ -8,7 +8,8 @@ public sealed partial class NotebookReadService
 {
     public async Task<NotesResult<IReadOnlyList<NotebookItemModel>>> GetPublicNotebookItemsAsync(
         string slug,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var notebook = await GetPublicNotebookEntityBySlugAsync(slug, cancellationToken);
         if (notebook is null)
@@ -16,11 +17,12 @@ public sealed partial class NotebookReadService
             return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
                 NotesFailureKind.NotFound,
                 "notebook_not_found",
-                "Notebook was not found.");
+                "Notebook was not found."
+            );
         }
 
-        var items = await dbContext.NotebookItems
-            .AsNoTracking()
+        var items = await dbContext
+            .NotebookItems.AsNoTracking()
             .Where(item => item.NotebookId == notebook.Id && !item.IsArchived)
             .OrderBy(item => item.ParentId)
             .ThenBy(item => item.SortOrder)
@@ -34,7 +36,8 @@ public sealed partial class NotebookReadService
     public async Task<NotesResult<NotebookItemModel>> GetPublicNotebookItemAsync(
         string slug,
         string path,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var notebook = await GetPublicNotebookEntityBySlugAsync(slug, cancellationToken);
         if (notebook is null)
@@ -42,18 +45,27 @@ public sealed partial class NotebookReadService
             return NotesResult<NotebookItemModel>.Failure(
                 NotesFailureKind.NotFound,
                 "notebook_not_found",
-                "Notebook was not found.");
+                "Notebook was not found."
+            );
         }
 
         var normalizedPath = NotebookInput.NormalizePath(path);
-        var item = await dbContext.NotebookItems
-            .AsNoTracking()
+        var item = await dbContext
+            .NotebookItems.AsNoTracking()
             .SingleOrDefaultAsync(
-                existingItem => existingItem.NotebookId == notebook.Id && existingItem.Path == normalizedPath && !existingItem.IsArchived,
-                cancellationToken);
+                existingItem =>
+                    existingItem.NotebookId == notebook.Id
+                    && existingItem.Path == normalizedPath
+                    && !existingItem.IsArchived,
+                cancellationToken
+            );
 
         return item is null
-            ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.")
+            ? NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.NotFound,
+                "notebook_item_not_found",
+                "Notebook item was not found."
+            )
             : NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
     }
 
@@ -64,35 +76,47 @@ public sealed partial class NotebookReadService
         CancellationToken cancellationToken,
         bool includeArchived = false,
         bool includeContent = true,
-        int? limit = null)
+        int? limit = null
+    )
     {
-        var notebookAccessResult = await GetReadableNotebookAccessAsync(notebookId, currentUserId, cancellationToken);
+        var notebookAccessResult = await GetReadableNotebookAccessAsync(
+            notebookId,
+            currentUserId,
+            cancellationToken
+        );
         if (!notebookAccessResult.Succeeded)
         {
             return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
                 notebookAccessResult.Error!.Kind,
                 notebookAccessResult.Error.Code,
-                notebookAccessResult.Error.Message);
+                notebookAccessResult.Error.Message
+            );
         }
 
-        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        if (
+            GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is
+            { } archiveError
+        )
         {
             return NotesResult<IReadOnlyList<NotebookItemModel>>.Failure(
                 archiveError.Kind,
                 archiveError.Code,
-                archiveError.Message);
+                archiveError.Message
+            );
         }
 
         var rows = await BuildItemRowQuery(
                 ApplyLimit(
-                    OrderNotebookItems(BuildNotebookItemsQuery(notebookId, search, includeArchived)),
-                    limit),
-                includeContent)
+                    OrderNotebookItems(
+                        BuildNotebookItemsQuery(notebookId, search, includeArchived)
+                    ),
+                    limit
+                ),
+                includeContent
+            )
             .ToListAsync(cancellationToken);
 
-        var items = rows
-            .Select(row => NotesSupport.ToItemModel(row, includeContent))
-            .ToList();
+        var items = rows.Select(row => NotesSupport.ToItemModel(row, includeContent)).ToList();
 
         return NotesResult<IReadOnlyList<NotebookItemModel>>.Success(items);
     }
@@ -102,36 +126,51 @@ public sealed partial class NotebookReadService
         Guid itemId,
         Guid currentUserId,
         CancellationToken cancellationToken,
-        bool includeArchived = false)
+        bool includeArchived = false
+    )
     {
-        var notebookAccessResult = await GetReadableNotebookAccessAsync(notebookId, currentUserId, cancellationToken);
+        var notebookAccessResult = await GetReadableNotebookAccessAsync(
+            notebookId,
+            currentUserId,
+            cancellationToken
+        );
         if (!notebookAccessResult.Succeeded)
         {
             return NotesResult<NotebookItemModel>.Failure(
                 notebookAccessResult.Error!.Kind,
                 notebookAccessResult.Error.Code,
-                notebookAccessResult.Error.Message);
+                notebookAccessResult.Error.Message
+            );
         }
 
-        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        if (
+            GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is
+            { } archiveError
+        )
         {
             return NotesResult<NotebookItemModel>.Failure(
                 archiveError.Kind,
                 archiveError.Code,
-                archiveError.Message);
+                archiveError.Message
+            );
         }
 
-        var item = await dbContext.NotebookItems
-            .AsNoTracking()
+        var item = await dbContext
+            .NotebookItems.AsNoTracking()
             .SingleOrDefaultAsync(
                 existingItem =>
                     existingItem.NotebookId == notebookAccessResult.Value!.Id
                     && existingItem.Id == itemId
                     && (includeArchived || !existingItem.IsArchived),
-                cancellationToken);
+                cancellationToken
+            );
 
         return item is null
-            ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.")
+            ? NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.NotFound,
+                "notebook_item_not_found",
+                "Notebook item was not found."
+            )
             : NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
     }
 
@@ -140,36 +179,52 @@ public sealed partial class NotebookReadService
         string path,
         Guid currentUserId,
         CancellationToken cancellationToken,
-        bool includeArchived = false)
+        bool includeArchived = false
+    )
     {
-        var notebookAccessResult = await GetReadableNotebookAccessAsync(notebookSlug, currentUserId, cancellationToken);
+        var notebookAccessResult = await GetReadableNotebookAccessAsync(
+            notebookSlug,
+            currentUserId,
+            cancellationToken
+        );
         if (!notebookAccessResult.Succeeded)
         {
             return NotesResult<NotebookItemModel>.Failure(
                 notebookAccessResult.Error!.Kind,
                 notebookAccessResult.Error.Code,
-                notebookAccessResult.Error.Message);
+                notebookAccessResult.Error.Message
+            );
         }
 
-        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        if (
+            GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is
+            { } archiveError
+        )
         {
             return NotesResult<NotebookItemModel>.Failure(
                 archiveError.Kind,
                 archiveError.Code,
-                archiveError.Message);
+                archiveError.Message
+            );
         }
 
         var normalizedPath = NotebookInput.NormalizePath(path);
-        var item = await dbContext.NotebookItems
-            .AsNoTracking()
-            .SingleOrDefaultAsync(existingItem =>
+        var item = await dbContext
+            .NotebookItems.AsNoTracking()
+            .SingleOrDefaultAsync(
+                existingItem =>
                     existingItem.NotebookId == notebookAccessResult.Value!.Id
                     && existingItem.Path == normalizedPath
                     && (includeArchived || !existingItem.IsArchived),
-                cancellationToken);
+                cancellationToken
+            );
 
         return item is null
-            ? NotesResult<NotebookItemModel>.Failure(NotesFailureKind.NotFound, "notebook_item_not_found", "Notebook item was not found.")
+            ? NotesResult<NotebookItemModel>.Failure(
+                NotesFailureKind.NotFound,
+                "notebook_item_not_found",
+                "Notebook item was not found."
+            )
             : NotesResult<NotebookItemModel>.Success(NotesSupport.ToItemModel(item));
     }
 
@@ -182,23 +237,33 @@ public sealed partial class NotebookReadService
         Guid? parentId = null,
         string? type = null,
         int? offset = null,
-        int? limit = null)
+        int? limit = null
+    )
     {
-        var notebookAccessResult = await GetReadableNotebookAccessAsync(notebookId, currentUserId, cancellationToken);
+        var notebookAccessResult = await GetReadableNotebookAccessAsync(
+            notebookId,
+            currentUserId,
+            cancellationToken
+        );
         if (!notebookAccessResult.Succeeded)
         {
             return NotesResult<NotebookItemsPageModel>.Failure(
                 notebookAccessResult.Error!.Kind,
                 notebookAccessResult.Error.Code,
-                notebookAccessResult.Error.Message);
+                notebookAccessResult.Error.Message
+            );
         }
 
-        if (GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is { } archiveError)
+        if (
+            GetArchivedReadError(notebookAccessResult.Value!, currentUserId, includeArchived) is
+            { } archiveError
+        )
         {
             return NotesResult<NotebookItemsPageModel>.Failure(
                 archiveError.Kind,
                 archiveError.Code,
-                archiveError.Message);
+                archiveError.Message
+            );
         }
 
         var query = BuildNotebookItemsQuery(notebookId, search, includeArchived);
@@ -216,23 +281,27 @@ public sealed partial class NotebookReadService
         var normalizedOffset = Math.Max(0, offset ?? 0);
         var normalizedLimit = limit.HasValue ? Math.Max(1, limit.Value) : totalCount;
         var rows = await BuildItemRowQuery(
-                OrderNotebookItems(query)
-                    .Skip(normalizedOffset)
-                    .Take(normalizedLimit),
-                includeContent: false)
+                OrderNotebookItems(query).Skip(normalizedOffset).Take(normalizedLimit),
+                includeContent: false
+            )
             .ToListAsync(cancellationToken);
-        var items = rows
-            .Select(row => NotesSupport.ToItemModel(row, includeContent: false))
+        var items = rows.Select(row => NotesSupport.ToItemModel(row, includeContent: false))
             .ToList();
 
-        return NotesResult<NotebookItemsPageModel>.Success(new NotebookItemsPageModel(totalCount, items));
+        return NotesResult<NotebookItemsPageModel>.Success(
+            new NotebookItemsPageModel(totalCount, items)
+        );
     }
 
-    private IQueryable<NotebookItem> BuildNotebookItemsQuery(Guid notebookId, string? search, bool includeArchived)
+    private IQueryable<NotebookItem> BuildNotebookItemsQuery(
+        Guid notebookId,
+        string? search,
+        bool includeArchived
+    )
     {
         var normalizedSearch = NotebookInput.NormalizeSearch(search);
-        var query = dbContext.NotebookItems
-            .AsNoTracking()
+        var query = dbContext
+            .NotebookItems.AsNoTracking()
             .Where(item => item.NotebookId == notebookId && (includeArchived || !item.IsArchived));
 
         if (normalizedSearch is not null)

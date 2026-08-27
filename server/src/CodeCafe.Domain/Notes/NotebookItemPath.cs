@@ -47,7 +47,8 @@ public static class NotebookItemPath
         IReadOnlyList<NotebookItem> notebookItems,
         Guid itemId,
         string oldPath,
-        string newPath)
+        string newPath
+    )
     {
         var growth = newPath.Length - oldPath.Length;
         if (growth <= 0)
@@ -58,7 +59,10 @@ public static class NotebookItemPath
         var prefix = oldPath + "/";
         foreach (var descendant in notebookItems)
         {
-            if (descendant.Id == itemId || !descendant.Path.StartsWith(prefix, StringComparison.Ordinal))
+            if (
+                descendant.Id == itemId
+                || !descendant.Path.StartsWith(prefix, StringComparison.Ordinal)
+            )
             {
                 continue;
             }

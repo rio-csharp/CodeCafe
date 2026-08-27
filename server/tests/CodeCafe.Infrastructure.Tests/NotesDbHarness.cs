@@ -1,5 +1,5 @@
-using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Application.Common;
+using CodeCafe.Infrastructure.Notes;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -48,5 +48,6 @@ internal sealed class NotesDbHarness : IDisposable
 
 internal sealed class MutableDateTimeProvider(DateTimeOffset? initial = null) : IDateTimeProvider
 {
-    public DateTimeOffset UtcNow { get; set; } = initial ?? DateTimeOffset.Parse("2026-06-01T00:00:00+00:00");
+    public DateTimeOffset UtcNow { get; set; } =
+        initial ?? DateTimeOffset.Parse("2026-06-01T00:00:00+00:00");
 }
