@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CodeCafe.Domain/CodeCafe.Domain.csproj" />
+  </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="tests/CodeCafe.Domain.Tests/CodeCafe.Domain.Tests.csproj" />
+  </Folder>
+</Solution>
