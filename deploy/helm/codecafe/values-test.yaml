@@ -1,7 +1,0 @@
-frontend:
-  replicaCount: 1
-
-api:
-  replicaCount: 1
-  envFromSecrets:
-    - codecafe-db-secret
