@@ -1,9 +1,11 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using CodeCafe.Domain.Notes.Enums;
+using CodeCafe.Domain.Notes.ValueObjects;
 
 namespace CodeCafe.Application.Notes;
 
-public static class NotebookInput
+public static partial class NotebookInput
 {
     public static string? NormalizeSearch(string? search)
     {
@@ -31,6 +33,22 @@ public static class NotebookInput
         }
 
         return TryParseDefinedEnum(value, out visibility);
+    }
+
+    // Slugs become URL path segments, so user-supplied ones must match the generator's output shape.
+    [GeneratedRegex(@"^[a-z0-9]+(?:-[a-z0-9]+)*$")]
+    private static partial Regex SlugPattern();
+
+    public static bool IsValidSlug(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return normalized.Length is >= NotebookSlug.MinLength and <= NotebookSlug.MaxLength
+            && SlugPattern().IsMatch(normalized);
     }
 
     public static bool TryParseItemType(string value, out NotebookItemType type)

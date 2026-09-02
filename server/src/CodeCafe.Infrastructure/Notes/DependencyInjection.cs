@@ -1,5 +1,6 @@
 using CodeCafe.Application.Notes;
 using CodeCafe.Infrastructure.Notes.Read;
+using CodeCafe.Infrastructure.Notes.Write;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,12 +25,16 @@ public static class DependencyInjection
         }
 
         services.TryAddSingleton(TimeProvider.System);
-        services.AddDbContext<ApplicationDbContext>(options =>
+        services.AddScoped<DispatchDomainEventsInterceptor>();
+        services.AddDbContext<ApplicationDbContext>((provider, options) =>
         {
             options.UseNpgsql(connectionString);
+            options.AddInterceptors(provider.GetRequiredService<DispatchDomainEventsInterceptor>());
         });
         services.AddSingleton<INotebookAccessCodeHasher, NotebookAccessCodeHasher>();
         services.AddScoped<INotebookReadService, NotebookReadService>();
+        services.AddScoped<INotebookRepository, NotebookRepository>();
+        services.AddScoped<INotebookSlugGenerator, NotebookSlugGenerator>();
 
         return services;
     }

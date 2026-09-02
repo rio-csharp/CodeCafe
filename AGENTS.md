@@ -2,6 +2,8 @@
 
 ## Git & PRs
 
+- Commit messages follow Conventional Commits (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`, `style:`), scoped where useful (`feat(notes): ...`).
+
 - Run `git fetch origin` first, then create working branches from the intended remote base branch (`origin/release/*`), never from the current local branch.
 - PRs: `feature/*` → `release/*`; `release/*` → `main` is allowed. Direct hotfix commits on `release/*` are allowed only when the user explicitly requests that flow.
 - `main` is pull-request-only: never push directly to it.

@@ -6,6 +6,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CodeCafe.Domain.Tests/CodeCafe.Domain.Tests.csproj" />
+    <Project Path="tests/CodeCafe.Application.Tests/CodeCafe.Application.Tests.csproj" />
     <Project Path="tests/CodeCafe.Infrastructure.Tests/CodeCafe.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

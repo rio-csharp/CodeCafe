@@ -59,7 +59,16 @@ public sealed class Notebook : Entity, IAuditableEntity
         string? description,
         NotebookVisibility visibility,
         DateTimeOffset createdAtUtc
-    ) => new(id, ownerId, title, slug, description, visibility, createdAtUtc);
+    )
+    {
+        var notebook = new Notebook(id, ownerId, title, slug, description, visibility, createdAtUtc)
+        {
+            // Creating directly as Public is not a visibility change, so no event is raised,
+            // but the publish timestamp must still be set.
+            PublishedAtUtc = visibility == NotebookVisibility.Public ? createdAtUtc : null,
+        };
+        return notebook;
+    }
 
     public void Rename(string title) => Title = title;
 
