@@ -15,6 +15,8 @@
 
 ## Code conventions
 
+- This project is technology-driven: prefer modern, idiomatic C# whenever it reduces noise, and modernize code you're already touching (boy-scout rule). The bar is readability, not cleverness.
+
 ### Comments
 
 - Only "why" comments: magic-number rationale, non-obvious background a reader would need. Never "what" comments — the code must explain what it does by itself.
@@ -27,6 +29,8 @@
 - Domain events are raised inside aggregates (`RaiseDomainEvent`) and dispatched by the Application layer after a successful save. The Domain project has zero external dependencies.
 - Value objects: `sealed record` + private constructor + static `Create` with validation/normalization (make illegal states unrepresentable).
 - Cross-aggregate references by Id only — no navigation properties across aggregates.
+- Clock access goes through BCL `TimeProvider` (`GetUtcNow()`), never custom clock interfaces or `DateTimeOffset.UtcNow`; tests use `FakeTimeProvider`.
+- EF mapping: every entity gets `Property(x => x.Id).ValueGeneratedNever()` (client-generated Guid keys; otherwise EF marks navigation-discovered entities as `Modified` and inserts become zero-row updates). Ignore `DomainEvents` in every configuration.
 
 ### Interfaces
 
@@ -38,5 +42,7 @@
 
 ### Tests
 
-- xUnit `Fact`/`Theory`; test through the public API of the aggregate.
+- xUnit v3 (`xunit.v3`, self-executing test projects on Microsoft.Testing.Platform; `global.json` sets the test runner). Run via `dotnet test` or `dotnet run --project <test-project>`. Do NOT pass `--nologo` to `dotnet test` in MTP mode — the flag leaks through to the test app and yields "Zero tests ran".
+- Infrastructure tests run on real PostgreSQL via Testcontainers (Docker Desktop must be running). Ryuk is disabled (`TESTCONTAINERS_RYUK_DISABLED`) because its image may be unpullable on restricted networks; fixtures self-clean. No SQLite, no provider-conditional code paths anywhere — one engine in every environment.
+- `Fact`/`Theory`; test through the public API of the aggregate.
 - A change lands only when its tests are green.

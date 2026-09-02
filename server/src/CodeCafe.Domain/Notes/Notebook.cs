@@ -47,6 +47,8 @@ public sealed class Notebook : Entity, IAuditableEntity
 
     public DateTimeOffset? PublishedAtUtc { get; private set; }
 
+    public string? AccessCodeHash { get; private set; }
+
     public IReadOnlyCollection<NotebookItem> Items => _items.AsReadOnly();
 
     public static Notebook Create(
@@ -73,20 +75,29 @@ public sealed class Notebook : Entity, IAuditableEntity
         }
 
         var previous = Visibility;
-        var wasPublished = previous == NotebookVisibility.Public;
         Visibility = visibility;
 
-        if (visibility != NotebookVisibility.Public)
+        PublishedAtUtc = visibility == NotebookVisibility.Public ? now : null;
+        if (visibility != NotebookVisibility.Unlisted)
         {
-            PublishedAtUtc = null;
-        }
-        else
-        {
-            PublishedAtUtc = wasPublished ? PublishedAtUtc ?? now : now;
+            AccessCodeHash = null;
         }
 
         RaiseDomainEvent(new NotebookVisibilityChangedDomainEvent(Id, previous, visibility, now));
     }
+
+    public NotebookAccessCodeViolation? SetAccessCode(string accessCodeHash)
+    {
+        if (Visibility != NotebookVisibility.Unlisted)
+        {
+            return NotebookAccessCodeViolation.NotUnlisted;
+        }
+
+        AccessCodeHash = accessCodeHash;
+        return null;
+    }
+
+    public void ClearAccessCode() => AccessCodeHash = null;
 
     public NotebookItemAddViolation? AddItem(
         Guid itemId,

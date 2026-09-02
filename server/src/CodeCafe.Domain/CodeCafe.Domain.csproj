@@ -7,5 +7,6 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="CodeCafe.Domain.Tests" />
+        <InternalsVisibleTo Include="CodeCafe.Infrastructure.Tests" />
     </ItemGroup>
 </Project>

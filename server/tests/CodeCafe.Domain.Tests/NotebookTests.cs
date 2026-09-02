@@ -49,7 +49,9 @@ public sealed class NotebookTests
         Assert.Equal("Updated description", notebook.Description);
     }
 
-    private static Notebook CreateNotebook()
+    private static Notebook CreateNotebook(
+        NotebookVisibility visibility = NotebookVisibility.Private
+    )
     {
         return Notebook.Create(
             Guid.NewGuid(),
@@ -57,8 +59,53 @@ public sealed class NotebookTests
             "Original",
             NotebookSlug.Create("original"),
             null,
-            NotebookVisibility.Private,
+            visibility,
             DateTimeOffset.UtcNow
         );
+    }
+
+
+    [Fact]
+    public void SetAccessCode_On_Unlisted_Sets_Hash()
+    {
+        var notebook = CreateNotebook(NotebookVisibility.Unlisted);
+
+        var violation = notebook.SetAccessCode("hash:secret");
+
+        Assert.Null(violation);
+        Assert.Equal("hash:secret", notebook.AccessCodeHash);
+    }
+
+    [Fact]
+    public void SetAccessCode_On_Non_Unlisted_Returns_Violation()
+    {
+        var notebook = CreateNotebook(NotebookVisibility.Private);
+
+        var violation = notebook.SetAccessCode("hash:secret");
+
+        Assert.Equal(NotebookAccessCodeViolation.NotUnlisted, violation);
+        Assert.Null(notebook.AccessCodeHash);
+    }
+
+    [Fact]
+    public void ApplyVisibility_Away_From_Unlisted_Clears_AccessCode()
+    {
+        var notebook = CreateNotebook(NotebookVisibility.Unlisted);
+        notebook.SetAccessCode("hash:secret");
+
+        notebook.ApplyVisibility(NotebookVisibility.Public, DateTimeOffset.UtcNow);
+
+        Assert.Null(notebook.AccessCodeHash);
+    }
+
+    [Fact]
+    public void ApplyVisibility_Unlisted_To_Unlisted_Is_NoOp_Keeping_Code()
+    {
+        var notebook = CreateNotebook(NotebookVisibility.Unlisted);
+        notebook.SetAccessCode("hash:secret");
+
+        notebook.ApplyVisibility(NotebookVisibility.Unlisted, DateTimeOffset.UtcNow);
+
+        Assert.Equal("hash:secret", notebook.AccessCodeHash);
     }
 }
