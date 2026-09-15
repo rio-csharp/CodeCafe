@@ -1,0 +1,112 @@
+using System.Text;
+using CodeCafe.Application.Common;
+using CodeCafe.Application.Notebooks.Commands;
+using CodeCafe.Application.Notebooks.Models;
+using CodeCafe.Application.Notebooks.Queries;
+using CodeCafe.Application.Pages.Commands;
+using CodeCafe.Application.Pages.Models;
+using CodeCafe.Application.Pages.Queries;
+using CodeCafe.Host.Hosting;
+using MediatR;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CodeCafe.Host.Controllers;
+
+[ApiController]
+[Route("api")]
+[Tags("Notebooks")]
+public sealed class NotebooksController(ISender sender) : ControllerBase
+{
+    [HttpPost("notebooks")]
+    public Task<Result<NotebookDetailsDto>> Create(CreateNotebookRequest request, CancellationToken cancellationToken)
+        => sender.Send(new CreateNotebookCommand(request.Title, request.Description, request.Slug, request.Visibility), cancellationToken);
+
+    // Markdown payloads can be large, but not unbounded.
+    [HttpPost("notebooks/import")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public Task<Result<NotebookDetailsDto>> Import(NotebookExportDto export, CancellationToken cancellationToken)
+        => sender.Send(new ImportNotebookCommand(export), cancellationToken);
+
+    [HttpGet("notebooks")]
+    public Task<Result<CursorPage<NotebookSummaryDto>>> List(
+        string? tag,
+        bool? favorite,
+        NotebookVisibility? visibility,
+        string? cursor,
+        int? pageSize,
+        CancellationToken cancellationToken)
+        => sender.Send(new ListNotebooksQuery(tag, favorite, visibility, cursor, pageSize), cancellationToken);
+
+    [AllowAnonymous]
+    [HttpGet("notebooks/{idOrSlug}")]
+    public Task<Result<NotebookDetailsDto>> Details(string idOrSlug, CancellationToken cancellationToken)
+        => sender.Send(new GetNotebookDetailsQuery(idOrSlug), cancellationToken);
+
+    [HttpPatch("notebooks/{idOrSlug}")]
+    public Task<Result<NotebookDetailsDto>> Update(string idOrSlug, UpdateNotebookRequest request, CancellationToken cancellationToken)
+        => sender.Send(new UpdateNotebookCommand(idOrSlug, request.Title, request.Description, request.Visibility), cancellationToken);
+
+    [HttpDelete("notebooks/{idOrSlug}")]
+    public Task<Result> Delete(string idOrSlug, CancellationToken cancellationToken)
+        => sender.Send(new DeleteNotebookCommand(idOrSlug), cancellationToken);
+
+    [HttpPost("notebooks/{idOrSlug}/slug")]
+    public Task<Result<NotebookDetailsDto>> ChangeSlug(string idOrSlug, ChangeNotebookSlugRequest request, CancellationToken cancellationToken)
+        => sender.Send(new ChangeNotebookSlugCommand(idOrSlug, request.Slug), cancellationToken);
+
+    [HttpPost("notebooks/{idOrSlug}/access-code")]
+    public Task<Result> SetAccessCode(string idOrSlug, SetNotebookAccessCodeRequest request, CancellationToken cancellationToken)
+        => sender.Send(new SetNotebookAccessCodeCommand(idOrSlug, request.AccessCode), cancellationToken);
+
+    [HttpPost("notebooks/{idOrSlug}/favorite")]
+    public Task<Result> SetFavorite(string idOrSlug, SetFavoriteRequest request, CancellationToken cancellationToken)
+        => sender.Send(new SetNotebookFavoriteCommand(idOrSlug, request.IsFavorite), cancellationToken);
+
+    [HttpPost("notebooks/{idOrSlug}/shares")]
+    public Task<Result> Share(string idOrSlug, ShareRequest request, CancellationToken cancellationToken)
+        => sender.Send(new ShareNotebookCommand(idOrSlug, request.Email, request.Role), cancellationToken);
+
+    [HttpDelete("notebooks/{idOrSlug}/shares/{userId:guid}")]
+    public Task<Result> RevokeShare(string idOrSlug, Guid userId, CancellationToken cancellationToken)
+        => sender.Send(new RevokeNotebookShareCommand(idOrSlug, userId), cancellationToken);
+
+    [HttpPut("notebooks/{idOrSlug}/tags")]
+    public Task<Result> SetTags(string idOrSlug, SetTagsRequest request, CancellationToken cancellationToken)
+        => sender.Send(new SetNotebookTagsCommand(idOrSlug, request.Tags), cancellationToken);
+
+    [AllowAnonymous]
+    [HttpGet("notebooks/{idOrSlug}/tree")]
+    public Task<Result<NotebookTreeDto>> Tree(string idOrSlug, CancellationToken cancellationToken)
+        => sender.Send(new GetNotebookTreeQuery(idOrSlug), cancellationToken);
+
+    [AllowAnonymous]
+    [HttpGet("notebooks/{idOrSlug}/search")]
+    public Task<Result<CursorPage<PageSearchHitDto>>> Search(string idOrSlug, string q, string? cursor, int? pageSize, CancellationToken cancellationToken)
+        => sender.Send(new SearchNotebookPagesQuery(idOrSlug, q, cursor, pageSize), cancellationToken);
+
+    // A real file download (text/markdown + Content-Disposition), not the JSON envelope.
+    [AllowAnonymous]
+    [HttpGet("notebooks/{idOrSlug}/export")]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/markdown")]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
+    public async Task<IResult> Export(string idOrSlug, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new ExportNotebookQuery(idOrSlug), cancellationToken);
+        // Results.File handles Content-Disposition encoding safely.
+        return result.ToHttpResult(export => Results.File(
+            Encoding.UTF8.GetBytes(export.Markdown),
+            "text/markdown; charset=utf-8",
+            export.FileName));
+    }
+
+    [HttpPost("notebooks/{idOrSlug}/pages")]
+    public Task<Result<PageDetailsDto>> CreatePage(string idOrSlug, CreatePageRequest request, CancellationToken cancellationToken)
+        => sender.Send(new CreatePageCommand(idOrSlug, request.Title, request.ParentPath, request.Blocks, request.Format), cancellationToken);
+
+    [AllowAnonymous]
+    [HttpGet("notebooks/{idOrSlug}/pages/by-path")]
+    public Task<Result<PageDetailsDto>> PageByPath(string idOrSlug, string path, CancellationToken cancellationToken)
+        => sender.Send(new GetPageByPathQuery(idOrSlug, path), cancellationToken);
+}

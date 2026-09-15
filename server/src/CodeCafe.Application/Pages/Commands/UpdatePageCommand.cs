@@ -1,0 +1,8 @@
+using CodeCafe.Application.Common;
+using CodeCafe.Application.Common.Messaging;
+using CodeCafe.Application.Pages.Models;
+
+namespace CodeCafe.Application.Pages.Commands;
+
+public sealed record UpdatePageCommand(Guid PageId, string? Title, bool? IsArchived)
+    : ICommand<Result<PageDetailsDto>>;
