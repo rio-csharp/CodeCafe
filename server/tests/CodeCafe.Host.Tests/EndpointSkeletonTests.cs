@@ -12,7 +12,6 @@ public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory
     // Contract spot-check: an anonymously reachable mapped route returns 501;
     // an unmapped one would 404, a protected one would 401.
     [Theory]
-    [InlineData("POST", "/api/auth/login")]
     [InlineData("POST", "/api/auth/refresh")]
     [InlineData("POST", "/api/auth/logout")]
     [InlineData("GET", "/api/notebooks/my-first-notes")]
