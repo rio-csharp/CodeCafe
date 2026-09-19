@@ -39,9 +39,7 @@ internal static class McpExtensions
         if (!options.Enabled)
             return app;
 
-        // Bearer only: the endpoint is protected by the fallback authorization policy, and
-        // anonymous calls get a 401 with a WWW-Authenticate: Bearer header (RFC 6750).
-        // Clients obtain a token via POST /api/auth/login first.
+        // Bearer only (fallback policy); clients get a token via POST /api/auth/login first.
         app.MapMcp(options.EndpointPath).RequireRateLimiting(RateLimiterExtensions.McpPolicy);
         return app;
     }

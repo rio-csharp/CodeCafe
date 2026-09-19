@@ -1,10 +1,12 @@
 namespace CodeCafe.Application.Auth.Abstractions;
 
+// Issuing stages the token in the current unit of work (the caller commits via IUnitOfWork);
+// validating looks it up by hash.
 public interface IRefreshTokenService
 {
-    RefreshToken Issue(Guid userId);
+    Task<IssuedRefreshToken> IssueAsync(Guid userId, CancellationToken cancellationToken);
 
-    Guid? Validate(string token);
+    Task<Guid?> ValidateAsync(string token, CancellationToken cancellationToken);
 }
 
-public sealed record RefreshToken(string Value, DateTimeOffset ExpiresAtUtc);
+public sealed record IssuedRefreshToken(string Value, DateTimeOffset ExpiresAtUtc);

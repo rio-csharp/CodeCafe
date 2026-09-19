@@ -41,8 +41,7 @@ public sealed class AuthController(ISender sender) : ControllerBase
     public Task<Result<AuthSessionDto>> Refresh(RefreshTokenRequest request, CancellationToken cancellationToken)
         => sender.Send(new RefreshTokenCommand(request.RefreshToken), cancellationToken);
 
-    // Revokes the session identified by the refresh token; anonymous for the same
-    // reason as refresh - the refresh token is the credential.
+    // Anonymous for the same reason as Refresh: the refresh token is the credential.
     [HttpPost("auth/logout")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimiterExtensions.AuthPolicy)]

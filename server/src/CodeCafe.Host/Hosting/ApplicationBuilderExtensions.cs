@@ -7,10 +7,8 @@ internal static class ApplicationBuilderExtensions
     public static WebApplication UseCodeCafePipeline(this WebApplication app)
     {
         app.UseExceptionHandler();
-        // HSTS is managed at the Cloudflare edge (where TLS terminates); emitting it
-        // here too would send duplicate Strict-Transport-Security headers.
-        // if (app.Environment.IsProduction())
-        //     app.UseHsts();
+        // HSTS is omitted on purpose: Cloudflare terminates TLS at the edge and
+        // already emits Strict-Transport-Security there.
         // Must precede anything that reads RemoteIpAddress (rate limiting, logging).
         app.UseCodeCafeForwardedHeaders();
         app.UseSerilogRequestLogging();

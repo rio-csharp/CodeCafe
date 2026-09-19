@@ -7,10 +7,8 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace CodeCafe.Host.Hosting;
 
-// The ResultStatusCodeFilter rewrites error statuses at runtime, which ApiExplorer cannot see;
-// this convention publishes the same information so the OpenAPI document lists every error
-// status a contract operation can return. Endpoints returning IResult (export, AI chat)
-// document themselves with attributes instead.
+// Publishes the error statuses that ResultStatusCodeFilter applies at runtime but ApiExplorer
+// cannot see. Endpoints returning IResult (export, AI chat) document themselves with attributes.
 internal sealed class ApiErrorResponsesConvention : IApplicationModelConvention
 {
     public void Apply(ApplicationModel application)

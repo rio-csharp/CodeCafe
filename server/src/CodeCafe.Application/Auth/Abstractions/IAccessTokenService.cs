@@ -4,7 +4,7 @@ public interface IAccessTokenService
 {
     AccessToken Issue(Guid userId);
 
-    Guid? Validate(string token);
+    Task<Guid?> ValidateAsync(string token, CancellationToken cancellationToken);
 }
 
 public sealed record AccessToken(string Value, DateTimeOffset ExpiresAtUtc);

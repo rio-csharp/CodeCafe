@@ -20,24 +20,24 @@ public sealed class CodeCafeAuthenticationHandler(
 
     private const string BearerPrefix = "Bearer ";
 
-    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // Resolved lazily because no IAccessTokenService implementation exists yet; until one is
-        // registered, [Authorize] endpoints must keep challenging anonymously instead of failing.
+        // Resolved lazily; when no IAccessTokenService is registered, [Authorize] endpoints
+        // keep challenging anonymously instead of failing.
         var tokenService = Context.RequestServices.GetService<IAccessTokenService>();
         var token = ReadBearerToken();
         if (tokenService is null || token is null)
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return AuthenticateResult.NoResult();
 
-        var userId = tokenService.Validate(token);
+        var userId = await tokenService.ValidateAsync(token, Context.RequestAborted);
         if (userId is null)
-            return Task.FromResult(AuthenticateResult.NoResult());
+            return AuthenticateResult.NoResult();
 
         var identity = new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString())],
             Scheme.Name);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
-        return Task.FromResult(AuthenticateResult.Success(ticket));
+        return AuthenticateResult.Success(ticket);
     }
 
     private string? ReadBearerToken()

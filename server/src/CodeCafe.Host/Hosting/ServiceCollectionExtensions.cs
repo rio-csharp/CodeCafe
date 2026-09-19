@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
+using CodeCafe.Application;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Host.Mcp;
+using CodeCafe.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeCafe.Host.Hosting;
@@ -25,8 +27,8 @@ internal static class ServiceCollectionExtensions
         services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         services.Configure<ApiBehaviorOptions>(options => options.SuppressModelStateInvalidFilter = true);
-        services.AddMediatR(configuration =>
-            configuration.RegisterServicesFromAssembly(typeof(ICommand<>).Assembly));
+        services.AddCodeCafeApplication();
+        services.AddCodeCafeInfrastructure(configuration);
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddCodeCafeRateLimiter();

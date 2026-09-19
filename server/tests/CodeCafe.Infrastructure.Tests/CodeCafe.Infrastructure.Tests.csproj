@@ -1,10 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <IsPackable>false</IsPackable>
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+        <PackageReference Include="Testcontainers.PostgreSQL" Version="4.15.0" />
         <PackageReference Include="xunit.v3" Version="4.0.0" />
     </ItemGroup>
 
@@ -15,4 +18,5 @@
     <ItemGroup>
         <ProjectReference Include="..\..\src\CodeCafe.Infrastructure\CodeCafe.Infrastructure.csproj" />
     </ItemGroup>
+
 </Project>
