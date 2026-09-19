@@ -1,0 +1,9 @@
+using CodeCafe.Application.Blocks.ApplyBlockOps;
+using CodeCafe.Application.Common;
+using CodeCafe.Application.Common.Messaging;
+
+namespace CodeCafe.Application.Blocks.ApplyBlockOps;
+
+public sealed record ApplyBlockOpsCommand(
+    Guid PageId,
+    IReadOnlyList<BlockOp> Ops) : ICommand<Result<IReadOnlyList<BlockOpResultDto>>>;

@@ -1,6 +1,5 @@
 using System.ComponentModel;
-using CodeCafe.Application.Ai.Commands;
-using CodeCafe.Application.Ai.Models;
+using CodeCafe.Application.Ai.StartAiChat;
 using MediatR;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;

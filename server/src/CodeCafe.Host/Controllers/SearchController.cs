@@ -1,6 +1,6 @@
 using CodeCafe.Application.Common;
-using CodeCafe.Application.Notebooks.Models;
-using CodeCafe.Application.Search.Queries;
+using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Application.Search.SearchAllPages;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

@@ -1,7 +1,8 @@
 using CodeCafe.Application.Common;
-using CodeCafe.Application.Revisions.Commands;
-using CodeCafe.Application.Revisions.Models;
-using CodeCafe.Application.Revisions.Queries;
+using CodeCafe.Application.Revisions.RestoreBlockRevision;
+using CodeCafe.Application.Revisions.RestorePageToRevision;
+using CodeCafe.Application.Revisions.ListBlockRevisions;
+using CodeCafe.Application.Revisions.ListPageRevisions;
 using MediatR;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

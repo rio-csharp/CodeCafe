@@ -1,5 +1,9 @@
-using CodeCafe.Application.Blocks.Commands;
-using CodeCafe.Application.Blocks.Models;
+using CodeCafe.Application.Blocks.ApplyBlockOps;
+using CodeCafe.Application.Blocks.DeleteBlock;
+using CodeCafe.Application.Blocks.InsertBlocks;
+using CodeCafe.Application.Blocks.MoveBlock;
+using CodeCafe.Application.Blocks.UpdateBlock;
+using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Common;
 using MediatR;
 using Microsoft.AspNetCore.Http;

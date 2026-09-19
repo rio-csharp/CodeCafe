@@ -1,5 +1,4 @@
-using CodeCafe.Application.Ai.Commands;
-using CodeCafe.Application.Ai.Models;
+using CodeCafe.Application.Ai.StartAiChat;
 using CodeCafe.Application.Common;
 using CodeCafe.Host.Hosting;
 using MediatR;

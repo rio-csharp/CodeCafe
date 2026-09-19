@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using CodeCafe.Application.Search.Queries;
+using CodeCafe.Application.Search.SearchAllPages;
 using MediatR;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
