@@ -6,12 +6,14 @@ internal static class ApplicationBuilderExtensions
 {
     public static WebApplication UseCodeCafePipeline(this WebApplication app)
     {
+        // Must precede anything that reads RemoteIpAddress (rate limiting, logging).
+        app.UseCodeCafeForwardedHeaders();
+        // Outside the exception handler so the logged status code is the one the client
+        // actually received; the handler logs exception details itself.
+        app.UseSerilogRequestLogging();
         app.UseExceptionHandler();
         // HSTS is omitted on purpose: Cloudflare terminates TLS at the edge and
         // already emits Strict-Transport-Security there.
-        // Must precede anything that reads RemoteIpAddress (rate limiting, logging).
-        app.UseCodeCafeForwardedHeaders();
-        app.UseSerilogRequestLogging();
         app.UseCodeCafeSecurityHeaders();
         app.UseCors();
         app.UseAuthentication();

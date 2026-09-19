@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Diagnostics;
 
 namespace CodeCafe.Host.Hosting;
 
-internal sealed class GlobalExceptionHandler : IExceptionHandler
+internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
@@ -36,6 +36,13 @@ internal sealed class GlobalExceptionHandler : IExceptionHandler
                 "An unexpected error occurred.",
                 ErrorKind.Unexpected)
         };
+
+        // 400/501 are expected outcomes; anything else is a bug and must be logged here
+        // because Serilog's request logging sits outside this handler.
+        if (exception is not (ValidationException or NotImplementedException))
+        {
+            logger.LogError(exception, "Request failed with an unhandled exception");
+        }
 
         await ErrorResponses.WriteAsync(
             httpContext, statusCode, code, message, kind, cancellationToken);
