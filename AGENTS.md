@@ -1,5 +1,3 @@
-# AGENTS.md
-
 ## Commits
 
 Conventional Commits (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`), scoped where useful.
