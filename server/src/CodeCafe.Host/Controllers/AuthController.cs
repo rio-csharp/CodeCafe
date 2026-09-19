@@ -1,6 +1,11 @@
-using CodeCafe.Application.Auth.Commands;
-using CodeCafe.Application.Auth.Models;
-using CodeCafe.Application.Auth.Queries;
+using CodeCafe.Application.Auth.ChangePassword;
+using CodeCafe.Application.Auth.Login;
+using CodeCafe.Application.Auth.Logout;
+using CodeCafe.Application.Auth.RefreshToken;
+using CodeCafe.Application.Auth.Register;
+using CodeCafe.Application.Auth.UpdateProfile;
+using CodeCafe.Application.Auth.Shared;
+using CodeCafe.Application.Auth.GetCurrentUser;
 using CodeCafe.Application.Common;
 using CodeCafe.Host.Hosting;
 using MediatR;
@@ -36,10 +41,13 @@ public sealed class AuthController(ISender sender) : ControllerBase
     public Task<Result<AuthSessionDto>> Refresh(RefreshTokenRequest request, CancellationToken cancellationToken)
         => sender.Send(new RefreshTokenCommand(request.RefreshToken), cancellationToken);
 
+    // Revokes the session identified by the refresh token; anonymous for the same
+    // reason as refresh - the refresh token is the credential.
     [HttpPost("auth/logout")]
-    [Authorize]
-    public Task<Result> Logout(CancellationToken cancellationToken)
-        => sender.Send(new LogoutCommand(), cancellationToken);
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimiterExtensions.AuthPolicy)]
+    public Task<Result> Logout(LogoutRequest request, CancellationToken cancellationToken)
+        => sender.Send(new LogoutCommand(request.RefreshToken), cancellationToken);
 
     [HttpGet("auth/me")]
     [Authorize]
