@@ -40,6 +40,6 @@ public sealed class AppDbContextDesignTimeFactory : IDesignTimeDbContextFactory<
                 + "environment variable before running dotnet ef commands that need a database.");
 
         var options = new DbContextOptionsBuilder<AppDbContext>().UseNpgsql(connectionString).Options;
-        return new AppDbContext(options);
+        return new AppDbContext(options, NullPublisher.Instance);
     }
 }

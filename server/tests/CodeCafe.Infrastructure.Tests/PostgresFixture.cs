@@ -1,5 +1,6 @@
 using CodeCafe.Infrastructure.Persistence;
 using DotNet.Testcontainers.Configurations;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -33,9 +34,9 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync() => await _container.DisposeAsync();
 
-    public async Task<AppDbContext> CreateCleanContextAsync()
+    public async Task<AppDbContext> CreateCleanContextAsync(IPublisher? publisher = null)
     {
-        var dbContext = CreateContext();
+        var dbContext = CreateContext(publisher);
         await dbContext.Database.EnsureDeletedAsync();
         await dbContext.Database.EnsureCreatedAsync();
         return dbContext;
@@ -50,11 +51,11 @@ public sealed class PostgresFixture : IAsyncLifetime
         return dbContext;
     }
 
-    private AppDbContext CreateContext()
+    private AppDbContext CreateContext(IPublisher? publisher = null)
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
             .UseNpgsql(ConnectionString)
             .Options;
-        return new AppDbContext(options);
+        return new AppDbContext(options, publisher ?? NullPublisher.Instance);
     }
 }

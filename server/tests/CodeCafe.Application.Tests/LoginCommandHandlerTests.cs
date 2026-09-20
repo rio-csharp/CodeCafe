@@ -100,6 +100,9 @@ public sealed class LoginCommandHandlerTests
         public Task<User?> FindByEmailAsync(string normalizedEmail, CancellationToken cancellationToken)
             => Task.FromResult(this.FirstOrDefault(user => user.NormalizedEmail == normalizedEmail));
 
+        public Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken)
+            => Task.FromResult(this.FirstOrDefault(user => user.Id == id));
+
         public Task AddAsync(User user, CancellationToken cancellationToken)
         {
             Add(user);
@@ -154,7 +157,11 @@ public sealed class LoginCommandHandlerTests
             return Task.FromResult(new IssuedRefreshToken("refresh-token", DateTimeOffset.UtcNow.AddDays(30)));
         }
 
-        public Task<Guid?> ValidateAsync(string token, CancellationToken cancellationToken)
+        public Task<Guid?> ConsumeAsync(string token, CancellationToken cancellationToken)
             => Task.FromResult<Guid?>(null);
+
+        public Task RevokeAsync(string token, CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task RevokeAllForUserAsync(Guid userId, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 }

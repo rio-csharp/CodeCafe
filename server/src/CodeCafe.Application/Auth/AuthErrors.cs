@@ -17,4 +17,23 @@ public static class AuthErrors
         "Invalid email or password.",
         ErrorKind.Unauthorized
     );
+
+    public static readonly Error InvalidRefreshToken = new(
+        "invalid_refresh_token",
+        "The refresh token is invalid or has expired.",
+        ErrorKind.Unauthorized
+    );
+
+    // A valid access token can outlive its user when the account was deleted after issuance.
+    public static readonly Error UserNotFound = new(
+        "user_not_found",
+        "The user no longer exists.",
+        ErrorKind.NotFound
+    );
+
+    public static readonly Error IncorrectCurrentPassword = new(
+        "incorrect_current_password",
+        "The current password is incorrect.",
+        ErrorKind.Unauthorized
+    );
 }

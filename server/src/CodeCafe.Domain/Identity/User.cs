@@ -31,6 +31,22 @@ public sealed class User : Entity
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
+    public void ChangeDisplayName(string displayName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+
+        DisplayName = displayName;
+    }
+
+    // Takes a ready hash so callers can never pass a plaintext password by mistake.
+    public void ChangePasswordHash(string passwordHash)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
+
+        PasswordHash = passwordHash;
+        Raise(new PasswordChangedEvent(Id));
+    }
+
     public static User Create(string email, string normalizedEmail, string displayName, string passwordHash)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);

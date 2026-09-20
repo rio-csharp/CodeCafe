@@ -47,6 +47,19 @@ public sealed class UserRepositoryTests(PostgresFixture fixture)
     }
 
     [Fact]
+    public async Task FindById_RoundTrips_And_ReturnsNull_ForUnknownId()
+    {
+        await using var dbContext = await fixture.CreateCleanContextAsync();
+        var repository = new UserRepository(dbContext);
+        var user = User.Create("by-id@example.com", "by-id@example.com", "By Id", "hash");
+        await repository.AddAsync(user, CancellationToken.None);
+        await dbContext.SaveChangesAsync(CancellationToken.None);
+
+        Assert.Equal(user.Id, (await repository.FindByIdAsync(user.Id, CancellationToken.None))!.Id);
+        Assert.Null(await repository.FindByIdAsync(Guid.NewGuid(), CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Duplicate_NormalizedEmail_ViolatesUniqueIndex()
     {
         await using var dbContext = await fixture.CreateCleanContextAsync();

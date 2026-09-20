@@ -1,63 +1,70 @@
 using CodeCafe.Application.Auth;
 using CodeCafe.Application.Auth.Abstractions;
-using CodeCafe.Application.Auth.Register;
+using CodeCafe.Application.Auth.RefreshToken;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Domain.Identity;
 
 namespace CodeCafe.Application.Tests;
 
-public sealed class RegisterCommandHandlerTests
+public sealed class RefreshTokenCommandHandlerTests
 {
-    private static readonly RegisterCommand Command = new("  Yao@Example.COM ", "Password123!", "  Yao  ");
+    private static readonly User ExistingUser = User.Create(
+        "Yao@Example.COM",
+        "yao@example.com",
+        "Yao",
+        "hashed:Password123!"
+    );
 
     [Fact]
-    public async Task Handle_PersistsNormalizedUserAndReturnsSession()
+    public async Task Handle_RotatesTokenAndReturnsNewSession_WhenTokenIsValid()
     {
-        var users = new StubUserRepository();
+        var users = new StubUserRepository { ExistingUser };
         var handler = CreateHandler(users, out var accessTokens, out var refreshTokens, out var unitOfWork);
+        refreshTokens.UserIdForToken["old-token"] = ExistingUser.Id;
 
-        var result = await handler.Handle(Command, CancellationToken.None);
+        var result = await handler.Handle(new RefreshTokenCommand("old-token"), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-
-        var savedUser = Assert.Single(users);
-        Assert.Equal("yao@example.com", savedUser.NormalizedEmail);
-        Assert.Equal("Yao@Example.COM", savedUser.Email);
-        Assert.Equal("Yao", savedUser.DisplayName);
-        Assert.NotEqual(Command.Password, savedUser.PasswordHash);
-        Assert.NotEmpty(savedUser.PasswordHash);
+        Assert.Equal("old-token", Assert.Single(refreshTokens.ConsumedTokens));
 
         var session = result.Value!;
-        Assert.Equal(savedUser.Id, session.User.Id);
-        Assert.Equal(savedUser.Email, session.User.Email);
-        Assert.Equal(savedUser.DisplayName, session.User.DisplayName);
+        Assert.Equal(ExistingUser.Id, session.User.Id);
+        Assert.Equal(ExistingUser.Email, session.User.Email);
         Assert.Equal("access-token", session.AccessToken);
-        Assert.True(session.AccessTokenExpiresAtUtc > DateTimeOffset.UtcNow);
         Assert.Equal("refresh-token", session.RefreshToken);
-        Assert.Equal(savedUser.Id, accessTokens.IssuedFor);
-        Assert.Equal(savedUser.Id, refreshTokens.IssuedFor);
+        Assert.Equal(ExistingUser.Id, accessTokens.IssuedFor);
+        Assert.Equal(ExistingUser.Id, refreshTokens.IssuedFor);
         Assert.Equal(1, unitOfWork.SaveChangesCallCount);
     }
 
     [Fact]
-    public async Task Handle_ReturnsConflict_WhenNormalizedEmailAlreadyRegistered()
+    public async Task Handle_ReturnsInvalidRefreshToken_WhenTokenIsRejected()
     {
-        var existing = User.Create("first@example.com", "first@example.com", "First", "hash");
-        var users = new StubUserRepository { existing };
-        var handler = CreateHandler(users, out _, out _, out var unitOfWork);
+        var handler = CreateHandler(new StubUserRepository(), out var accessTokens, out var refreshTokens, out var unitOfWork);
 
-        var result = await handler.Handle(
-            new RegisterCommand("FIRST@example.com", "Password123!", "Second"),
-            CancellationToken.None
-        );
+        var result = await handler.Handle(new RefreshTokenCommand("bad-token"), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(AuthErrors.EmailAlreadyRegistered, result.Error);
-        Assert.Single(users);
+        Assert.Equal(AuthErrors.InvalidRefreshToken, result.Error);
+        Assert.Null(accessTokens.IssuedFor);
+        Assert.Null(refreshTokens.IssuedFor);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 
-    private static RegisterCommandHandler CreateHandler(
+    [Fact]
+    public async Task Handle_ReturnsInvalidRefreshToken_WhenUserNoLongerExists()
+    {
+        var handler = CreateHandler(new StubUserRepository(), out _, out var refreshTokens, out var unitOfWork);
+        refreshTokens.UserIdForToken["orphaned-token"] = Guid.NewGuid();
+
+        var result = await handler.Handle(new RefreshTokenCommand("orphaned-token"), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(AuthErrors.InvalidRefreshToken, result.Error);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+    }
+
+    private static RefreshTokenCommandHandler CreateHandler(
         StubUserRepository users,
         out StubAccessTokenService accessTokens,
         out StubRefreshTokenService refreshTokens,
@@ -67,7 +74,7 @@ public sealed class RegisterCommandHandlerTests
         accessTokens = new StubAccessTokenService();
         refreshTokens = new StubRefreshTokenService();
         unitOfWork = new StubUnitOfWork();
-        return new RegisterCommandHandler(users, unitOfWork, new StubPasswordHasher(), accessTokens, refreshTokens);
+        return new RefreshTokenCommandHandler(users, unitOfWork, accessTokens, refreshTokens);
     }
 
     private sealed class StubUserRepository : List<User>, IUserRepository
@@ -96,16 +103,9 @@ public sealed class RegisterCommandHandlerTests
         }
     }
 
-    private sealed class StubPasswordHasher : IPasswordHasher
-    {
-        public string Hash(string password) => $"hashed:{password}";
-
-        public bool Verify(string password, string passwordHash) => passwordHash == $"hashed:{password}";
-    }
-
     private sealed class StubAccessTokenService : IAccessTokenService
     {
-        public Guid IssuedFor { get; private set; }
+        public Guid? IssuedFor { get; private set; }
 
         public AccessToken Issue(Guid userId)
         {
@@ -118,6 +118,10 @@ public sealed class RegisterCommandHandlerTests
 
     private sealed class StubRefreshTokenService : IRefreshTokenService
     {
+        public Dictionary<string, Guid> UserIdForToken { get; } = new();
+
+        public List<string> ConsumedTokens { get; } = [];
+
         public Guid? IssuedFor { get; private set; }
 
         public Task<IssuedRefreshToken> IssueAsync(Guid userId, CancellationToken cancellationToken)
@@ -127,7 +131,10 @@ public sealed class RegisterCommandHandlerTests
         }
 
         public Task<Guid?> ConsumeAsync(string token, CancellationToken cancellationToken)
-            => Task.FromResult<Guid?>(null);
+        {
+            ConsumedTokens.Add(token);
+            return Task.FromResult(UserIdForToken.TryGetValue(token, out var userId) ? userId : (Guid?)null);
+        }
 
         public Task RevokeAsync(string token, CancellationToken cancellationToken) => Task.CompletedTask;
 

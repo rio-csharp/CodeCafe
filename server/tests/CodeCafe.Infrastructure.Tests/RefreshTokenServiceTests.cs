@@ -9,7 +9,7 @@ namespace CodeCafe.Infrastructure.Tests;
 public sealed class RefreshTokenServiceTests(PostgresFixture fixture)
 {
     [Fact]
-    public async Task Issue_Then_Save_PersistsHashOnly_And_ValidateAsync_RoundTrips()
+    public async Task Issue_Then_Save_PersistsHashOnly()
     {
         await using var dbContext = await fixture.CreateCleanContextAsync();
         var service = CreateService(dbContext);
@@ -20,7 +20,6 @@ public sealed class RefreshTokenServiceTests(PostgresFixture fixture)
 
         Assert.NotEmpty(token.Value);
         Assert.True(token.ExpiresAtUtc > DateTimeOffset.UtcNow.AddDays(29));
-        Assert.Equal(userId, await service.ValidateAsync(token.Value, CancellationToken.None));
 
         // The database must not contain anything recoverable from the raw token.
         var stored = Assert.Single(dbContext.RefreshTokens);
@@ -30,25 +29,40 @@ public sealed class RefreshTokenServiceTests(PostgresFixture fixture)
     }
 
     [Fact]
-    public async Task ValidateAsync_ReturnsNull_ForUnknownToken()
+    public async Task Consume_ReturnsUserId_And_RevokesToken_SoItIsSingleUse()
+    {
+        await using var dbContext = await fixture.CreateCleanContextAsync();
+        var service = CreateService(dbContext);
+        var userId = await SeedUserAsync(dbContext);
+        var token = await service.IssueAsync(userId, CancellationToken.None);
+        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(userId, await service.ConsumeAsync(token.Value, CancellationToken.None));
+        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(await service.ConsumeAsync(token.Value, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Consume_ReturnsNull_ForUnknownToken()
     {
         await using var dbContext = await fixture.CreateCleanContextAsync();
         var service = CreateService(dbContext);
 
-        Assert.Null(await service.ValidateAsync(Base64UrlEncode(new byte[64]), CancellationToken.None));
+        Assert.Null(await service.ConsumeAsync(Base64UrlEncode(new byte[64]), CancellationToken.None));
     }
 
     [Fact]
-    public async Task ValidateAsync_ReturnsNull_ForMalformedToken()
+    public async Task Consume_ReturnsNull_ForMalformedToken()
     {
         await using var dbContext = await fixture.CreateCleanContextAsync();
         var service = CreateService(dbContext);
 
-        Assert.Null(await service.ValidateAsync("!!!not-base64url!!!", CancellationToken.None));
+        Assert.Null(await service.ConsumeAsync("!!!not-base64url!!!", CancellationToken.None));
     }
 
     [Fact]
-    public async Task ValidateAsync_ReturnsNull_ForExpiredToken()
+    public async Task Consume_ReturnsNull_ForExpiredToken()
     {
         await using var dbContext = await fixture.CreateCleanContextAsync();
         var service = CreateService(dbContext, refreshTokenLifetimeDays: 0);
@@ -57,11 +71,11 @@ public sealed class RefreshTokenServiceTests(PostgresFixture fixture)
         var token = await service.IssueAsync(userId, CancellationToken.None);
         await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        Assert.Null(await service.ValidateAsync(token.Value, CancellationToken.None));
+        Assert.Null(await service.ConsumeAsync(token.Value, CancellationToken.None));
     }
 
     [Fact]
-    public async Task ValidateAsync_ReturnsNull_ForRevokedToken()
+    public async Task Revoke_InvalidatesActiveToken()
     {
         await using var dbContext = await fixture.CreateCleanContextAsync();
         var service = CreateService(dbContext);
@@ -69,11 +83,53 @@ public sealed class RefreshTokenServiceTests(PostgresFixture fixture)
         var token = await service.IssueAsync(userId, CancellationToken.None);
         await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var stored = Assert.Single(dbContext.RefreshTokens);
-        stored.Revoke(DateTimeOffset.UtcNow);
+        await service.RevokeAsync(token.Value, CancellationToken.None);
         await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        Assert.Null(await service.ValidateAsync(token.Value, CancellationToken.None));
+        Assert.Null(await service.ConsumeAsync(token.Value, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Revoke_UnknownToken_IsANoOp()
+    {
+        await using var dbContext = await fixture.CreateCleanContextAsync();
+        var service = CreateService(dbContext);
+
+        await service.RevokeAsync(Base64UrlEncode(new byte[64]), CancellationToken.None);
+        await service.RevokeAsync("!!!not-base64url!!!", CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task RevokeAllForUser_RevokesOnlyThatUsersActiveTokens()
+    {
+        await using var dbContext = await fixture.CreateCleanContextAsync();
+        var service = CreateService(dbContext);
+        var userId = await SeedUserAsync(dbContext);
+        var otherUserId = await SeedUserAsync(dbContext, "other-owner@example.com");
+
+        var first = await service.IssueAsync(userId, CancellationToken.None);
+        var second = await service.IssueAsync(userId, CancellationToken.None);
+        var other = await service.IssueAsync(otherUserId, CancellationToken.None);
+        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await service.RevokeAllForUserAsync(userId, CancellationToken.None);
+        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Assert.Null(await service.ConsumeAsync(first.Value, CancellationToken.None));
+        Assert.Null(await service.ConsumeAsync(second.Value, CancellationToken.None));
+        Assert.Equal(otherUserId, await service.ConsumeAsync(other.Value, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RevokeAllForUser_IsIdempotent()
+    {
+        await using var dbContext = await fixture.CreateCleanContextAsync();
+        var service = CreateService(dbContext);
+        var userId = await SeedUserAsync(dbContext);
+
+        await service.RevokeAllForUserAsync(userId, CancellationToken.None);
+        await service.RevokeAllForUserAsync(userId, CancellationToken.None);
+        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
     }
 
     private static RefreshTokenService CreateService(AppDbContext dbContext, int refreshTokenLifetimeDays = 30)
@@ -82,14 +138,9 @@ public sealed class RefreshTokenServiceTests(PostgresFixture fixture)
             Options.Create(new AuthOptions { RefreshTokenLifetimeDays = refreshTokenLifetimeDays })
         );
 
-    private static async Task<Guid> SeedUserAsync(AppDbContext dbContext)
+    private static async Task<Guid> SeedUserAsync(AppDbContext dbContext, string email = "token-owner@example.com")
     {
-        var user = CodeCafe.Domain.Identity.User.Create(
-            "token-owner@example.com",
-            "token-owner@example.com",
-            "Token Owner",
-            "password-hash"
-        );
+        var user = CodeCafe.Domain.Identity.User.Create(email, email, "Token Owner", "password-hash");
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         return user.Id;
