@@ -1,16 +1,15 @@
 using CodeCafe.Application.Auth.ChangePassword;
+using CodeCafe.Application.Auth.GetCurrentUser;
 using CodeCafe.Application.Auth.Login;
 using CodeCafe.Application.Auth.Logout;
 using CodeCafe.Application.Auth.RefreshToken;
 using CodeCafe.Application.Auth.Register;
-using CodeCafe.Application.Auth.UpdateProfile;
 using CodeCafe.Application.Auth.Shared;
-using CodeCafe.Application.Auth.GetCurrentUser;
+using CodeCafe.Application.Auth.UpdateProfile;
 using CodeCafe.Application.Common;
 using CodeCafe.Host.Hosting;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 

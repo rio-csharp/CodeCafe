@@ -1,4 +1,3 @@
-using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Infrastructure.Auth;
 
 namespace CodeCafe.Infrastructure.Tests;

@@ -1,8 +1,8 @@
 using System.ComponentModel;
 using CodeCafe.Application.Trash.EmptyTrash;
+using CodeCafe.Application.Trash.ListTrash;
 using CodeCafe.Application.Trash.PurgeNotebook;
 using CodeCafe.Application.Trash.RestoreNotebookFromTrash;
-using CodeCafe.Application.Trash.ListTrash;
 using MediatR;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;

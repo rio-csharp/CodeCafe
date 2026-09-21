@@ -1,4 +1,4 @@
-namespace CodeCafe.Application.Common;
+namespace CodeCafe.Domain.Sharing;
 
 public enum CollaboratorRole
 {

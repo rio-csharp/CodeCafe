@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using CodeCafe.Application;
-using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Host.Mcp;
 using CodeCafe.Infrastructure;
 using Microsoft.AspNetCore.Mvc;

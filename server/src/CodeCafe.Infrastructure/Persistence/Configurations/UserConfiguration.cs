@@ -27,10 +27,9 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(user => user.PasswordHash).IsRequired();
 
-        // PostgreSQL xmin optimistic concurrency (decision 10) via the system column as a
-        // shadow property; Npgsql 10 dropped UseXminAsConcurrencyToken(), and xmin is
-        // implicitly present on every table so no column is emitted. Users are rarely
-        // contended, but the pattern stays uniform across entities.
+        // PostgreSQL's xmin system column as the concurrency token. Npgsql 10 dropped
+        // UseXminAsConcurrencyToken(), and xmin already exists on every table, so mapping it as a
+        // shadow property emits no column.
         builder
             .Property<uint>("xmin")
             .HasColumnType("xid")

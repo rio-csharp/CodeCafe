@@ -1,5 +1,6 @@
 using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Infrastructure.Auth;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,7 @@ public static class DependencyInjection
         );
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<INotebookRepository, NotebookRepository>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IAccessTokenService, JwtAccessTokenService>();

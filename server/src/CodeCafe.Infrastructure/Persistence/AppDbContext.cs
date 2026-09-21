@@ -1,8 +1,11 @@
+using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Domain.Identity;
+using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Primitives;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace CodeCafe.Infrastructure.Persistence;
 
@@ -12,6 +15,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     public DbSet<User> Users => Set<User>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<Notebook> Notebooks => Set<Notebook>();
+
+    public DbSet<NotebookFavorite> NotebookFavorites => Set<NotebookFavorite>();
 
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken)
         => await SaveChangesAsync(cancellationToken);
@@ -38,7 +45,18 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
             }
         }
 
-        return await base.SaveChangesAsync(cancellationToken);
+        try
+        {
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception)
+            when (exception.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation
+            } violation)
+        {
+            throw new UniqueConstraintViolationException(violation.ConstraintName ?? string.Empty);
+        }
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

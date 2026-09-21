@@ -1,4 +1,4 @@
-using CodeCafe.Application.Common;
+using CodeCafe.Domain.Sharing;
 
 namespace CodeCafe.Application.Pages.Shared;
 

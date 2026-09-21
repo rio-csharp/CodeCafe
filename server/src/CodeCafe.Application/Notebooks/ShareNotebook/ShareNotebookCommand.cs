@@ -1,5 +1,6 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
+using CodeCafe.Domain.Sharing;
 
 namespace CodeCafe.Application.Notebooks.ShareNotebook;
 

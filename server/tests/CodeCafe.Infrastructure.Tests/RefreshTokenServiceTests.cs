@@ -1,4 +1,3 @@
-using CodeCafe.Domain.Identity;
 using CodeCafe.Infrastructure.Auth;
 using CodeCafe.Infrastructure.Persistence;
 using Microsoft.Extensions.Options;

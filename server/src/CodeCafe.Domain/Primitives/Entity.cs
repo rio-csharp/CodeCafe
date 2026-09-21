@@ -1,7 +1,7 @@
 namespace CodeCafe.Domain.Primitives;
 
-// All keys are Guid (decision 3): identity equality on (type, Id), plus an in-memory
-// domain-event buffer the persistence layer dispatches and drains during save.
+// Identity is (type, Id) and every key is a Guid, so no generic TId is needed. The
+// domain-event buffer is drained by the persistence layer during save.
 public abstract class Entity
 {
     private readonly List<IDomainEvent> _domainEvents = [];

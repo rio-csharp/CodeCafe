@@ -1,10 +1,9 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Trash.EmptyTrash;
+using CodeCafe.Application.Trash.ListTrash;
 using CodeCafe.Application.Trash.PurgeNotebook;
 using CodeCafe.Application.Trash.RestoreNotebookFromTrash;
-using CodeCafe.Application.Trash.ListTrash;
 using MediatR;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeCafe.Host.Controllers;

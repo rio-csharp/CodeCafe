@@ -12,6 +12,9 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
     public async Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken)
         => await dbContext.Users.FindAsync([id], cancellationToken);
 
+    public async Task<IReadOnlyList<User>> FindByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+        => await dbContext.Users.Where(user => ids.Contains(user.Id)).ToListAsync(cancellationToken);
+
     public async Task AddAsync(User user, CancellationToken cancellationToken)
         => await dbContext.Users.AddAsync(user, cancellationToken);
 }

@@ -1,14 +1,13 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Pages.DeletePage;
+using CodeCafe.Application.Pages.GetPage;
 using CodeCafe.Application.Pages.MovePage;
 using CodeCafe.Application.Pages.SetPageFavorite;
+using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Application.Pages.SharePage;
 using CodeCafe.Application.Pages.UpdatePage;
-using CodeCafe.Application.Pages.Shared;
-using CodeCafe.Application.Pages.GetPage;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeCafe.Host.Controllers;

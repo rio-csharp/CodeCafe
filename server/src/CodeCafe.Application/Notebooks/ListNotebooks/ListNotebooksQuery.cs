@@ -1,6 +1,6 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
-using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Notebooks.ListNotebooks;
 
@@ -8,6 +8,7 @@ public sealed record ListNotebooksQuery(
     string? Tag,
     bool? IsFavorite,
     NotebookVisibility? Visibility,
-    string? Cursor,
+    NotebookSort? Sort,
+    int? Page,
     int? PageSize)
-    : IQuery<Result<CursorPage<NotebookSummaryDto>>>;
+    : IQuery<Result<PagedResult<NotebookSummaryDto>>>;

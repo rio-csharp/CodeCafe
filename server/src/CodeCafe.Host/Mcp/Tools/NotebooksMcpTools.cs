@@ -1,21 +1,21 @@
 using System.ComponentModel;
-using CodeCafe.Application.Common;
 using CodeCafe.Application.Notebooks.ChangeNotebookSlug;
 using CodeCafe.Application.Notebooks.CreateNotebook;
 using CodeCafe.Application.Notebooks.DeleteNotebook;
+using CodeCafe.Application.Notebooks.ExportNotebook;
+using CodeCafe.Application.Notebooks.GetNotebookDetails;
+using CodeCafe.Application.Notebooks.GetNotebookTree;
 using CodeCafe.Application.Notebooks.ImportNotebook;
+using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Application.Notebooks.RevokeNotebookShare;
+using CodeCafe.Application.Notebooks.SearchNotebookPages;
 using CodeCafe.Application.Notebooks.SetNotebookAccessCode;
 using CodeCafe.Application.Notebooks.SetNotebookFavorite;
 using CodeCafe.Application.Notebooks.SetNotebookTags;
 using CodeCafe.Application.Notebooks.ShareNotebook;
 using CodeCafe.Application.Notebooks.UpdateNotebook;
-using CodeCafe.Application.Notebooks.ExportNotebook;
-using CodeCafe.Application.Notebooks.Shared;
-using CodeCafe.Application.Notebooks.GetNotebookDetails;
-using CodeCafe.Application.Notebooks.GetNotebookTree;
-using CodeCafe.Application.Notebooks.ListNotebooks;
-using CodeCafe.Application.Notebooks.SearchNotebookPages;
+using CodeCafe.Domain.Notebooks;
+using CodeCafe.Domain.Sharing;
 using MediatR;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -26,24 +26,26 @@ namespace CodeCafe.Host.Mcp.Tools;
 public sealed class NotebooksMcpTools
 {
     [McpServerTool(Name = "codecafe_list_notebooks", ReadOnly = true, Idempotent = true)]
-    [Description("List notebooks visible to the current user, with optional filters and cursor pagination.")]
+    [Description("List notebooks visible to the current user, with optional filters, sorting, and pagination.")]
     public static async Task<CallToolResult> ListNotebooks(
         ISender sender,
         CancellationToken cancellationToken,
         string? tag = null,
         bool? favorite = null,
         NotebookVisibility? visibility = null,
-        string? cursor = null,
+        NotebookSort? sort = null,
+        int? page = null,
         int? pageSize = null)
-        => McpToolResults.From(await sender.Send(new ListNotebooksQuery(tag, favorite, visibility, cursor, pageSize), cancellationToken));
+        => McpToolResults.From(await sender.Send(new ListNotebooksQuery(tag, favorite, visibility, sort, page, pageSize), cancellationToken));
 
     [McpServerTool(Name = "codecafe_get_notebook", ReadOnly = true, Idempotent = true)]
     [Description("Get notebook details by id or slug.")]
     public static async Task<CallToolResult> GetNotebook(
         ISender sender,
         string idOrSlug,
-        CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new GetNotebookDetailsQuery(idOrSlug), cancellationToken));
+        CancellationToken cancellationToken,
+        string? accessCode = null)
+        => McpToolResults.From(await sender.Send(new GetNotebookDetailsQuery(idOrSlug, accessCode), cancellationToken));
 
     [McpServerTool(Name = "codecafe_get_notebook_tree", ReadOnly = true, Idempotent = true)]
     [Description("Get the page tree of a notebook by id or slug.")]

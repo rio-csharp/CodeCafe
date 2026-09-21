@@ -1,4 +1,4 @@
-namespace CodeCafe.Application.Notebooks.Shared;
+namespace CodeCafe.Domain.Notebooks;
 
 public enum NotebookVisibility
 {

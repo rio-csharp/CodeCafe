@@ -11,8 +11,9 @@ public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory
 {
     // Contract spot-check: an anonymously reachable mapped route returns 501;
     // an unmapped one would 404, a protected one would 401.
+    // GET /api/notebooks/{idOrSlug} is implemented now, so it no longer answers 501 here;
+    // its mapping is covered by OpenApiContractTests instead.
     [Theory]
-    [InlineData("GET", "/api/notebooks/my-first-notes")]
     [InlineData("GET", "/api/notebooks/my-first-notes/tree")]
     [InlineData("GET", "/api/notebooks/my-first-notes/search?q=test")]
     [InlineData("GET", "/api/notebooks/my-first-notes/export")]
@@ -67,6 +68,7 @@ public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory
     [InlineData("DELETE", "/api/trash")]
     [InlineData("GET", "/api/search?q=test")]
     [InlineData("POST", "/api/notebooks/my-first-notes/ai/chat")]
+    [InlineData("GET", "/api/notebooks/slugs/my-slug")]
     [InlineData("POST", "/mcp")]
     public async Task Authorized_Route_Challenges_When_Anonymous(string method, string path)
     {

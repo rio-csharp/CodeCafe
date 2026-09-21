@@ -1,6 +1,5 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
-using CodeCafe.Application.Trash.PurgeNotebook;
 namespace CodeCafe.Application.Trash.PurgeNotebook;
 
 public sealed class PurgeNotebookCommandHandler : ICommandHandler<PurgeNotebookCommand, Result>

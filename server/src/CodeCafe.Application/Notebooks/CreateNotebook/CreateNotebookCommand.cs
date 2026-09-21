@@ -1,7 +1,7 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Notebooks.GetNotebookDetails;
-using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Notebooks.CreateNotebook;
 

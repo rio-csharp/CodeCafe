@@ -1,7 +1,5 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
-
-using CodeCafe.Application.Pages.Shared;
 namespace CodeCafe.Application.Pages.CreatePage;
 
 public sealed class CreatePageCommandHandler : ICommandHandler<CreatePageCommand, Result<CodeCafe.Application.Pages.Shared.PageDetailsDto>>

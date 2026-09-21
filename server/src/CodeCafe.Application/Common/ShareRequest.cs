@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using CodeCafe.Domain.Sharing;
 
 namespace CodeCafe.Application.Common;
 

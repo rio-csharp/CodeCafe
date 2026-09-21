@@ -1,6 +1,5 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
-using CodeCafe.Application.Pages.SetPageFavorite;
 namespace CodeCafe.Application.Pages.SetPageFavorite;
 
 public sealed class SetPageFavoriteCommandHandler : ICommandHandler<SetPageFavoriteCommand, Result>

@@ -1,4 +1,3 @@
-using CodeCafe.Application.Blocks.ApplyBlockOps;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
 

@@ -21,6 +21,7 @@ public sealed class OpenApiContractTests(WebApplicationFactory<Program> factory)
         ("patch", "/api/notebooks/{idOrSlug}"),
         ("delete", "/api/notebooks/{idOrSlug}"),
         ("post", "/api/notebooks/{idOrSlug}/slug"),
+        ("get", "/api/notebooks/slugs/{slug}"),
         ("post", "/api/notebooks/{idOrSlug}/access-code"),
         ("post", "/api/notebooks/{idOrSlug}/favorite"),
         ("post", "/api/notebooks/{idOrSlug}/shares"),

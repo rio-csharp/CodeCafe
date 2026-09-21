@@ -1,6 +1,5 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
-using CodeCafe.Application.Revisions.ListBlockRevisions;
 namespace CodeCafe.Application.Revisions.ListBlockRevisions;
 
 public sealed class ListBlockRevisionsQueryHandler : IQueryHandler<ListBlockRevisionsQuery, Result<CursorPage<BlockRevisionDto>>>

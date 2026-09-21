@@ -85,6 +85,9 @@ public sealed class RefreshTokenCommandHandlerTests
         public Task<User?> FindByIdAsync(Guid id, CancellationToken cancellationToken)
             => Task.FromResult(this.FirstOrDefault(user => user.Id == id));
 
+        public Task<IReadOnlyList<User>> FindByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+            => Task.FromResult<IReadOnlyList<User>>(this.Where(user => ids.Contains(user.Id)).ToList());
+
         public Task AddAsync(User user, CancellationToken cancellationToken)
         {
             Add(user);

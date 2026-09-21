@@ -3,26 +3,27 @@ using CodeCafe.Application.Common;
 using CodeCafe.Application.Notebooks.ChangeNotebookSlug;
 using CodeCafe.Application.Notebooks.CreateNotebook;
 using CodeCafe.Application.Notebooks.DeleteNotebook;
+using CodeCafe.Application.Notebooks.ExportNotebook;
+using CodeCafe.Application.Notebooks.GetNotebookDetails;
+using CodeCafe.Application.Notebooks.GetNotebookSlugAvailability;
+using CodeCafe.Application.Notebooks.GetNotebookTree;
 using CodeCafe.Application.Notebooks.ImportNotebook;
+using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Application.Notebooks.RevokeNotebookShare;
+using CodeCafe.Application.Notebooks.SearchNotebookPages;
 using CodeCafe.Application.Notebooks.SetNotebookAccessCode;
 using CodeCafe.Application.Notebooks.SetNotebookFavorite;
 using CodeCafe.Application.Notebooks.SetNotebookTags;
+using CodeCafe.Application.Notebooks.Shared;
 using CodeCafe.Application.Notebooks.ShareNotebook;
 using CodeCafe.Application.Notebooks.UpdateNotebook;
-using CodeCafe.Application.Notebooks.GetNotebookDetails;
-using CodeCafe.Application.Notebooks.ExportNotebook;
-using CodeCafe.Application.Notebooks.ListNotebooks;
-using CodeCafe.Application.Notebooks.GetNotebookTree;
-using CodeCafe.Application.Notebooks.Shared;
-using CodeCafe.Application.Notebooks.SearchNotebookPages;
 using CodeCafe.Application.Pages.CreatePage;
-using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Application.Pages.GetPageByPath;
+using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Domain.Notebooks;
 using CodeCafe.Host.Hosting;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeCafe.Host.Controllers;
@@ -43,19 +44,20 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
         => sender.Send(new ImportNotebookCommand(export), cancellationToken);
 
     [HttpGet("notebooks")]
-    public Task<Result<CursorPage<NotebookSummaryDto>>> List(
+    public Task<Result<PagedResult<NotebookSummaryDto>>> List(
         string? tag,
         bool? favorite,
         NotebookVisibility? visibility,
-        string? cursor,
+        NotebookSort? sort,
+        int? page,
         int? pageSize,
         CancellationToken cancellationToken)
-        => sender.Send(new ListNotebooksQuery(tag, favorite, visibility, cursor, pageSize), cancellationToken);
+        => sender.Send(new ListNotebooksQuery(tag, favorite, visibility, sort, page, pageSize), cancellationToken);
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}")]
-    public Task<Result<NotebookDetailsDto>> Details(string idOrSlug, CancellationToken cancellationToken)
-        => sender.Send(new GetNotebookDetailsQuery(idOrSlug), cancellationToken);
+    public Task<Result<NotebookDetailsDto>> Details(string idOrSlug, string? accessCode, CancellationToken cancellationToken)
+        => sender.Send(new GetNotebookDetailsQuery(idOrSlug, accessCode), cancellationToken);
 
     [HttpPatch("notebooks/{idOrSlug}")]
     public Task<Result<NotebookDetailsDto>> Update(string idOrSlug, UpdateNotebookRequest request, CancellationToken cancellationToken)
@@ -68,6 +70,12 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
     [HttpPost("notebooks/{idOrSlug}/slug")]
     public Task<Result<NotebookDetailsDto>> ChangeSlug(string idOrSlug, ChangeNotebookSlugRequest request, CancellationToken cancellationToken)
         => sender.Send(new ChangeNotebookSlugCommand(idOrSlug, request.Slug), cancellationToken);
+
+    // Advisory only, and deliberately authenticated: an anonymous probe would turn slug
+    // existence into an enumeration oracle across every notebook, private ones included.
+    [HttpGet("notebooks/slugs/{slug}")]
+    public Task<Result<NotebookSlugAvailabilityDto>> SlugAvailability(string slug, CancellationToken cancellationToken)
+        => sender.Send(new GetNotebookSlugAvailabilityQuery(slug), cancellationToken);
 
     [HttpPost("notebooks/{idOrSlug}/access-code")]
     public Task<Result> SetAccessCode(string idOrSlug, SetNotebookAccessCodeRequest request, CancellationToken cancellationToken)

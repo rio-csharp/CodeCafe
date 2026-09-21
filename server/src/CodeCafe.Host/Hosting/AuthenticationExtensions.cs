@@ -2,7 +2,6 @@ using CodeCafe.Application.Common.Security;
 using CodeCafe.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeCafe.Host.Hosting;
 

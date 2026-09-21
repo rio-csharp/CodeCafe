@@ -1,4 +1,4 @@
-using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Domain.Notebooks;
 namespace CodeCafe.Application.Notebooks.ListNotebooks;
 
 public sealed record NotebookSummaryDto(

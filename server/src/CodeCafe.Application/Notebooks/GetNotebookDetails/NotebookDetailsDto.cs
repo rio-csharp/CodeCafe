@@ -1,5 +1,5 @@
-using CodeCafe.Application.Notebooks.Shared;
 using CodeCafe.Application.Notebooks.ShareNotebook;
+using CodeCafe.Domain.Notebooks;
 namespace CodeCafe.Application.Notebooks.GetNotebookDetails;
 
 public sealed record NotebookDetailsDto(

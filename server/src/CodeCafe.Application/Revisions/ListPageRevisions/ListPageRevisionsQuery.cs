@@ -1,6 +1,5 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
-using CodeCafe.Application.Revisions.ListPageRevisions;
 
 namespace CodeCafe.Application.Revisions.ListPageRevisions;
 

@@ -1,4 +1,3 @@
-using CodeCafe.Application.Blocks.DeleteBlock;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
 namespace CodeCafe.Application.Blocks.DeleteBlock;
