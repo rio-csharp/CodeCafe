@@ -14,8 +14,8 @@ namespace CodeCafe.Host.Controllers;
 public sealed class TrashController(ISender sender) : ControllerBase
 {
     [HttpGet("trash")]
-    public Task<Result<CursorPage<TrashEntryDto>>> List(string? cursor, int? pageSize, CancellationToken cancellationToken)
-        => sender.Send(new ListTrashQuery(cursor, pageSize), cancellationToken);
+    public Task<Result<PagedResult<TrashEntryDto>>> List(int? page, int? pageSize, CancellationToken cancellationToken)
+        => sender.Send(new ListTrashQuery(page, pageSize), cancellationToken);
 
     [HttpPost("trash/{notebookId:guid}/restore")]
     public Task<Result> Restore(Guid notebookId, CancellationToken cancellationToken)

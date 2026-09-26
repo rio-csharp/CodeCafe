@@ -1,7 +1,6 @@
+using CodeCafe.Application.Common;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace CodeCafe.Infrastructure.Tests;
 
@@ -74,11 +73,12 @@ public sealed class UserRepositoryTests(PostgresFixture fixture)
             User.Create("FIRST@example.com", "first@example.com", "Second", "hash"),
             CancellationToken.None
         );
-        var exception = await Assert.ThrowsAsync<DbUpdateException>(
+        // AppDbContext translates provider-specific unique violations; assert the contract
+        // handlers rely on, not the raw EF exception.
+        var exception = await Assert.ThrowsAsync<UniqueConstraintViolationException>(
             () => dbContext.SaveChangesAsync(CancellationToken.None)
         );
 
-        var postgresException = Assert.IsAssignableFrom<PostgresException>(exception.InnerException);
-        Assert.Equal(PostgresErrorCodes.UniqueViolation, postgresException.SqlState);
+        Assert.Equal("IX_users_NormalizedEmail", exception.ConstraintName);
     }
 }

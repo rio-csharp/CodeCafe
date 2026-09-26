@@ -10,16 +10,20 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
     public Task<Notebook?> FindBySlugAsync(string slug, CancellationToken cancellationToken)
         => dbContext.Notebooks.FirstOrDefaultAsync(notebook => notebook.Slug == slug, cancellationToken);
 
+    public async Task<Notebook?> FindByIdAsync(Guid notebookId, CancellationToken cancellationToken)
+        => await dbContext.Notebooks
+            .Include(notebook => notebook.Shares)
+            .FirstOrDefaultAsync(notebook => notebook.Id == notebookId, cancellationToken);
+
     public async Task<Notebook?> FindByIdOrSlugAsync(string idOrSlug, CancellationToken cancellationToken)
-    {
-        var query = dbContext.Notebooks.Include(notebook => notebook.Shares);
-        return Guid.TryParse(idOrSlug, out var id)
-            ? await query.FirstOrDefaultAsync(notebook => notebook.Id == id, cancellationToken)
-            : await query.FirstOrDefaultAsync(
-                notebook => notebook.Slug == idOrSlug.Trim().ToLowerInvariant(),
-                cancellationToken
-            );
-    }
+        => Guid.TryParse(idOrSlug, out var id)
+            ? await FindByIdAsync(id, cancellationToken)
+            : await dbContext.Notebooks
+                .Include(notebook => notebook.Shares)
+                .FirstOrDefaultAsync(
+                    notebook => notebook.Slug == idOrSlug.Trim().ToLowerInvariant(),
+                    cancellationToken
+                );
 
     public Task<int> CountVisibleAsync(
         Guid userId,
@@ -56,8 +60,13 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
 
     private IQueryable<Notebook> VisibleTo(Guid userId, string? tag, bool? isFavorite, NotebookVisibility? visibility)
     {
+        // A page share on any page of the notebook also surfaces the notebook itself.
         var query = dbContext.Notebooks.Where(
-            notebook => notebook.OwnerId == userId || notebook.Shares.Any(share => share.UserId == userId)
+            notebook => notebook.OwnerId == userId
+                || notebook.Shares.Any(share => share.UserId == userId)
+                || dbContext.Pages.Any(
+                    page => page.NotebookId == notebook.Id && page.Shares.Any(share => share.UserId == userId)
+                )
         );
 
         if (tag is not null)
@@ -111,4 +120,27 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
 
     public async Task AddAsync(Notebook notebook, CancellationToken cancellationToken)
         => await dbContext.Notebooks.AddAsync(notebook, cancellationToken);
+
+    // IgnoreQueryFilters because the soft-delete filter hides exactly the rows trash needs.
+    public async Task<Notebook?> FindTrashedByIdAsync(Guid notebookId, CancellationToken cancellationToken)
+        => await dbContext.Notebooks
+            .IgnoreQueryFilters()
+            .Include(notebook => notebook.Shares)
+            .FirstOrDefaultAsync(notebook => notebook.Id == notebookId && notebook.DeletedAtUtc != null, cancellationToken);
+
+    public async Task<IReadOnlyList<Notebook>> ListTrashedAsync(Guid ownerId, int skip, int take, CancellationToken cancellationToken)
+        => await dbContext.Notebooks
+            .IgnoreQueryFilters()
+            .Where(notebook => notebook.OwnerId == ownerId && notebook.DeletedAtUtc != null)
+            .OrderByDescending(notebook => notebook.DeletedAtUtc)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+    public async Task<int> CountTrashedAsync(Guid ownerId, CancellationToken cancellationToken)
+        => await dbContext.Notebooks
+            .IgnoreQueryFilters()
+            .CountAsync(notebook => notebook.OwnerId == ownerId && notebook.DeletedAtUtc != null, cancellationToken);
+
+    public void Remove(Notebook notebook) => dbContext.Notebooks.Remove(notebook);
 }

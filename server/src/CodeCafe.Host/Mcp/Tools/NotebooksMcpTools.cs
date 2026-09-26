@@ -52,8 +52,9 @@ public sealed class NotebooksMcpTools
     public static async Task<CallToolResult> GetNotebookTree(
         ISender sender,
         string idOrSlug,
-        CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new GetNotebookTreeQuery(idOrSlug), cancellationToken));
+        CancellationToken cancellationToken,
+        string? accessCode = null)
+        => McpToolResults.From(await sender.Send(new GetNotebookTreeQuery(idOrSlug, accessCode), cancellationToken));
 
     [McpServerTool(Name = "codecafe_export_notebook", ReadOnly = true, Idempotent = true)]
     [Description("Export a whole notebook as markdown.")]

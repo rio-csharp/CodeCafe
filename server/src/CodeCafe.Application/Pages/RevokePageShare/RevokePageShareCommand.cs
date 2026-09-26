@@ -3,4 +3,4 @@ using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Pages.RevokePageShare;
 
-public sealed record RevokePageShareCommand(string PageId, Guid UserId) : ICommand<Result>;
+public sealed record RevokePageShareCommand(Guid PageId, Guid UserId) : ICommand<Result>;

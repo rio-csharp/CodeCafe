@@ -11,14 +11,11 @@ public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory
 {
     // Contract spot-check: an anonymously reachable mapped route returns 501;
     // an unmapped one would 404, a protected one would 401.
-    // GET /api/notebooks/{idOrSlug} is implemented now, so it no longer answers 501 here;
-    // its mapping is covered by OpenApiContractTests instead.
+    // GET /api/notebooks/{idOrSlug} and the page reads are implemented now, so they no longer
+    // answer 501 here; their mapping is covered by OpenApiContractTests instead.
     [Theory]
-    [InlineData("GET", "/api/notebooks/my-first-notes/tree")]
     [InlineData("GET", "/api/notebooks/my-first-notes/search?q=test")]
     [InlineData("GET", "/api/notebooks/my-first-notes/export")]
-    [InlineData("GET", "/api/notebooks/my-first-notes/pages/by-path?path=/a")]
-    [InlineData("GET", "/api/pages/00000000-0000-0000-0000-000000000001")]
     public async Task Contract_Route_Is_Mapped(string method, string path)
     {
         using var client = factory.CreateClient();
@@ -51,6 +48,7 @@ public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory
     [InlineData("POST", "/api/pages/00000000-0000-0000-0000-000000000001/move")]
     [InlineData("DELETE", "/api/pages/00000000-0000-0000-0000-000000000001")]
     [InlineData("POST", "/api/pages/00000000-0000-0000-0000-000000000001/favorite")]
+    [InlineData("GET", "/api/pages/favorites")]
     [InlineData("POST", "/api/pages/00000000-0000-0000-0000-000000000001/shares")]
     [InlineData("DELETE", "/api/pages/00000000-0000-0000-0000-000000000001/shares/00000000-0000-0000-0000-000000000002")]
     [InlineData("POST", "/api/pages/00000000-0000-0000-0000-000000000001/blocks")]

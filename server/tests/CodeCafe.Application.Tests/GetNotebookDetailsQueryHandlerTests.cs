@@ -157,6 +157,7 @@ public sealed class GetNotebookDetailsQueryHandlerTests
             new StubCurrentUserAccessor(currentUser),
             new StubUserRepository(),
             new StubNotebookRepository { notebook },
+            new StubPageRepository(),
             new StubPasswordHasher()
         );
 }

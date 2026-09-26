@@ -1,6 +1,7 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Notebooks.Abstractions;
+using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Notebooks.GetNotebookSlugAvailability;
 
@@ -22,10 +23,11 @@ public sealed class GetNotebookSlugAvailabilityQueryHandler(INotebookRepository 
         }
 
         // A taken base slug never makes a candidate of its own, so every variant carries a suffix.
-        var suggestions = await NotebookSlugAvailability.FindAvailableAsync(
+        var suggestions = await SlugAvailability.FindAvailableAsync(
             slug,
+            Notebook.MaxSlugLength,
             SuggestionCount,
-            notebooks,
+            async (candidate, ct) => await notebooks.FindBySlugAsync(candidate, ct) is not null,
             cancellationToken
         );
 

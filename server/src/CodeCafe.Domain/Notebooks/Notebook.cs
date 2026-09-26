@@ -54,6 +54,9 @@ public sealed class Notebook : Entity
     // Soft-deleted notebooks sit in the trash until restored or purged.
     public DateTimeOffset? DeletedAtUtc { get; private set; }
 
+    // Head of the root page chain; null for an empty notebook. Plain id, mirroring the page chains.
+    public Guid? FirstPageId { get; private set; }
+
     public static Notebook Create(Guid ownerId, string title, string? description, string slug, NotebookVisibility visibility)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
@@ -85,14 +88,10 @@ public sealed class Notebook : Entity
     // A null hash clears the access code.
     public void SetAccessCodeHash(string? accessCodeHash) => AccessCodeHash = accessCodeHash;
 
-    // Sharing again with a different role updates the existing share in place.
+    // Sharing again with a different role updates the existing share in place. Sharing with the
+    // owner is a business error the handler rejects up front, mirroring Page.Share.
     public void Share(Guid userId, CollaboratorRole role)
     {
-        if (userId == OwnerId)
-        {
-            throw new InvalidOperationException("The owner already has full access.");
-        }
-
         var existing = _shares.FirstOrDefault(share => share.UserId == userId);
         if (existing is not null)
         {
@@ -108,7 +107,15 @@ public sealed class Notebook : Entity
 
     public bool IsSharedWith(Guid userId) => _shares.Any(share => share.UserId == userId);
 
+    public CollaboratorRole? SharedRoleFor(Guid userId)
+        => _shares.FirstOrDefault(share => share.UserId == userId)?.Role;
+
     public void SoftDelete(DateTimeOffset deletedAtUtc) => DeletedAtUtc = deletedAtUtc;
+
+    // Pointer bookkeeping only: re-heading the root chain must not mark the notebook as updated.
+    public void SetFirstPage(Guid? firstPageId) => FirstPageId = firstPageId;
+
+    public void Restore() => DeletedAtUtc = null;
 
     private void Touch() => UpdatedAtUtc = DateTimeOffset.UtcNow;
 }

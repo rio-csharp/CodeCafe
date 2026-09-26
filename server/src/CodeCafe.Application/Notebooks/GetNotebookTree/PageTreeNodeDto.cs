@@ -6,4 +6,5 @@ public sealed record PageTreeNodeDto(
     string Path,
     int SortOrder,
     bool IsArchived,
+    bool IsFavorite,
     IReadOnlyList<PageTreeNodeDto> Children);

@@ -4,4 +4,4 @@ using CodeCafe.Application.Pages.Shared;
 
 namespace CodeCafe.Application.Pages.GetPage;
 
-public sealed record GetPageQuery(Guid PageId) : IQuery<Result<PageDetailsDto>>;
+public sealed record GetPageQuery(Guid PageId, string? AccessCode = null) : IQuery<Result<PageDetailsDto>>;

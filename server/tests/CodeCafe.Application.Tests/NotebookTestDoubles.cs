@@ -35,15 +35,23 @@ internal sealed class StubUserRepository : List<User>, IUserRepository
 internal sealed class StubNotebookRepository : List<Notebook>, INotebookRepository
 {
     public HashSet<(Guid NotebookId, Guid UserId)> Favorites { get; } = [];
+
+    // Page shares that surface the notebook in the list, mirroring the EF query.
+    public List<(Guid NotebookId, Guid UserId)> PageShareGrants { get; } = [];
+
+    // Mirrors the EF global query filter: trashed notebooks are invisible outside trash queries.
+    private IEnumerable<Notebook> Live => this.Where(notebook => notebook.DeletedAtUtc == null);
+
     public Task<Notebook?> FindBySlugAsync(string slug, CancellationToken cancellationToken)
-        => Task.FromResult(this.FirstOrDefault(notebook => notebook.Slug == slug));
+        => Task.FromResult(Live.FirstOrDefault(notebook => notebook.Slug == slug));
+
+    public Task<Notebook?> FindByIdAsync(Guid notebookId, CancellationToken cancellationToken)
+        => Task.FromResult(Live.FirstOrDefault(notebook => notebook.Id == notebookId));
 
     public Task<Notebook?> FindByIdOrSlugAsync(string idOrSlug, CancellationToken cancellationToken)
-        => Task.FromResult(
-            Guid.TryParse(idOrSlug, out var id)
-                ? this.FirstOrDefault(notebook => notebook.Id == id)
-                : this.FirstOrDefault(notebook => notebook.Slug == idOrSlug.Trim().ToLowerInvariant())
-        );
+        => Guid.TryParse(idOrSlug, out var id)
+            ? FindByIdAsync(id, cancellationToken)
+            : Task.FromResult(Live.FirstOrDefault(notebook => notebook.Slug == idOrSlug.Trim().ToLowerInvariant()));
 
     public Task<int> CountVisibleAsync(
         Guid userId,
@@ -80,8 +88,10 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
 
     private IEnumerable<Notebook> VisibleTo(Guid userId, string? tag, bool? isFavorite, NotebookVisibility? visibility)
     {
-        IEnumerable<Notebook> query = this.Where(notebook =>
-            notebook.OwnerId == userId || notebook.IsSharedWith(userId)
+        IEnumerable<Notebook> query = Live.Where(notebook =>
+            notebook.OwnerId == userId
+            || notebook.IsSharedWith(userId)
+            || PageShareGrants.Any(grant => grant.NotebookId == notebook.Id && grant.UserId == userId)
         );
         if (tag is not null)
         {
@@ -128,6 +138,24 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
         Add(notebook);
         return Task.CompletedTask;
     }
+
+    public Task<Notebook?> FindTrashedByIdAsync(Guid notebookId, CancellationToken cancellationToken)
+        => Task.FromResult(this.FirstOrDefault(notebook => notebook.Id == notebookId && notebook.DeletedAtUtc != null));
+
+    public Task<IReadOnlyList<Notebook>> ListTrashedAsync(Guid ownerId, int skip, int take, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyList<Notebook>>(
+            this.Where(notebook => notebook.OwnerId == ownerId && notebook.DeletedAtUtc != null)
+                .OrderByDescending(notebook => notebook.DeletedAtUtc)
+                .Skip(skip)
+                .Take(take)
+                .ToList()
+        );
+
+    public Task<int> CountTrashedAsync(Guid ownerId, CancellationToken cancellationToken)
+        => Task.FromResult(this.Count(notebook => notebook.OwnerId == ownerId && notebook.DeletedAtUtc != null));
+
+    // Hides List<Notebook>.Remove to satisfy the repository interface; the cast calls the base.
+    public new void Remove(Notebook notebook) => ((List<Notebook>)this).Remove(notebook);
 }
 
 internal sealed class StubUnitOfWork(Exception? saveFailure = null) : IUnitOfWork

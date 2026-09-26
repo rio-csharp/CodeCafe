@@ -88,10 +88,11 @@ public sealed class CreateNotebookCommandHandler(
                 : null;
         }
 
-        var candidates = await NotebookSlugAvailability.FindAvailableAsync(
+        var candidates = await SlugAvailability.FindAvailableAsync(
             NotebookSlug.GenerateFromTitle(title),
+            Notebook.MaxSlugLength,
             1,
-            notebooks,
+            async (candidate, ct) => await notebooks.FindBySlugAsync(candidate, ct) is not null,
             cancellationToken
         );
 

@@ -5,6 +5,7 @@ using CodeCafe.Application.Pages.DeletePage;
 using CodeCafe.Application.Pages.GetPage;
 using CodeCafe.Application.Pages.GetPageByPath;
 using CodeCafe.Application.Pages.MovePage;
+using CodeCafe.Application.Pages.RevokePageShare;
 using CodeCafe.Application.Pages.SetPageFavorite;
 using CodeCafe.Application.Pages.SharePage;
 using CodeCafe.Application.Pages.UpdatePage;
@@ -23,8 +24,9 @@ public sealed class PagesMcpTools
     public static async Task<CallToolResult> GetPage(
         ISender sender,
         Guid pageId,
-        CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new GetPageQuery(pageId), cancellationToken));
+        CancellationToken cancellationToken,
+        string? accessCode = null)
+        => McpToolResults.From(await sender.Send(new GetPageQuery(pageId, accessCode), cancellationToken));
 
     [McpServerTool(Name = "codecafe_get_page_by_path", ReadOnly = true, Idempotent = true)]
     [Description("Get a page by its path inside a notebook, e.g. /guides/setup.")]
@@ -32,20 +34,22 @@ public sealed class PagesMcpTools
         ISender sender,
         string notebookIdOrSlug,
         string path,
-        CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new GetPageByPathQuery(notebookIdOrSlug, path), cancellationToken));
+        CancellationToken cancellationToken,
+        string? accessCode = null)
+        => McpToolResults.From(await sender.Send(new GetPageByPathQuery(notebookIdOrSlug, path, accessCode), cancellationToken));
 
     [McpServerTool(Name = "codecafe_create_page")]
-    [Description("Create a page in a notebook, optionally with initial blocks.")]
+    [Description("Create a page in a notebook.")]
     public static async Task<CallToolResult> CreatePage(
         ISender sender,
         string notebookIdOrSlug,
         string title,
         CancellationToken cancellationToken,
-        string? parentPath = null,
-        IReadOnlyList<BlockInput>? blocks = null,
-        BlockContentFormat? format = null)
-        => McpToolResults.From(await sender.Send(new CreatePageCommand(notebookIdOrSlug, title, parentPath, blocks, format), cancellationToken));
+        string? parentPath = null)
+        // Blocks land with the blocks slice; a page starts empty until then.
+        // IReadOnlyList<BlockInput>? blocks = null,
+        // BlockContentFormat? format = null)
+        => McpToolResults.From(await sender.Send(new CreatePageCommand(notebookIdOrSlug, title, parentPath), cancellationToken));
 
     [McpServerTool(Name = "codecafe_update_page", Idempotent = true)]
     [Description("Rename a page and/or change its archived state.")]

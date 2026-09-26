@@ -17,9 +17,9 @@ public sealed class TrashMcpTools
     public static async Task<CallToolResult> ListTrash(
         ISender sender,
         CancellationToken cancellationToken,
-        string? cursor = null,
+        int? page = null,
         int? pageSize = null)
-        => McpToolResults.From(await sender.Send(new ListTrashQuery(cursor, pageSize), cancellationToken));
+        => McpToolResults.From(await sender.Send(new ListTrashQuery(page, pageSize), cancellationToken));
 
     [McpServerTool(Name = "codecafe_restore_notebook", Idempotent = true)]
     [Description("Restore a notebook from the trash.")]

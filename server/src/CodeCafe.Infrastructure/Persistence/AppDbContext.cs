@@ -2,6 +2,7 @@ using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
+using CodeCafe.Domain.Pages;
 using CodeCafe.Domain.Primitives;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +20,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     public DbSet<Notebook> Notebooks => Set<Notebook>();
 
     public DbSet<NotebookFavorite> NotebookFavorites => Set<NotebookFavorite>();
+
+    public DbSet<Page> Pages => Set<Page>();
+
+    public DbSet<PageFavorite> PageFavorites => Set<PageFavorite>();
 
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken)
         => await SaveChangesAsync(cancellationToken);

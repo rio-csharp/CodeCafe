@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CodeCafe.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260921081613_AddNotebookFavorites")]
-    partial class AddNotebookFavorites
+    [Migration("20260922132229_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -120,6 +120,9 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<Guid?>("FirstPageId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
 
@@ -197,6 +200,103 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
                     b.ToTable("notebook_shares", (string)null);
                 });
 
+            modelBuilder.Entity("CodeCafe.Domain.Pages.Page", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("FirstChildId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid?>("NextSiblingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("NotebookId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ParentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("SortKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NotebookId", "Slug")
+                        .IsUnique();
+
+                    b.HasIndex("NotebookId", "ParentId", "SortKey");
+
+                    b.ToTable("pages", (string)null);
+                });
+
+            modelBuilder.Entity("CodeCafe.Domain.Pages.PageFavorite", b =>
+                {
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("PageId", "UserId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("page_favorites", (string)null);
+                });
+
+            modelBuilder.Entity("CodeCafe.Domain.Pages.PageShare", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("PageId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("page_shares", (string)null);
+                });
+
             modelBuilder.Entity("CodeCafe.Domain.Identity.RefreshToken", b =>
                 {
                     b.HasOne("CodeCafe.Domain.Identity.User", null)
@@ -245,7 +345,51 @@ namespace CodeCafe.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("CodeCafe.Domain.Pages.Page", b =>
+                {
+                    b.HasOne("CodeCafe.Domain.Notebooks.Notebook", null)
+                        .WithMany()
+                        .HasForeignKey("NotebookId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CodeCafe.Domain.Pages.PageFavorite", b =>
+                {
+                    b.HasOne("CodeCafe.Domain.Pages.Page", null)
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CodeCafe.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("CodeCafe.Domain.Pages.PageShare", b =>
+                {
+                    b.HasOne("CodeCafe.Domain.Pages.Page", null)
+                        .WithMany("Shares")
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("CodeCafe.Domain.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("CodeCafe.Domain.Notebooks.Notebook", b =>
+                {
+                    b.Navigation("Shares");
+                });
+
+            modelBuilder.Entity("CodeCafe.Domain.Pages.Page", b =>
                 {
                     b.Navigation("Shares");
                 });

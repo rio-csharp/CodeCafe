@@ -42,6 +42,7 @@ public sealed class OpenApiContractTests(WebApplicationFactory<Program> factory)
         ("post", "/api/pages/{pageId}/move"),
         ("delete", "/api/pages/{pageId}"),
         ("post", "/api/pages/{pageId}/favorite"),
+        ("get", "/api/pages/favorites"),
         ("post", "/api/pages/{pageId}/shares"),
         ("delete", "/api/pages/{pageId}/shares/{userId}"),
 

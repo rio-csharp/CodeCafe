@@ -99,8 +99,8 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/tree")]
-    public Task<Result<NotebookTreeDto>> Tree(string idOrSlug, CancellationToken cancellationToken)
-        => sender.Send(new GetNotebookTreeQuery(idOrSlug), cancellationToken);
+    public Task<Result<NotebookTreeDto>> Tree(string idOrSlug, string? accessCode, CancellationToken cancellationToken)
+        => sender.Send(new GetNotebookTreeQuery(idOrSlug, accessCode), cancellationToken);
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/search")]
@@ -124,10 +124,10 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     [HttpPost("notebooks/{idOrSlug}/pages")]
     public Task<Result<PageDetailsDto>> CreatePage(string idOrSlug, CreatePageRequest request, CancellationToken cancellationToken)
-        => sender.Send(new CreatePageCommand(idOrSlug, request.Title, request.ParentPath, request.Blocks, request.Format), cancellationToken);
+        => sender.Send(new CreatePageCommand(idOrSlug, request.Title, request.ParentPath), cancellationToken);
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/pages/by-path")]
-    public Task<Result<PageDetailsDto>> PageByPath(string idOrSlug, string path, CancellationToken cancellationToken)
-        => sender.Send(new GetPageByPathQuery(idOrSlug, path), cancellationToken);
+    public Task<Result<PageDetailsDto>> PageByPath(string idOrSlug, string path, string? accessCode, CancellationToken cancellationToken)
+        => sender.Send(new GetPageByPathQuery(idOrSlug, path, accessCode), cancellationToken);
 }

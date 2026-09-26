@@ -1,7 +1,9 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Pages.DeletePage;
 using CodeCafe.Application.Pages.GetPage;
+using CodeCafe.Application.Pages.ListFavoritePages;
 using CodeCafe.Application.Pages.MovePage;
+using CodeCafe.Application.Pages.RevokePageShare;
 using CodeCafe.Application.Pages.SetPageFavorite;
 using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Application.Pages.SharePage;
@@ -33,6 +35,10 @@ public sealed class PagesController(ISender sender) : ControllerBase
     [HttpDelete("pages/{pageId:guid}")]
     public Task<Result> Delete(Guid pageId, CancellationToken cancellationToken)
         => sender.Send(new DeletePageCommand(pageId), cancellationToken);
+
+    [HttpGet("pages/favorites")]
+    public Task<Result<IReadOnlyList<FavoritePageDto>>> Favorites(Guid? notebookId, CancellationToken cancellationToken)
+        => sender.Send(new ListFavoritePagesQuery(notebookId), cancellationToken);
 
     [HttpPost("pages/{pageId:guid}/favorite")]
     public Task<Result> SetFavorite(Guid pageId, SetFavoriteRequest request, CancellationToken cancellationToken)
