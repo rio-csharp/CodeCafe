@@ -15,15 +15,13 @@ public sealed class UpdateProfileCommandHandler(
 {
     public async Task<Result<AuthUserDto>> Handle(UpdateProfileCommand message, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var user = userId is not null
-            ? await users.FindByIdAsync(userId.Value, cancellationToken)
-            : null;
-
-        if (user is null)
+        var resolved = await CurrentUserResolver.RequireAsync(currentUserAccessor, users, cancellationToken);
+        if (resolved.Error is { } error)
         {
-            return Result.Failure<AuthUserDto>(AuthErrors.UserNotFound);
+            return Result.Failure<AuthUserDto>(error);
         }
+
+        var user = resolved.Value!;
 
         user.ChangeDisplayName(AuthInput.NormalizeDisplayName(message.DisplayName));
         await unitOfWork.SaveChangesAsync(cancellationToken);

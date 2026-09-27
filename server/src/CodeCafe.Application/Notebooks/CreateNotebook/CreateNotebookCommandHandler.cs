@@ -1,5 +1,5 @@
-using CodeCafe.Application.Auth;
 using CodeCafe.Application.Auth.Abstractions;
+using CodeCafe.Application.Auth.Shared;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Common.Messaging;
@@ -22,14 +22,13 @@ public sealed class CreateNotebookCommandHandler(
 
     public async Task<Result<NotebookDetailsDto>> Handle(CreateNotebookCommand command, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var user = userId is not null
-            ? await users.FindByIdAsync(userId.Value, cancellationToken)
-            : null;
-        if (user is null)
+        var resolved = await CurrentUserResolver.RequireAsync(currentUserAccessor, users, cancellationToken);
+        if (resolved.Error is { } error)
         {
-            return Result.Failure<NotebookDetailsDto>(AuthErrors.UserNotFound);
+            return Result.Failure<NotebookDetailsDto>(error);
         }
+
+        var user = resolved.Value!;
 
         var requestedSlug = command.Slug is not null ? NotebookSlug.Normalize(command.Slug) : null;
         var title = command.Title.Trim();

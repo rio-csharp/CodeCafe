@@ -3,6 +3,7 @@ using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
+using CodeCafe.Application.Notebooks.Shared;
 
 namespace CodeCafe.Application.Notebooks.DeleteNotebook;
 
@@ -14,14 +15,13 @@ public sealed class DeleteNotebookCommandHandler(
 {
     public async Task<Result> Handle(DeleteNotebookCommand command, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var notebook = userId is not null
-            ? await notebooks.FindByIdOrSlugAsync(command.NotebookIdOrSlug, cancellationToken)
-            : null;
-        if (notebook is null || notebook.OwnerId != userId)
+        var context = await NotebookAccess.RequireOwnerAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
+        if (context.Error is { } error)
         {
-            return Result.Failure(NotebookErrors.NotFound);
+            return Result.Failure(error);
         }
+
+        var notebook = context.Value!.Notebook;
 
         notebook.SoftDelete(DateTimeOffset.UtcNow);
         await unitOfWork.SaveChangesAsync(cancellationToken);

@@ -1,4 +1,5 @@
 using CodeCafe.Application.Auth.Abstractions;
+using CodeCafe.Application.Auth.Shared;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Common.Messaging;
@@ -15,15 +16,13 @@ public sealed class ChangePasswordCommandHandler(
 {
     public async Task<Result> Handle(ChangePasswordCommand message, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var user = userId is not null
-            ? await users.FindByIdAsync(userId.Value, cancellationToken)
-            : null;
-
-        if (user is null)
+        var resolved = await CurrentUserResolver.RequireAsync(currentUserAccessor, users, cancellationToken);
+        if (resolved.Error is { } error)
         {
-            return Result.Failure(AuthErrors.UserNotFound);
+            return Result.Failure(error);
         }
+
+        var user = resolved.Value!;
 
         if (!passwordHasher.Verify(message.CurrentPassword, user.PasswordHash))
         {

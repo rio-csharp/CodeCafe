@@ -4,6 +4,7 @@ using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
+using CodeCafe.Application.Notebooks.Shared;
 
 namespace CodeCafe.Application.Notebooks.SetNotebookAccessCode;
 
@@ -16,14 +17,13 @@ public sealed class SetNotebookAccessCodeCommandHandler(
 {
     public async Task<Result> Handle(SetNotebookAccessCodeCommand command, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var notebook = userId is not null
-            ? await notebooks.FindByIdOrSlugAsync(command.NotebookIdOrSlug, cancellationToken)
-            : null;
-        if (notebook is null || notebook.OwnerId != userId)
+        var context = await NotebookAccess.RequireOwnerAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
+        if (context.Error is { } error)
         {
-            return Result.Failure(NotebookErrors.NotFound);
+            return Result.Failure(error);
         }
+
+        var notebook = context.Value!.Notebook;
 
         // Null clears the code; only the hash is ever stored.
         var hash = command.AccessCode is not null ? passwordHasher.Hash(command.AccessCode) : null;

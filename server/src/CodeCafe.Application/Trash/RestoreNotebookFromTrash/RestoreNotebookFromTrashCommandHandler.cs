@@ -2,8 +2,8 @@ using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
-using CodeCafe.Application.Notebooks;
 using CodeCafe.Application.Notebooks.Abstractions;
+using CodeCafe.Application.Notebooks.Shared;
 using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Trash.RestoreNotebookFromTrash;
@@ -16,16 +16,13 @@ public sealed class RestoreNotebookFromTrashCommandHandler(
 {
     public async Task<Result> Handle(RestoreNotebookFromTrashCommand command, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var notebook = userId is not null
-            ? await notebooks.FindTrashedByIdAsync(command.NotebookId, cancellationToken)
-            : null;
-
-        // Trashed notebooks of others are invisible here, same as anywhere else.
-        if (notebook is null || notebook.OwnerId != userId)
+        var context = await NotebookAccess.RequireTrashedOwnerAsync(command.NotebookId, currentUserAccessor, notebooks, cancellationToken);
+        if (context.Error is { } error)
         {
-            return Result.Failure(NotebookErrors.NotFound);
+            return Result.Failure(error);
         }
+
+        var notebook = context.Value!.Notebook;
 
         // The slug may have been taken while the notebook sat in the trash; rather than fail
         // the restore, the notebook comes back with a fresh suffixed slug.

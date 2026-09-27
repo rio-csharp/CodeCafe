@@ -18,14 +18,13 @@ public sealed class UpdateNotebookCommandHandler(
 {
     public async Task<Result<NotebookDetailsDto>> Handle(UpdateNotebookCommand command, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var notebook = userId is not null
-            ? await notebooks.FindByIdOrSlugAsync(command.NotebookIdOrSlug, cancellationToken)
-            : null;
-        if (notebook is null || notebook.OwnerId != userId)
+        var context = await NotebookAccess.RequireOwnerAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
+        if (context.Error is { } error)
         {
-            return Result.Failure<NotebookDetailsDto>(NotebookErrors.NotFound);
+            return Result.Failure<NotebookDetailsDto>(error);
         }
+
+        var notebook = context.Value!.Notebook;
 
         // Null fields keep their current values; an explicit blank description clears it.
         var title = command.Title?.Trim() is { Length: > 0 } newTitle ? newTitle : notebook.Title;

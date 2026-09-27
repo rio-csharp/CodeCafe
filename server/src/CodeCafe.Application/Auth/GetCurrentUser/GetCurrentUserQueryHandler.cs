@@ -13,15 +13,13 @@ public sealed class GetCurrentUserQueryHandler(
 {
     public async Task<Result<AuthUserDto>> Handle(GetCurrentUserQuery message, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var user = userId is not null
-            ? await users.FindByIdAsync(userId.Value, cancellationToken)
-            : null;
-
-        if (user is null)
+        var resolved = await CurrentUserResolver.RequireAsync(currentUserAccessor, users, cancellationToken);
+        if (resolved.Error is { } error)
         {
-            return Result.Failure<AuthUserDto>(AuthErrors.UserNotFound);
+            return Result.Failure<AuthUserDto>(error);
         }
+
+        var user = resolved.Value!;
 
         return Result.Success(new AuthUserDto(user.Id, user.Email, user.DisplayName));
     }

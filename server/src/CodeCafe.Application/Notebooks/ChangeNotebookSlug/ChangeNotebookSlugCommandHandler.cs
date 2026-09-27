@@ -18,14 +18,13 @@ public sealed class ChangeNotebookSlugCommandHandler(
 {
     public async Task<Result<NotebookDetailsDto>> Handle(ChangeNotebookSlugCommand command, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var notebook = userId is not null
-            ? await notebooks.FindByIdOrSlugAsync(command.NotebookIdOrSlug, cancellationToken)
-            : null;
-        if (notebook is null || notebook.OwnerId != userId)
+        var context = await NotebookAccess.RequireOwnerAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
+        if (context.Error is { } error)
         {
-            return Result.Failure<NotebookDetailsDto>(NotebookErrors.NotFound);
+            return Result.Failure<NotebookDetailsDto>(error);
         }
+
+        var notebook = context.Value!.Notebook;
 
         var newSlug = NotebookSlug.Normalize(command.NewSlug);
         if (string.Equals(notebook.Slug, newSlug, StringComparison.Ordinal))
