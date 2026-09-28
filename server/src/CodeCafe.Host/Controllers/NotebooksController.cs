@@ -10,16 +10,15 @@ using CodeCafe.Application.Notebooks.GetNotebookTree;
 using CodeCafe.Application.Notebooks.ImportNotebook;
 using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Application.Notebooks.RevokeNotebookShare;
-using CodeCafe.Application.Notebooks.SearchNotebookPages;
 using CodeCafe.Application.Notebooks.SetNotebookAccessCode;
 using CodeCafe.Application.Notebooks.SetNotebookFavorite;
 using CodeCafe.Application.Notebooks.SetNotebookTags;
-using CodeCafe.Application.Notebooks.Shared;
 using CodeCafe.Application.Notebooks.ShareNotebook;
 using CodeCafe.Application.Notebooks.UpdateNotebook;
 using CodeCafe.Application.Pages.CreatePage;
 using CodeCafe.Application.Pages.GetPageByPath;
 using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Application.Trash.ListTrashedPages;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Host.Hosting;
 using MediatR;
@@ -48,11 +47,12 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
         string? tag,
         bool? favorite,
         NotebookVisibility? visibility,
+        string? search,
         NotebookSort? sort,
         int? page,
         int? pageSize,
         CancellationToken cancellationToken)
-        => sender.Send(new ListNotebooksQuery(tag, favorite, visibility, sort, page, pageSize), cancellationToken);
+        => sender.Send(new ListNotebooksQuery(tag, favorite, visibility, search, sort, page, pageSize), cancellationToken);
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}")]
@@ -102,10 +102,9 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
     public Task<Result<NotebookTreeDto>> Tree(string idOrSlug, string? accessCode, CancellationToken cancellationToken)
         => sender.Send(new GetNotebookTreeQuery(idOrSlug, accessCode), cancellationToken);
 
-    [AllowAnonymous]
-    [HttpGet("notebooks/{idOrSlug}/search")]
-    public Task<Result<CursorPage<PageSearchHitDto>>> Search(string idOrSlug, string q, string? cursor, int? pageSize, CancellationToken cancellationToken)
-        => sender.Send(new SearchNotebookPagesQuery(idOrSlug, q, cursor, pageSize), cancellationToken);
+    [HttpGet("notebooks/{idOrSlug}/trash")]
+    public Task<Result<PagedResult<TrashedPageEntryDto>>> ListTrashedPages(string idOrSlug, int? page, int? pageSize, CancellationToken cancellationToken)
+        => sender.Send(new ListTrashedPagesQuery(idOrSlug, page, pageSize), cancellationToken);
 
     // A real file download (text/markdown + Content-Disposition), not the JSON envelope.
     [AllowAnonymous]

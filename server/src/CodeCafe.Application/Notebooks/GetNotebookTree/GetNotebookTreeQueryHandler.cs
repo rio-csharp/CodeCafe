@@ -27,7 +27,7 @@ public sealed class GetNotebookTreeQueryHandler(
             return Result.Failure<NotebookTreeDto>(NotebookErrors.NotFound);
         }
 
-        var notebookError = NotebookReadAccess.Check(notebook, userId, query.AccessCode, passwordHasher);
+        var notebookError = NotebookAccess.CheckRead(notebook, userId, query.AccessCode, passwordHasher);
         var all = await pages.ListByNotebookAsync(notebook.Id, cancellationToken);
 
         IReadOnlyCollection<Page> visible;

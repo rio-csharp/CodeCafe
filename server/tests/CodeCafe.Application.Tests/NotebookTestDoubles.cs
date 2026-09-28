@@ -48,31 +48,27 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
     public Task<Notebook?> FindByIdAsync(Guid notebookId, CancellationToken cancellationToken)
         => Task.FromResult(Live.FirstOrDefault(notebook => notebook.Id == notebookId));
 
+    public Task<IReadOnlyList<Notebook>> FindByIdsAsync(IReadOnlyCollection<Guid> notebookIds, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyList<Notebook>>(Live.Where(notebook => notebookIds.Contains(notebook.Id)).ToList());
+
     public Task<Notebook?> FindByIdOrSlugAsync(string idOrSlug, CancellationToken cancellationToken)
         => Guid.TryParse(idOrSlug, out var id)
             ? FindByIdAsync(id, cancellationToken)
             : Task.FromResult(Live.FirstOrDefault(notebook => notebook.Slug == idOrSlug.Trim().ToLowerInvariant()));
 
-    public Task<int> CountVisibleAsync(
-        Guid userId,
-        string? tag,
-        bool? isFavorite,
-        NotebookVisibility? visibility,
-        CancellationToken cancellationToken
-    ) => Task.FromResult(VisibleTo(userId, tag, isFavorite, visibility).Count());
+    public Task<int> CountVisibleAsync(Guid userId, NotebookFilter filter, CancellationToken cancellationToken)
+        => Task.FromResult(VisibleTo(userId, filter).Count());
 
     public Task<IReadOnlyList<Notebook>> ListVisibleAsync(
         Guid userId,
-        string? tag,
-        bool? isFavorite,
-        NotebookVisibility? visibility,
+        NotebookFilter filter,
         NotebookSort sort,
         int skip,
         int take,
         CancellationToken cancellationToken
     )
     {
-        var query = VisibleTo(userId, tag, isFavorite, visibility);
+        var query = VisibleTo(userId, filter);
 
         var ordered = sort switch
         {
@@ -86,24 +82,35 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
         return Task.FromResult<IReadOnlyList<Notebook>>(ordered.Skip(skip).Take(take).ToList());
     }
 
-    private IEnumerable<Notebook> VisibleTo(Guid userId, string? tag, bool? isFavorite, NotebookVisibility? visibility)
+    private IEnumerable<Notebook> VisibleTo(Guid userId, NotebookFilter filter)
     {
         IEnumerable<Notebook> query = Live.Where(notebook =>
             notebook.OwnerId == userId
             || notebook.IsSharedWith(userId)
             || PageShareGrants.Any(grant => grant.NotebookId == notebook.Id && grant.UserId == userId)
         );
-        if (tag is not null)
+        if (filter.Tag is not null)
         {
-            query = query.Where(notebook => notebook.Tags.Contains(tag));
+            query = query.Where(notebook => notebook.Tags.Contains(filter.Tag));
         }
-        if (isFavorite is not null)
+        if (filter.IsFavorite is not null)
         {
-            query = query.Where(notebook => Favorites.Contains((notebook.Id, userId)) == isFavorite.Value);
+            query = query.Where(notebook => Favorites.Contains((notebook.Id, userId)) == filter.IsFavorite.Value);
         }
-        if (visibility is not null)
+        if (filter.Visibility is not null)
         {
-            query = query.Where(notebook => notebook.Visibility == visibility.Value);
+            query = query.Where(notebook => notebook.Visibility == filter.Visibility.Value);
+        }
+        if (filter.Search is not null)
+        {
+            // Mirrors the ILIKE the real repository issues: case-insensitive substring match.
+            query = query.Where(notebook =>
+                notebook.Title.Contains(filter.Search, StringComparison.OrdinalIgnoreCase)
+                || (
+                    notebook.Description is not null
+                    && notebook.Description.Contains(filter.Search, StringComparison.OrdinalIgnoreCase)
+                )
+            );
         }
 
         return query;

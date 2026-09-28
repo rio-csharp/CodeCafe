@@ -1,11 +1,12 @@
+using CodeCafe.Application.Auth;
 using CodeCafe.Application.Common.Security;
-using CodeCafe.Application.Trash.EmptyTrash;
+using CodeCafe.Application.Trash.PurgeTrashedNotebooks;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Tests;
 
-public sealed class EmptyTrashCommandHandlerTests
+public sealed class PurgeTrashedNotebooksCommandHandlerTests
 {
     [Fact]
     public async Task Handle_RemovesOnlyOwnTrashedNotebooks()
@@ -20,7 +21,7 @@ public sealed class EmptyTrashCommandHandlerTests
         var notebooks = new StubNotebookRepository { trashed, live, foreignTrashed };
         var handler = CreateHandler(owner.Id, notebooks);
 
-        var result = await handler.Handle(new EmptyTrashCommand(), CancellationToken.None);
+        var result = await handler.Handle(new PurgeTrashedNotebooksCommand(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.DoesNotContain(trashed, notebooks);
@@ -29,17 +30,18 @@ public sealed class EmptyTrashCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Anonymous_IsANoOp()
+    public async Task Handle_Anonymous_GetsUserNotFound()
     {
         var owner = SeedOwner();
         var trashed = SeedNotebook(owner, "trashed");
         trashed.SoftDelete(DateTimeOffset.UtcNow);
         var notebooks = new StubNotebookRepository { trashed };
-        var handler = new EmptyTrashCommandHandler(new StubCurrentUserAccessor(null), notebooks, new StubUnitOfWork());
+        var handler = new PurgeTrashedNotebooksCommandHandler(new StubCurrentUserAccessor(null), notebooks, new StubUnitOfWork());
 
-        var result = await handler.Handle(new EmptyTrashCommand(), CancellationToken.None);
+        var result = await handler.Handle(new PurgeTrashedNotebooksCommand(), CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(AuthErrors.UserNotFound, result.Error);
         Assert.Contains(trashed, notebooks);
     }
 
@@ -48,6 +50,6 @@ public sealed class EmptyTrashCommandHandlerTests
     private static Notebook SeedNotebook(User owner, string slug)
         => Notebook.Create(owner.Id, "Notebook", null, slug, NotebookVisibility.Private);
 
-    private static EmptyTrashCommandHandler CreateHandler(Guid currentUserId, StubNotebookRepository notebooks)
+    private static PurgeTrashedNotebooksCommandHandler CreateHandler(Guid currentUserId, StubNotebookRepository notebooks)
         => new(new StubCurrentUserAccessor(new CurrentUser(currentUserId)), notebooks, new StubUnitOfWork());
 }

@@ -8,7 +8,6 @@ using CodeCafe.Application.Notebooks.GetNotebookTree;
 using CodeCafe.Application.Notebooks.ImportNotebook;
 using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Application.Notebooks.RevokeNotebookShare;
-using CodeCafe.Application.Notebooks.SearchNotebookPages;
 using CodeCafe.Application.Notebooks.SetNotebookAccessCode;
 using CodeCafe.Application.Notebooks.SetNotebookFavorite;
 using CodeCafe.Application.Notebooks.SetNotebookTags;
@@ -26,17 +25,18 @@ namespace CodeCafe.Host.Mcp.Tools;
 public sealed class NotebooksMcpTools
 {
     [McpServerTool(Name = "codecafe_list_notebooks", ReadOnly = true, Idempotent = true)]
-    [Description("List notebooks visible to the current user, with optional filters, sorting, and pagination.")]
+    [Description("List notebooks visible to the current user, with optional filters (tag, favorite, visibility, free-text search over title and description), sorting, and pagination.")]
     public static async Task<CallToolResult> ListNotebooks(
         ISender sender,
         CancellationToken cancellationToken,
         string? tag = null,
         bool? favorite = null,
         NotebookVisibility? visibility = null,
+        string? search = null,
         NotebookSort? sort = null,
         int? page = null,
         int? pageSize = null)
-        => McpToolResults.From(await sender.Send(new ListNotebooksQuery(tag, favorite, visibility, sort, page, pageSize), cancellationToken));
+        => McpToolResults.From(await sender.Send(new ListNotebooksQuery(tag, favorite, visibility, search, sort, page, pageSize), cancellationToken));
 
     [McpServerTool(Name = "codecafe_get_notebook", ReadOnly = true, Idempotent = true)]
     [Description("Get notebook details by id or slug.")]
@@ -63,17 +63,6 @@ public sealed class NotebooksMcpTools
         string idOrSlug,
         CancellationToken cancellationToken)
         => McpToolResults.From(await sender.Send(new ExportNotebookQuery(idOrSlug), cancellationToken));
-
-    [McpServerTool(Name = "codecafe_search_notebook", ReadOnly = true, Idempotent = true)]
-    [Description("Search pages inside one notebook.")]
-    public static async Task<CallToolResult> SearchNotebook(
-        ISender sender,
-        string idOrSlug,
-        string query,
-        CancellationToken cancellationToken,
-        string? cursor = null,
-        int? pageSize = null)
-        => McpToolResults.From(await sender.Send(new SearchNotebookPagesQuery(idOrSlug, query, cursor, pageSize), cancellationToken));
 
     [McpServerTool(Name = "codecafe_create_notebook")]
     [Description("Create a new notebook.")]

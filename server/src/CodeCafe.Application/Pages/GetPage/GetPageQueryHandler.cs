@@ -25,22 +25,22 @@ public sealed class GetPageQueryHandler(
             return Result.Failure<PageDetailsDto>(PageErrors.NotFound);
         }
 
+        // A live page in a trashed notebook must not be readable.
         var notebook = await notebooks.FindByIdAsync(page.NotebookId, cancellationToken);
-        var ancestors = await PageHierarchy.LoadAncestorsAsync(page, pages, cancellationToken);
-
-        var error = notebook is null
-            ? PageErrors.NotFound
-            : PageAccess.CheckRead(notebook, page, ancestors, userId, query.AccessCode, passwordHasher);
-        if (error is not null)
+        if (notebook is null)
         {
-            return Result.Failure<PageDetailsDto>(error);
+            return Result.Failure<PageDetailsDto>(PageErrors.NotFound);
         }
 
-        var isFavorite = userId is not null
-            && (await pages.FindFavoriteIdsAsync(userId.Value, [page.Id], cancellationToken)).Contains(page.Id);
-
-        return Result.Success(
-            await PageDetailsMapping.ToDtoAsync(page, PageHierarchy.PathOf(page, ancestors), isFavorite, users, cancellationToken)
+        return await PageReadProjection.ToDetailsAsync(
+            notebook,
+            page,
+            userId,
+            query.AccessCode,
+            pages,
+            users,
+            passwordHasher,
+            cancellationToken
         );
     }
 }

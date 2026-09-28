@@ -8,6 +8,7 @@ public sealed record ListNotebooksQuery(
     string? Tag,
     bool? IsFavorite,
     NotebookVisibility? Visibility,
+    string? Search,
     NotebookSort? Sort,
     int? Page,
     int? PageSize)

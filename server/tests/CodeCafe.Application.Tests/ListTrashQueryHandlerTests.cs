@@ -1,3 +1,4 @@
+using CodeCafe.Application.Auth;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Trash.ListTrash;
 using CodeCafe.Domain.Identity;
@@ -66,20 +67,18 @@ public sealed class ListTrashQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Anonymous_GetsEmptyPage()
+    public async Task Handle_Anonymous_GetsUserNotFound()
     {
-        var notebooks = new StubNotebookRepository();
         var handler = new ListTrashQueryHandler(
             new StubCurrentUserAccessor(null),
-            notebooks,
+            new StubNotebookRepository(),
             new StubPageRepository()
         );
 
         var result = await handler.Handle(new ListTrashQuery(null, null), CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
-        Assert.Empty(result.Value!.Items);
-        Assert.Equal(0, result.Value.TotalCount);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(AuthErrors.UserNotFound, result.Error);
     }
 
     private static User SeedOwner() => User.Create("owner@example.com", "owner@example.com", "Owner", "hash");

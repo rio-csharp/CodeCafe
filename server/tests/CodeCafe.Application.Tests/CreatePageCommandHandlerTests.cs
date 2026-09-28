@@ -187,6 +187,23 @@ public sealed class CreatePageCommandHandlerTests
         Assert.Single(pages);
     }
 
+    [Fact]
+    public async Task Handle_ReturnsNotFound_WhenNoCurrentUser()
+    {
+        var notebook = SeedNotebook(SeedOwner());
+        var handler = new CreatePageCommandHandler(
+            new StubCurrentUserAccessor(null),
+            new StubNotebookRepository { notebook },
+            new StubPageRepository(),
+            new StubUnitOfWork(new UniqueConstraintViolationException("IX_pages_NotebookId_Slug"))
+        );
+
+        var result = await handler.Handle(new CreatePageCommand(notebook.Slug, "Nope", null), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(NotebookErrors.NotFound, result.Error);
+    }
+
     private static User SeedOwner() => User.Create("owner@example.com", "owner@example.com", "Owner", "hash");
 
     private static Notebook SeedNotebook(User owner)

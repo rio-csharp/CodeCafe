@@ -39,15 +39,18 @@ public sealed class ChangeNotebookSlugCommandHandler(
 
         notebook.ChangeSlug(newSlug);
 
-        try
+        // The slug is the only unique value on this aggregate, so the violation can only be a
+        // concurrent rename that took the slug after the check above. The caller picked it, so
+        // there is nothing to re-key.
+        var save = await SlugConflict.SaveAsync(
+            unitOfWork,
+            reKeyAsync: null,
+            NotebookErrors.SlugAlreadyTaken,
+            cancellationToken
+        );
+        if (save.Error is { } conflict)
         {
-            await unitOfWork.SaveChangesAsync(cancellationToken);
-        }
-        catch (UniqueConstraintViolationException)
-        {
-            // The slug is the only unique value on this aggregate, so the violation can only be
-            // a concurrent rename that took the slug after the check above.
-            return Result.Failure<NotebookDetailsDto>(NotebookErrors.SlugAlreadyTaken);
+            return Result.Failure<NotebookDetailsDto>(conflict);
         }
 
         return Result.Success(await NotebookDetailsMapping.ToDtoAsync(notebook, users, cancellationToken));

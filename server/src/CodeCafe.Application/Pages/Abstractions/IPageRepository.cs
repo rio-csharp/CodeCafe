@@ -11,8 +11,15 @@ public interface IPageRepository
     // Non-trashed pages of the notebook, ordered by SortKey; tree assembly happens in memory.
     Task<IReadOnlyList<Page>> ListByNotebookAsync(Guid notebookId, CancellationToken cancellationToken);
 
-    // Non-trashed siblings under one parent (null = notebook root), ordered by SortKey.
-    Task<IReadOnlyList<Page>> ListSiblingsAsync(Guid notebookId, Guid? parentId, CancellationToken cancellationToken);
+    // Trashed pages are invisible to normal queries; these two see past the filter.
+    Task<Page?> FindTrashedByIdAsync(Guid pageId, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<Page>> ListTrashedByNotebookAsync(Guid notebookId, CancellationToken cancellationToken);
+
+    void Remove(Page page);
+
+    // Non-trashed children of one parent (null = notebook root), ordered by SortKey.
+    Task<IReadOnlyList<Page>> ListChildrenAsync(Guid notebookId, Guid? parentId, CancellationToken cancellationToken);
 
     Task AddAsync(Page page, CancellationToken cancellationToken);
 

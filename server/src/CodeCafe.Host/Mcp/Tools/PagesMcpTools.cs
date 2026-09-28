@@ -4,6 +4,7 @@ using CodeCafe.Application.Pages.CreatePage;
 using CodeCafe.Application.Pages.DeletePage;
 using CodeCafe.Application.Pages.GetPage;
 using CodeCafe.Application.Pages.GetPageByPath;
+using CodeCafe.Application.Pages.ListFavoritePages;
 using CodeCafe.Application.Pages.MovePage;
 using CodeCafe.Application.Pages.RevokePageShare;
 using CodeCafe.Application.Pages.SetPageFavorite;
@@ -71,6 +72,14 @@ public sealed class PagesMcpTools
         Guid? afterPageId = null)
         => McpToolResults.From(await sender.Send(new MovePageCommand(pageId, parentPath, afterPageId), cancellationToken));
 
+    [McpServerTool(Name = "codecafe_list_favorite_pages", ReadOnly = true, Idempotent = true)]
+    [Description("List the pages the current user has marked as favorite, optionally limited to one notebook.")]
+    public static async Task<CallToolResult> ListFavoritePages(
+        ISender sender,
+        CancellationToken cancellationToken,
+        Guid? notebookId = null)
+        => McpToolResults.From(await sender.Send(new ListFavoritePagesQuery(notebookId), cancellationToken));
+
     [McpServerTool(Name = "codecafe_set_page_favorite", Idempotent = true)]
     [Description("Mark or unmark a page as favorite.")]
     public static async Task<CallToolResult> SetPageFavorite(
@@ -100,7 +109,7 @@ public sealed class PagesMcpTools
         => McpToolResults.From(await sender.Send(new RevokePageShareCommand(pageId, userId), cancellationToken));
 
     [McpServerTool(Name = "codecafe_delete_page", Destructive = true, Idempotent = true)]
-    [Description("Permanently delete a page. This cannot be undone; archive it instead if unsure.")]
+    [Description("Move a page and its subtree to the trash. It can be restored from there.")]
     public static async Task<CallToolResult> DeletePage(
         ISender sender,
         Guid pageId,

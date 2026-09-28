@@ -32,18 +32,15 @@ public sealed class GetPageByPathQueryHandler(
             return Result.Failure<PageDetailsDto>(PageErrors.NotFound);
         }
 
-        var ancestors = await PageHierarchy.LoadAncestorsAsync(page, pages, cancellationToken);
-        var error = PageAccess.CheckRead(notebook, page, ancestors, userId, query.AccessCode, passwordHasher);
-        if (error is not null)
-        {
-            return Result.Failure<PageDetailsDto>(error);
-        }
-
-        var isFavorite = userId is not null
-            && (await pages.FindFavoriteIdsAsync(userId.Value, [page.Id], cancellationToken)).Contains(page.Id);
-
-        return Result.Success(
-            await PageDetailsMapping.ToDtoAsync(page, PageHierarchy.PathOf(page, ancestors), isFavorite, users, cancellationToken)
+        return await PageReadProjection.ToDetailsAsync(
+            notebook,
+            page,
+            userId,
+            query.AccessCode,
+            pages,
+            users,
+            passwordHasher,
+            cancellationToken
         );
     }
 }

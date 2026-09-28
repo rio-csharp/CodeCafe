@@ -86,8 +86,12 @@ public static class PageAccess
         CancellationToken cancellationToken
     )
     {
-        var userId = currentUserAccessor.User?.Id;
-        var page = userId is not null ? await pages.FindByIdAsync(pageId, cancellationToken) : null;
+        if (currentUserAccessor.User?.Id is not { } userId)
+        {
+            return null;
+        }
+
+        var page = await pages.FindByIdAsync(pageId, cancellationToken);
         var notebook = page is not null ? await notebooks.FindByIdAsync(page.NotebookId, cancellationToken) : null;
         if (page is null || notebook is null)
         {
@@ -97,7 +101,7 @@ public static class PageAccess
         var ancestors = loadAncestors
             ? await PageHierarchy.LoadAncestorsAsync(page, pages, cancellationToken)
             : [];
-        return new PageAccessContext(notebook, page, ancestors, userId!.Value);
+        return new PageAccessContext(notebook, page, ancestors, userId);
     }
 
     public static Error? CheckRead(
@@ -109,7 +113,7 @@ public static class PageAccess
         IPasswordHasher passwordHasher
     )
     {
-        var notebookError = NotebookReadAccess.Check(notebook, userId, accessCode, passwordHasher);
+        var notebookError = NotebookAccess.CheckRead(notebook, userId, accessCode, passwordHasher);
         if (notebookError is null)
         {
             return null;
@@ -127,7 +131,7 @@ public static class PageAccess
     }
 
     // Page shares with the Editor role extend write access into the shared subtree.
-    public static bool CanWrite(Notebook notebook, Page? page, IReadOnlyList<Page> ancestors, Guid userId)
+    private static bool CanWrite(Notebook notebook, Page? page, IReadOnlyList<Page> ancestors, Guid userId)
         => notebook.OwnerId == userId
             || notebook.SharedRoleFor(userId) == CollaboratorRole.Editor
             || page?.SharedRoleFor(userId) == CollaboratorRole.Editor

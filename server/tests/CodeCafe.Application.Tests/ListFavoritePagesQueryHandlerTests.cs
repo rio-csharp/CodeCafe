@@ -1,3 +1,4 @@
+using CodeCafe.Application.Auth;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Pages.ListFavoritePages;
 using CodeCafe.Domain.Identity;
@@ -80,7 +81,7 @@ public sealed class ListFavoritePagesQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_AnonymousGetsEmpty()
+    public async Task Handle_AnonymousGetsUserNotFound()
     {
         var handler = new ListFavoritePagesQueryHandler(
             new StubCurrentUserAccessor(null),
@@ -90,8 +91,8 @@ public sealed class ListFavoritePagesQueryHandlerTests
 
         var result = await handler.Handle(new ListFavoritePagesQuery(), CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
-        Assert.Empty(result.Value!);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(AuthErrors.UserNotFound, result.Error);
     }
 
     private static User SeedOwner() => User.Create("owner@example.com", "owner@example.com", "Owner", "hash");

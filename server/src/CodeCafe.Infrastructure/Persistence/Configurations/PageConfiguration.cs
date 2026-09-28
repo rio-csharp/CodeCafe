@@ -19,9 +19,8 @@ public sealed class PageConfiguration : IEntityTypeConfiguration<Page>
 
         builder.HasQueryFilter(page => page.DeletedAtUtc == null);
 
-        // Trashed pages keep their slug reserved, mirroring notebooks, until the trash slice
-        // settles restore semantics.
-        builder.HasIndex(page => new { page.NotebookId, page.Slug }).IsUnique();
+        // Partial, mirroring notebooks: a trashed page stops reserving its slug.
+        builder.HasIndex(page => new { page.NotebookId, page.Slug }).IsUnique().HasFilter("\"DeletedAtUtc\" IS NULL");
 
         // Sibling listings order by SortKey; the chain pointers get no index because reads never walk them.
         builder.HasIndex(page => new { page.NotebookId, page.ParentId, page.SortKey });

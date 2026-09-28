@@ -31,7 +31,6 @@ public sealed class OpenApiContractTests(WebApplicationFactory<Program> factory)
         ("get", "/api/notebooks"),
         ("get", "/api/notebooks/{idOrSlug}"),
         ("get", "/api/notebooks/{idOrSlug}/tree"),
-        ("get", "/api/notebooks/{idOrSlug}/search"),
         ("get", "/api/notebooks/{idOrSlug}/export"),
 
         ("post", "/api/notebooks/{idOrSlug}/pages"),
@@ -61,6 +60,9 @@ public sealed class OpenApiContractTests(WebApplicationFactory<Program> factory)
         ("post", "/api/trash/{notebookId}/restore"),
         ("delete", "/api/trash/{notebookId}"),
         ("delete", "/api/trash"),
+        ("get", "/api/notebooks/{idOrSlug}/trash"),
+        ("post", "/api/trash/pages/{pageId}/restore"),
+        ("delete", "/api/trash/pages/{pageId}"),
 
         ("get", "/api/search"),
 

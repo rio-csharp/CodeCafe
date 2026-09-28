@@ -15,6 +15,11 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
             .Include(notebook => notebook.Shares)
             .FirstOrDefaultAsync(notebook => notebook.Id == notebookId, cancellationToken);
 
+    public async Task<IReadOnlyList<Notebook>> FindByIdsAsync(IReadOnlyCollection<Guid> notebookIds, CancellationToken cancellationToken)
+        => await dbContext.Notebooks
+            .Where(notebook => notebookIds.Contains(notebook.Id))
+            .ToListAsync(cancellationToken);
+
     public async Task<Notebook?> FindByIdOrSlugAsync(string idOrSlug, CancellationToken cancellationToken)
         => Guid.TryParse(idOrSlug, out var id)
             ? await FindByIdAsync(id, cancellationToken)
@@ -25,26 +30,19 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
                     cancellationToken
                 );
 
-    public Task<int> CountVisibleAsync(
-        Guid userId,
-        string? tag,
-        bool? isFavorite,
-        NotebookVisibility? visibility,
-        CancellationToken cancellationToken
-    ) => VisibleTo(userId, tag, isFavorite, visibility).CountAsync(cancellationToken);
+    public Task<int> CountVisibleAsync(Guid userId, NotebookFilter filter, CancellationToken cancellationToken)
+        => VisibleTo(userId, filter).CountAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Notebook>> ListVisibleAsync(
         Guid userId,
-        string? tag,
-        bool? isFavorite,
-        NotebookVisibility? visibility,
+        NotebookFilter filter,
         NotebookSort sort,
         int skip,
         int take,
         CancellationToken cancellationToken
     )
     {
-        var query = VisibleTo(userId, tag, isFavorite, visibility);
+        var query = VisibleTo(userId, filter);
 
         var ordered = sort switch
         {
@@ -58,7 +56,7 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
         return await ordered.Skip(skip).Take(take).ToListAsync(cancellationToken);
     }
 
-    private IQueryable<Notebook> VisibleTo(Guid userId, string? tag, bool? isFavorite, NotebookVisibility? visibility)
+    private IQueryable<Notebook> VisibleTo(Guid userId, NotebookFilter filter)
     {
         // A page share on any page of the notebook also surfaces the notebook itself.
         var query = dbContext.Notebooks.Where(
@@ -69,23 +67,34 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
                 )
         );
 
-        if (tag is not null)
+        if (filter.Tag is not null)
         {
-            query = query.Where(notebook => notebook.Tags.Contains(tag));
+            query = query.Where(notebook => notebook.Tags.Contains(filter.Tag));
         }
 
-        if (isFavorite is not null)
+        if (filter.IsFavorite is not null)
         {
             query = query.Where(notebook =>
                 dbContext.NotebookFavorites.Any(
                     favorite => favorite.NotebookId == notebook.Id && favorite.UserId == userId
-                ) == isFavorite.Value
+                ) == filter.IsFavorite.Value
             );
         }
 
-        if (visibility is not null)
+        if (filter.Visibility is not null)
         {
-            query = query.Where(notebook => notebook.Visibility == visibility.Value);
+            query = query.Where(notebook => notebook.Visibility == filter.Visibility.Value);
+        }
+
+        if (filter.Search is not null)
+        {
+            // A substring match stays off a sequential scan through the trigram indexes on these
+            // two columns; without them every listing would scan the table.
+            var pattern = $"%{filter.Search}%";
+            query = query.Where(notebook =>
+                EF.Functions.ILike(notebook.Title, pattern)
+                || (notebook.Description != null && EF.Functions.ILike(notebook.Description, pattern))
+            );
         }
 
         return query;

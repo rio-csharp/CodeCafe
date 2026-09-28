@@ -107,7 +107,7 @@ public sealed class PageRepositoryTests(PostgresFixture fixture)
         await repository.AddAsync(first, TestContext.Current.CancellationToken);
         await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var siblings = await repository.ListSiblingsAsync(notebook.Id, parent.Id, TestContext.Current.CancellationToken);
+        var siblings = await repository.ListChildrenAsync(notebook.Id, parent.Id, TestContext.Current.CancellationToken);
 
         Assert.Equal([first.Id, second.Id], siblings.Select(sibling => sibling.Id));
     }

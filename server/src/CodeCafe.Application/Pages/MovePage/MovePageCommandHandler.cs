@@ -45,7 +45,7 @@ public sealed class MovePageCommandHandler(
             return Result.Failure<PageDetailsDto>(PageErrors.CannotMoveIntoDescendant);
         }
 
-        var newSiblings = (await pages.ListSiblingsAsync(notebook.Id, newParent?.Id, cancellationToken))
+        var newSiblings = (await pages.ListChildrenAsync(notebook.Id, newParent?.Id, cancellationToken))
             .Where(sibling => sibling.Id != page.Id)
             .ToList();
 
@@ -59,7 +59,7 @@ public sealed class MovePageCommandHandler(
         }
 
         var insertIndex = after is null ? 0 : newSiblings.IndexOf(after) + 1;
-        var oldSiblings = await pages.ListSiblingsAsync(notebook.Id, page.ParentId, cancellationToken);
+        var oldSiblings = await pages.ListChildrenAsync(notebook.Id, page.ParentId, cancellationToken);
         PageChain.Move(page, notebook, newParent, ancestors, oldSiblings, newSiblings, insertIndex);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);

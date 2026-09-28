@@ -1,8 +1,8 @@
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
-using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Application.Pages.Shared;
 
-namespace CodeCafe.Application.Search.SearchAllPages;
+namespace CodeCafe.Application.Pages.SearchAllPages;
 
 public sealed class SearchAllPagesQueryHandler : IQueryHandler<SearchAllPagesQuery, Result<CursorPage<PageSearchHitDto>>>
 {

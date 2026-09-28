@@ -17,9 +17,6 @@ public sealed class CreateNotebookCommandHandler(
     IUnitOfWork unitOfWork
 ) : ICommandHandler<CreateNotebookCommand, Result<NotebookDetailsDto>>
 {
-    // Bounded retries: each attempt draws a fresh random suffix, so a couple of tries is plenty.
-    private const int MaxSaveAttempts = 3;
-
     public async Task<Result<NotebookDetailsDto>> Handle(CreateNotebookCommand command, CancellationToken cancellationToken)
     {
         var resolved = await CurrentUserResolver.RequireAsync(currentUserAccessor, users, cancellationToken);
@@ -43,32 +40,33 @@ public sealed class CreateNotebookCommandHandler(
         var notebook = Notebook.Create(user.Id, title, description, slug, command.Visibility);
         await notebooks.AddAsync(notebook, cancellationToken);
 
-        for (var attempt = 1; ; attempt++)
+        // An explicit slug is the caller's to fix; a generated one the user never picked, so only
+        // that case is worth re-keying.
+        var save = await SlugConflict.SaveAsync(
+            unitOfWork,
+            requestedSlug is null ? ct => ReKeyAsync(notebook, title, ct) : null,
+            NotebookErrors.SlugAlreadyTaken,
+            cancellationToken
+        );
+        if (save.Error is { } conflict)
         {
-            try
-            {
-                await unitOfWork.SaveChangesAsync(cancellationToken);
-                return Result.Success(ToDto(notebook));
-            }
-            catch (UniqueConstraintViolationException)
-            {
-                // The availability check raced with a concurrent create that took the slug. An
-                // explicit slug is the caller's to fix; a generated one the user never picked,
-                // so keep the same notebook and retry with a fresh candidate.
-                if (requestedSlug is not null || attempt == MaxSaveAttempts)
-                {
-                    return Result.Failure<NotebookDetailsDto>(NotebookErrors.SlugAlreadyTaken);
-                }
-
-                slug = await ResolveSlugAsync(null, title, notebooks, cancellationToken);
-                if (slug is null)
-                {
-                    return Result.Failure<NotebookDetailsDto>(NotebookErrors.SlugAlreadyTaken);
-                }
-
-                notebook.ChangeSlug(slug);
-            }
+            return Result.Failure<NotebookDetailsDto>(conflict);
         }
+
+        return Result.Success(ToDto(notebook));
+    }
+
+    // Keeps the same notebook and moves it to a fresh candidate; false means none is left.
+    private async Task<bool> ReKeyAsync(Notebook notebook, string title, CancellationToken cancellationToken)
+    {
+        var slug = await ResolveSlugAsync(null, title, notebooks, cancellationToken);
+        if (slug is null)
+        {
+            return false;
+        }
+
+        notebook.ChangeSlug(slug);
+        return true;
     }
 
     // An explicit slug is final: a collision is the caller's to fix, not something to paper over

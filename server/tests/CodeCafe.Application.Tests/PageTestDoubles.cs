@@ -21,12 +21,28 @@ internal sealed class StubPageRepository : List<Page>, IPageRepository
             Live.Where(page => page.NotebookId == notebookId).OrderBy(page => page.SortKey, StringComparer.Ordinal).ToList()
         );
 
-    public Task<IReadOnlyList<Page>> ListSiblingsAsync(Guid notebookId, Guid? parentId, CancellationToken cancellationToken)
+    public Task<IReadOnlyList<Page>> ListChildrenAsync(Guid notebookId, Guid? parentId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<Page>>(
             Live.Where(page => page.NotebookId == notebookId && page.ParentId == parentId)
                 .OrderBy(page => page.SortKey, StringComparer.Ordinal)
                 .ToList()
         );
+
+    public Task<Page?> FindTrashedByIdAsync(Guid pageId, CancellationToken cancellationToken)
+        => Task.FromResult(this.FirstOrDefault(page => page.Id == pageId && page.DeletedAtUtc != null));
+
+    public Task<IReadOnlyList<Page>> ListTrashedByNotebookAsync(Guid notebookId, CancellationToken cancellationToken)
+        => Task.FromResult<IReadOnlyList<Page>>(
+            this.Where(page => page.NotebookId == notebookId && page.DeletedAtUtc != null).ToList()
+        );
+
+    // Hides List<Page>.Remove to satisfy the repository interface; the cast calls the base.
+    // Mirrors the database cascade: favorites disappear with the page row.
+    public new void Remove(Page page)
+    {
+        ((List<Page>)this).Remove(page);
+        Favorites.RemoveWhere(favorite => favorite.PageId == page.Id);
+    }
 
     public Task AddAsync(Page page, CancellationToken cancellationToken)
     {

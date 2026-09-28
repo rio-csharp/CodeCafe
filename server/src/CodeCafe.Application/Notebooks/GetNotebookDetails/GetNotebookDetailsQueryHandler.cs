@@ -24,7 +24,7 @@ public sealed class GetNotebookDetailsQueryHandler(
             return Result.Failure<NotebookDetailsDto>(NotebookErrors.NotFound);
         }
 
-        var denied = NotebookReadAccess.Check(
+        var denied = NotebookAccess.CheckRead(
             notebook,
             currentUserAccessor.User?.Id,
             query.AccessCode,

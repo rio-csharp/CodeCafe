@@ -21,8 +21,8 @@ public sealed class PagesController(ISender sender) : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet("pages/{pageId:guid}")]
-    public Task<Result<PageDetailsDto>> Details(Guid pageId, CancellationToken cancellationToken)
-        => sender.Send(new GetPageQuery(pageId), cancellationToken);
+    public Task<Result<PageDetailsDto>> Details(Guid pageId, string? accessCode, CancellationToken cancellationToken)
+        => sender.Send(new GetPageQuery(pageId, accessCode), cancellationToken);
 
     [HttpPatch("pages/{pageId:guid}")]
     public Task<Result<PageDetailsDto>> Update(Guid pageId, UpdatePageRequest request, CancellationToken cancellationToken)

@@ -23,7 +23,21 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
             .OrderBy(page => page.SortKey)
             .ToListAsync(cancellationToken);
 
-    public async Task<IReadOnlyList<Page>> ListSiblingsAsync(Guid notebookId, Guid? parentId, CancellationToken cancellationToken)
+    public async Task<Page?> FindTrashedByIdAsync(Guid pageId, CancellationToken cancellationToken)
+        => await dbContext.Pages
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(page => page.Id == pageId && page.DeletedAtUtc != null, cancellationToken);
+
+    public async Task<IReadOnlyList<Page>> ListTrashedByNotebookAsync(Guid notebookId, CancellationToken cancellationToken)
+        => await dbContext.Pages
+            .IgnoreQueryFilters()
+            .Where(page => page.NotebookId == notebookId && page.DeletedAtUtc != null)
+            .ToListAsync(cancellationToken);
+
+    // Favorites and shares cascade with the page row (PageFavoriteConfiguration, PageConfiguration).
+    public void Remove(Page page) => dbContext.Pages.Remove(page);
+
+    public async Task<IReadOnlyList<Page>> ListChildrenAsync(Guid notebookId, Guid? parentId, CancellationToken cancellationToken)
         => await dbContext.Pages
             .Where(page => page.NotebookId == notebookId && page.ParentId == parentId)
             .OrderBy(page => page.SortKey)

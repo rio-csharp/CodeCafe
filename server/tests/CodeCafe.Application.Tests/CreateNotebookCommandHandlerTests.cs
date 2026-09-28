@@ -140,6 +140,28 @@ public sealed class CreateNotebookCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_GivesUp_WhenEveryAttemptLosesTheSlugRace()
+    {
+        var owner = SeedOwner();
+        var notebooks = new StubNotebookRepository();
+        // Every attempt loses the race, so the third one hits the attempt cap instead of drawing again.
+        // 3 mirrors CreateNotebookCommandHandler.MaxSaveAttempts.
+        var unitOfWork = new StubUnitOfWork(new UniqueConstraintViolationException("IX_notebooks_Slug"))
+        {
+            FailuresRemaining = 3
+        };
+        var handler = CreateHandler(owner, notebooks, unitOfWork);
+
+        var result = await handler.Handle(Command, CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(NotebookErrors.SlugAlreadyTaken, result.Error);
+        Assert.Equal(3, unitOfWork.SaveChangesCallCount);
+        // Kept as a single notebook: retries re-key it rather than creating one per attempt.
+        Assert.Single(notebooks);
+    }
+
+    [Fact]
     public async Task Handle_UsesASuffixedVariant_WhenGeneratedSlugIsTaken()
     {
         var owner = SeedOwner();

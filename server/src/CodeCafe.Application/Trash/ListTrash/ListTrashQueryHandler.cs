@@ -1,3 +1,4 @@
+using CodeCafe.Application.Auth;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
@@ -21,7 +22,7 @@ public sealed class ListTrashQueryHandler(
         var userId = currentUserAccessor.User?.Id;
         if (userId is null)
         {
-            return Result.Success(new PagedResult<TrashEntryDto>([], 1, DefaultPageSize, 0));
+            return Result.Failure<PagedResult<TrashEntryDto>>(AuthErrors.UserNotFound);
         }
 
         var page = Math.Max(query.Page ?? 1, 1);

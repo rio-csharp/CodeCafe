@@ -25,7 +25,7 @@ public sealed class NotebookMcpResources
     [Description("All notebooks visible to the current user.")]
     public static async Task<ReadResourceResult> ListNotebooks(ISender sender, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new ListNotebooksQuery(null, null, null, null, null, 100), cancellationToken);
+        var result = await sender.Send(new ListNotebooksQuery(null, null, null, null, null, null, 100), cancellationToken);
         return ToResourceResult(result, "codecafe://notebooks");
     }
 

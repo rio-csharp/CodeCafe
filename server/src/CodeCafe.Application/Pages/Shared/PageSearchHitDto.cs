@@ -1,4 +1,4 @@
-namespace CodeCafe.Application.Notebooks.Shared;
+namespace CodeCafe.Application.Pages.Shared;
 
 public sealed record PageSearchHitDto(
     Guid PageId,

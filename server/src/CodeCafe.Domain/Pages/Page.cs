@@ -142,5 +142,7 @@ public sealed class Page : Entity
 
     public void SoftDelete(DateTimeOffset deletedAtUtc) => DeletedAtUtc = deletedAtUtc;
 
+    public void Restore() => DeletedAtUtc = null;
+
     private void Touch() => UpdatedAtUtc = DateTimeOffset.UtcNow;
 }

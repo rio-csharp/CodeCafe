@@ -1,3 +1,4 @@
+using CodeCafe.Application.Auth;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Common.Messaging;
@@ -21,21 +22,18 @@ public sealed class ListFavoritePagesQueryHandler(
         var userId = currentUserAccessor.User?.Id;
         if (userId is null)
         {
-            // Favorites are per-user; an anonymous caller simply has none.
-            return Result.Success<IReadOnlyList<FavoritePageDto>>([]);
+            return Result.Failure<IReadOnlyList<FavoritePageDto>>(AuthErrors.UserNotFound);
         }
 
         var favorites = await pages.ListFavoritesAsync(userId.Value, query.NotebookId, cancellationToken);
 
-        var titlesByNotebook = new Dictionary<Guid, string>();
-        foreach (var notebookId in favorites.Select(page => page.NotebookId).Distinct())
-        {
-            var notebook = await notebooks.FindByIdAsync(notebookId, cancellationToken);
-            if (notebook is not null)
-            {
-                titlesByNotebook[notebookId] = notebook.Title;
-            }
-        }
+        // One IN query, not one lookup per notebook; trashed notebooks are filtered out,
+        // which is also what hides their pages' favorites below.
+        var titlesByNotebook = (await notebooks.FindByIdsAsync(
+                favorites.Select(page => page.NotebookId).Distinct().ToList(),
+                cancellationToken
+            ))
+            .ToDictionary(notebook => notebook.Id, notebook => notebook.Title);
 
         var dtos = favorites
             .Where(page => titlesByNotebook.ContainsKey(page.NotebookId))

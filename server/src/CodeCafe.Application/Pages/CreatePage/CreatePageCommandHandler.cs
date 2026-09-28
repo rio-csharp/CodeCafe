@@ -2,8 +2,8 @@ using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
-using CodeCafe.Application.Notebooks;
 using CodeCafe.Application.Notebooks.Abstractions;
+using CodeCafe.Application.Notebooks.Shared;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Domain.Pages;
@@ -17,19 +17,15 @@ public sealed class CreatePageCommandHandler(
     IUnitOfWork unitOfWork
 ) : ICommandHandler<CreatePageCommand, Result<PageDetailsDto>>
 {
-    // Bounded retries: each attempt draws a fresh random suffix, so a couple of tries is plenty.
-    private const int MaxSaveAttempts = 3;
-
     public async Task<Result<PageDetailsDto>> Handle(CreatePageCommand command, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        var notebook = userId is not null
-            ? await notebooks.FindByIdOrSlugAsync(command.NotebookIdOrSlug, cancellationToken)
-            : null;
-        if (notebook is null || !PageAccess.CanWrite(notebook, page: null, ancestors: [], userId!.Value))
+        var context = await NotebookAccess.RequireWriterAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
+        if (context.Error is { } error)
         {
-            return Result.Failure<PageDetailsDto>(NotebookErrors.NotFound);
+            return Result.Failure<PageDetailsDto>(error);
         }
+
+        var notebook = context.Value!.Notebook;
 
         var parent = command.ParentPath is not null
             ? await PageHierarchy.ResolveByPathAsync(notebook.Id, command.ParentPath, pages, cancellationToken)
@@ -40,7 +36,7 @@ public sealed class CreatePageCommandHandler(
         }
 
         // New pages append after the last sibling, matching how tree UIs grow.
-        var siblings = await pages.ListSiblingsAsync(notebook.Id, parent?.Id, cancellationToken);
+        var siblings = await pages.ListChildrenAsync(notebook.Id, parent?.Id, cancellationToken);
         var last = siblings.Count > 0 ? siblings[^1] : null;
 
         var title = command.Title.Trim();
@@ -54,42 +50,16 @@ public sealed class CreatePageCommandHandler(
         PageChain.Link(page, notebook, parent, last);
         await pages.AddAsync(page, cancellationToken);
 
-        return await SaveWithSlugRetryAsync(page, parent, notebook.Id, title, cancellationToken);
-    }
-
-    // Persist, recovering from slug races: each retry draws a fresh candidate on the same page.
-    private async Task<Result<PageDetailsDto>> SaveWithSlugRetryAsync(
-        Page page,
-        Page? parent,
-        Guid notebookId,
-        string title,
-        CancellationToken cancellationToken
-    )
-    {
-        for (var attempt = 1; ; attempt++)
+        // The caller never picked the slug, so losing the race is worth re-keying rather than failing.
+        var save = await SlugConflict.SaveAsync(
+            unitOfWork,
+            ct => ReKeyAsync(page, notebook.Id, title, ct),
+            PageErrors.SlugAlreadyTaken,
+            cancellationToken
+        );
+        if (save.Error is { } conflict)
         {
-            try
-            {
-                await unitOfWork.SaveChangesAsync(cancellationToken);
-                break;
-            }
-            catch (UniqueConstraintViolationException)
-            {
-                // The slug check raced with a concurrent create that took the slug; the caller
-                // never picked it, so retry with a fresh candidate on the same page.
-                if (attempt == MaxSaveAttempts)
-                {
-                    return Result.Failure<PageDetailsDto>(PageErrors.SlugAlreadyTaken);
-                }
-
-                var slug = await FindAvailableSlugAsync(notebookId, title, pages, cancellationToken);
-                if (slug is null)
-                {
-                    return Result.Failure<PageDetailsDto>(PageErrors.SlugAlreadyTaken);
-                }
-
-                page.ChangeSlug(slug);
-            }
+            return Result.Failure<PageDetailsDto>(conflict);
         }
 
         // Assemble the DTO once the save has stuck, not on every attempt.
@@ -99,6 +69,19 @@ public sealed class CreatePageCommandHandler(
         return Result.Success(
             PageDetailsMapping.ToDto(page, PageHierarchy.PathOf(page, ancestors), isFavorite: false, shareUserNames: new Dictionary<Guid, string>())
         );
+    }
+
+    // Keeps the same page and moves it to a fresh candidate; false means none is left.
+    private async Task<bool> ReKeyAsync(Page page, Guid notebookId, string title, CancellationToken cancellationToken)
+    {
+        var slug = await FindAvailableSlugAsync(notebookId, title, pages, cancellationToken);
+        if (slug is null)
+        {
+            return false;
+        }
+
+        page.ChangeSlug(slug);
+        return true;
     }
 
     private static async Task<string?> FindAvailableSlugAsync(Guid notebookId, string title, IPageRepository pages, CancellationToken cancellationToken)

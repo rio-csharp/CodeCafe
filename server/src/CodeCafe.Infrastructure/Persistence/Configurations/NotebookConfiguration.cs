@@ -19,7 +19,14 @@ public sealed class NotebookConfiguration : IEntityTypeConfiguration<Notebook>
 
         builder.Property(notebook => notebook.Slug).HasMaxLength(Notebook.MaxSlugLength).IsRequired();
 
-        builder.HasIndex(notebook => notebook.Slug).IsUnique();
+        // Partial so a trashed notebook stops reserving its slug. A full index would keep the row
+        // reserved while the availability check (which honours the soft-delete filter) reports the
+        // slug as free, so a create could never recover from the conflict.
+        builder.HasIndex(notebook => notebook.Slug).IsUnique().HasFilter("\"DeletedAtUtc\" IS NULL");
+
+        // Search matches with ILIKE '%q%', which only stays index-backed through trigrams.
+        builder.HasIndex(notebook => notebook.Title).HasMethod("gin").HasOperators("gin_trgm_ops");
+        builder.HasIndex(notebook => notebook.Description).HasMethod("gin").HasOperators("gin_trgm_ops");
 
         builder.Property(notebook => notebook.Visibility).HasConversion<string>().HasMaxLength(16);
 

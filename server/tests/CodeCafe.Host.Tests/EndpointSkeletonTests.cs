@@ -14,7 +14,6 @@ public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory
     // GET /api/notebooks/{idOrSlug} and the page reads are implemented now, so they no longer
     // answer 501 here; their mapping is covered by OpenApiContractTests instead.
     [Theory]
-    [InlineData("GET", "/api/notebooks/my-first-notes/search?q=test")]
     [InlineData("GET", "/api/notebooks/my-first-notes/export")]
     public async Task Contract_Route_Is_Mapped(string method, string path)
     {
@@ -64,6 +63,9 @@ public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory
     [InlineData("POST", "/api/trash/00000000-0000-0000-0000-000000000001/restore")]
     [InlineData("DELETE", "/api/trash/00000000-0000-0000-0000-000000000001")]
     [InlineData("DELETE", "/api/trash")]
+    [InlineData("GET", "/api/notebooks/my-first-notes/trash")]
+    [InlineData("POST", "/api/trash/pages/00000000-0000-0000-0000-000000000001/restore")]
+    [InlineData("DELETE", "/api/trash/pages/00000000-0000-0000-0000-000000000001")]
     [InlineData("GET", "/api/search?q=test")]
     [InlineData("POST", "/api/notebooks/my-first-notes/ai/chat")]
     [InlineData("GET", "/api/notebooks/slugs/my-slug")]

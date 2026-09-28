@@ -9,21 +9,15 @@ public interface INotebookRepository
 
     Task<Notebook?> FindByIdAsync(Guid notebookId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<Notebook>> FindByIdsAsync(IReadOnlyCollection<Guid> notebookIds, CancellationToken cancellationToken);
+
     Task<Notebook?> FindByIdOrSlugAsync(string idOrSlug, CancellationToken cancellationToken);
 
-    Task<int> CountVisibleAsync(
-        Guid userId,
-        string? tag,
-        bool? isFavorite,
-        NotebookVisibility? visibility,
-        CancellationToken cancellationToken
-    );
+    Task<int> CountVisibleAsync(Guid userId, NotebookFilter filter, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Notebook>> ListVisibleAsync(
         Guid userId,
-        string? tag,
-        bool? isFavorite,
-        NotebookVisibility? visibility,
+        NotebookFilter filter,
         NotebookSort sort,
         int skip,
         int take,

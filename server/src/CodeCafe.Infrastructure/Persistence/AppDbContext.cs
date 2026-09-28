@@ -65,5 +65,9 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
-        => modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+    {
+        // Backs the trigram indexes that keep notebook search a substring match instead of a scan.
+        modelBuilder.HasPostgresExtension("pg_trgm");
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+    }
 }
