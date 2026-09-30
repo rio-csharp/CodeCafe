@@ -36,4 +36,10 @@ public static class NotebookErrors
         "The owner already has full access.",
         ErrorKind.Validation
     );
+
+    public static readonly Error InvalidImport = new(
+        "invalid_notebook_import",
+        "The notebook import payload is invalid.",
+        ErrorKind.Validation
+    );
 }

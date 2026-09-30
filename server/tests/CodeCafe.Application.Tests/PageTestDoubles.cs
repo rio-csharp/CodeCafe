@@ -1,12 +1,19 @@
 using CodeCafe.Application.Pages.Abstractions;
+using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Pages;
 
 namespace CodeCafe.Application.Tests;
 
 // Mirrors the EF query filter: trashed pages are invisible to every read path.
-internal sealed class StubPageRepository : List<Page>, IPageRepository
+// The optional notebook repository backs SearchAsync's visibility scoping; tests that never
+// search can leave it null.
+internal sealed class StubPageRepository(StubNotebookRepository? notebooks = null) : List<Page>, IPageRepository
 {
     public HashSet<(Guid PageId, Guid UserId)> Favorites { get; } = [];
+
+    // Blocks the search matches against; populated directly, mirroring StubBlockRepository data.
+    public List<Block> Blocks { get; } = [];
 
     private IEnumerable<Page> Live => this.Where(page => page.DeletedAtUtc == null);
 
@@ -61,6 +68,61 @@ internal sealed class StubPageRepository : List<Page>, IPageRepository
             .GroupBy(page => page.NotebookId)
             .ToDictionary(group => group.Key, group => group.Count())
     );
+
+    public Task<IReadOnlyList<PageSearchMatch>> SearchAsync(
+        Guid userId,
+        string query,
+        DateTimeOffset? cursorUpdatedAtUtc,
+        Guid? cursorId,
+        int pageSize,
+        CancellationToken cancellationToken
+    )
+    {
+        if (notebooks is null)
+        {
+            throw new InvalidOperationException(
+                "SearchAsync needs the stub notebook repository to scope visibility."
+            );
+        }
+
+        // Mirrors the EF implementation: owned + notebook-share arms only, ordinal-ignore-case
+        // substring matching standing in for ILIKE, first matching block ordered by SortKey.
+        var notebookById = notebooks.NotebooksVisibleTo(userId).ToDictionary(notebook => notebook.Id);
+
+        bool Matches(Block block, Page page)
+            => block.PageId == page.Id && block.PlainText.Contains(query, StringComparison.OrdinalIgnoreCase);
+
+        IEnumerable<PageSearchMatch> matches = Live
+            .Where(page => notebookById.ContainsKey(page.NotebookId))
+            .Where(page =>
+                page.Title.Contains(query, StringComparison.OrdinalIgnoreCase)
+                || Blocks.Any(block => Matches(block, page))
+            )
+            .Select(page => new PageSearchMatch(
+                page,
+                notebookById[page.NotebookId].Title,
+                Blocks.Where(block => Matches(block, page))
+                    .OrderBy(block => block.SortKey, StringComparer.Ordinal)
+                    .Select(block => (string?)block.PlainText)
+                    .FirstOrDefault()
+            ));
+
+        if (cursorUpdatedAtUtc is { } updatedAtUtc && cursorId is { } id)
+        {
+            matches = matches.Where(match =>
+                match.Page.UpdatedAtUtc < updatedAtUtc
+                || (match.Page.UpdatedAtUtc == updatedAtUtc && match.Page.Id.CompareTo(id) < 0)
+            );
+        }
+
+        return Task.FromResult<IReadOnlyList<PageSearchMatch>>(
+            matches
+                .OrderByDescending(match => match.Page.UpdatedAtUtc)
+                .ThenByDescending(match => match.Page.Id)
+                .Take(pageSize)
+                .ToList()
+        );
+    }
 
     public Task SetFavoriteAsync(Guid pageId, Guid userId, bool isFavorite, CancellationToken cancellationToken)
     {

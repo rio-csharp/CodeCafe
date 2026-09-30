@@ -48,6 +48,10 @@ public sealed class Page : Entity
 
     public Guid? NextSiblingId { get; private set; }
 
+    // Head of the page's top-level block chain; null for a page without blocks. Plain id,
+    // mirroring the page chains.
+    public Guid? FirstBlockId { get; private set; }
+
     public bool IsArchived { get; private set; }
 
     public IReadOnlyCollection<PageShare> Shares => _shares.AsReadOnly();
@@ -110,6 +114,10 @@ public sealed class Page : Entity
     // Pointer bookkeeping only: re-heading the child chain must not mark this page as updated.
     public void SetFirstChild(Guid? firstChildId) => FirstChildId = firstChildId;
 
+    // Pointer bookkeeping only: re-heading the block chain must not mark this page as updated.
+    // Internal because BlockChain is the single writer of the block chains.
+    internal void SetFirstBlock(Guid? firstBlockId) => FirstBlockId = firstBlockId;
+
     // Rebalance bookkeeping only: re-keying a level must not mark untouched pages as updated.
     public void Rekey(string sortKey)
     {
@@ -144,5 +152,7 @@ public sealed class Page : Entity
 
     public void Restore() => DeletedAtUtc = null;
 
-    private void Touch() => UpdatedAtUtc = DateTimeOffset.UtcNow;
+    // Public so block handlers can mark the page as updated: blocks live inside the page's
+    // consistency boundary, and a block mutation is page activity.
+    public void Touch() => UpdatedAtUtc = DateTimeOffset.UtcNow;
 }

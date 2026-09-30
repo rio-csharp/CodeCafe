@@ -111,9 +111,9 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
     [HttpGet("notebooks/{idOrSlug}/export")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/markdown")]
     [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
-    public async Task<IResult> Export(string idOrSlug, CancellationToken cancellationToken)
+    public async Task<IResult> Export(string idOrSlug, string? accessCode, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new ExportNotebookQuery(idOrSlug), cancellationToken);
+        var result = await sender.Send(new ExportNotebookQuery(idOrSlug, accessCode), cancellationToken);
         // Results.File handles Content-Disposition encoding safely.
         return result.ToHttpResult(export => Results.File(
             Encoding.UTF8.GetBytes(export.Markdown),

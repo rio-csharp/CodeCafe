@@ -37,7 +37,7 @@ public static class PageDetailsMapping
                     share.Role
                 ))
                 .ToList(),
-            // Blocks land with the blocks slice; pages report empty content until then.
+            // The read projection fills blocks after the page/share DTO is mapped.
             Blocks: [],
             page.CreatedAtUtc,
             page.UpdatedAtUtc

@@ -1,3 +1,4 @@
+using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;
 using Microsoft.EntityFrameworkCore;
@@ -22,6 +23,9 @@ public sealed class PageConfiguration : IEntityTypeConfiguration<Page>
         // Partial, mirroring notebooks: a trashed page stops reserving its slug.
         builder.HasIndex(page => new { page.NotebookId, page.Slug }).IsUnique().HasFilter("\"DeletedAtUtc\" IS NULL");
 
+        // Search matches with ILIKE '%q%', which only stays index-backed through trigrams.
+        builder.HasIndex(page => page.Title).HasMethod("gin").HasOperators("gin_trgm_ops");
+
         // Sibling listings order by SortKey; the chain pointers get no index because reads never walk them.
         builder.HasIndex(page => new { page.NotebookId, page.ParentId, page.SortKey });
 
@@ -36,5 +40,15 @@ public sealed class PageConfiguration : IEntityTypeConfiguration<Page>
             .WithOne()
             .HasForeignKey(share => share.PageId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // The page-chain pointers (ParentId/FirstChildId/NextSiblingId) deliberately stay plain
+        // ids for soft-delete reasons, but the block chain hard-deletes, so its head pointer gets
+        // a real FK: RESTRICT, because a dangling head must fail loudly — blocks are unlinked
+        // from the chain before deletion, never left for cascade to orphan.
+        builder
+            .HasOne<Block>()
+            .WithMany()
+            .HasForeignKey(page => page.FirstBlockId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

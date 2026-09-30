@@ -1,3 +1,4 @@
+using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Domain.Pages;
 
 namespace CodeCafe.Application.Pages.Abstractions;
@@ -37,6 +38,17 @@ public interface IPageRepository
     Task<IReadOnlySet<Guid>> FindFavoriteIdsAsync(
         Guid userId,
         IReadOnlyCollection<Guid> pageIds,
+        CancellationToken cancellationToken
+    );
+
+    // Keyset-paginated full-text search over title and block PlainText, scoped to pages in
+    // notebooks the user owns or collaborates on, ordered by UpdatedAtUtc desc with Id tiebreak.
+    Task<IReadOnlyList<PageSearchMatch>> SearchAsync(
+        Guid userId,
+        string query,
+        DateTimeOffset? cursorUpdatedAtUtc,
+        Guid? cursorId,
+        int pageSize,
         CancellationToken cancellationToken
     );
 

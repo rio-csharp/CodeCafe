@@ -46,4 +46,12 @@ public static class PageErrors
         "The notebook owner already has full access.",
         ErrorKind.Validation
     );
+
+    // A cursor the handler cannot decode is a caller bug: reject it instead of silently
+    // restarting the feed from the top.
+    public static readonly Error InvalidCursor = new(
+        "invalid_cursor",
+        "The cursor is malformed.",
+        ErrorKind.Validation
+    );
 }

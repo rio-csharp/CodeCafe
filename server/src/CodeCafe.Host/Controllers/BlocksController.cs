@@ -17,11 +17,11 @@ public sealed class BlocksController(ISender sender) : ControllerBase
 {
     [HttpPost("pages/{pageId:guid}/blocks")]
     public Task<Result<IReadOnlyList<BlockDto>>> Insert(Guid pageId, InsertBlocksRequest request, CancellationToken cancellationToken)
-        => sender.Send(new InsertBlocksCommand(pageId, request.AfterBlockId, request.Format, request.Blocks), cancellationToken);
+        => sender.Send(new InsertBlocksCommand(pageId, request.AfterBlockId, request.Blocks), cancellationToken);
 
     [HttpPost("pages/{pageId:guid}/blocks/batch")]
     public Task<Result<IReadOnlyList<BlockOpResultDto>>> ApplyBatch(Guid pageId, ApplyBlockOpsRequest request, CancellationToken cancellationToken)
-        => sender.Send(new ApplyBlockOpsCommand(pageId, request.Ops), cancellationToken);
+        => sender.Send(new ApplyBlockOpsCommand(pageId, request.Ops, request.DryRun), cancellationToken);
 
     [HttpPatch("pages/{pageId:guid}/blocks/{blockId:guid}")]
     public Task<Result<BlockDto>> Update(Guid pageId, Guid blockId, UpdateBlockRequest request, CancellationToken cancellationToken)

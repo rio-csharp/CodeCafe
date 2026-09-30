@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Pages.CreatePage;
 using CodeCafe.Application.Pages.DeletePage;
 using CodeCafe.Application.Pages.GetPage;
@@ -47,9 +46,6 @@ public sealed class PagesMcpTools
         string title,
         CancellationToken cancellationToken,
         string? parentPath = null)
-        // Blocks land with the blocks slice; a page starts empty until then.
-        // IReadOnlyList<BlockInput>? blocks = null,
-        // BlockContentFormat? format = null)
         => McpToolResults.From(await sender.Send(new CreatePageCommand(notebookIdOrSlug, title, parentPath), cancellationToken));
 
     [McpServerTool(Name = "codecafe_update_page", Idempotent = true)]

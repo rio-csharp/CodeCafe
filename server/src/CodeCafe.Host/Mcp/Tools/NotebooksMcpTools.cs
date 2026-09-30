@@ -61,8 +61,9 @@ public sealed class NotebooksMcpTools
     public static async Task<CallToolResult> ExportNotebook(
         ISender sender,
         string idOrSlug,
-        CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new ExportNotebookQuery(idOrSlug), cancellationToken));
+        CancellationToken cancellationToken,
+        string? accessCode = null)
+        => McpToolResults.From(await sender.Send(new ExportNotebookQuery(idOrSlug, accessCode), cancellationToken));
 
     [McpServerTool(Name = "codecafe_create_notebook")]
     [Description("Create a new notebook.")]

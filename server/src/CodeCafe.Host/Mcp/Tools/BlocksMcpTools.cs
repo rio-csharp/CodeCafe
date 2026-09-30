@@ -20,20 +20,20 @@ public sealed class BlocksMcpTools
     public static async Task<CallToolResult> InsertBlocks(
         ISender sender,
         Guid pageId,
-        BlockContentFormat format,
         IReadOnlyList<BlockInput> blocks,
         CancellationToken cancellationToken,
         Guid? afterBlockId = null)
-        => McpToolResults.From(await sender.Send(new InsertBlocksCommand(pageId, afterBlockId, format, blocks), cancellationToken));
+        => McpToolResults.From(await sender.Send(new InsertBlocksCommand(pageId, afterBlockId, blocks), cancellationToken));
 
     [McpServerTool(Name = "codecafe_apply_block_ops")]
-    [Description("Apply a batch of block operations (insert/update/delete/move) to a page in one call.")]
+    [Description("Apply a batch of block operations (insert/update/delete/move) to a page in one call; set dryRun to validate and preview the normalized ops without persisting.")]
     public static async Task<CallToolResult> ApplyBlockOps(
         ISender sender,
         Guid pageId,
         IReadOnlyList<BlockOp> ops,
-        CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new ApplyBlockOpsCommand(pageId, ops), cancellationToken));
+        CancellationToken cancellationToken,
+        bool dryRun = false)
+        => McpToolResults.From(await sender.Send(new ApplyBlockOpsCommand(pageId, ops, dryRun), cancellationToken));
 
     [McpServerTool(Name = "codecafe_update_block")]
     [Description("Replace the content of one block. Requires the block's current revision for optimistic concurrency.")]

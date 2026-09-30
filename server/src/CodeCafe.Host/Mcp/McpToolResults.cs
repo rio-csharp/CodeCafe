@@ -43,6 +43,10 @@ internal static class McpToolResults
     private static CallToolResult Failure(Error error) => new()
     {
         IsError = true,
-        Content = [new TextContentBlock { Text = $"{error.Kind}: {error.Code}: {error.Message}" }]
+        Content = [new TextContentBlock { Text = $"{error.Kind}: {error.Code}: {error.Message}" }],
+        // The text block stays for humans; structured content lets agents branch on the
+        // machine-readable code instead of parsing it back out of the text.
+        StructuredContent = JsonSerializer.SerializeToElement(
+            new { kind = error.Kind, code = error.Code, message = error.Message }, JsonOptions)
     };
 }

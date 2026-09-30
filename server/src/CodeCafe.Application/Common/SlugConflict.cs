@@ -1,4 +1,5 @@
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Common.Exceptions;
 
 namespace CodeCafe.Application.Common;
 

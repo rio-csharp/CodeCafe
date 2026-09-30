@@ -1,4 +1,5 @@
 using CodeCafe.Application.Pages.Abstractions;
+using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Domain.Pages;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,6 +34,62 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
             .IgnoreQueryFilters()
             .Where(page => page.NotebookId == notebookId && page.DeletedAtUtc != null)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<PageSearchMatch>> SearchAsync(
+        Guid userId,
+        string query,
+        DateTimeOffset? cursorUpdatedAtUtc,
+        Guid? cursorId,
+        int pageSize,
+        CancellationToken cancellationToken
+    )
+    {
+        var pattern = $"%{EscapeLikePattern(query)}%";
+
+        // Visibility mirrors the owned + notebook-share arms of NotebookRepository.VisibleTo; the
+        // twin predicates stay in sync by hand because sharing an EF expression tree across the
+        // two repositories is not worth the coupling. Page-share subtrees are a deliberate v1
+        // exclusion. The global query filters keep trashed pages and notebooks out.
+        var matches =
+            from page in dbContext.Pages
+            join notebook in dbContext.Notebooks on page.NotebookId equals notebook.Id
+            where notebook.OwnerId == userId || notebook.Shares.Any(share => share.UserId == userId)
+            where EF.Functions.ILike(page.Title, pattern, "\\")
+                || dbContext.Blocks.Any(
+                    block => block.PageId == page.Id && EF.Functions.ILike(block.PlainText, pattern, "\\")
+                )
+            select new { page, notebook };
+
+        if (cursorUpdatedAtUtc is { } updatedAtUtc && cursorId is { } id)
+        {
+            // Keyset on (UpdatedAtUtc desc, Id desc): PostgreSQL uuid supports plain comparison,
+            // so the tiebreak translates to SQL.
+            matches = matches.Where(match =>
+                match.page.UpdatedAtUtc < updatedAtUtc
+                || (match.page.UpdatedAtUtc == updatedAtUtc && match.page.Id.CompareTo(id) < 0)
+            );
+        }
+
+        return await matches
+            .OrderByDescending(match => match.page.UpdatedAtUtc)
+            .ThenByDescending(match => match.page.Id)
+            .Take(pageSize)
+            .Select(match => new PageSearchMatch(
+                match.page,
+                match.notebook.Title,
+                dbContext.Blocks
+                    .Where(block => block.PageId == match.page.Id && EF.Functions.ILike(block.PlainText, pattern, "\\"))
+                    .OrderBy(block => block.SortKey)
+                    .Select(block => (string?)block.PlainText)
+                    .FirstOrDefault()
+            ))
+            .ToListAsync(cancellationToken);
+    }
+
+    private static string EscapeLikePattern(string value)
+        => value.Replace("\\", "\\\\", StringComparison.Ordinal)
+            .Replace("%", "\\%", StringComparison.Ordinal)
+            .Replace("_", "\\_", StringComparison.Ordinal);
 
     // Favorites and shares cascade with the page row (PageFavoriteConfiguration, PageConfiguration).
     public void Remove(Page page) => dbContext.Pages.Remove(page);

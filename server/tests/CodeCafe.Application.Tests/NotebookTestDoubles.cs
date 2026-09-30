@@ -83,8 +83,7 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
     }
 
     private IEnumerable<Notebook> VisibleTo(Guid userId, NotebookFilter filter)
-    {
-        IEnumerable<Notebook> query = Live.Where(notebook =>
+    {        IEnumerable<Notebook> query = Live.Where(notebook =>
             notebook.OwnerId == userId
             || notebook.IsSharedWith(userId)
             || PageShareGrants.Any(grant => grant.NotebookId == notebook.Id && grant.UserId == userId)
@@ -115,6 +114,10 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
 
         return query;
     }
+
+    // The owned + notebook-share visibility arms without filters: what page search scopes to.
+    public IEnumerable<Notebook> NotebooksVisibleTo(Guid userId)
+        => Live.Where(notebook => notebook.OwnerId == userId || notebook.IsSharedWith(userId));
 
     public Task SetFavoriteAsync(Guid notebookId, Guid userId, bool isFavorite, CancellationToken cancellationToken)
     {
@@ -188,6 +191,21 @@ internal sealed class StubUnitOfWork(Exception? saveFailure = null) : IUnitOfWor
 
         return Task.CompletedTask;
     }
+
+    public Task<ITransaction> BeginTransactionAsync(CancellationToken cancellationToken)
+        => Task.FromResult<ITransaction>(StubTransaction.Instance);
+}
+
+// No database, no transaction: commit and dispose are no-ops.
+internal sealed class StubTransaction : ITransaction
+{
+    public static readonly StubTransaction Instance = new();
+
+    private StubTransaction() { }
+
+    public Task CommitAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
 
 internal sealed class StubPasswordHasher : IPasswordHasher

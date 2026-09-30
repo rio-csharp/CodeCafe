@@ -1,5 +1,7 @@
 using CodeCafe.Application.Common;
+using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;
@@ -25,8 +27,13 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
 
     public DbSet<PageFavorite> PageFavorites => Set<PageFavorite>();
 
+    public DbSet<Block> Blocks => Set<Block>();
+
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken)
         => await SaveChangesAsync(cancellationToken);
+
+    async Task<ITransaction> IUnitOfWork.BeginTransactionAsync(CancellationToken cancellationToken)
+        => new EfTransaction(await Database.BeginTransactionAsync(cancellationToken));
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
@@ -53,6 +60,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
         try
         {
             return await base.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConcurrencyConflictException();
         }
         catch (DbUpdateException exception)
             when (exception.InnerException is PostgresException

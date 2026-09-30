@@ -1,3 +1,4 @@
+using CodeCafe.Application.Blocks.Abstractions;
 using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Notebooks.Abstractions;
@@ -33,6 +34,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<INotebookRepository, NotebookRepository>();
         services.AddScoped<IPageRepository, PageRepository>();
+        services.AddScoped<IBlockRepository, BlockRepository>();
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IAccessTokenService, JwtAccessTokenService>();

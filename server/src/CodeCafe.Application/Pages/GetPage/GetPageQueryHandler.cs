@@ -1,4 +1,5 @@
 using CodeCafe.Application.Auth.Abstractions;
+using CodeCafe.Application.Blocks.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
@@ -12,6 +13,7 @@ public sealed class GetPageQueryHandler(
     ICurrentUserAccessor currentUserAccessor,
     INotebookRepository notebooks,
     IPageRepository pages,
+    IBlockRepository blocks,
     IUserRepository users,
     IPasswordHasher passwordHasher
 ) : IQueryHandler<GetPageQuery, Result<PageDetailsDto>>
@@ -38,6 +40,7 @@ public sealed class GetPageQueryHandler(
             userId,
             query.AccessCode,
             pages,
+            blocks,
             users,
             passwordHasher,
             cancellationToken

@@ -1,4 +1,6 @@
 using CodeCafe.Application.Auth.Abstractions;
+using CodeCafe.Application.Blocks.Abstractions;
+using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Domain.Notebooks;
@@ -18,6 +20,7 @@ public static class PageReadProjection
         Guid? userId,
         string? accessCode,
         IPageRepository pages,
+        IBlockRepository blocks,
         IUserRepository users,
         IPasswordHasher passwordHasher,
         CancellationToken cancellationToken
@@ -33,8 +36,14 @@ public static class PageReadProjection
         var isFavorite = userId is not null
             && (await pages.FindFavoriteIdsAsync(userId.Value, [page.Id], cancellationToken)).Contains(page.Id);
 
-        return Result.Success(
-            await PageDetailsMapping.ToDtoAsync(page, PageHierarchy.PathOf(page, ancestors), isFavorite, users, cancellationToken)
+        var blockDtos = BlockMapping.ToDtos(page, await blocks.ListByPageAsync(page.Id, cancellationToken));
+        var dto = await PageDetailsMapping.ToDtoAsync(
+            page,
+            PageHierarchy.PathOf(page, ancestors),
+            isFavorite,
+            users,
+            cancellationToken
         );
+        return Result.Success(dto with { Blocks = blockDtos });
     }
 }
