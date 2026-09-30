@@ -48,6 +48,41 @@ public sealed class NotebookBlockTransferTests
     }
 
     [Fact]
+    public async Task Import_PreservesHeadingLevels()
+    {
+        var owner = User.Create("owner@example.com", "Owner", "User", "hash");
+        var users = new StubUserRepository { owner };
+        var notebooks = new StubNotebookRepository();
+        var pages = new StubPageRepository(notebooks);
+        var blocks = new StubBlockRepository();
+        var handler = new ImportNotebookCommandHandler(
+            new StubCurrentUserAccessor(new CurrentUser(owner.Id)),
+            users,
+            notebooks,
+            pages,
+            blocks,
+            new StubUnitOfWork()
+        );
+
+        var result = await handler.Handle(
+            new ImportNotebookCommand(
+                new NotebookExportDto(
+                    "notes.md",
+                    "# Notes\n\n## Page\n\n### One\n\n##### Three\n\n######## Deep"
+                )
+            ),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(3, blocks.Count);
+        Assert.Contains(blocks, block => block.Type == "heading" && block.ContentJson.Contains("\"level\":1") && block.PlainText == "One");
+        Assert.Contains(blocks, block => block.Type == "heading" && block.ContentJson.Contains("\"level\":3") && block.PlainText == "Three");
+        // Foreign markdown deeper than the exporter ever emits clamps to the payload's max level.
+        Assert.Contains(blocks, block => block.Type == "heading" && block.ContentJson.Contains("\"level\":6") && block.PlainText == "Deep");
+    }
+
+    [Fact]
     public async Task Import_CalloutWithoutBodyLine_KeepsFollowingContent()
     {
         var owner = User.Create("owner@example.com", "Owner", "User", "hash");

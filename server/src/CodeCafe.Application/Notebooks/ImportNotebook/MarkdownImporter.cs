@@ -117,9 +117,14 @@ internal static class MarkdownImporter
                 continue;
             }
 
-            if (line.StartsWith("### ", StringComparison.Ordinal))
+            var headingHashes = line.TakeWhile(character => character == '#').Count();
+            if (headingHashes >= 3 && line.Length > headingHashes && line[headingHashes] == ' ')
             {
-                blocks.Add(CreateSpanBlock(BlockTypes.Heading, new HeadingPayload { Level = 1, Spans = ParseSpans(line[4..]) }));
+                // # and ## are the notebook and page titles, so block headings start at ### and
+                // the exporter emits Level + 2 hashes; subtracting 2 round-trips the level, and
+                // the clamp keeps foreign markdown inside the payload's 1..6 range.
+                var level = Math.Clamp(headingHashes - 2, 1, 6);
+                blocks.Add(CreateSpanBlock(BlockTypes.Heading, new HeadingPayload { Level = level, Spans = ParseSpans(line[(headingHashes + 1)..]) }));
                 index++;
                 continue;
             }
