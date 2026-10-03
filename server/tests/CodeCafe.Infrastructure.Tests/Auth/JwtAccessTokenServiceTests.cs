@@ -18,7 +18,9 @@ public sealed class JwtAccessTokenServiceTests
 
         Assert.NotEmpty(token.Value);
         Assert.True(token.ExpiresAtUtc > DateTimeOffset.UtcNow);
-        Assert.Equal(userId, await _service.ValidateAsync(token.Value, TestContext.Current.CancellationToken));
+        var validated = await _service.ValidateAsync(token.Value, TestContext.Current.CancellationToken);
+        Assert.Equal(userId, validated!.UserId);
+        Assert.True(validated.IssuedAtUtc > DateTimeOffset.UtcNow.AddMinutes(-1));
     }
 
     [Fact]

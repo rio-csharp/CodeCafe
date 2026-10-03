@@ -119,7 +119,7 @@ public sealed class RegisterCommandHandlerTests
             return new AccessToken("access-token", DateTimeOffset.UtcNow.AddMinutes(15));
         }
 
-        public Task<Guid?> ValidateAsync(string token, CancellationToken cancellationToken) => Task.FromResult<Guid?>(null);
+        public Task<ValidatedAccessToken?> ValidateAsync(string token, CancellationToken cancellationToken) => Task.FromResult<ValidatedAccessToken?>(null);
     }
 
     private sealed class StubRefreshTokenService : IRefreshTokenService

@@ -29,12 +29,22 @@ public sealed class CodeCafeAuthenticationHandler(
         if (tokenService is null || token is null)
             return AuthenticateResult.NoResult();
 
-        var userId = await tokenService.ValidateAsync(token, Context.RequestAborted);
-        if (userId is null)
+        var validated = await tokenService.ValidateAsync(token, Context.RequestAborted);
+        if (validated is null)
+            return AuthenticateResult.NoResult();
+
+        // Password changes must invalidate outstanding access tokens; the token is stateless,
+        // so the check compares its iat against the user's PasswordChangedAtUtc. A deleted
+        // user fails here too, surfacing as a clean 401 instead of a mid-request 404.
+        var users = Context.RequestServices.GetService<IUserRepository>();
+        var user = users is null
+            ? null
+            : await users.FindByIdAsync(validated.UserId, Context.RequestAborted);
+        if (user is null || !user.IsAccessTokenCurrent(validated.IssuedAtUtc))
             return AuthenticateResult.NoResult();
 
         var identity = new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, userId.Value.ToString())],
+            [new Claim(ClaimTypes.NameIdentifier, validated.UserId.ToString())],
             Scheme.Name);
         var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
         return AuthenticateResult.Success(ticket);

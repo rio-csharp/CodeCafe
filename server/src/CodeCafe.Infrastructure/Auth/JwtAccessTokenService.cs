@@ -33,7 +33,7 @@ public sealed class JwtAccessTokenService(IOptions<AuthOptions> options) : IAcce
         return new AccessToken(_tokenHandler.CreateToken(descriptor), expiresAtUtc);
     }
 
-    public async Task<Guid?> ValidateAsync(string token, CancellationToken cancellationToken)
+    public async Task<ValidatedAccessToken?> ValidateAsync(string token, CancellationToken cancellationToken)
     {
         var authOptions = options.Value;
         var validationParameters = new TokenValidationParameters
@@ -59,12 +59,13 @@ public sealed class JwtAccessTokenService(IOptions<AuthOptions> options) : IAcce
             !result.IsValid
             || result.ClaimsIdentity?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value is not { } subject
             || !Guid.TryParse(subject, out var userId)
+            || result.SecurityToken is not JsonWebToken { IssuedAt: var issuedAt }
         )
         {
             return null;
         }
 
-        return userId;
+        return new ValidatedAccessToken(userId, new DateTimeOffset(issuedAt, TimeSpan.Zero));
     }
 
     private static SymmetricSecurityKey SigningKey(AuthOptions authOptions)
