@@ -15,6 +15,10 @@ public sealed class RefreshTokenCommandHandler(
 {
     public async Task<Result<AuthSessionDto>> Handle(RefreshTokenCommand command, CancellationToken cancellationToken)
     {
+        // ConsumeAsync wins its race with a conditional UPDATE; the row lock it takes must be
+        // held until the replacement token is committed, hence the explicit transaction.
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+
         var userId = await refreshTokens.ConsumeAsync(command.RefreshToken, cancellationToken);
         var user = userId is { } id ? await users.FindByIdAsync(id, cancellationToken) : null;
         if (user is null)
@@ -27,6 +31,7 @@ public sealed class RefreshTokenCommandHandler(
 
         // One commit: the old token's revocation and its replacement land together.
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return Result.Success(
             new AuthSessionDto(

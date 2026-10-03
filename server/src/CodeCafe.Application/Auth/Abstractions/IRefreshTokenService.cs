@@ -5,7 +5,9 @@ public interface IRefreshTokenService
 {
     Task<IssuedRefreshToken> IssueAsync(Guid userId, CancellationToken cancellationToken);
 
-    // Validates and revokes in one step: refresh tokens are single-use (rotation).
+    // Validates and revokes atomically: refresh tokens are single-use (rotation), so under
+    // concurrency exactly one caller wins and the rest get null. Runs inside the caller's
+    // transaction.
     Task<Guid?> ConsumeAsync(string token, CancellationToken cancellationToken);
 
     // Idempotent: unknown or already-revoked tokens are a no-op.

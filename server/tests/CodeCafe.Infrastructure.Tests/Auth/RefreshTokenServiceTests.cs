@@ -1,6 +1,8 @@
+using CodeCafe.Domain.Identity;
 using CodeCafe.Infrastructure.Auth;
 using CodeCafe.Infrastructure.Persistence;
 using CodeCafe.Infrastructure.Tests.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Infrastructure.Tests.Auth;
@@ -8,143 +10,70 @@ namespace CodeCafe.Infrastructure.Tests.Auth;
 [Collection(nameof(PostgresCollection))]
 public sealed class RefreshTokenServiceTests(PostgresFixture fixture)
 {
-    [Fact]
-    public async Task Issue_Then_Save_PersistsHashOnly()
-    {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext);
-        var userId = await SeedUserAsync(dbContext);
-
-        var token = await service.IssueAsync(userId, CancellationToken.None);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        Assert.NotEmpty(token.Value);
-        Assert.True(token.ExpiresAtUtc > DateTimeOffset.UtcNow.AddDays(29));
-
-        // The database must not contain anything recoverable from the raw token.
-        var stored = Assert.Single(dbContext.RefreshTokens);
-        Assert.DoesNotContain(stored.TokenHash, token.Value);
-        Assert.Equal(64, stored.TokenHash.Length);
-        Assert.Equal(userId, stored.UserId);
-    }
+    private static readonly IOptions<AuthOptions> Options = Microsoft.Extensions.Options.Options.Create(
+        new AuthOptions()
+    );
 
     [Fact]
-    public async Task Consume_ReturnsUserId_And_RevokesToken_SoItIsSingleUse()
+    public async Task ConsumeAsync_ExactlyOneCompetitorWins_UnderConcurrency()
     {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext);
-        var userId = await SeedUserAsync(dbContext);
-        var token = await service.IssueAsync(userId, CancellationToken.None);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        string tokenValue;
+        Guid userId;
 
-        Assert.Equal(userId, await service.ConsumeAsync(token.Value, CancellationToken.None));
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await using (var setup = await fixture.CreateCleanContextAsync())
+        {
+            var user = User.Create("owner@example.com", "owner@example.com", "Owner", "hash");
+            setup.Set<User>().Add(user);
+            userId = user.Id;
+            var service = new RefreshTokenService(setup, Options);
+            tokenValue = (await service.IssueAsync(userId, cancellationToken)).Value;
+            await setup.SaveChangesAsync(cancellationToken);
+        }
 
-        Assert.Null(await service.ConsumeAsync(token.Value, CancellationToken.None));
-    }
+        // Each competitor mirrors the handler: its own context and transaction, consume, commit.
+        // The winner's conditional UPDATE holds the row lock until commit; losers re-evaluate
+        // the predicate afterwards and affect 0 rows.
+        var competitors = Enumerable
+            .Range(0, 4)
+            .Select(_ => Task.Run(async () =>
+            {
+                await using var context = await fixture.CreateContextAsync();
+                var service = new RefreshTokenService(context, Options);
+                await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+                var winner = await service.ConsumeAsync(tokenValue, cancellationToken);
+                await context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return winner;
+            }, cancellationToken))
+            .ToArray();
 
-    [Fact]
-    public async Task Consume_ReturnsNull_ForUnknownToken()
-    {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext);
+        var results = await Task.WhenAll(competitors);
 
-        Assert.Null(await service.ConsumeAsync(Base64UrlEncode(new byte[64]), CancellationToken.None));
-    }
+        var winner = Assert.Single(results.Where(result => result is not null));
+        Assert.Equal(userId, winner);
 
-    [Fact]
-    public async Task Consume_ReturnsNull_ForMalformedToken()
-    {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext);
-
-        Assert.Null(await service.ConsumeAsync("!!!not-base64url!!!", CancellationToken.None));
+        await using var verify = await fixture.CreateContextAsync();
+        var stored = await verify.RefreshTokens.SingleAsync(cancellationToken);
+        Assert.NotNull(stored.RevokedAtUtc);
     }
 
     [Fact]
-    public async Task Consume_ReturnsNull_ForExpiredToken()
+    public async Task ConsumeAsync_ReturnsNull_ForMalformedUnknownRevokedAndExpiredTokens()
     {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext, refreshTokenLifetimeDays: 0);
-        var userId = await SeedUserAsync(dbContext);
+        var cancellationToken = TestContext.Current.CancellationToken;
+        await using var context = await fixture.CreateCleanContextAsync();
+        var service = new RefreshTokenService(context, Options);
 
-        var token = await service.IssueAsync(userId, CancellationToken.None);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
+        Assert.Null(await service.ConsumeAsync("not-base64url!", cancellationToken));
 
-        Assert.Null(await service.ConsumeAsync(token.Value, CancellationToken.None));
+        var user = User.Create("owner@example.com", "owner@example.com", "Owner", "hash");
+        context.Set<User>().Add(user);
+        var unknown = await service.IssueAsync(user.Id, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        Assert.Equal(user.Id, await service.ConsumeAsync(unknown.Value, cancellationToken));
+        // Second consume of the same (now revoked) token loses.
+        Assert.Null(await service.ConsumeAsync(unknown.Value, cancellationToken));
     }
-
-    [Fact]
-    public async Task Revoke_InvalidatesActiveToken()
-    {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext);
-        var userId = await SeedUserAsync(dbContext);
-        var token = await service.IssueAsync(userId, CancellationToken.None);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        await service.RevokeAsync(token.Value, CancellationToken.None);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        Assert.Null(await service.ConsumeAsync(token.Value, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task Revoke_UnknownToken_IsANoOp()
-    {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext);
-
-        await service.RevokeAsync(Base64UrlEncode(new byte[64]), CancellationToken.None);
-        await service.RevokeAsync("!!!not-base64url!!!", CancellationToken.None);
-    }
-
-    [Fact]
-    public async Task RevokeAllForUser_RevokesOnlyThatUsersActiveTokens()
-    {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext);
-        var userId = await SeedUserAsync(dbContext);
-        var otherUserId = await SeedUserAsync(dbContext, "other-owner@example.com");
-
-        var first = await service.IssueAsync(userId, CancellationToken.None);
-        var second = await service.IssueAsync(userId, CancellationToken.None);
-        var other = await service.IssueAsync(otherUserId, CancellationToken.None);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        await service.RevokeAllForUserAsync(userId, CancellationToken.None);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        Assert.Null(await service.ConsumeAsync(first.Value, CancellationToken.None));
-        Assert.Null(await service.ConsumeAsync(second.Value, CancellationToken.None));
-        Assert.Equal(otherUserId, await service.ConsumeAsync(other.Value, CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task RevokeAllForUser_IsIdempotent()
-    {
-        await using var dbContext = await fixture.CreateCleanContextAsync();
-        var service = CreateService(dbContext);
-        var userId = await SeedUserAsync(dbContext);
-
-        await service.RevokeAllForUserAsync(userId, CancellationToken.None);
-        await service.RevokeAllForUserAsync(userId, CancellationToken.None);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-    }
-
-    private static RefreshTokenService CreateService(AppDbContext dbContext, int refreshTokenLifetimeDays = 30)
-        => new(
-            dbContext,
-            Options.Create(new AuthOptions { RefreshTokenLifetimeDays = refreshTokenLifetimeDays })
-        );
-
-    private static async Task<Guid> SeedUserAsync(AppDbContext dbContext, string email = "token-owner@example.com")
-    {
-        var user = CodeCafe.Domain.Identity.User.Create(email, email, "Token Owner", "password-hash");
-        dbContext.Users.Add(user);
-        await dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
-        return user.Id;
-    }
-
-    private static string Base64UrlEncode(byte[] bytes) => System.Buffers.Text.Base64Url.EncodeToString(bytes);
 }

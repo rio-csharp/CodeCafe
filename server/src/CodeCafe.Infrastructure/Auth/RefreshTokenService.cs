@@ -29,14 +29,38 @@ public sealed class RefreshTokenService(AppDbContext dbContext, IOptions<AuthOpt
 
     public async Task<Guid?> ConsumeAsync(string token, CancellationToken cancellationToken)
     {
-        var stored = await FindByTokenAsync(token, cancellationToken);
-        if (stored is null || !stored.IsActive(DateTimeOffset.UtcNow))
+        var hash = TryComputeHash(token);
+        if (hash is null)
         {
             return null;
         }
 
-        stored.Revoke(DateTimeOffset.UtcNow);
-        return stored.UserId;
+        var userId = await dbContext
+            .RefreshTokens.Where(candidate => candidate.TokenHash == hash)
+            .Select(candidate => (Guid?)candidate.UserId)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (userId is null)
+        {
+            return null;
+        }
+
+        // The conditional UPDATE is the race judge: rotation depends on single use, and a
+        // read-then-revoke in application code always leaves a window for concurrent requests.
+        // Exactly one consumer rewrites an active row; the rest affect 0 rows and lose. Runs
+        // inside the caller's transaction, so the winner's row lock is held until commit and
+        // losers re-evaluate the predicate after waiting on the lock.
+        var nowUtc = DateTimeOffset.UtcNow;
+        var consumed = await dbContext
+            .RefreshTokens.Where(candidate =>
+                candidate.TokenHash == hash
+                && candidate.RevokedAtUtc == null
+                && candidate.ExpiresAtUtc > nowUtc
+            )
+            .ExecuteUpdateAsync(
+                update => update.SetProperty(candidate => candidate.RevokedAtUtc, nowUtc),
+                cancellationToken
+            );
+        return consumed == 1 ? userId : null;
     }
 
     public async Task RevokeAsync(string token, CancellationToken cancellationToken)
@@ -63,7 +87,7 @@ public sealed class RefreshTokenService(AppDbContext dbContext, IOptions<AuthOpt
 
     // Tokens are always TokenByteCount bytes; decoding into a fixed buffer also rejects
     // malformed input by length alone.
-    private async Task<RefreshToken?> FindByTokenAsync(string token, CancellationToken cancellationToken)
+    private static string? TryComputeHash(string token)
     {
         byte[] bytes = new byte[TokenByteCount];
         var status = Base64Url.DecodeFromChars(token.AsSpan(), bytes, out _, out var written);
@@ -72,10 +96,18 @@ public sealed class RefreshTokenService(AppDbContext dbContext, IOptions<AuthOpt
             return null;
         }
 
-        return await dbContext.RefreshTokens.FirstOrDefaultAsync(
-            candidate => candidate.TokenHash == HashToken(bytes),
-            cancellationToken
-        );
+        return HashToken(bytes);
+    }
+
+    private async Task<RefreshToken?> FindByTokenAsync(string token, CancellationToken cancellationToken)
+    {
+        var hash = TryComputeHash(token);
+        return hash is null
+            ? null
+            : await dbContext.RefreshTokens.FirstOrDefaultAsync(
+                candidate => candidate.TokenHash == hash,
+                cancellationToken
+            );
     }
 
     private static string HashToken(byte[] tokenBytes) => Convert.ToHexString(SHA256.HashData(tokenBytes));
