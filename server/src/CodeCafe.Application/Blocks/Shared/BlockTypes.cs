@@ -18,6 +18,8 @@ public static class BlockTypes
 
     public const string Divider = "divider";
 
+    public const string Table = "table";
+
     public const string Image = "image";
 
     public const string Audio = "audio";

@@ -17,6 +17,8 @@ public sealed class BlockPayloadsTests
         { BlockTypes.Divider, "{}", "" },
         { BlockTypes.Image, """{"url":"https://example.com/cat.png","alt":"A cat","isDecorative":false}""", "A cat" },
         { BlockTypes.Audio, """{"url":"https://example.com/pod.mp3","mimeType":"audio/mpeg","duration":183}""", "" },
+        { BlockTypes.Table, """{"alignments":["left","right"],"header":[[{"text":"Name","marks":[]}],[{"text":"Qty","marks":[]}]],"rows":[[[{"text":"apples","marks":[]}],[{"text":"3","marks":[]}]]]}""", "Name Qty apples 3" },
+        { BlockTypes.Table, """{"alignments":["none"],"header":null,"rows":[[[{"text":"solo","marks":[]}]]]}""", "solo" },
     };
 
     [Theory]
@@ -129,6 +131,39 @@ public sealed class BlockPayloadsTests
     public void ValidateAndNormalize_RejectsNullSpans()
     {
         var result = Validate(BlockTypes.Paragraph, """{"spans":null}""");
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(BlockErrors.InvalidBlockPayload.Code, result.Error!.Code);
+    }
+
+    [Fact]
+    public void ValidateAndNormalize_RejectsTableWithRaggedRow()
+    {
+        var result = Validate(
+            BlockTypes.Table,
+            """{"alignments":["none","none"],"header":null,"rows":[[[{"text":"a","marks":[]}],[{"text":"b","marks":[]}]],[[{"text":"c","marks":[]}]]]}"""
+        );
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(BlockErrors.InvalidBlockPayload.Code, result.Error!.Code);
+    }
+
+    [Fact]
+    public void ValidateAndNormalize_RejectsTableHeaderWiderThanColumns()
+    {
+        var result = Validate(
+            BlockTypes.Table,
+            """{"alignments":["none"],"header":[[{"text":"a","marks":[]}],[{"text":"b","marks":[]}]],"rows":[]}"""
+        );
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(BlockErrors.InvalidBlockPayload.Code, result.Error!.Code);
+    }
+
+    [Fact]
+    public void ValidateAndNormalize_RejectsTableWithZeroColumns()
+    {
+        var result = Validate(BlockTypes.Table, """{"alignments":[],"header":null,"rows":[]}""");
 
         Assert.False(result.IsSuccess);
         Assert.Equal(BlockErrors.InvalidBlockPayload.Code, result.Error!.Code);

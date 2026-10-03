@@ -61,6 +61,8 @@ public sealed class NotebookBlockTransferTests
             notebooks,
             pages,
             blocks,
+            new StubBlockRevisionRepository(),
+            new StubChangeSourceAccessor(),
             new StubUnitOfWork()
         );
 
@@ -68,7 +70,7 @@ public sealed class NotebookBlockTransferTests
             new ImportNotebookCommand(
                 new NotebookExportDto(
                     "notes.md",
-                    "# Notes\n\n## Page\n\n### One\n\n##### Three\n\n######## Deep"
+                    "# Notes\n\n## Page\n\n### One\n\n##### Three\n\n###### Deep"
                 )
             ),
             CancellationToken.None
@@ -78,12 +80,13 @@ public sealed class NotebookBlockTransferTests
         Assert.Equal(3, blocks.Count);
         Assert.Contains(blocks, block => block.Type == "heading" && block.ContentJson.Contains("\"level\":1") && block.PlainText == "One");
         Assert.Contains(blocks, block => block.Type == "heading" && block.ContentJson.Contains("\"level\":3") && block.PlainText == "Three");
-        // Foreign markdown deeper than the exporter ever emits clamps to the payload's max level.
-        Assert.Contains(blocks, block => block.Type == "heading" && block.ContentJson.Contains("\"level\":6") && block.PlainText == "Deep");
+        // CommonMark caps ATX headings at six hashes, so with the 2-level notebook offset the
+        // deepest importable level is 4; levels 5-6 only exist editor-side.
+        Assert.Contains(blocks, block => block.Type == "heading" && block.ContentJson.Contains("\"level\":4") && block.PlainText == "Deep");
     }
 
     [Fact]
-    public async Task Import_CalloutWithoutBodyLine_KeepsFollowingContent()
+    public async Task Import_CalloutWithLazyContinuationLine_UsesItAsBody()
     {
         var owner = User.Create("owner@example.com", "Owner", "User", "hash");
         var users = new StubUserRepository { owner };
@@ -96,6 +99,8 @@ public sealed class NotebookBlockTransferTests
             notebooks,
             pages,
             blocks,
+            new StubBlockRevisionRepository(),
+            new StubChangeSourceAccessor(),
             new StubUnitOfWork()
         );
 
@@ -106,10 +111,12 @@ public sealed class NotebookBlockTransferTests
             CancellationToken.None
         );
 
+        // CommonMark lazy continuation pulls "Keep me" into the quote, so it becomes the
+        // callout body rather than a following paragraph.
         Assert.True(result.IsSuccess);
-        Assert.Equal(2, blocks.Count);
-        Assert.Contains(blocks, block => block.Type == "callout" && block.PlainText == string.Empty);
-        Assert.Contains(blocks, block => block.Type == "paragraph" && block.PlainText == "Keep me");
+        var callout = Assert.Single(blocks);
+        Assert.Equal("callout", callout.Type);
+        Assert.Equal("Keep me", callout.PlainText);
     }
 
     [Fact]
@@ -126,6 +133,8 @@ public sealed class NotebookBlockTransferTests
             notebooks,
             pages,
             blocks,
+            new StubBlockRevisionRepository(),
+            new StubChangeSourceAccessor(),
             new StubUnitOfWork()
         );
 
@@ -153,6 +162,8 @@ public sealed class NotebookBlockTransferTests
             notebooks,
             pages,
             blocks,
+            new StubBlockRevisionRepository(),
+            new StubChangeSourceAccessor(),
             unitOfWork
         );
 

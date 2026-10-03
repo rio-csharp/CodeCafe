@@ -1,5 +1,8 @@
+using System.Text;
+
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Pages.DeletePage;
+using CodeCafe.Application.Pages.ExportPage;
 using CodeCafe.Application.Pages.GetPage;
 using CodeCafe.Application.Pages.ListFavoritePages;
 using CodeCafe.Application.Pages.MovePage;
@@ -8,6 +11,7 @@ using CodeCafe.Application.Pages.SetPageFavorite;
 using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Application.Pages.SharePage;
 using CodeCafe.Application.Pages.UpdatePage;
+using CodeCafe.Host.Hosting;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +39,21 @@ public sealed class PagesController(ISender sender) : ControllerBase
     [HttpDelete("pages/{pageId:guid}")]
     public Task<Result> Delete(Guid pageId, CancellationToken cancellationToken)
         => sender.Send(new DeletePageCommand(pageId), cancellationToken);
+
+    // A real file download (text/markdown + Content-Disposition), not the JSON envelope.
+    [AllowAnonymous]
+    [HttpGet("pages/{pageId:guid}/export")]
+    [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/markdown")]
+    [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
+    public async Task<IResult> Export(Guid pageId, string? accessCode, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new ExportPageQuery(pageId, accessCode), cancellationToken);
+        // Results.File handles Content-Disposition encoding safely.
+        return result.ToHttpResult(export => Results.File(
+            Encoding.UTF8.GetBytes(export.Markdown),
+            "text/markdown; charset=utf-8",
+            export.FileName));
+    }
 
     [HttpGet("pages/favorites")]
     public Task<Result<IReadOnlyList<FavoritePageDto>>> Favorites(Guid? notebookId, CancellationToken cancellationToken)

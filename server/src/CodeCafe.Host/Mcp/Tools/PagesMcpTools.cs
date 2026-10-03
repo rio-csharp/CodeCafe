@@ -1,14 +1,18 @@
 using System.ComponentModel;
+using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Pages.CreatePage;
 using CodeCafe.Application.Pages.DeletePage;
+using CodeCafe.Application.Pages.ExportPage;
 using CodeCafe.Application.Pages.GetPage;
 using CodeCafe.Application.Pages.GetPageByPath;
+using CodeCafe.Application.Pages.ImportPage;
 using CodeCafe.Application.Pages.ListFavoritePages;
 using CodeCafe.Application.Pages.MovePage;
 using CodeCafe.Application.Pages.RevokePageShare;
 using CodeCafe.Application.Pages.SetPageFavorite;
 using CodeCafe.Application.Pages.SharePage;
 using CodeCafe.Application.Pages.UpdatePage;
+using CodeCafe.Domain.Revisions;
 using CodeCafe.Domain.Sharing;
 using MediatR;
 using ModelContextProtocol.Protocol;
@@ -37,6 +41,32 @@ public sealed class PagesMcpTools
         CancellationToken cancellationToken,
         string? accessCode = null)
         => McpToolResults.From(await sender.Send(new GetPageByPathQuery(notebookIdOrSlug, path, accessCode), cancellationToken));
+
+    [McpServerTool(Name = "codecafe_export_page", ReadOnly = true, Idempotent = true)]
+    [Description("Export a single page with all its blocks as markdown.")]
+    public static async Task<CallToolResult> ExportPage(
+        ISender sender,
+        Guid pageId,
+        CancellationToken cancellationToken,
+        string? accessCode = null)
+        => McpToolResults.From(await sender.Send(new ExportPageQuery(pageId, accessCode), cancellationToken));
+
+    [McpServerTool(Name = "codecafe_import_page")]
+    [Description("Import a markdown file as a new page in a notebook, optionally under a parent page path.")]
+    public static async Task<CallToolResult> ImportPage(
+        ISender sender,
+        IChangeSourceAccessor changeSource,
+        string notebookIdOrSlug,
+        string fileName,
+        string markdown,
+        CancellationToken cancellationToken,
+        string? parentPath = null)
+    {
+        changeSource.Source = RevisionSource.Ai;
+        return McpToolResults.From(await sender.Send(
+            new ImportPageCommand(notebookIdOrSlug, new PageExportDto(fileName, markdown), parentPath),
+            cancellationToken));
+    }
 
     [McpServerTool(Name = "codecafe_create_page")]
     [Description("Create a page in a notebook.")]

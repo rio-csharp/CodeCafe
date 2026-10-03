@@ -16,7 +16,9 @@ using CodeCafe.Application.Notebooks.SetNotebookTags;
 using CodeCafe.Application.Notebooks.ShareNotebook;
 using CodeCafe.Application.Notebooks.UpdateNotebook;
 using CodeCafe.Application.Pages.CreatePage;
+using CodeCafe.Application.Pages.ExportPage;
 using CodeCafe.Application.Pages.GetPageByPath;
+using CodeCafe.Application.Pages.ImportPage;
 using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Application.Trash.ListTrashedPages;
 using CodeCafe.Domain.Notebooks;
@@ -124,6 +126,15 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
     [HttpPost("notebooks/{idOrSlug}/pages")]
     public Task<Result<PageDetailsDto>> CreatePage(string idOrSlug, CreatePageRequest request, CancellationToken cancellationToken)
         => sender.Send(new CreatePageCommand(idOrSlug, request.Title, request.ParentPath), cancellationToken);
+
+    // Markdown payloads can be large, but not unbounded.
+    [HttpPost("notebooks/{idOrSlug}/pages/import")]
+    [RequestSizeLimit(5 * 1024 * 1024)]
+    public Task<Result<PageDetailsDto>> ImportPage(string idOrSlug, ImportPageRequest request, CancellationToken cancellationToken)
+        => sender.Send(
+            new ImportPageCommand(idOrSlug, new PageExportDto(request.FileName, request.Markdown), request.ParentPath),
+            cancellationToken
+        );
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/pages/by-path")]

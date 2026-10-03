@@ -32,6 +32,7 @@ public static class BlockPayloads
             static payload => Result.Success(payload),
             static _ => string.Empty
         ),
+        BlockTypes.Table => NormalizeTable(content),
         BlockTypes.Image => NormalizeImage(content),
         BlockTypes.Audio => NormalizeAudio(content),
         _ => Result.Failure<NormalizedBlockPayload>(BlockErrors.UnsupportedBlockType)
@@ -64,6 +65,42 @@ public static class BlockPayloads
                 : Result.Success(payload with { Language = payload.Language.Trim().ToLowerInvariant() }),
             payload => payload.Code
         );
+
+    private static Result<NormalizedBlockPayload> NormalizeTable(JsonElement content)
+        => Normalize<TablePayload>(
+            content,
+            static payload =>
+            {
+                // `required` enforces presence, not non-null: explicit JSON nulls land here.
+                if (payload.Alignments is null || payload.Alignments.Count == 0 || payload.Rows is null)
+                {
+                    return Result.Failure<TablePayload>(BlockErrors.InvalidBlockPayload);
+                }
+
+                var columns = payload.Alignments.Count;
+                if (payload.Header is not null && payload.Header.Count != columns)
+                {
+                    return Result.Failure<TablePayload>(BlockErrors.InvalidBlockPayload);
+                }
+
+                if (payload.Rows.Any(row => row is null || row.Count != columns || row.Any(cell => cell is null)))
+                {
+                    return Result.Failure<TablePayload>(BlockErrors.InvalidBlockPayload);
+                }
+
+                return Result.Success(payload);
+            },
+            static payload => TablePlainText(payload)
+        );
+
+    // The search projection flattens every cell, header first; cell boundaries are not
+    // meaningful for full-text matching.
+    private static string TablePlainText(TablePayload payload)
+    {
+        var bodyCells = payload.Rows.SelectMany(row => row);
+        var cells = payload.Header is null ? bodyCells : payload.Header.Concat(bodyCells);
+        return string.Join(' ', cells.Select(cell => cell.ToPlainText()));
+    }
 
     private static Result<NormalizedBlockPayload> NormalizeImage(JsonElement content)
         => Normalize<ImagePayload>(

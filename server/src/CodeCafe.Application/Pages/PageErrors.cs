@@ -54,4 +54,10 @@ public static class PageErrors
         "The cursor is malformed.",
         ErrorKind.Validation
     );
+
+    public static readonly Error InvalidImport = new(
+        "invalid_import",
+        "The markdown file does not contain a page title.",
+        ErrorKind.Validation
+    );
 }

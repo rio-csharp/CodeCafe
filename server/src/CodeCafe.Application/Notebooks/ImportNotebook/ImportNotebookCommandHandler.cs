@@ -6,12 +6,15 @@ using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Common.Markdown;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.GetNotebookDetails;
 using CodeCafe.Application.Notebooks.Shared;
 using CodeCafe.Application.Pages;
 using CodeCafe.Application.Pages.Abstractions;
+using CodeCafe.Application.Revisions.Abstractions;
+using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;
@@ -24,6 +27,8 @@ public sealed class ImportNotebookCommandHandler(
     INotebookRepository notebooks,
     IPageRepository pages,
     IBlockRepository blocks,
+    IBlockRevisionRepository revisions,
+    IChangeSourceAccessor changeSource,
     IUnitOfWork unitOfWork
 ) : ICommandHandler<ImportNotebookCommand, Result<NotebookDetailsDto>>
 {
@@ -38,7 +43,7 @@ public sealed class ImportNotebookCommandHandler(
             return Result.Failure<NotebookDetailsDto>(error);
         }
 
-        var parsed = MarkdownImporter.Parse(command.Export.FileName, command.Export.Markdown);
+        var parsed = MarkdownNotebookParser.Parse(command.Export.FileName, command.Export.Markdown);
         var title = parsed.Title.Trim();
         if (title.Length == 0)
         {
@@ -60,6 +65,8 @@ public sealed class ImportNotebookCommandHandler(
         var notebook = Notebook.Create(resolved.Value!.Id, title, null, slug, NotebookVisibility.Private);
         await notebooks.AddAsync(notebook, cancellationToken);
 
+        // The whole import is one batch in the page histories.
+        var batchId = Guid.CreateVersion7();
         var importedPages = new List<Page>();
         var usedPageSlugs = new HashSet<string>(StringComparer.Ordinal);
         foreach (var parsedPage in parsed.Pages)
@@ -89,27 +96,7 @@ public sealed class ImportNotebookCommandHandler(
             importedPages.Add(page);
             usedPageSlugs.Add(pageSlug);
 
-            var blockSiblings = new List<Block>();
-            foreach (var parsedBlock in parsedPage.Blocks)
-            {
-                var block = Block.Create(
-                    page.Id,
-                    null,
-                    parsedBlock.Type,
-                    parsedBlock.Content.GetRawText(),
-                    parsedBlock.PlainText,
-                    BlockSiblingSortKeys.KeyForInsert(blockSiblings, blockSiblings.Count)
-                );
-                BlockChain.Insert(
-                    block,
-                    page,
-                    parent: null,
-                    blockSiblings.Count == 0 ? null : blockSiblings[^1],
-                    next: null
-                );
-                blockSiblings.Add(block);
-                blocks.Add(block);
-            }
+            MarkdownBlockImporter.CreateBlocks(page, parsedPage.Blocks, parent: null, batchId, blocks, revisions, changeSource.Source);
         }
 
         try
