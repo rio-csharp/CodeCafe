@@ -1,3 +1,4 @@
+using CodeCafe.Application.Ai;
 using CodeCafe.Application.Ai.StartAiChat;
 using CodeCafe.Application.Common;
 using CodeCafe.Host.Hosting;
@@ -24,5 +25,14 @@ public sealed class AiController(ISender sender) : ControllerBase
     public IResult Chat(string idOrSlug, AiChatRequest request)
         => new SseResult<AiChatEvent>(
             sender.CreateStream(new StartAiChatCommand(idOrSlug, request.Messages)),
-            aiEvent => aiEvent.Kind);
+            aiEvent => aiEvent.Kind,
+            failureEvent: _ => new AiChatEvent(
+                AiChatEventKinds.Error,
+                null,
+                AiErrors.StreamFailed.Message,
+                System.Text.Json.JsonSerializer.SerializeToElement(
+                    new { code = AiErrors.StreamFailed.Code, message = AiErrors.StreamFailed.Message }
+                )
+            )
+        );
 }

@@ -27,4 +27,12 @@ public static class AiErrors
         "The AI provider request failed. Check the server logs and the Ai configuration.",
         ErrorKind.Unexpected
     );
+
+    // Terminal frame written by SseResult when the stream breaks for an unexpected reason after
+    // headers were committed.
+    public static readonly Error StreamFailed = new(
+        "ai_stream_failed",
+        "The chat stream ended unexpectedly. Please try again.",
+        ErrorKind.Unexpected
+    );
 }
