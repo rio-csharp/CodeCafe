@@ -22,8 +22,9 @@ public sealed class PageShare : Entity
 
     public CollaboratorRole Role { get; private set; }
 
+    // No client-assigned id, same reasoning as NotebookShare.Create.
     internal static PageShare Create(Guid pageId, Guid userId, CollaboratorRole role)
-        => new(Guid.CreateVersion7(), pageId, userId, role);
+        => new(Guid.Empty, pageId, userId, role);
 
     internal void ChangeRole(CollaboratorRole role) => Role = role;
 }
