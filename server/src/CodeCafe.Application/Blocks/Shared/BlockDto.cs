@@ -9,5 +9,5 @@ public sealed record BlockDto(
     string Type,
     JsonElement Content,
     string SortKey,
-    long Revision,
+    long Version,
     DateTimeOffset UpdatedAtUtc);

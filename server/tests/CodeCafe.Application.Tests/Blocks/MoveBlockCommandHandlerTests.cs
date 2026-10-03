@@ -32,8 +32,8 @@ public sealed class MoveBlockCommandHandlerTests
         Assert.Equal(a.Id, c.NextSiblingId);
         Assert.Null(b.NextSiblingId);
         Assert.True(string.CompareOrdinal(c.SortKey, a.SortKey) < 0);
-        Assert.Equal(2, c.Revision); // only the moved block bumps
-        Assert.Equal(1, a.Revision);
+        Assert.Equal(2, c.Version); // only the moved block bumps
+        Assert.Equal(1, a.Version);
     }
 
     [Fact]
@@ -211,12 +211,15 @@ public sealed class MoveBlockCommandHandlerTests
         var blocks = new StubBlockRepository();
         blocks.AddRange(seededBlocks);
         var unitOfWork = new StubUnitOfWork();
+        var revisions = new StubBlockRevisionRepository();
         return (
             new MoveBlockCommandHandler(
                 new StubCurrentUserAccessor(currentUserId is { } id ? new CurrentUser(id) : null),
                 new StubNotebookRepository { notebook },
                 new StubPageRepository { page },
                 blocks,
+                revisions,
+                new StubChangeSourceAccessor(),
                 unitOfWork
             ),
             blocks,

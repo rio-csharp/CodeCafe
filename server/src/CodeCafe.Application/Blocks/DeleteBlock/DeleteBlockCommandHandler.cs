@@ -8,6 +8,8 @@ using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Application.Revisions.Abstractions;
+using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;
 
 namespace CodeCafe.Application.Blocks.DeleteBlock;
@@ -17,6 +19,8 @@ public sealed class DeleteBlockCommandHandler(
     INotebookRepository notebooks,
     IPageRepository pages,
     IBlockRepository blocks,
+    IBlockRevisionRepository revisions,
+    IChangeSourceAccessor changeSource,
     IUnitOfWork unitOfWork
 ) : ICommandHandler<DeleteBlockCommand, Result>
 {
@@ -45,6 +49,7 @@ public sealed class DeleteBlockCommandHandler(
         // DeleteSubtree repairs the external chain and clears every intra-subtree pointer before
         // any row goes away — the chain-pointer FKs are ON DELETE RESTRICT.
         var doomed = BlockChain.DeleteSubtree(block, page, pageBlocks);
+        revisions.AddRange(RevisionRecording.Deleted(doomed, Guid.CreateVersion7(), changeSource.Source));
         blocks.RemoveRange(doomed);
 
         page.Touch();

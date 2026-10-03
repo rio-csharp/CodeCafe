@@ -106,8 +106,49 @@ public static class BlockChain
         block.SetNextSibling(next?.Id);
     }
 
+    // Restore-only restructure: every block first takes its historical (parent, sortKey) from a
+    // revision snapshot, then this re-deals EVERY chain pointer from scratch — the opposite of
+    // the incremental Unlink/Link dance, justified because a page restore rewrites arbitrary
+    // parts of the tree at once. A placement whose parent is not among the blocks (corrupt or
+    // partial history) falls back to the top level instead of failing the whole restore.
+    public static void RebuildStructure(
+        Page page,
+        IReadOnlyList<Block> blocks,
+        IReadOnlyDictionary<Guid, BlockPlacement> placements
+    )
+    {
+        var ids = new HashSet<Guid>(blocks.Select(block => block.Id));
+        // Guid.Empty keys the top-level group: a Dictionary refuses null keys.
+        var childrenOf = new Dictionary<Guid, List<Block>>();
+        foreach (var block in blocks)
+        {
+            var placement = placements[block.Id];
+            var parentId = placement.ParentBlockId is { } candidate && ids.Contains(candidate) ? candidate : (Guid?)null;
+            block.MoveTo(parentId, placement.SortKey, null);
+            block.SetFirstChild(null);
+            if (!childrenOf.TryGetValue(parentId ?? Guid.Empty, out var group))
+            {
+                childrenOf[parentId ?? Guid.Empty] = group = [];
+            }
+
+            group.Add(block);
+        }
+
+        page.SetFirstBlock(null);
+        var byId = blocks.ToDictionary(block => block.Id);
+        foreach (var (parentId, group) in childrenOf)
+        {
+            group.Sort(static (left, right) => string.CompareOrdinal(left.SortKey, right.SortKey));
+            for (var index = 0; index < group.Count; index++)
+            {
+                Link(group[index], page, parentId == Guid.Empty ? null : byId[parentId], index > 0 ? group[index - 1] : null);
+                group[index].SetNextSibling(index + 1 < group.Count ? group[index + 1].Id : null);
+            }
+        }
+    }
+
     // Full move: detach from the old chain, attach into the new one at insertIndex, re-key, and
-    // bump the moved block's Revision. Blocks never leave their page and never move under
+    // bump the moved block's Version. Blocks never leave their page and never move under
     // themselves or a descendant — enforced here even though callers check first. Unlinking
     // comes first so that, for a same-parent move where the two chains are one, the pointer
     // fixup stays correct. The block's own FirstChildId is untouched: the child chain moves

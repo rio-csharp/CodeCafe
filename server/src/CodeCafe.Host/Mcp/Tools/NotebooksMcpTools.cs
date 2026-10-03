@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Notebooks.ChangeNotebookSlug;
 using CodeCafe.Application.Notebooks.CreateNotebook;
 using CodeCafe.Application.Notebooks.DeleteNotebook;
@@ -14,6 +15,7 @@ using CodeCafe.Application.Notebooks.SetNotebookTags;
 using CodeCafe.Application.Notebooks.ShareNotebook;
 using CodeCafe.Application.Notebooks.UpdateNotebook;
 using CodeCafe.Domain.Notebooks;
+using CodeCafe.Domain.Revisions;
 using CodeCafe.Domain.Sharing;
 using MediatR;
 using ModelContextProtocol.Protocol;
@@ -91,10 +93,14 @@ public sealed class NotebooksMcpTools
     [Description("Import a notebook from a previously exported markdown payload.")]
     public static async Task<CallToolResult> ImportNotebook(
         ISender sender,
+        IChangeSourceAccessor changeSource,
         string fileName,
         string markdown,
         CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new ImportNotebookCommand(new NotebookExportDto(fileName, markdown)), cancellationToken));
+    {
+        changeSource.Source = RevisionSource.Ai;
+        return McpToolResults.From(await sender.Send(new ImportNotebookCommand(new NotebookExportDto(fileName, markdown)), cancellationToken));
+    }
 
     [McpServerTool(Name = "codecafe_change_notebook_slug", Idempotent = true)]
     [Description("Change a notebook's URL slug.")]

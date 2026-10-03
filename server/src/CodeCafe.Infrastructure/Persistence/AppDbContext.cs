@@ -6,6 +6,7 @@ using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;
 using CodeCafe.Domain.Primitives;
+using CodeCafe.Domain.Revisions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -28,6 +29,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     public DbSet<PageFavorite> PageFavorites => Set<PageFavorite>();
 
     public DbSet<Block> Blocks => Set<Block>();
+
+    public DbSet<BlockRevision> BlockRevisions => Set<BlockRevision>();
 
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken)
         => await SaveChangesAsync(cancellationToken);

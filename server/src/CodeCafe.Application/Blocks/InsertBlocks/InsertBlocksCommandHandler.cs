@@ -8,6 +8,8 @@ using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Application.Revisions.Abstractions;
+using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;
 
 namespace CodeCafe.Application.Blocks.InsertBlocks;
@@ -17,6 +19,8 @@ public sealed class InsertBlocksCommandHandler(
     INotebookRepository notebooks,
     IPageRepository pages,
     IBlockRepository blocks,
+    IBlockRevisionRepository revisions,
+    IChangeSourceAccessor changeSource,
     IUnitOfWork unitOfWork
 ) : ICommandHandler<InsertBlocksCommand, Result<IReadOnlyList<BlockDto>>>
 {
@@ -45,6 +49,8 @@ public sealed class InsertBlocksCommandHandler(
 
         var (parent, group, insertIndex) = position.Value!;
 
+        // One batch id for the whole insert: the history reads it as a single change.
+        var batchId = Guid.CreateVersion7();
         var created = new List<Block>(command.Blocks.Count);
         foreach (var input in command.Blocks)
         {
@@ -72,6 +78,7 @@ public sealed class InsertBlocksCommandHandler(
             insertIndex++;
 
             blocks.Add(block);
+            revisions.Add(RevisionRecording.Added(block, batchId, changeSource.Source));
             created.Add(block);
         }
 

@@ -9,6 +9,8 @@ using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Application.Revisions.Abstractions;
+using CodeCafe.Application.Revisions.Shared;
 
 namespace CodeCafe.Application.Blocks.UpdateBlock;
 
@@ -17,6 +19,8 @@ public sealed class UpdateBlockCommandHandler(
     INotebookRepository notebooks,
     IPageRepository pages,
     IBlockRepository blocks,
+    IBlockRevisionRepository revisions,
+    IChangeSourceAccessor changeSource,
     IUnitOfWork unitOfWork
 ) : ICommandHandler<UpdateBlockCommand, Result<BlockDto>>
 {
@@ -38,9 +42,9 @@ public sealed class UpdateBlockCommandHandler(
 
         // Payload updates ride on optimistic concurrency only — no page lock. The early check
         // answers the common case; the save below catches the race the check cannot see.
-        if (block.Revision != command.BaseRevision)
+        if (block.Version != command.BaseVersion)
         {
-            return Result.Failure<BlockDto>(BlockErrors.RevisionConflict);
+            return Result.Failure<BlockDto>(BlockErrors.VersionConflict);
         }
 
         var normalized = BlockPayloads.ValidateAndNormalize(block.Type, command.Content);
@@ -50,6 +54,7 @@ public sealed class UpdateBlockCommandHandler(
         }
 
         block.UpdateContent(normalized.Value!.CanonicalJson, normalized.Value.PlainText);
+        revisions.Add(RevisionRecording.Updated(block, Guid.CreateVersion7(), changeSource.Source));
         page.Touch();
 
         try
@@ -58,7 +63,7 @@ public sealed class UpdateBlockCommandHandler(
         }
         catch (ConcurrencyConflictException)
         {
-            return Result.Failure<BlockDto>(BlockErrors.RevisionConflict);
+            return Result.Failure<BlockDto>(BlockErrors.VersionConflict);
         }
 
         return Result.Success(BlockMapping.ToDto(block));

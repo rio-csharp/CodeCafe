@@ -151,6 +151,8 @@ public sealed class DeleteBlockCommandHandlerTests
                 new StubNotebookRepository { notebook },
                 pages,
                 blocks,
+                new StubBlockRevisionRepository(),
+                new StubChangeSourceAccessor(),
                 new StubUnitOfWork()
             ),
             blocks

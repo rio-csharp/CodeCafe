@@ -1,5 +1,6 @@
 using CodeCafe.Application.Revisions.ListBlockRevisions;
-using CodeCafe.Application.Revisions.Shared;
+using CodeCafe.Domain.Revisions;
+
 namespace CodeCafe.Application.Revisions.ListPageRevisions;
 
 public sealed record PageRevisionGroupDto(

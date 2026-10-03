@@ -15,7 +15,7 @@ public static class BlockMapping
             block.Type,
             JsonSerializer.Deserialize<JsonElement>(block.ContentJson),
             block.SortKey,
-            block.Revision,
+            block.Version,
             block.UpdatedAtUtc
         );
 

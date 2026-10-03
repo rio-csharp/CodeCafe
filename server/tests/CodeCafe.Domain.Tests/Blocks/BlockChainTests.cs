@@ -94,7 +94,7 @@ public sealed class BlockChainTests
     }
 
     [Fact]
-    public void Move_ToAnotherParent_FixesBothChainsAndBumpsRevision()
+    public void Move_ToAnotherParent_FixesBothChainsAndBumpsVersion()
     {
         var page = NewPage();
         var a = NewBlock(page, sortKey: "a");
@@ -114,8 +114,8 @@ public sealed class BlockChainTests
         Assert.Equal(b.Id, c.NextSiblingId);
         Assert.Null(b.NextSiblingId);
         Assert.True(string.CompareOrdinal(c.SortKey, b.SortKey) < 0);
-        Assert.Equal(2, b.Revision);
-        Assert.Equal(1, c.Revision);
+        Assert.Equal(2, b.Version);
+        Assert.Equal(1, c.Version);
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class BlockChainTests
         Assert.Equal(b.Id, c.NextSiblingId);
         Assert.True(string.CompareOrdinal(a.SortKey, c.SortKey) < 0);
         Assert.True(string.CompareOrdinal(c.SortKey, b.SortKey) < 0);
-        Assert.Equal(2, c.Revision);
+        Assert.Equal(2, c.Version);
     }
 
     [Fact]
@@ -164,8 +164,8 @@ public sealed class BlockChainTests
         Assert.Null(mover.ParentBlockId);
         Assert.Equal(mover.Id, tail.NextSiblingId);
         Assert.Null(parent.FirstChildId); // the old chain was repaired too
-        Assert.Equal(2, mover.Revision);
-        Assert.Equal(1, tail.Revision); // re-keyed neighbours are not "updated"
+        Assert.Equal(2, mover.Version);
+        Assert.Equal(1, tail.Version); // re-keyed neighbours are not "updated"
     }
 
     [Fact]
@@ -381,5 +381,48 @@ public sealed class BlockChainTests
 
         Assert.Equal(fresh.Id, parent.FirstChildId);
         Assert.Null(fresh.NextSiblingId);
+    }
+
+    [Fact]
+    public void RebuildStructure_RedealsEveryPointer_FromPlacements()
+    {
+        var page = NewPage();
+        var a = NewBlock(page, sortKey: "a");
+        var b = NewBlock(page, sortKey: "b");
+        var child = NewBlock(page, b, sortKey: "a");
+        // Deliberately wrong starting pointers: the rebuild must not trust any of them.
+        BlockChain.Link(a, page, parent: null, after: null);
+        BlockChain.Link(child, page, parent: null, after: a);
+        var placements = new Dictionary<Guid, BlockPlacement>
+        {
+            [a.Id] = new(null, "a"),
+            [b.Id] = new(null, "b"),
+            [child.Id] = new(b.Id, "a"),
+        };
+
+        BlockChain.RebuildStructure(page, [a, b, child], placements);
+
+        Assert.Equal(a.Id, page.FirstBlockId);
+        Assert.Equal(b.Id, a.NextSiblingId);
+        Assert.Null(b.NextSiblingId);
+        Assert.Equal(child.Id, b.FirstChildId);
+        Assert.Null(a.FirstChildId);
+        Assert.Equal(b.Id, child.ParentBlockId);
+    }
+
+    [Fact]
+    public void RebuildStructure_DanglingParent_FallsBackToTopLevel()
+    {
+        var page = NewPage();
+        var orphan = NewBlock(page);
+        var placements = new Dictionary<Guid, BlockPlacement>
+        {
+            [orphan.Id] = new(Guid.CreateVersion7(), "a"), // parent not among the blocks
+        };
+
+        BlockChain.RebuildStructure(page, [orphan], placements);
+
+        Assert.Null(orphan.ParentBlockId);
+        Assert.Equal(orphan.Id, page.FirstBlockId);
     }
 }

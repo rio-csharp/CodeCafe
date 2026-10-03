@@ -16,7 +16,7 @@ public sealed class BlockConfiguration : IEntityTypeConfiguration<Block>
         builder.Property(block => block.ContentJson).HasColumnType("jsonb");
         builder.Property(block => block.PlainText).HasColumnType("text");
         builder.Property(block => block.SortKey).HasMaxLength(Block.MaxSortKeyLength);
-        builder.Property(block => block.Revision).IsConcurrencyToken();
+        builder.Property(block => block.Version).IsConcurrencyToken();
 
         // Ordered sibling reads; covers PageId-only scans as the leftmost prefix.
         builder.HasIndex(block => new { block.PageId, block.ParentBlockId, block.SortKey });

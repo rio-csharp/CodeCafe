@@ -24,9 +24,9 @@ public static class BlockErrors
         ErrorKind.Validation
     );
 
-    public static readonly Error RevisionConflict = new(
-        "block_revision_conflict",
-        "The block was modified since the base revision; reload and retry.",
+    public static readonly Error VersionConflict = new(
+        "block_version_conflict",
+        "The block was modified since the base version; reload and retry.",
         ErrorKind.Conflict
     );
 

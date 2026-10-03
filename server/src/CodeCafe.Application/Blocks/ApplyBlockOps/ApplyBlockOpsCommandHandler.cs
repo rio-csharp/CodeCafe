@@ -10,19 +10,24 @@ using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Application.Revisions.Abstractions;
+using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Pages;
+using CodeCafe.Domain.Revisions;
 
 namespace CodeCafe.Application.Blocks.ApplyBlockOps;
 
 // Applies a batch of block ops in one all-or-nothing transaction. Ops run strictly in order and
 // each one sees the working state produced by the earlier ops — including TempId mappings and
-// revisions bumped earlier in the same batch.
+// versions bumped earlier in the same batch.
 public sealed class ApplyBlockOpsCommandHandler(
     ICurrentUserAccessor currentUserAccessor,
     INotebookRepository notebooks,
     IPageRepository pages,
     IBlockRepository blocks,
+    IBlockRevisionRepository revisions,
+    IChangeSourceAccessor changeSource,
     IUnitOfWork unitOfWork
 ) : ICommandHandler<ApplyBlockOpsCommand, Result<IReadOnlyList<BlockOpResultDto>>>
 {
@@ -52,15 +57,18 @@ public sealed class ApplyBlockOpsCommandHandler(
         var working = (await blocks.ListByPageAsync(command.PageId, cancellationToken)).ToList();
         var tempIds = new Dictionary<string, Block>(StringComparer.Ordinal);
 
+        // One batch id for the whole run: the page history shows the batch as a single group.
+        var batchId = Guid.CreateVersion7();
+        var recorded = new List<BlockRevision>();
         var results = new List<BlockOpResultDto>(command.Ops.Count);
         foreach (var op in command.Ops)
         {
             var outcome = op.Kind switch
             {
-                BlockOpKind.Insert => ApplyInsert(op, page, working, tempIds, command.DryRun),
-                BlockOpKind.Update => ApplyUpdate(op, working, tempIds),
-                BlockOpKind.Move => ApplyMove(op, page, working, tempIds),
-                BlockOpKind.Delete => ApplyDelete(op, page, working, tempIds, command.DryRun),
+                BlockOpKind.Insert => ApplyInsert(op, page, working, tempIds, recorded, batchId, command.DryRun),
+                BlockOpKind.Update => ApplyUpdate(op, working, tempIds, recorded, batchId),
+                BlockOpKind.Move => ApplyMove(op, page, working, tempIds, recorded, batchId),
+                BlockOpKind.Delete => ApplyDelete(op, page, working, tempIds, recorded, batchId, command.DryRun),
                 _ => Result.Failure<BlockOpResultDto>(BlockErrors.InvalidBlockPayload),
             };
             if (!outcome.IsSuccess)
@@ -76,6 +84,7 @@ public sealed class ApplyBlockOpsCommandHandler(
         if (!command.DryRun)
         {
             page.Touch();
+            revisions.AddRange(recorded);
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
@@ -90,6 +99,8 @@ public sealed class ApplyBlockOpsCommandHandler(
         Page page,
         List<Block> working,
         Dictionary<string, Block> tempIds,
+        List<BlockRevision> recorded,
+        Guid batchId,
         bool dryRun
     )
     {
@@ -136,25 +147,32 @@ public sealed class ApplyBlockOpsCommandHandler(
         if (!dryRun)
         {
             blocks.Add(block);
+            recorded.Add(RevisionRecording.Added(block, batchId, changeSource.Source));
         }
 
-        return Result.Success(new BlockOpResultDto(op.TempId, block.Id, block.Revision, CanonicalContent(normalized.Value!)));
+        return Result.Success(new BlockOpResultDto(op.TempId, block.Id, block.Version, CanonicalContent(normalized.Value!)));
     }
 
-    private static Result<BlockOpResultDto> ApplyUpdate(BlockOp op, List<Block> working, IReadOnlyDictionary<string, Block> tempIds)
+    private Result<BlockOpResultDto> ApplyUpdate(
+        BlockOp op,
+        List<Block> working,
+        IReadOnlyDictionary<string, Block> tempIds,
+        List<BlockRevision> recorded,
+        Guid batchId
+    )
     {
         if (op.BlockId is null || BlockPositions.ResolveReference(op.BlockId, working, tempIds) is not { } block)
         {
             return Result.Failure<BlockOpResultDto>(BlockErrors.NotFound);
         }
 
-        // BaseRevision is compared to the revision at THIS point in the batch, not at batch
-        // start: earlier ops may already have touched the block. A missing BaseRevision can never
+        // BaseVersion is compared to the version at THIS point in the batch, not at batch
+        // start: earlier ops may already have touched the block. A missing BaseVersion can never
         // match, so it fails here even when the pipeline validator was bypassed — never
         // last-write-wins.
-        if (block.Revision != op.BaseRevision)
+        if (block.Version != op.BaseVersion)
         {
-            return Result.Failure<BlockOpResultDto>(BlockErrors.RevisionConflict);
+            return Result.Failure<BlockOpResultDto>(BlockErrors.VersionConflict);
         }
 
         // Updates normalize against the block's STORED type: the payload contract belongs to the
@@ -166,10 +184,18 @@ public sealed class ApplyBlockOpsCommandHandler(
         }
 
         block.UpdateContent(normalized.Value!.CanonicalJson, normalized.Value.PlainText);
-        return Result.Success(new BlockOpResultDto(null, block.Id, block.Revision, CanonicalContent(normalized.Value!)));
+        recorded.Add(RevisionRecording.Updated(block, batchId, changeSource.Source));
+        return Result.Success(new BlockOpResultDto(null, block.Id, block.Version, CanonicalContent(normalized.Value!)));
     }
 
-    private static Result<BlockOpResultDto> ApplyMove(BlockOp op, Page page, List<Block> working, IReadOnlyDictionary<string, Block> tempIds)
+    private Result<BlockOpResultDto> ApplyMove(
+        BlockOp op,
+        Page page,
+        List<Block> working,
+        IReadOnlyDictionary<string, Block> tempIds,
+        List<BlockRevision> recorded,
+        Guid batchId
+    )
     {
         if (op.BlockId is null || BlockPositions.ResolveReference(op.BlockId, working, tempIds) is not { } block)
         {
@@ -184,7 +210,8 @@ public sealed class ApplyBlockOpsCommandHandler(
 
         var (parent, group, insertIndex) = position.Value!;
         BlockChain.Move(block, page, parent, working, group, insertIndex);
-        return Result.Success(new BlockOpResultDto(null, block.Id, block.Revision));
+        recorded.Add(RevisionRecording.Moved(block, batchId, changeSource.Source));
+        return Result.Success(new BlockOpResultDto(null, block.Id, block.Version));
     }
 
     private Result<BlockOpResultDto> ApplyDelete(
@@ -192,6 +219,8 @@ public sealed class ApplyBlockOpsCommandHandler(
         Page page,
         List<Block> working,
         Dictionary<string, Block> tempIds,
+        List<BlockRevision> recorded,
+        Guid batchId,
         bool dryRun
     )
     {
@@ -218,6 +247,7 @@ public sealed class ApplyBlockOpsCommandHandler(
             blocks.RemoveRange(doomed);
         }
 
+        recorded.AddRange(RevisionRecording.Deleted(doomed, batchId, changeSource.Source));
         return Result.Success(new BlockOpResultDto(null, block.Id, null));
     }
 

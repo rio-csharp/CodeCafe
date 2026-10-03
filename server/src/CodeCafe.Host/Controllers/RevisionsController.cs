@@ -27,5 +27,5 @@ public sealed class RevisionsController(ISender sender) : ControllerBase
 
     [HttpPost("pages/{pageId:guid}/blocks/{blockId:guid}/revisions/restore")]
     public Task<Result> RestoreBlock(Guid pageId, Guid blockId, RestoreBlockRevisionRequest request, CancellationToken cancellationToken)
-        => sender.Send(new RestoreBlockRevisionCommand(pageId, blockId, request.Revision), cancellationToken);
+        => sender.Send(new RestoreBlockRevisionCommand(pageId, blockId, request.BlockVersion), cancellationToken);
 }

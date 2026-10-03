@@ -8,6 +8,8 @@ using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Application.Revisions.Abstractions;
+using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;
 
 namespace CodeCafe.Application.Blocks.MoveBlock;
@@ -17,6 +19,8 @@ public sealed class MoveBlockCommandHandler(
     INotebookRepository notebooks,
     IPageRepository pages,
     IBlockRepository blocks,
+    IBlockRevisionRepository revisions,
+    IChangeSourceAccessor changeSource,
     IUnitOfWork unitOfWork
 ) : ICommandHandler<MoveBlockCommand, Result>
 {
@@ -53,6 +57,7 @@ public sealed class MoveBlockCommandHandler(
 
         var (newParent, group, insertIndex) = position.Value!;
         BlockChain.Move(block, page, newParent, pageBlocks, group, insertIndex);
+        revisions.Add(RevisionRecording.Moved(block, Guid.CreateVersion7(), changeSource.Source));
 
         page.Touch();
         await unitOfWork.SaveChangesAsync(cancellationToken);

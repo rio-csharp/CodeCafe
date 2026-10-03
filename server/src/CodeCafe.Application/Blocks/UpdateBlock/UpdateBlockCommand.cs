@@ -9,4 +9,4 @@ public sealed record UpdateBlockCommand(
     Guid PageId,
     Guid BlockId,
     JsonElement Content,
-    long BaseRevision) : ICommand<Result<BlockDto>>;
+    long BaseVersion) : ICommand<Result<BlockDto>>;

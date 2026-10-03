@@ -15,7 +15,7 @@ namespace CodeCafe.Application.Tests.Blocks;
 public sealed class UpdateBlockCommandHandlerTests
 {
     [Fact]
-    public async Task Handle_UpdatesContent_BumpsRevision_AndRegeneratesPlainText()
+    public async Task Handle_UpdatesContent_BumpsVersion_AndRegeneratesPlainText()
     {
         var owner = SeedOwner();
         var notebook = SeedNotebook(owner);
@@ -24,38 +24,38 @@ public sealed class UpdateBlockCommandHandlerTests
         var (handler, _, _) = CreateHandler(owner.Id, notebook, [page], [block]);
 
         var result = await handler.Handle(
-            new UpdateBlockCommand(page.Id, block.Id, Paragraph("After"), BaseRevision: 1),
+            new UpdateBlockCommand(page.Id, block.Id, Paragraph("After"), BaseVersion: 1),
             CancellationToken.None
         );
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(2, block.Revision);
+        Assert.Equal(2, block.Version);
         Assert.Equal("After", block.PlainText);
-        Assert.Equal(2, result.Value!.Revision);
+        Assert.Equal(2, result.Value!.Version);
         Assert.Equal("""{"spans":[{"text":"After","marks":[]}]}""", result.Value.Content.GetRawText());
     }
 
     [Fact]
-    public async Task Handle_StaleBaseRevision_ReturnsRevisionConflict()
+    public async Task Handle_StaleBaseVersion_ReturnsVersionConflict()
     {
         var owner = SeedOwner();
         var notebook = SeedNotebook(owner);
         var page = SeedPage(notebook);
         var block = NewBlock(page, """{"spans":[]}""", string.Empty);
-        block.UpdateContent("""{"spans":[{"text":"Newer","marks":[]}]}""", "Newer"); // Revision now 2
+        block.UpdateContent("""{"spans":[{"text":"Newer","marks":[]}]}""", "Newer"); // Version now 2
         var (handler, _, _) = CreateHandler(owner.Id, notebook, [page], [block]);
 
         var result = await handler.Handle(
-            new UpdateBlockCommand(page.Id, block.Id, Paragraph("Stale write"), BaseRevision: 1),
+            new UpdateBlockCommand(page.Id, block.Id, Paragraph("Stale write"), BaseVersion: 1),
             CancellationToken.None
         );
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(BlockErrors.RevisionConflict, result.Error);
+        Assert.Equal(BlockErrors.VersionConflict, result.Error);
     }
 
     [Fact]
-    public async Task Handle_ConcurrencyConflictFromTheSave_ReturnsRevisionConflict()
+    public async Task Handle_ConcurrencyConflictFromTheSave_ReturnsVersionConflict()
     {
         var owner = SeedOwner();
         var notebook = SeedNotebook(owner);
@@ -70,12 +70,12 @@ public sealed class UpdateBlockCommandHandlerTests
         );
 
         var result = await handler.Handle(
-            new UpdateBlockCommand(page.Id, block.Id, Paragraph("Lost race"), BaseRevision: 1),
+            new UpdateBlockCommand(page.Id, block.Id, Paragraph("Lost race"), BaseVersion: 1),
             CancellationToken.None
         );
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(BlockErrors.RevisionConflict, result.Error);
+        Assert.Equal(BlockErrors.VersionConflict, result.Error);
     }
 
     [Fact]
@@ -89,7 +89,7 @@ public sealed class UpdateBlockCommandHandlerTests
         var (handler, _, _) = CreateHandler(owner.Id, notebook, [page, otherPage], [block]);
 
         var result = await handler.Handle(
-            new UpdateBlockCommand(page.Id, block.Id, Paragraph("Nope"), BaseRevision: 1),
+            new UpdateBlockCommand(page.Id, block.Id, Paragraph("Nope"), BaseVersion: 1),
             CancellationToken.None
         );
 
@@ -106,7 +106,7 @@ public sealed class UpdateBlockCommandHandlerTests
         var (handler, _, _) = CreateHandler(owner.Id, notebook, [page], []);
 
         var result = await handler.Handle(
-            new UpdateBlockCommand(page.Id, Guid.NewGuid(), Paragraph("Nope"), BaseRevision: 1),
+            new UpdateBlockCommand(page.Id, Guid.NewGuid(), Paragraph("Nope"), BaseVersion: 1),
             CancellationToken.None
         );
 
@@ -124,7 +124,7 @@ public sealed class UpdateBlockCommandHandlerTests
         var (handler, _, _) = CreateHandler(owner.Id, notebook, [page], [block]);
 
         var result = await handler.Handle(
-            new UpdateBlockCommand(page.Id, block.Id, Json("""{"spans":[],"surprise":true}"""), BaseRevision: 1),
+            new UpdateBlockCommand(page.Id, block.Id, Json("""{"spans":[],"surprise":true}"""), BaseVersion: 1),
             CancellationToken.None
         );
 
@@ -143,7 +143,7 @@ public sealed class UpdateBlockCommandHandlerTests
         var (handler, _, _) = CreateHandler(stranger.Id, notebook, [page], [block]);
 
         var result = await handler.Handle(
-            new UpdateBlockCommand(page.Id, block.Id, Paragraph("Nope"), BaseRevision: 1),
+            new UpdateBlockCommand(page.Id, block.Id, Paragraph("Nope"), BaseVersion: 1),
             CancellationToken.None
         );
 
@@ -179,12 +179,15 @@ public sealed class UpdateBlockCommandHandlerTests
         var blocks = new StubBlockRepository();
         blocks.AddRange(seededBlocks);
         unitOfWork ??= new StubUnitOfWork();
+        var revisions = new StubBlockRevisionRepository();
         return (
             new UpdateBlockCommandHandler(
                 new StubCurrentUserAccessor(new CurrentUser(currentUserId)),
                 new StubNotebookRepository { notebook },
                 pages,
                 blocks,
+                revisions,
+                new StubChangeSourceAccessor(),
                 unitOfWork
             ),
             blocks,

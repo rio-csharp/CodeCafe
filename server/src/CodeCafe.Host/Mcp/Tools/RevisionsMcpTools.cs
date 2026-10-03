@@ -1,8 +1,10 @@
 using System.ComponentModel;
+using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Revisions.ListBlockRevisions;
 using CodeCafe.Application.Revisions.ListPageRevisions;
 using CodeCafe.Application.Revisions.RestoreBlockRevision;
 using CodeCafe.Application.Revisions.RestorePageToRevision;
+using CodeCafe.Domain.Revisions;
 using MediatR;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -37,18 +39,26 @@ public sealed class RevisionsMcpTools
     [Description("Roll a whole page back to its state at the given point in time.")]
     public static async Task<CallToolResult> RestorePageRevision(
         ISender sender,
+        IChangeSourceAccessor changeSource,
         Guid pageId,
         DateTimeOffset atUtc,
         CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new RestorePageToRevisionCommand(pageId, atUtc), cancellationToken));
+    {
+        changeSource.Source = RevisionSource.Ai;
+        return McpToolResults.From(await sender.Send(new RestorePageToRevisionCommand(pageId, atUtc), cancellationToken));
+    }
 
     [McpServerTool(Name = "codecafe_restore_block_revision", Destructive = true, Idempotent = true)]
-    [Description("Roll one block back to a specific revision number.")]
+    [Description("Roll one block back to a specific block version.")]
     public static async Task<CallToolResult> RestoreBlockRevision(
         ISender sender,
+        IChangeSourceAccessor changeSource,
         Guid pageId,
         Guid blockId,
-        long revision,
+        long blockVersion,
         CancellationToken cancellationToken)
-        => McpToolResults.From(await sender.Send(new RestoreBlockRevisionCommand(pageId, blockId, revision), cancellationToken));
+    {
+        changeSource.Source = RevisionSource.Ai;
+        return McpToolResults.From(await sender.Send(new RestoreBlockRevisionCommand(pageId, blockId, blockVersion), cancellationToken));
+    }
 }

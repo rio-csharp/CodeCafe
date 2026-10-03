@@ -19,7 +19,7 @@ public sealed class Block : Entity
         ContentJson = contentJson;
         PlainText = plainText;
         SortKey = sortKey;
-        Revision = 1;
+        Version = 1;
         CreatedAtUtc = DateTimeOffset.UtcNow;
         UpdatedAtUtc = CreatedAtUtc;
     }
@@ -48,7 +48,7 @@ public sealed class Block : Entity
 
     // Optimistic concurrency token for payload updates; moves bump it too, so a client holding a
     // stale structure cannot silently overwrite a payload.
-    public long Revision { get; private set; }
+    public long Version { get; private set; }
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
@@ -64,6 +64,20 @@ public sealed class Block : Entity
         return new Block(Guid.CreateVersion7(), pageId, parentBlockId, type, contentJson, plainText, sortKey);
     }
 
+    // Re-creates a hard-deleted block with its ORIGINAL id, so AI sessions and links referencing
+    // the id keep working after a revision restore. The version counter restarts at 1; the
+    // revision log resolves collisions by always taking the newest row with a given number.
+    public static Block Restore(Guid id, Guid pageId, Guid? parentBlockId, string type, string contentJson, string plainText, string sortKey)
+    {
+        ArgumentOutOfRangeException.ThrowIfEqual(id, Guid.Empty);
+        ArgumentException.ThrowIfNullOrWhiteSpace(type);
+        ArgumentNullException.ThrowIfNull(contentJson);
+        ArgumentNullException.ThrowIfNull(plainText);
+        ArgumentException.ThrowIfNullOrWhiteSpace(sortKey);
+
+        return new Block(id, pageId, parentBlockId, type, contentJson, plainText, sortKey);
+    }
+
     public void UpdateContent(string contentJson, string plainText)
     {
         ArgumentNullException.ThrowIfNull(contentJson);
@@ -71,25 +85,25 @@ public sealed class Block : Entity
 
         ContentJson = contentJson;
         PlainText = plainText;
-        Revision++;
+        Version++;
         Touch();
     }
 
-    // A move repositions the block without touching its payload; descendants keep their Revision.
+    // A move repositions the block without touching its payload; descendants keep their Version.
     public void MarkMoved()
     {
-        Revision++;
+        Version++;
         Touch();
     }
 
     // Chain bookkeeping below is BlockChain-only, so handlers can never corrupt the structure.
-    // Pointer writes do not bump Revision or UpdatedAtUtc: neighbours are not being edited.
+    // Pointer writes do not bump Version or UpdatedAtUtc: neighbours are not being edited.
     internal void SetNextSibling(Guid? nextSiblingId) => NextSiblingId = nextSiblingId;
 
     internal void SetFirstChild(Guid? firstChildId) => FirstChildId = firstChildId;
 
     // Reposition under a (possibly) new parent; FirstChildId is deliberately untouched: the
-    // child chain moves with the block. Revision/UpdatedAtUtc are MarkMoved's job.
+    // child chain moves with the block. Version/UpdatedAtUtc are MarkMoved's job.
     internal void MoveTo(Guid? parentBlockId, string sortKey, Guid? nextSiblingId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sortKey);

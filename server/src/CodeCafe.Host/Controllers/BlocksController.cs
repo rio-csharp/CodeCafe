@@ -25,7 +25,7 @@ public sealed class BlocksController(ISender sender) : ControllerBase
 
     [HttpPatch("pages/{pageId:guid}/blocks/{blockId:guid}")]
     public Task<Result<BlockDto>> Update(Guid pageId, Guid blockId, UpdateBlockRequest request, CancellationToken cancellationToken)
-        => sender.Send(new UpdateBlockCommand(pageId, blockId, request.Content, request.BaseRevision), cancellationToken);
+        => sender.Send(new UpdateBlockCommand(pageId, blockId, request.Content, request.BaseVersion), cancellationToken);
 
     [HttpDelete("pages/{pageId:guid}/blocks/{blockId:guid}")]
     public Task<Result> Delete(Guid pageId, Guid blockId, CancellationToken cancellationToken)

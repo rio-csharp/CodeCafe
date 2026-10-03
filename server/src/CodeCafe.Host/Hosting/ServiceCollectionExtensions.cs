@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using CodeCafe.Application;
+using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Host.Mcp;
 using CodeCafe.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,7 @@ internal static class ServiceCollectionExtensions
         services.AddCodeCafeInfrastructure(configuration);
         services.AddProblemDetails();
         services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddScoped<IChangeSourceAccessor, AmbientChangeSource>();
         services.AddCodeCafeRateLimiter();
         services.AddCodeCafeAuthentication();
         services.AddCodeCafeCors(configuration, environment);

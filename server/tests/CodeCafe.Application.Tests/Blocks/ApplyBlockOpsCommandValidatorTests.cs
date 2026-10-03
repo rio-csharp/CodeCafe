@@ -16,9 +16,9 @@ public sealed class ApplyBlockOpsCommandValidatorTests
                 Guid.NewGuid(),
                 [
                     Insert(tempId: "t1"),
-                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Content(), BaseRevision: 1),
-                    new BlockOp(BlockOpKind.Move, BlockId: Guid.NewGuid().ToString(), TempId: null, Type: null, After: "t1", Content: null, BaseRevision: null),
-                    new BlockOp(BlockOpKind.Delete, BlockId: Guid.NewGuid().ToString(), TempId: null, Type: null, After: null, Content: null, BaseRevision: null),
+                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Content(), BaseVersion: 1),
+                    new BlockOp(BlockOpKind.Move, BlockId: Guid.NewGuid().ToString(), TempId: null, Type: null, After: "t1", Content: null, BaseVersion: null),
+                    new BlockOp(BlockOpKind.Delete, BlockId: Guid.NewGuid().ToString(), TempId: null, Type: null, After: null, Content: null, BaseVersion: null),
                 ]
             )
         );
@@ -27,26 +27,26 @@ public sealed class ApplyBlockOpsCommandValidatorTests
     }
 
     [Fact]
-    public void Update_WithoutBaseRevision_Fails()
+    public void Update_WithoutBaseVersion_Fails()
     {
         var result = _validator.Validate(
             new ApplyBlockOpsCommand(
                 Guid.NewGuid(),
-                [new BlockOp(BlockOpKind.Update, BlockId: Guid.NewGuid().ToString(), TempId: null, Type: null, After: null, Content: Content(), BaseRevision: null)]
+                [new BlockOp(BlockOpKind.Update, BlockId: Guid.NewGuid().ToString(), TempId: null, Type: null, After: null, Content: Content(), BaseVersion: null)]
             )
         );
 
         Assert.False(result.IsValid);
-        Assert.Contains(result.Errors, error => error.PropertyName.EndsWith(nameof(BlockOp.BaseRevision)));
+        Assert.Contains(result.Errors, error => error.PropertyName.EndsWith(nameof(BlockOp.BaseVersion)));
     }
 
     [Fact]
-    public void Update_WithBaseRevisionBelowOne_Fails()
+    public void Update_WithBaseVersionBelowOne_Fails()
     {
         var result = _validator.Validate(
             new ApplyBlockOpsCommand(
                 Guid.NewGuid(),
-                [new BlockOp(BlockOpKind.Update, BlockId: Guid.NewGuid().ToString(), TempId: null, Type: null, After: null, Content: Content(), BaseRevision: 0)]
+                [new BlockOp(BlockOpKind.Update, BlockId: Guid.NewGuid().ToString(), TempId: null, Type: null, After: null, Content: Content(), BaseVersion: 0)]
             )
         );
 
@@ -62,7 +62,7 @@ public sealed class ApplyBlockOpsCommandValidatorTests
         var result = _validator.Validate(
             new ApplyBlockOpsCommand(
                 Guid.NewGuid(),
-                [new BlockOp(kind, BlockId: null, TempId: null, Type: null, After: null, Content: null, BaseRevision: kind == BlockOpKind.Update ? 1 : null)]
+                [new BlockOp(kind, BlockId: null, TempId: null, Type: null, After: null, Content: null, BaseVersion: kind == BlockOpKind.Update ? 1 : null)]
             )
         );
 
@@ -79,7 +79,7 @@ public sealed class ApplyBlockOpsCommandValidatorTests
         var result = _validator.Validate(
             new ApplyBlockOpsCommand(
                 Guid.NewGuid(),
-                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: null, Type: type, After: null, Content: Content(), BaseRevision: null)]
+                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: null, Type: type, After: null, Content: Content(), BaseVersion: null)]
             )
         );
 
@@ -117,7 +117,7 @@ public sealed class ApplyBlockOpsCommandValidatorTests
     }
 
     private static BlockOp Insert(string? tempId = null)
-        => new(BlockOpKind.Insert, BlockId: null, TempId: tempId, Type: BlockTypes.Paragraph, After: null, Content: Content(), BaseRevision: null);
+        => new(BlockOpKind.Insert, BlockId: null, TempId: tempId, Type: BlockTypes.Paragraph, After: null, Content: Content(), BaseVersion: null);
 
     private static JsonElement Content() => JsonSerializer.Deserialize<JsonElement>("""{"spans":[]}""");
 }

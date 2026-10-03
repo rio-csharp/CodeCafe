@@ -26,8 +26,8 @@ public sealed class ApplyBlockOpsCommandHandlerTests
             new ApplyBlockOpsCommand(
                 page.Id,
                 [
-                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("Hello"), BaseRevision: null),
-                    new BlockOp(BlockOpKind.Move, BlockId: a.Id.ToString(), TempId: null, Type: null, After: "t1", Content: null, BaseRevision: null),
+                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("Hello"), BaseVersion: null),
+                    new BlockOp(BlockOpKind.Move, BlockId: a.Id.ToString(), TempId: null, Type: null, After: "t1", Content: null, BaseVersion: null),
                 ]
             ),
             CancellationToken.None
@@ -39,13 +39,13 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         var inserted = result.Value[0];
         Assert.Equal("t1", inserted.TempId);
         Assert.NotNull(inserted.BlockId);
-        Assert.Equal(1, inserted.Revision);
+        Assert.Equal(1, inserted.Version);
         Assert.NotNull(inserted.Content);
 
         var moved = result.Value[1];
         Assert.Null(moved.TempId);
         Assert.Equal(a.Id, moved.BlockId);
-        Assert.Equal(2, moved.Revision); // the move bumped the pre-existing block
+        Assert.Equal(2, moved.Version); // the move bumped the pre-existing block
 
         var insertedBlock = blocks.Single(block => block.Id == inserted.BlockId);
         Assert.Equal(insertedBlock.Id, page.FirstBlockId);
@@ -55,7 +55,7 @@ public sealed class ApplyBlockOpsCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_UpdatesAgainstABatchCreatedBlock_NeedProgressiveBaseRevisions()
+    public async Task Handle_UpdatesAgainstABatchCreatedBlock_NeedProgressiveBaseVersions()
     {
         var owner = SeedOwner();
         var notebook = SeedNotebook(owner);
@@ -66,23 +66,23 @@ public sealed class ApplyBlockOpsCommandHandlerTests
             new ApplyBlockOpsCommand(
                 page.Id,
                 [
-                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("v1"), BaseRevision: null),
-                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Paragraph("v2"), BaseRevision: 1),
-                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Paragraph("v3"), BaseRevision: 2),
+                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("v1"), BaseVersion: null),
+                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Paragraph("v2"), BaseVersion: 1),
+                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Paragraph("v3"), BaseVersion: 2),
                 ]
             ),
             CancellationToken.None
         );
 
         Assert.True(result.IsSuccess);
-        Assert.Equal([1L, 2L, 3L], result.Value!.Select(op => op.Revision).ToList());
+        Assert.Equal([1L, 2L, 3L], result.Value!.Select(op => op.Version).ToList());
         var block = blocks.Single();
-        Assert.Equal(3, block.Revision);
+        Assert.Equal(3, block.Version);
         Assert.Equal("v3", block.PlainText);
     }
 
     [Fact]
-    public async Task Handle_StaleBaseRevisionAgainstABatchCreatedBlock_FailsTheWholeBatch()
+    public async Task Handle_StaleBaseVersionAgainstABatchCreatedBlock_FailsTheWholeBatch()
     {
         var owner = SeedOwner();
         var notebook = SeedNotebook(owner);
@@ -93,17 +93,17 @@ public sealed class ApplyBlockOpsCommandHandlerTests
             new ApplyBlockOpsCommand(
                 page.Id,
                 [
-                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("v1"), BaseRevision: null),
-                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Paragraph("v2"), BaseRevision: 1),
-                    // BaseRevision 1 was valid at batch start but the previous op bumped it.
-                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Paragraph("v3"), BaseRevision: 1),
+                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("v1"), BaseVersion: null),
+                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Paragraph("v2"), BaseVersion: 1),
+                    // BaseVersion 1 was valid at batch start but the previous op bumped it.
+                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Paragraph("v3"), BaseVersion: 1),
                 ]
             ),
             CancellationToken.None
         );
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(BlockErrors.RevisionConflict, result.Error);
+        Assert.Equal(BlockErrors.VersionConflict, result.Error);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 
@@ -123,8 +123,8 @@ public sealed class ApplyBlockOpsCommandHandlerTests
             new ApplyBlockOpsCommand(
                 page.Id,
                 [
-                    new BlockOp(BlockOpKind.Delete, BlockId: a.Id.ToString(), TempId: null, Type: null, After: null, Content: null, BaseRevision: null),
-                    new BlockOp(BlockOpKind.Update, BlockId: a.Id.ToString(), TempId: null, Type: null, After: null, Content: Paragraph("zombie"), BaseRevision: 1),
+                    new BlockOp(BlockOpKind.Delete, BlockId: a.Id.ToString(), TempId: null, Type: null, After: null, Content: null, BaseVersion: null),
+                    new BlockOp(BlockOpKind.Update, BlockId: a.Id.ToString(), TempId: null, Type: null, After: null, Content: Paragraph("zombie"), BaseVersion: 1),
                 ]
             ),
             CancellationToken.None
@@ -150,8 +150,8 @@ public sealed class ApplyBlockOpsCommandHandlerTests
                 page.Id,
                 [
                     // Code normalization lowercases and trims the language: canonical proof.
-                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Code, After: null, Content: Json("""{"code":"x=1","language":"CSharp"}"""), BaseRevision: null),
-                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Json("""{"code":"y=2","language":" FSharp "}"""), BaseRevision: 1),
+                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Code, After: null, Content: Json("""{"code":"x=1","language":"CSharp"}"""), BaseVersion: null),
+                    new BlockOp(BlockOpKind.Update, BlockId: "t1", TempId: null, Type: null, After: null, Content: Json("""{"code":"y=2","language":" FSharp "}"""), BaseVersion: 1),
                 ],
                 DryRun: true
             ),
@@ -162,11 +162,11 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         Assert.Equal(2, result.Value!.Count);
         Assert.Equal("csharp", result.Value[0].Content!.Value.GetProperty("language").GetString());
         Assert.Equal("fsharp", result.Value[1].Content!.Value.GetProperty("language").GetString());
-        Assert.Equal(2, result.Value[1].Revision);
+        Assert.Equal(2, result.Value[1].Version);
 
         // Nothing persisted: the seeded block is the repository's only content, untouched.
         Assert.Single(blocks);
-        Assert.Equal(1, a.Revision);
+        Assert.Equal(1, a.Version);
         Assert.Null(a.NextSiblingId);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
@@ -182,7 +182,7 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         var result = await handler.Handle(
             new ApplyBlockOpsCommand(
                 page.Id,
-                [new BlockOp(BlockOpKind.Update, BlockId: "ghost", TempId: null, Type: null, After: null, Content: Paragraph("boo"), BaseRevision: 1)]
+                [new BlockOp(BlockOpKind.Update, BlockId: "ghost", TempId: null, Type: null, After: null, Content: Paragraph("boo"), BaseVersion: 1)]
             ),
             CancellationToken.None
         );
@@ -203,7 +203,7 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         var result = await handler.Handle(
             new ApplyBlockOpsCommand(
                 page.Id,
-                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: null, Type: BlockTypes.Paragraph, After: "ghost", Content: Paragraph("boo"), BaseRevision: null)]
+                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: null, Type: BlockTypes.Paragraph, After: "ghost", Content: Paragraph("boo"), BaseVersion: null)]
             ),
             CancellationToken.None
         );
@@ -225,8 +225,8 @@ public sealed class ApplyBlockOpsCommandHandlerTests
             new ApplyBlockOpsCommand(
                 page.Id,
                 [
-                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("one"), BaseRevision: null),
-                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("two"), BaseRevision: null),
+                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("one"), BaseVersion: null),
+                    new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("two"), BaseVersion: null),
                 ]
             ),
             CancellationToken.None
@@ -252,7 +252,7 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         var result = await handler.Handle(
             new ApplyBlockOpsCommand(
                 page.Id,
-                [new BlockOp(BlockOpKind.Move, BlockId: parent.Id.ToString(), TempId: null, Type: null, After: child.Id.ToString(), Content: null, BaseRevision: null)]
+                [new BlockOp(BlockOpKind.Move, BlockId: parent.Id.ToString(), TempId: null, Type: null, After: child.Id.ToString(), Content: null, BaseVersion: null)]
             ),
             CancellationToken.None
         );
@@ -275,7 +275,7 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         var result = await handler.Handle(
             new ApplyBlockOpsCommand(
                 page.Id,
-                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: null, Type: BlockTypes.Paragraph, After: null, Content: Paragraph("nope"), BaseRevision: null)]
+                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: null, Type: BlockTypes.Paragraph, After: null, Content: Paragraph("nope"), BaseVersion: null)]
             ),
             CancellationToken.None
         );
@@ -310,12 +310,15 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         var blocks = new StubBlockRepository();
         blocks.AddRange(seededBlocks);
         var unitOfWork = new StubUnitOfWork();
+        var revisions = new StubBlockRevisionRepository();
         return (
             new ApplyBlockOpsCommandHandler(
                 new StubCurrentUserAccessor(currentUserId is { } id ? new CurrentUser(id) : null),
                 new StubNotebookRepository { notebook },
                 new StubPageRepository { page },
                 blocks,
+                revisions,
+                new StubChangeSourceAccessor(),
                 unitOfWork
             ),
             blocks,

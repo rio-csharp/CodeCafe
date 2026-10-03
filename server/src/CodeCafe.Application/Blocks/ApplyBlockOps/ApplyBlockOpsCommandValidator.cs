@@ -16,9 +16,9 @@ public sealed class ApplyBlockOpsCommandValidator : AbstractValidator<ApplyBlock
             op.RuleFor(blockOp => blockOp.BlockId)
                 .NotEmpty()
                 .When(blockOp => blockOp.Kind is BlockOpKind.Update or BlockOpKind.Delete or BlockOpKind.Move);
-            // Updates are optimistic-locked; a missing BaseRevision must fail validation rather
-            // than silently degrade to last-write-wins. Revisions start at 1.
-            op.RuleFor(blockOp => blockOp.BaseRevision)
+            // Updates are optimistic-locked; a missing BaseVersion must fail validation rather
+            // than silently degrade to last-write-wins. Versions start at 1.
+            op.RuleFor(blockOp => blockOp.BaseVersion)
                 .NotNull()
                 .GreaterThanOrEqualTo(1)
                 .When(blockOp => blockOp.Kind == BlockOpKind.Update);

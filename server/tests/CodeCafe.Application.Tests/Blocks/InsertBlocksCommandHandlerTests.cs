@@ -148,7 +148,7 @@ public sealed class InsertBlocksCommandHandlerTests
         var (handler, blocks, _) = CreateHandler(owner.Id, notebook, page);
 
         var result = await handler.Handle(
-            new InsertBlocksCommand(page.Id, null, [Input(Json("{}"), type: "table")]),
+            new InsertBlocksCommand(page.Id, null, [Input(Json("{}"), type: "sparkles")]),
             CancellationToken.None
         );
 
@@ -237,12 +237,15 @@ public sealed class InsertBlocksCommandHandlerTests
         var blocks = new StubBlockRepository();
         blocks.AddRange(seededBlocks);
         var unitOfWork = new StubUnitOfWork();
+        var revisions = new StubBlockRevisionRepository();
         return (
             new InsertBlocksCommandHandler(
                 new StubCurrentUserAccessor(currentUserId is { } id ? new CurrentUser(id) : null),
                 new StubNotebookRepository { notebook },
                 new StubPageRepository { page },
                 blocks,
+                revisions,
+                new StubChangeSourceAccessor(),
                 unitOfWork
             ),
             blocks,
