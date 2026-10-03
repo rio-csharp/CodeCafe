@@ -41,6 +41,7 @@ public static class PageReadProjection
             page,
             PageHierarchy.PathOf(page, ancestors),
             isFavorite,
+            includeShares: notebook.OwnerId == userId,
             users,
             cancellationToken
         );

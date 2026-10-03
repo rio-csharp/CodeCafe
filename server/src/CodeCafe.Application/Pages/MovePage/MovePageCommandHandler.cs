@@ -70,7 +70,14 @@ public sealed class MovePageCommandHandler(
         var isFavorite = (await pages.FindFavoriteIdsAsync(userId, [page.Id], cancellationToken)).Contains(page.Id);
 
         return Result.Success(
-            await PageDetailsMapping.ToDtoAsync(page, PageHierarchy.PathOf(page, newAncestors), isFavorite, users, cancellationToken)
+            await PageDetailsMapping.ToDtoAsync(
+                page,
+                PageHierarchy.PathOf(page, newAncestors),
+                isFavorite,
+                includeShares: notebook.OwnerId == userId,
+                users,
+                cancellationToken
+            )
         );
     }
 }

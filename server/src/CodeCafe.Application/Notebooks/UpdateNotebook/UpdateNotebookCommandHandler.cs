@@ -35,6 +35,6 @@ public sealed class UpdateNotebookCommandHandler(
         notebook.UpdateDetails(title, description, command.Visibility ?? notebook.Visibility);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(await NotebookDetailsMapping.ToDtoAsync(notebook, users, cancellationToken));
+        return Result.Success(await NotebookDetailsMapping.ToDtoAsync(notebook, includeShares: true, users, cancellationToken));
     }
 }

@@ -5,15 +5,20 @@ namespace CodeCafe.Application.Pages.Shared;
 
 public static class PageDetailsMapping
 {
+    // includeShares gates the collaborator list: it identifies people, so only the notebook
+    // owner gets it — public pages are readable anonymously and must not leak the member list.
     public static async Task<PageDetailsDto> ToDtoAsync(
         Page page,
         string path,
         bool isFavorite,
+        bool includeShares,
         IUserRepository users,
         CancellationToken cancellationToken
     )
     {
-        var shareUserIds = page.Shares.Select(share => share.UserId).ToList();
+        var shareUserIds = includeShares
+            ? page.Shares.Select(share => share.UserId).ToList()
+            : [];
         var shareUsers = shareUserIds.Count == 0
             ? (IReadOnlyList<CodeCafe.Domain.Identity.User>)[]
             : await users.FindByIdsAsync(shareUserIds, cancellationToken);
@@ -30,10 +35,13 @@ public static class PageDetailsMapping
             path,
             page.IsArchived,
             isFavorite,
+            // Shares whose user no longer exists are omitted rather than rendered with a
+            // placeholder name; an empty name map therefore means "no shares visible".
             page.Shares
+                .Where(share => shareUserNames.ContainsKey(share.UserId))
                 .Select(share => new PageShareDto(
                     share.UserId,
-                    shareUserNames.GetValueOrDefault(share.UserId, "unknown"),
+                    shareUserNames[share.UserId],
                     share.Role
                 ))
                 .ToList(),

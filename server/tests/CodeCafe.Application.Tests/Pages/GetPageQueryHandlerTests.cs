@@ -62,6 +62,39 @@ public sealed class GetPageQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_HidesShares_FromPageShareGuest()
+    {
+        var owner = SeedOwner();
+        var guest = User.Create("guest@example.com", "guest@example.com", "Guest", "hash");
+        var notebook = SeedNotebook(owner); // private
+        var page = Page.Create(notebook.Id, null, "Shared", "shared", "a");
+        page.Share(guest.Id, CollaboratorRole.Viewer);
+
+        var result = await CreateHandler(guest.Id, notebook, [page], guest)
+            .Handle(new GetPageQuery(page.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value!.Shares);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsShares_WithDisplayNames_ToOwner()
+    {
+        var owner = SeedOwner();
+        var guest = User.Create("guest@example.com", "guest@example.com", "Guest", "hash");
+        var notebook = SeedNotebook(owner);
+        var page = Page.Create(notebook.Id, null, "Shared", "shared", "a");
+        page.Share(guest.Id, CollaboratorRole.Viewer);
+
+        var result = await CreateHandler(owner.Id, notebook, [page], guest)
+            .Handle(new GetPageQuery(page.Id), CancellationToken.None);
+
+        var share = Assert.Single(result.Value!.Shares);
+        Assert.Equal(guest.Id, share.UserId);
+        Assert.Equal("Guest", share.UserName);
+    }
+
+    [Fact]
     public async Task Handle_ReturnsBlocksInDfsPreOrder()
     {
         var owner = SeedOwner();
@@ -100,19 +133,29 @@ public sealed class GetPageQueryHandlerTests
     private static Notebook SeedNotebook(User owner)
         => Notebook.Create(owner.Id, "Notebook", null, "my-notebook", NotebookVisibility.Private);
 
-    private static GetPageQueryHandler CreateHandler(Guid currentUserId, Notebook notebook, params Page[] seededPages)
+    private static GetPageQueryHandler CreateHandler(
+        Guid currentUserId,
+        Notebook notebook,
+        Page[] seededPages,
+        params User[] users
+    )
     {
         var pages = new StubPageRepository();
         pages.AddRange(seededPages);
+        var usersStub = new StubUserRepository();
+        usersStub.AddRange(users);
         return new GetPageQueryHandler(
             new StubCurrentUserAccessor(new CurrentUser(currentUserId)),
             new StubNotebookRepository { notebook },
             pages,
             new StubBlockRepository(),
-            new StubUserRepository(),
+            usersStub,
             new StubPasswordHasher()
         );
     }
+
+    private static GetPageQueryHandler CreateHandler(Guid currentUserId, Notebook notebook, params Page[] seededPages)
+        => CreateHandler(currentUserId, notebook, seededPages, []);
 }
 
 public sealed class GetPageByPathQueryHandlerTests

@@ -131,6 +131,52 @@ public sealed class GetNotebookDetailsQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_HidesShares_FromAnonymousOnPublicNotebook()
+    {
+        var owner = SeedOwner();
+        var collaborator = User.Create("collab@example.com", "collab@example.com", "Collab", "hash");
+        var notebook = SeedNotebook(owner, NotebookVisibility.Public);
+        notebook.Share(collaborator.Id, CollaboratorRole.Editor);
+
+        var result = await CreateHandler(null, notebook, collaborator)
+            .Handle(new GetNotebookDetailsQuery(notebook.Slug), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value!.Shares);
+    }
+
+    [Fact]
+    public async Task Handle_HidesShares_FromCollaborators()
+    {
+        var owner = SeedOwner();
+        var collaborator = User.Create("collab@example.com", "collab@example.com", "Collab", "hash");
+        var notebook = SeedNotebook(owner, NotebookVisibility.Public);
+        notebook.Share(collaborator.Id, CollaboratorRole.Editor);
+
+        var result = await CreateHandler(new CurrentUser(collaborator.Id), notebook, collaborator)
+            .Handle(new GetNotebookDetailsQuery(notebook.Slug), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value!.Shares);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsShares_WithDisplayNames_ToOwner()
+    {
+        var owner = SeedOwner();
+        var collaborator = User.Create("collab@example.com", "collab@example.com", "Collab", "hash");
+        var notebook = SeedNotebook(owner, NotebookVisibility.Public);
+        notebook.Share(collaborator.Id, CollaboratorRole.Editor);
+
+        var result = await CreateHandler(new CurrentUser(owner.Id), notebook, collaborator)
+            .Handle(new GetNotebookDetailsQuery(notebook.Slug), CancellationToken.None);
+
+        var share = Assert.Single(result.Value!.Shares);
+        Assert.Equal(collaborator.Id, share.UserId);
+        Assert.Equal("Collab", share.UserName);
+    }
+
+    [Fact]
     public async Task Handle_AccessCodeDoesNotUnlockPrivateNotebook()
     {
         var owner = SeedOwner();
@@ -152,12 +198,20 @@ public sealed class GetNotebookDetailsQueryHandlerTests
     private static Notebook SeedNotebook(User owner, NotebookVisibility visibility)
         => Notebook.Create(owner.Id, "Title", null, "some-slug", visibility);
 
-    private static GetNotebookDetailsQueryHandler CreateHandler(CurrentUser? currentUser, Notebook notebook)
-        => new(
+    private static GetNotebookDetailsQueryHandler CreateHandler(
+        CurrentUser? currentUser,
+        Notebook notebook,
+        params User[] users
+    )
+    {
+        var usersStub = new StubUserRepository();
+        usersStub.AddRange(users);
+        return new GetNotebookDetailsQueryHandler(
             new StubCurrentUserAccessor(currentUser),
-            new StubUserRepository(),
+            usersStub,
             new StubNotebookRepository { notebook },
             new StubPageRepository(),
             new StubPasswordHasher()
         );
+    }
 }

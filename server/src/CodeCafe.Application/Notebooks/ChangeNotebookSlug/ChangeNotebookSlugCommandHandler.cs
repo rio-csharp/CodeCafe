@@ -29,7 +29,7 @@ public sealed class ChangeNotebookSlugCommandHandler(
         var newSlug = NotebookSlug.Normalize(command.NewSlug);
         if (string.Equals(notebook.Slug, newSlug, StringComparison.Ordinal))
         {
-            return Result.Success(await NotebookDetailsMapping.ToDtoAsync(notebook, users, cancellationToken));
+            return Result.Success(await NotebookDetailsMapping.ToDtoAsync(notebook, includeShares: true, users, cancellationToken));
         }
 
         if (await notebooks.FindBySlugAsync(newSlug, cancellationToken) is not null)
@@ -53,6 +53,6 @@ public sealed class ChangeNotebookSlugCommandHandler(
             return Result.Failure<NotebookDetailsDto>(conflict);
         }
 
-        return Result.Success(await NotebookDetailsMapping.ToDtoAsync(notebook, users, cancellationToken));
+        return Result.Success(await NotebookDetailsMapping.ToDtoAsync(notebook, includeShares: true, users, cancellationToken));
     }
 }

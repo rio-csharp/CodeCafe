@@ -35,7 +35,12 @@ public sealed class GetNotebookDetailsQueryHandler(
             return Result.Failure<NotebookDetailsDto>(denied);
         }
 
-        var dto = await NotebookDetailsMapping.ToDtoAsync(notebook, users, cancellationToken);
+        var dto = await NotebookDetailsMapping.ToDtoAsync(
+            notebook,
+            includeShares: notebook.OwnerId == currentUserAccessor.User?.Id,
+            users,
+            cancellationToken
+        );
         var pageCount = await pages.CountByNotebookAsync(notebook.Id, cancellationToken);
 
         return Result.Success(dto with { PageCount = pageCount });

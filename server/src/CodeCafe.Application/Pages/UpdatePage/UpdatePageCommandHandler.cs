@@ -25,7 +25,7 @@ public sealed class UpdatePageCommandHandler(
             return Result.Failure<PageDetailsDto>(error);
         }
 
-        var (_, page, ancestors, userId) = context.Value!;
+        var (notebook, page, ancestors, userId) = context.Value!;
 
         // Null fields keep their current values.
         if (command.Title?.Trim() is { Length: > 0 } title)
@@ -43,7 +43,14 @@ public sealed class UpdatePageCommandHandler(
         var isFavorite = (await pages.FindFavoriteIdsAsync(userId, [page.Id], cancellationToken)).Contains(page.Id);
 
         return Result.Success(
-            await PageDetailsMapping.ToDtoAsync(page, PageHierarchy.PathOf(page, ancestors), isFavorite, users, cancellationToken)
+            await PageDetailsMapping.ToDtoAsync(
+                page,
+                PageHierarchy.PathOf(page, ancestors),
+                isFavorite,
+                includeShares: notebook.OwnerId == userId,
+                users,
+                cancellationToken
+            )
         );
     }
 }
