@@ -1,0 +1,112 @@
+using System.ClientModel;
+using CodeCafe.Infrastructure.Ai;
+using Microsoft.Extensions.AI;
+
+namespace CodeCafe.Infrastructure.Tests.Ai;
+
+public sealed class RetryChatClientTests
+{
+    [Fact]
+    public async Task GetResponse_Retries429UntilSuccess()
+    {
+        var inner = new FlakyChatClient(Failure(429, "rate limited"), failures: 3);
+        var client = new RetryChatClient(inner, maxRetries: 4, TimeSpan.Zero);
+
+        var response = await client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")]);
+
+        Assert.NotNull(response);
+        Assert.Equal(4, inner.Attempts);
+    }
+
+    [Fact]
+    public async Task GetResponse_ExhaustsRetries_ThenThrows()
+    {
+        var inner = new FlakyChatClient(Failure(429, "rate limited"), failures: 10);
+        var client = new RetryChatClient(inner, maxRetries: 2, TimeSpan.Zero);
+
+        await Assert.ThrowsAsync<ClientResultException>(() => client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")]));
+        Assert.Equal(3, inner.Attempts); // 1 initial + 2 retries
+    }
+
+    [Fact]
+    public async Task GetResponse_DoesNotRetryClientErrors()
+    {
+        var inner = new FlakyChatClient(Failure(400, "bad request"), failures: 10);
+        var client = new RetryChatClient(inner, maxRetries: 4, TimeSpan.Zero);
+
+        await Assert.ThrowsAsync<ClientResultException>(() => client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")]));
+        Assert.Equal(1, inner.Attempts);
+    }
+
+    [Fact]
+    public async Task Streaming_RetriesBeforeFirstUpdate_ButNotMidStream()
+    {
+        var inner = new FlakyChatClient(Failure(500, "boom"), failures: 2);
+        var client = new RetryChatClient(inner, maxRetries: 1, TimeSpan.Zero);
+
+        var updates = new List<ChatResponseUpdate>();
+        await Assert.ThrowsAsync<ClientResultException>(async () =>
+        {
+            await foreach (var update in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "q")]))
+            {
+                updates.Add(update);
+            }
+        });
+        // First attempt's pre-stream failure consumed the single retry; the mid-stream failure surfaced.
+        Assert.Single(updates);
+        Assert.Equal(2, inner.Attempts);
+    }
+
+    // Status has no public setter; reflection fills it for the fake failure.
+    private static ClientResultException Failure(int status, string message)
+    {
+        var exception = new ClientResultException(message, null);
+        typeof(ClientResultException).GetProperty(nameof(ClientResultException.Status))!.SetValue(exception, status);
+        return exception;
+    }
+
+    // Fails the first `failures` streaming enumerations, then yields one update; the update is
+    // followed by one more failure when failures remain odd, simulating a mid-stream break.
+    private sealed class FlakyChatClient(Exception exception, int failures) : IChatClient
+    {
+        private int _failures = failures;
+
+        public int Attempts { get; private set; }
+
+        public Task<ChatResponse> GetResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            CancellationToken cancellationToken = default
+        )
+        {
+            Attempts++;
+            return _failures-- > 0 ? throw exception : Task.FromResult(new ChatResponse());
+        }
+
+        public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
+            IEnumerable<ChatMessage> messages,
+            ChatOptions? options = null,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
+        {
+            Attempts++;
+            if (_failures-- > 0)
+            {
+                if (_failures % 2 == 1)
+                {
+                    throw exception; // pre-stream failure
+                }
+
+                yield return new ChatResponseUpdate(ChatRole.Assistant, "partial");
+                throw exception; // mid-stream failure
+            }
+
+            yield return new ChatResponseUpdate(ChatRole.Assistant, "ok");
+            await Task.CompletedTask;
+        }
+
+        public object? GetService(Type serviceType, object? serviceKey = null) => null;
+
+        public void Dispose() { }
+    }
+}
