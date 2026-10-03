@@ -58,8 +58,8 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}")]
-    public Task<Result<NotebookDetailsDto>> Details(string idOrSlug, string? accessCode, CancellationToken cancellationToken)
-        => sender.Send(new GetNotebookDetailsQuery(idOrSlug, accessCode), cancellationToken);
+    public Task<Result<NotebookDetailsDto>> Details(string idOrSlug, CancellationToken cancellationToken)
+        => sender.Send(new GetNotebookDetailsQuery(idOrSlug, AccessCodeHeader.Read(Request)), cancellationToken);
 
     [HttpPatch("notebooks/{idOrSlug}")]
     public Task<Result<NotebookDetailsDto>> Update(string idOrSlug, UpdateNotebookRequest request, CancellationToken cancellationToken)
@@ -101,8 +101,8 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/tree")]
-    public Task<Result<NotebookTreeDto>> Tree(string idOrSlug, string? accessCode, CancellationToken cancellationToken)
-        => sender.Send(new GetNotebookTreeQuery(idOrSlug, accessCode), cancellationToken);
+    public Task<Result<NotebookTreeDto>> Tree(string idOrSlug, CancellationToken cancellationToken)
+        => sender.Send(new GetNotebookTreeQuery(idOrSlug, AccessCodeHeader.Read(Request)), cancellationToken);
 
     [HttpGet("notebooks/{idOrSlug}/trash")]
     public Task<Result<PagedResult<TrashedPageEntryDto>>> ListTrashedPages(string idOrSlug, int? page, int? pageSize, CancellationToken cancellationToken)
@@ -113,9 +113,9 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
     [HttpGet("notebooks/{idOrSlug}/export")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/markdown")]
     [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
-    public async Task<IResult> Export(string idOrSlug, string? accessCode, CancellationToken cancellationToken)
+    public async Task<IResult> Export(string idOrSlug, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new ExportNotebookQuery(idOrSlug, accessCode), cancellationToken);
+        var result = await sender.Send(new ExportNotebookQuery(idOrSlug, AccessCodeHeader.Read(Request)), cancellationToken);
         // Results.File handles Content-Disposition encoding safely.
         return result.ToHttpResult(export => Results.File(
             Encoding.UTF8.GetBytes(export.Markdown),
@@ -138,6 +138,6 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/pages/by-path")]
-    public Task<Result<PageDetailsDto>> PageByPath(string idOrSlug, string path, string? accessCode, CancellationToken cancellationToken)
-        => sender.Send(new GetPageByPathQuery(idOrSlug, path, accessCode), cancellationToken);
+    public Task<Result<PageDetailsDto>> PageByPath(string idOrSlug, string path, CancellationToken cancellationToken)
+        => sender.Send(new GetPageByPathQuery(idOrSlug, path, AccessCodeHeader.Read(Request)), cancellationToken);
 }

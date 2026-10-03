@@ -25,8 +25,8 @@ public sealed class PagesController(ISender sender) : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet("pages/{pageId:guid}")]
-    public Task<Result<PageDetailsDto>> Details(Guid pageId, string? accessCode, CancellationToken cancellationToken)
-        => sender.Send(new GetPageQuery(pageId, accessCode), cancellationToken);
+    public Task<Result<PageDetailsDto>> Details(Guid pageId, CancellationToken cancellationToken)
+        => sender.Send(new GetPageQuery(pageId, AccessCodeHeader.Read(Request)), cancellationToken);
 
     [HttpPatch("pages/{pageId:guid}")]
     public Task<Result<PageDetailsDto>> Update(Guid pageId, UpdatePageRequest request, CancellationToken cancellationToken)
@@ -45,9 +45,9 @@ public sealed class PagesController(ISender sender) : ControllerBase
     [HttpGet("pages/{pageId:guid}/export")]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/markdown")]
     [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
-    public async Task<IResult> Export(Guid pageId, string? accessCode, CancellationToken cancellationToken)
+    public async Task<IResult> Export(Guid pageId, CancellationToken cancellationToken)
     {
-        var result = await sender.Send(new ExportPageQuery(pageId, accessCode), cancellationToken);
+        var result = await sender.Send(new ExportPageQuery(pageId, AccessCodeHeader.Read(Request)), cancellationToken);
         // Results.File handles Content-Disposition encoding safely.
         return result.ToHttpResult(export => Results.File(
             Encoding.UTF8.GetBytes(export.Markdown),
