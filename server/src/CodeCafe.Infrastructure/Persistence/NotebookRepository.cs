@@ -89,10 +89,10 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
         {
             // A substring match stays off a sequential scan through the trigram indexes on these
             // two columns; without them every listing would scan the table.
-            var pattern = $"%{filter.Search}%";
+            var pattern = LikePatterns.Substring(filter.Search);
             query = query.Where(notebook =>
-                EF.Functions.ILike(notebook.Title, pattern)
-                || (notebook.Description != null && EF.Functions.ILike(notebook.Description, pattern))
+                EF.Functions.ILike(notebook.Title, pattern, LikePatterns.EscapeCharacter)
+                || (notebook.Description != null && EF.Functions.ILike(notebook.Description, pattern, LikePatterns.EscapeCharacter))
             );
         }
 

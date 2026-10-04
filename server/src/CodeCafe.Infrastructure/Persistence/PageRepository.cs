@@ -44,7 +44,7 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
         CancellationToken cancellationToken
     )
     {
-        var pattern = $"%{EscapeLikePattern(query)}%";
+        var pattern = LikePatterns.Substring(query);
 
         // Visibility mirrors the owned + notebook-share arms of NotebookRepository.VisibleTo; the
         // twin predicates stay in sync by hand because sharing an EF expression tree across the
@@ -54,9 +54,9 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
             from page in dbContext.Pages
             join notebook in dbContext.Notebooks on page.NotebookId equals notebook.Id
             where notebook.OwnerId == userId || notebook.Shares.Any(share => share.UserId == userId)
-            where EF.Functions.ILike(page.Title, pattern, "\\")
+            where EF.Functions.ILike(page.Title, pattern, LikePatterns.EscapeCharacter)
                 || dbContext.Blocks.Any(
-                    block => block.PageId == page.Id && EF.Functions.ILike(block.PlainText, pattern, "\\")
+                    block => block.PageId == page.Id && EF.Functions.ILike(block.PlainText, pattern, LikePatterns.EscapeCharacter)
                 )
             select new { page, notebook };
 
@@ -78,18 +78,13 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
                 match.page,
                 match.notebook.Title,
                 dbContext.Blocks
-                    .Where(block => block.PageId == match.page.Id && EF.Functions.ILike(block.PlainText, pattern, "\\"))
+                    .Where(block => block.PageId == match.page.Id && EF.Functions.ILike(block.PlainText, pattern, LikePatterns.EscapeCharacter))
                     .OrderBy(block => block.SortKey)
                     .Select(block => (string?)block.PlainText)
                     .FirstOrDefault()
             ))
             .ToListAsync(cancellationToken);
     }
-
-    private static string EscapeLikePattern(string value)
-        => value.Replace("\\", "\\\\", StringComparison.Ordinal)
-            .Replace("%", "\\%", StringComparison.Ordinal)
-            .Replace("_", "\\_", StringComparison.Ordinal);
 
     // Favorites and shares cascade with the page row (PageFavoriteConfiguration, PageConfiguration).
     public void Remove(Page page) => dbContext.Pages.Remove(page);
