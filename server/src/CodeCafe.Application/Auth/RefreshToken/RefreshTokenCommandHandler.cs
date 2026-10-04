@@ -33,13 +33,6 @@ public sealed class RefreshTokenCommandHandler(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return Result.Success(
-            new AuthSessionDto(
-                new AuthUserDto(user.Id, user.Email, user.DisplayName),
-                accessToken.Value,
-                accessToken.ExpiresAtUtc,
-                refreshToken.Value
-            )
-        );
+        return Result.Success(AuthSessionDto.From(user, accessToken, refreshToken));
     }
 }

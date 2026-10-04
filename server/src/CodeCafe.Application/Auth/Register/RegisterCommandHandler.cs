@@ -38,13 +38,6 @@ public sealed class RegisterCommandHandler(
         // One commit for the whole use case: the user and their refresh token land together.
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return Result.Success(
-            new AuthSessionDto(
-                new AuthUserDto(user.Id, user.Email, user.DisplayName),
-                accessToken.Value,
-                accessToken.ExpiresAtUtc,
-                refreshToken.Value
-            )
-        );
+        return Result.Success(AuthSessionDto.From(user, accessToken, refreshToken));
     }
 }

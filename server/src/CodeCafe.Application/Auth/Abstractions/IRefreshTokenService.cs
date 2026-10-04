@@ -17,4 +17,8 @@ public interface IRefreshTokenService
     Task RevokeAllForUserAsync(Guid userId, CancellationToken cancellationToken);
 }
 
-public sealed record IssuedRefreshToken(string Value, DateTimeOffset ExpiresAtUtc);
+public sealed record IssuedRefreshToken(string Value, DateTimeOffset ExpiresAtUtc)
+{
+    // Records are the type most likely to get logged verbatim — keep the token out of ToString().
+    public override string ToString() => $"IssuedRefreshToken(Value = ***, ExpiresAtUtc = {ExpiresAtUtc:O})";
+}
