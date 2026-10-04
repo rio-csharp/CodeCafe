@@ -4,7 +4,6 @@ using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.Shared;
-using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Notebooks.SetNotebookTags;
 
@@ -25,11 +24,11 @@ public sealed class SetNotebookTagsCommandHandler(
         var notebook = context.Value!.Notebook;
 
         // Lowercase like slugs: filtering by tag becomes case-insensitive for free.
+        // The validator caps the raw count at MaxTagCount, so deduping can only shrink it.
         var tags = command.Tags
             .Select(tag => tag.Trim().ToLowerInvariant())
             .Where(tag => tag.Length > 0)
             .Distinct()
-            .Take(Notebook.MaxTagCount)
             .ToList();
 
         notebook.SetTags(tags);

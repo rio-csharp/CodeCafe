@@ -20,6 +20,7 @@ public sealed class SetPageFavoriteCommandHandler(
     public async Task<Result> Handle(SetPageFavoriteCommand command, CancellationToken cancellationToken)
     {
         // Favorites are per-user, so anyone who can read the page can set their own.
+        // Setting one requires sign-in, hence no access-code bypass.
         var context = await PageAccess.RequireReadAsync(
             command.PageId,
             accessCode: null,

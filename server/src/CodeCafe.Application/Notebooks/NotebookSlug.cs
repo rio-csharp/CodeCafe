@@ -11,7 +11,4 @@ public static class NotebookSlug
         => Slug.GenerateFromTitle(title, Notebook.MaxSlugLength, fallback: "notebook");
 
     public static bool IsValid(string slug) => Slug.IsValid(slug, Notebook.MaxSlugLength);
-
-    public static string WithSuffix(string baseSlug, string suffix)
-        => Slug.WithSuffix(baseSlug, suffix, Notebook.MaxSlugLength);
 }
