@@ -3,11 +3,12 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 
 namespace CodeCafe.Host.Tests.Endpoints;
 
-public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class EndpointSkeletonTests(CodeCafeFactory factory)
+    : IClassFixture<CodeCafeFactory>
 {
     [Theory]
     [InlineData("GET", "/api/auth/me")]
@@ -64,17 +65,35 @@ public sealed class EndpointSkeletonTests(WebApplicationFactory<Program> factory
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
-    [Theory]
-    [InlineData("/health")]
-    [InlineData("/health/live")]
-    [InlineData("/health/ready")]
-    public async Task Health_Check_Is_Alive(string path)
+    [Fact]
+    public async Task Health_Live_Is_Alive()
     {
         using var client = factory.CreateClient();
 
-        using var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
+        using var response = await client.GetAsync("/health/live", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("/health")]
+    [InlineData("/health/ready")]
+    public async Task Health_Check_Reports_Database_Down(string path)
+    {
+        using var unreachableDb = factory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, config) =>
+                config.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    // A closed port: readiness must report the database instead of waving
+                    // traffic through to 500s.
+                    ["ConnectionStrings:DefaultConnection"] =
+                        "Host=localhost;Port=54999;Database=codecafe;Username=codecafe;Password=codecafe;Timeout=1",
+                })));
+        using var client = unreachableDb.CreateClient();
+
+        using var response = await client.GetAsync(path, TestContext.Current.CancellationToken);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
     [Fact]
