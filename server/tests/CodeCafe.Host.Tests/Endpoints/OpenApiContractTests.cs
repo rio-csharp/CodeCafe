@@ -88,6 +88,35 @@ public sealed class OpenApiContractTests(WebApplicationFactory<Program> factory)
     }
 
     [Fact]
+    public async Task OpenApi_Document_Declares_Bearer_And_Requires_It_On_Protected_Operations()
+    {
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        using var document = JsonDocument.Parse(json);
+        var bearer = document.RootElement
+            .GetProperty("components")
+            .GetProperty("securitySchemes")
+            .GetProperty("Bearer");
+        Assert.Equal("http", bearer.GetProperty("type").GetString());
+        Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
+
+        var paths = document.RootElement.GetProperty("paths");
+
+        var protectedSecurity = paths
+            .GetProperty("/api/pages/{pageId}")
+            .GetProperty("patch")
+            .GetProperty("security");
+        Assert.Contains(
+            protectedSecurity.EnumerateArray(),
+            requirement => requirement.TryGetProperty("Bearer", out _));
+
+        var anonymousOperation = paths.GetProperty("/api/auth/login").GetProperty("post");
+        Assert.False(anonymousOperation.TryGetProperty("security", out _));
+    }
+
+    [Fact]
     public async Task Protected_Operation_Documents_Error_Responses()
     {
         using var client = factory.CreateClient();

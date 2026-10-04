@@ -14,7 +14,11 @@ internal static class ServiceCollectionExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        services.AddOpenApi();
+        services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+            options.AddOperationTransformer<BearerSecurityRequirementTransformer>();
+        });
         // Suppressing the invalid-model-state filter keeps the 501 contract tests (empty JSON
         // bodies) reachable; validation will live in a MediatR pipeline behavior instead.
         services.AddControllers(options =>
