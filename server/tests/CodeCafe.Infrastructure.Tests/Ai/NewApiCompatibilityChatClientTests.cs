@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using CodeCafe.Infrastructure.Ai;
 using Microsoft.Extensions.AI;
 
@@ -17,7 +18,7 @@ public sealed class NewApiCompatibilityChatClientTests
             new(ChatRole.System, "prompt B"),
         ];
 
-        await client.GetResponseAsync(messages, new ChatOptions { Instructions = "existing" });
+        await client.GetResponseAsync(messages, new ChatOptions { Instructions = "existing" }, TestContext.Current.CancellationToken);
 
         var (receivedMessages, receivedOptions) = inner.Received.Single();
         Assert.Equal([ChatRole.User], receivedMessages.Select(message => message.Role));
@@ -31,7 +32,7 @@ public sealed class NewApiCompatibilityChatClientTests
         var client = new NewApiCompatibilityChatClient(inner);
         ChatMessage[] messages = [new(ChatRole.User, "q")];
 
-        await client.GetResponseAsync(messages);
+        await client.GetResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken);
 
         var (receivedMessages, receivedOptions) = inner.Received.Single();
         Assert.Same(messages, receivedMessages);
@@ -45,7 +46,7 @@ public sealed class NewApiCompatibilityChatClientTests
         var client = new NewApiCompatibilityChatClient(inner);
         ChatMessage[] messages = [new(ChatRole.System, "prompt"), new(ChatRole.User, "q")];
 
-        await foreach (var _ in client.GetStreamingResponseAsync(messages)) { }
+        await foreach (var _ in client.GetStreamingResponseAsync(messages, cancellationToken: TestContext.Current.CancellationToken)) { }
 
         var (receivedMessages, receivedOptions) = inner.Received.Single();
         Assert.Equal([ChatRole.User], receivedMessages.Select(message => message.Role));
@@ -69,7 +70,7 @@ public sealed class NewApiCompatibilityChatClientTests
         public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
             IEnumerable<ChatMessage> messages,
             ChatOptions? options = null,
-            CancellationToken cancellationToken = default
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
             Received.Add((messages, options));

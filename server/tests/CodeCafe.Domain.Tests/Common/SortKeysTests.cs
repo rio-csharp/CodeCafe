@@ -1,6 +1,6 @@
 using CodeCafe.Domain.Common;
 
-namespace CodeCafe.Application.Tests.Common;
+namespace CodeCafe.Domain.Tests.Common;
 
 public sealed class SortKeysTests
 {

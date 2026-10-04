@@ -50,7 +50,7 @@ public sealed class RefreshTokenServiceTests(PostgresFixture fixture)
 
         var results = await Task.WhenAll(competitors);
 
-        var winner = Assert.Single(results.Where(result => result is not null));
+        var winner = Assert.Single(results, result => result is not null);
         Assert.Equal(userId, winner);
 
         await using var verify = await fixture.CreateContextAsync();

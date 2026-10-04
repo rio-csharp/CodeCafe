@@ -12,7 +12,7 @@ public sealed class RetryChatClientTests
         var inner = new FlakyChatClient(Failure(429, "rate limited"), failures: 3);
         var client = new RetryChatClient(inner, maxRetries: 4, TimeSpan.Zero);
 
-        var response = await client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")]);
+        var response = await client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")], cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(response);
         Assert.Equal(4, inner.Attempts);
@@ -24,7 +24,7 @@ public sealed class RetryChatClientTests
         var inner = new FlakyChatClient(Failure(429, "rate limited"), failures: 10);
         var client = new RetryChatClient(inner, maxRetries: 2, TimeSpan.Zero);
 
-        await Assert.ThrowsAsync<ClientResultException>(() => client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")]));
+        await Assert.ThrowsAsync<ClientResultException>(() => client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")], cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(3, inner.Attempts); // 1 initial + 2 retries
     }
 
@@ -34,7 +34,7 @@ public sealed class RetryChatClientTests
         var inner = new FlakyChatClient(Failure(400, "bad request"), failures: 10);
         var client = new RetryChatClient(inner, maxRetries: 4, TimeSpan.Zero);
 
-        await Assert.ThrowsAsync<ClientResultException>(() => client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")]));
+        await Assert.ThrowsAsync<ClientResultException>(() => client.GetResponseAsync([new ChatMessage(ChatRole.User, "q")], cancellationToken: TestContext.Current.CancellationToken));
         Assert.Equal(1, inner.Attempts);
     }
 
@@ -47,7 +47,7 @@ public sealed class RetryChatClientTests
         var updates = new List<ChatResponseUpdate>();
         await Assert.ThrowsAsync<ClientResultException>(async () =>
         {
-            await foreach (var update in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "q")]))
+            await foreach (var update in client.GetStreamingResponseAsync([new ChatMessage(ChatRole.User, "q")], cancellationToken: TestContext.Current.CancellationToken))
             {
                 updates.Add(update);
             }

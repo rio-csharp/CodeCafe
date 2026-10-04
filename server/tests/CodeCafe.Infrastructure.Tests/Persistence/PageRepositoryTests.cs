@@ -91,7 +91,7 @@ public sealed class PageRepositoryTests(PostgresFixture fixture)
         Assert.Null(await repository.FindByIdAsync(page.Id, TestContext.Current.CancellationToken));
         Assert.Empty(await repository.ListByNotebookAsync(notebook.Id, TestContext.Current.CancellationToken));
         // The trashed page keeps its slug reserved until the trash slice settles restore semantics.
-        Assert.Equal(1, await dbContext.Pages.IgnoreQueryFilters().CountAsync());
+        Assert.Equal(1, await dbContext.Pages.IgnoreQueryFilters().CountAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -134,9 +134,9 @@ public sealed class PageRepositoryTests(PostgresFixture fixture)
         }
 
         await using var verifyContext = await fixture.CreateContextAsync();
-        Assert.Equal(0, await verifyContext.Pages.IgnoreQueryFilters().CountAsync());
-        Assert.Equal(0, await verifyContext.Set<PageShare>().CountAsync());
-        Assert.Equal(0, await verifyContext.PageFavorites.CountAsync());
+        Assert.Equal(0, await verifyContext.Pages.IgnoreQueryFilters().CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(0, await verifyContext.Set<PageShare>().CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(0, await verifyContext.PageFavorites.CountAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
