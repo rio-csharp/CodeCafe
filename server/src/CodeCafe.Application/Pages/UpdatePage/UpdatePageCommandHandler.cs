@@ -27,10 +27,10 @@ public sealed class UpdatePageCommandHandler(
 
         var (notebook, page, ancestors, userId) = context.Value!;
 
-        // Null fields keep their current values.
-        if (command.Title?.Trim() is { Length: > 0 } title)
+        // Null fields keep their current values; the validator rejects blank titles.
+        if (command.Title is not null)
         {
-            page.Rename(title);
+            page.Rename(command.Title.Trim());
         }
 
         if (command.IsArchived is { } isArchived)

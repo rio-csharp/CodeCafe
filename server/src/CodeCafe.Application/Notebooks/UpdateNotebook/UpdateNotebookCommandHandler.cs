@@ -27,7 +27,8 @@ public sealed class UpdateNotebookCommandHandler(
         var notebook = context.Value!.Notebook;
 
         // Null fields keep their current values; an explicit blank description clears it.
-        var title = command.Title?.Trim() is { Length: > 0 } newTitle ? newTitle : notebook.Title;
+        // The validator rejects blank titles, so a non-null title is always worth trimming.
+        var title = command.Title?.Trim() ?? notebook.Title;
         var description = command.Description is null
             ? notebook.Description
             : command.Description.Trim() is { Length: > 0 } newDescription ? newDescription : null;
