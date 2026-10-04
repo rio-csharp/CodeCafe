@@ -1,3 +1,4 @@
+using System.Text;
 using CodeCafe.Application.Ai;
 using CodeCafe.Application.Blocks.Abstractions;
 using CodeCafe.Application.Auth.Abstractions;
@@ -26,8 +27,16 @@ public static class DependencyInjection
             .AddOptions<AuthOptions>()
             .Bind(configuration.GetSection(AuthOptions.SectionName))
             .Validate(
-                options => options.Jwt.SigningKey.Length >= 32,
-                "Auth:Jwt:SigningKey must be at least 32 characters."
+                options => Encoding.UTF8.GetByteCount(options.Jwt.SigningKey) >= 32,
+                "Auth:Jwt:SigningKey must be at least 32 bytes (UTF-8)."
+            )
+            .Validate(
+                options => options.AccessTokenLifetimeMinutes > 0,
+                "Auth:AccessTokenLifetimeMinutes must be greater than zero."
+            )
+            .Validate(
+                options => options.RefreshTokenLifetimeDays > 0,
+                "Auth:RefreshTokenLifetimeDays must be greater than zero."
             )
             .ValidateOnStart();
 
