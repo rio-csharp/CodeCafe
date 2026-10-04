@@ -1,4 +1,3 @@
-using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Notebooks.Abstractions;

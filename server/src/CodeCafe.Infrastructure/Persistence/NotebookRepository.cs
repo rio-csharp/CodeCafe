@@ -1,5 +1,4 @@
 using CodeCafe.Application.Notebooks.Abstractions;
-using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Domain.Notebooks;
 using Microsoft.EntityFrameworkCore;
 

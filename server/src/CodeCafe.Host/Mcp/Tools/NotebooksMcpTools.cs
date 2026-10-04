@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.ChangeNotebookSlug;
 using CodeCafe.Application.Notebooks.CreateNotebook;
 using CodeCafe.Application.Notebooks.DeleteNotebook;

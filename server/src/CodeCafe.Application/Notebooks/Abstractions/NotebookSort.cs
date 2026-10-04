@@ -1,4 +1,4 @@
-namespace CodeCafe.Application.Notebooks.ListNotebooks;
+namespace CodeCafe.Application.Notebooks.Abstractions;
 
 public enum NotebookSort
 {
