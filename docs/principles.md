@@ -2,7 +2,7 @@
 
 The rules this codebase lives by.
 
-> Verified against the `server/` working tree on top of `0b166f1`. If this file and the code
+> Verified against the `server/` working tree on top of `78bb1d3`. If this file and the code
 > disagree, **the code is right** — fix this file in the same commit that changes the code.
 
 ## 1. Working agreements
@@ -50,9 +50,13 @@ Dependencies point inward.
 
 ## 4. Application
 
-- One folder per use case, one type per file; the HTTP `Request` DTO stays separate from the
+- One folder per use case, one type per file. Deliberate companions may share a file: an
+  interface with its return contract (`IAccessTokenService` + `AccessToken`), a request with its
+  wire companions (`AiChatRequest` + `AiChatMessage` + `AiChatRole`), and a discriminated-union
+  family (`AiChatEvent` + its five derived events). The HTTP `Request` DTO stays separate from the
   `Command`/`Query` record.
-- `ICommand<T>`/`IQuery<T>` wrap MediatR, so business code never mentions `IRequest`.
+- `ICommand<T>`/`IQuery<T>` (plus `IStreamCommand<T>` for streaming) wrap MediatR, so business
+  code never mentions `IRequest`.
 - Expected failures return `Result`/`Result<T>` with `Error(Code, Message, ErrorKind)`; exceptions are
   for bugs. `ErrorKind` is closed: Validation, Unauthorized, Forbidden, NotFound, Conflict,
   RateLimited, Unexpected.
@@ -98,7 +102,11 @@ Dependencies point inward.
 - Enums persist as strings with an explicit length; `string[]` maps to `text[]`.
 - Case-insensitive uniqueness (email) is normalized in Application and enforced by a plain unique index.
 - Optimistic concurrency uses PostgreSQL's `xmin` as a shadow property, configured per entity as needed.
-- Migrations are committed; `AppDbContextDesignTimeFactory` keeps `dotnet ef` working.
+- Migrations are not committed during this build-out phase; the schema's source of truth is
+  `Persistence/Configurations/*.cs` + `AppDbContext.OnModelCreating`, and a baseline is generated
+  on demand (`dotnet ef migrations add`, run from the Infrastructure project). An `InitialCreate`
+  baseline goes back under version control before release. `AppDbContextDesignTimeFactory` keeps
+  `dotnet ef` working.
 
 ## 7. Testing
 
