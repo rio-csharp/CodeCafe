@@ -1,4 +1,5 @@
 using CodeCafe.Application.Pages.CreatePage;
+using CodeCafe.Application.Pages.SharePage;
 using CodeCafe.Application.Pages.UpdatePage;
 using CodeCafe.Domain.Pages;
 
@@ -8,6 +9,27 @@ public sealed class PageCommandValidatorTests
 {
     private readonly CreatePageCommandValidator _createValidator = new();
     private readonly UpdatePageCommandValidator _updateValidator = new();
+    private readonly SharePageCommandValidator _shareValidator = new();
+
+    [Fact]
+    public void Valid_ShareCommand_Passes()
+    {
+        var result = _shareValidator.Validate(new SharePageCommand(Guid.NewGuid(), "yao@example.com", default));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("not-an-email")]
+    public void Invalid_Email_FailsShare(string email)
+    {
+        var result = _shareValidator.Validate(new SharePageCommand(Guid.NewGuid(), email, default));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(SharePageCommand.Email));
+    }
 
     [Fact]
     public void Valid_CreateCommand_Passes()
