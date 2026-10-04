@@ -26,13 +26,6 @@ public sealed class AiController(ISender sender) : ControllerBase
         => new SseResult<AiChatEvent>(
             sender.CreateStream(new StartAiChatCommand(idOrSlug, request.Messages)),
             aiEvent => aiEvent.Kind,
-            failureEvent: _ => new AiChatEvent(
-                AiChatEventKinds.Error,
-                null,
-                AiErrors.StreamFailed.Message,
-                System.Text.Json.JsonSerializer.SerializeToElement(
-                    new { code = AiErrors.StreamFailed.Code, message = AiErrors.StreamFailed.Message }
-                )
-            )
+            failureEvent: _ => new AiChatErrorEvent(AiErrors.StreamFailed.Code, AiErrors.StreamFailed.Message)
         );
 }

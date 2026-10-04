@@ -26,9 +26,8 @@ public sealed class StartAiChatCommandHandlerTests
 
         var events = await Collect(handler, Chat());
 
-        var error = Assert.Single(events);
-        Assert.Equal(AiChatEventKinds.Error, error.Kind);
-        Assert.Equal(AiErrors.Disabled.Code, PayloadCode(error));
+        var error = Assert.IsType<AiChatErrorEvent>(Assert.Single(events));
+        Assert.Equal(AiErrors.Disabled.Code, error.Code);
     }
 
     [Fact]
@@ -38,8 +37,8 @@ public sealed class StartAiChatCommandHandlerTests
 
         var events = await Collect(handler, Chat());
 
-        var error = Assert.Single(events);
-        Assert.Equal(AiErrors.NotConfigured.Code, PayloadCode(error));
+        var error = Assert.IsType<AiChatErrorEvent>(Assert.Single(events));
+        Assert.Equal(AiErrors.NotConfigured.Code, error.Code);
     }
 
     [Fact]
@@ -97,7 +96,7 @@ public sealed class StartAiChatCommandHandlerTests
         );
 
         Assert.Equal([AiChatEventKinds.Text, AiChatEventKinds.Done], events.Select(e => e.Kind));
-        Assert.Equal("hello", events[0].Message);
+        Assert.Equal("hello", Assert.IsType<AiChatTextEvent>(events[0]).Text);
 
         var received = Assert.Single(chatClient.ReceivedMessages);
         Assert.Equal(ChatRole.System, received[0].Role);
@@ -141,7 +140,7 @@ public sealed class StartAiChatCommandHandlerTests
             [AiChatEventKinds.ToolCall, AiChatEventKinds.ToolResult, AiChatEventKinds.Text, AiChatEventKinds.Done],
             events.Select(e => e.Kind)
         );
-        Assert.Equal("get_notebook_tree", events[0].Tool);
+        Assert.Equal("get_notebook_tree", Assert.IsType<AiChatToolCallEvent>(events[0]).Tool);
         Assert.Equal(2, sender.Received.OfType<GetNotebookTreeQuery>().Count()); // outline + tool call
     }
 
@@ -155,9 +154,8 @@ public sealed class StartAiChatCommandHandlerTests
 
         var events = await Collect(handler, Chat());
 
-        var error = Assert.Single(events);
-        Assert.Equal(AiChatEventKinds.Error, error.Kind);
-        Assert.Equal(AiErrors.ProviderFailed.Code, PayloadCode(error));
+        var error = Assert.IsType<AiChatErrorEvent>(Assert.Single(events));
+        Assert.Equal(AiErrors.ProviderFailed.Code, error.Code);
     }
 
     private static StartAiChatCommand Chat(string message = "hello")
@@ -165,13 +163,9 @@ public sealed class StartAiChatCommandHandlerTests
 
     private static void AssertError(List<AiChatEvent> events, string code)
     {
-        var error = Assert.Single(events);
-        Assert.Equal(AiChatEventKinds.Error, error.Kind);
-        Assert.Equal(code, PayloadCode(error));
+        var error = Assert.IsType<AiChatErrorEvent>(Assert.Single(events));
+        Assert.Equal(code, error.Code);
     }
-
-    private static string? PayloadCode(AiChatEvent aiEvent)
-        => aiEvent.Payload!.Value.GetProperty("code").GetString();
 
     private static async Task<List<AiChatEvent>> Collect(StartAiChatCommandHandler handler, StartAiChatCommand command)
     {

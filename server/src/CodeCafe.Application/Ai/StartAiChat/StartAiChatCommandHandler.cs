@@ -4,6 +4,7 @@ using System.Text.Json;
 using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks;
 using CodeCafe.Application.Notebooks.Abstractions;
@@ -24,7 +25,7 @@ public sealed class StartAiChatCommandHandler(
     IAiChatClientFactory chatClientFactory,
     IChangeSourceAccessor changeSource,
     AiOptions options
-) : IStreamRequestHandler<StartAiChatCommand, AiChatEvent>
+) : IStreamCommandHandler<StartAiChatCommand, AiChatEvent>
 {
     public async IAsyncEnumerable<AiChatEvent> Handle(
         StartAiChatCommand request,
@@ -156,29 +157,26 @@ public sealed class StartAiChatCommandHandler(
                 switch (content)
                 {
                     case TextContent text:
-                        yield return new AiChatEvent(AiChatEventKinds.Text, null, text.Text, null);
+                        yield return new AiChatTextEvent(text.Text);
                         break;
                     case FunctionCallContent call:
-                        yield return new AiChatEvent(
-                            AiChatEventKinds.ToolCall,
+                        yield return new AiChatToolCallEvent(
                             call.Name,
-                            null,
-                            JsonSerializer.SerializeToElement(new { callId = call.CallId, arguments = call.Arguments })
+                            call.CallId,
+                            JsonSerializer.SerializeToElement(call.Arguments)
                         );
                         break;
                     case FunctionResultContent result:
-                        yield return new AiChatEvent(
-                            AiChatEventKinds.ToolResult,
+                        yield return new AiChatToolResultEvent(
                             result.CallId,
-                            null,
-                            JsonSerializer.SerializeToElement(new { callId = result.CallId, result = result.Result })
+                            JsonSerializer.SerializeToElement(result.Result)
                         );
                         break;
                 }
             }
         }
 
-        yield return new AiChatEvent(AiChatEventKinds.Done, null, null, null);
+        yield return new AiChatDoneEvent();
     }
 
     private static List<ChatMessage> BuildMessages(Notebook notebook, string outline, StartAiChatCommand request)
@@ -247,11 +245,5 @@ public sealed class StartAiChatCommandHandler(
         }
     }
 
-    private static AiChatEvent ErrorEvent(Error error) =>
-        new(
-            AiChatEventKinds.Error,
-            null,
-            error.Message,
-            JsonSerializer.SerializeToElement(new { code = error.Code, message = error.Message })
-        );
+    private static AiChatErrorEvent ErrorEvent(Error error) => new(error.Code, error.Message);
 }
