@@ -83,13 +83,33 @@ public sealed class Notebook : Entity
         Touch();
     }
 
-    public void SetTags(IEnumerable<string> tags) => _tags = tags.ToList();
+    // Tags are notebook content (they show in lists and drive filtering), so changing them
+    // counts as an update — unlike access control (SetAccessCodeHash/Share/RevokeShare).
+    public void SetTags(IEnumerable<string> tags)
+    {
+        var list = tags.ToList();
+        if (list.Count > MaxTagCount)
+        {
+            throw new ArgumentException($"A notebook can have at most {MaxTagCount} tags.", nameof(tags));
+        }
 
+        if (list.Any(tag => string.IsNullOrWhiteSpace(tag) || tag.Length > MaxTagLength))
+        {
+            throw new ArgumentException($"Tags must be non-empty and at most {MaxTagLength} characters.", nameof(tags));
+        }
+
+        _tags = list;
+        Touch();
+    }
+
+    // Access control, not a content change: deliberately no Touch(), so the access code does
+    // not reorder the owner's Recently-updated list (mirrors SetFirstPage).
     // A null hash clears the access code.
     public void SetAccessCodeHash(string? accessCodeHash) => AccessCodeHash = accessCodeHash;
 
     // Sharing again with a different role updates the existing share in place. Sharing with the
     // owner is a business error the handler rejects up front, mirroring Page.Share.
+    // Deliberately no Touch(): membership changes are access control, not content edits.
     public void Share(Guid userId, CollaboratorRole role)
     {
         var existing = _shares.FirstOrDefault(share => share.UserId == userId);
@@ -103,6 +123,7 @@ public sealed class Notebook : Entity
     }
 
     // Idempotent: revoking a share that does not exist is a no-op.
+    // Deliberately no Touch(), mirroring Share: membership changes are access control.
     public void RevokeShare(Guid userId) => _shares.RemoveAll(share => share.UserId == userId);
 
     public bool IsSharedWith(Guid userId) => _shares.Any(share => share.UserId == userId);

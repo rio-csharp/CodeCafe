@@ -128,6 +128,8 @@ public sealed class Page : Entity
 
     // Sharing again with a different role updates the existing share in place. Sharing with the
     // notebook owner is a business error the handler rejects up front, mirroring Notebook.Share.
+    // Deliberately no Touch(): a share is access control, not a content edit — the page's
+    // UpdatedAtUtc is driven by block changes only.
     public void Share(Guid userId, CollaboratorRole role)
     {
         var existing = _shares.FirstOrDefault(share => share.UserId == userId);
@@ -141,6 +143,7 @@ public sealed class Page : Entity
     }
 
     // Idempotent: revoking a share that does not exist is a no-op.
+    // Deliberately no Touch(), mirroring Share.
     public void RevokeShare(Guid userId) => _shares.RemoveAll(share => share.UserId == userId);
 
     public bool IsSharedWith(Guid userId) => _shares.Any(share => share.UserId == userId);
