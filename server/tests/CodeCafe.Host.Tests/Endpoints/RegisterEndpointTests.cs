@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CodeCafe.Host.Tests.Endpoints;
 
-public sealed class RegisterEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class RegisterEndpointTests(CodeCafeFactory factory)
+    : IClassFixture<CodeCafeFactory>
 {
     [Fact]
     public async Task Register_WithEmptyBody_ReturnsValidationError()

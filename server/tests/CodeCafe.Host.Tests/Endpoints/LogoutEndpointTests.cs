@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CodeCafe.Host.Tests.Endpoints;
 
-public sealed class LogoutEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class LogoutEndpointTests(CodeCafeFactory factory)
+    : IClassFixture<CodeCafeFactory>
 {
     [Fact]
     public async Task Logout_WithEmptyBody_ReturnsValidationError()

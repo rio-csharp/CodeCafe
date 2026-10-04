@@ -102,11 +102,11 @@ Dependencies point inward.
 - Enums persist as strings with an explicit length; `string[]` maps to `text[]`.
 - Case-insensitive uniqueness (email) is normalized in Application and enforced by a plain unique index.
 - Optimistic concurrency uses PostgreSQL's `xmin` as a shadow property, configured per entity as needed.
-- Migrations are not committed during this build-out phase; the schema's source of truth is
-  `Persistence/Configurations/*.cs` + `AppDbContext.OnModelCreating`, and a baseline is generated
-  on demand (`dotnet ef migrations add`, run from the Infrastructure project). An `InitialCreate`
-  baseline goes back under version control before release. `AppDbContextDesignTimeFactory` keeps
-  `dotnet ef` working.
+- Migrations are committed; the schema's source of truth is `Persistence/Configurations/*.cs` +
+  `AppDbContext.OnModelCreating`, and every model change flows into a new migration (`dotnet ef
+  migrations add`, run from the Infrastructure project). The app applies pending migrations at
+  startup (single-instance deployment; tests disable this via `Database:MigrateOnStartup`).
+  `AppDbContextDesignTimeFactory` keeps `dotnet ef` working.
 
 ## 7. Testing
 

@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CodeCafe.Host.Tests.Endpoints;
 
-public sealed class RefreshTokenEndpointTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class RefreshTokenEndpointTests(CodeCafeFactory factory)
+    : IClassFixture<CodeCafeFactory>
 {
     [Fact]
     public async Task Refresh_WithEmptyBody_ReturnsValidationError()

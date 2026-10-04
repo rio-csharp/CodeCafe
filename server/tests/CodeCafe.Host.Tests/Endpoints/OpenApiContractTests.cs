@@ -3,8 +3,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace CodeCafe.Host.Tests.Endpoints;
 
-public sealed class OpenApiContractTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class OpenApiContractTests(CodeCafeFactory factory)
+    : IClassFixture<CodeCafeFactory>
 {
     private static readonly (string Method, string Path)[] ContractOperations =
     [

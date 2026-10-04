@@ -8,6 +8,8 @@ builder.Services.AddCodeCafe(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
 
+await app.ApplyMigrationsAsync();
+
 app.UseCodeCafePipeline();
 app.MapControllers();
 app.MapApiDocumentation();
