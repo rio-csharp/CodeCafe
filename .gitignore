@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Local development settings (may contain machine-specific secrets)
 appsettings.Development.json
+
+# Local agent state: WorkBuddy session memory and skills, not project source
+.workbuddy/
