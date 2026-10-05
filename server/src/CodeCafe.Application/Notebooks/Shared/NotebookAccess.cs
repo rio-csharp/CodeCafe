@@ -109,6 +109,11 @@ public static class NotebookAccess
             : Result.Success(new NotebookAccessContext(notebook, userId));
     }
 
+    // Read-side answer for DTOs: the same rule RequireWriterAsync enforces on the write path.
+    public static bool CanWrite(Notebook notebook, Guid? userId)
+        => userId is not null
+            && (notebook.OwnerId == userId || notebook.SharedRoleFor(userId.Value) == CollaboratorRole.Editor);
+
     // The gate every notebook read path must pass: details today, tree/export once they leave
     // their skeletons. Returns null when the read is allowed, else the error to return.
     public static Error? CheckRead(Notebook notebook, Guid? userId, string? accessCode, IPasswordHasher passwordHasher)

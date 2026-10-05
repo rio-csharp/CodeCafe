@@ -130,8 +130,10 @@ public static class PageAccess
         return notebookError == NotebookErrors.NotFound ? PageErrors.NotFound : notebookError;
     }
 
-    // Page shares with the Editor role extend write access into the shared subtree.
-    private static bool CanWrite(Notebook notebook, Page? page, IReadOnlyList<Page> ancestors, Guid userId)
+    // Page shares with the Editor role extend write access into the shared subtree. Read
+    // projections use this to answer PageDetailsDto.CanWrite; write handlers get it enforced
+    // through RequireWriteAsync.
+    public static bool CanWrite(Notebook notebook, Page? page, IReadOnlyList<Page> ancestors, Guid userId)
         => notebook.OwnerId == userId
             || notebook.SharedRoleFor(userId) == CollaboratorRole.Editor
             || page?.SharedRoleFor(userId) == CollaboratorRole.Editor

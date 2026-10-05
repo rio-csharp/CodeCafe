@@ -12,6 +12,7 @@ public static class PageDetailsMapping
         string path,
         bool isFavorite,
         bool includeShares,
+        bool canWrite,
         IUserRepository users,
         CancellationToken cancellationToken
     )
@@ -24,10 +25,16 @@ public static class PageDetailsMapping
             : await users.FindByIdsAsync(shareUserIds, cancellationToken);
         var namesById = shareUsers.ToDictionary(user => user.Id, user => user.DisplayName);
 
-        return ToDto(page, path, isFavorite, namesById);
+        return ToDto(page, path, isFavorite, canWrite, namesById);
     }
 
-    public static PageDetailsDto ToDto(Page page, string path, bool isFavorite, IReadOnlyDictionary<Guid, string> shareUserNames)
+    public static PageDetailsDto ToDto(
+        Page page,
+        string path,
+        bool isFavorite,
+        bool canWrite,
+        IReadOnlyDictionary<Guid, string> shareUserNames
+    )
         => new(
             page.Id,
             page.NotebookId,
@@ -48,6 +55,7 @@ public static class PageDetailsMapping
             // The read projection fills blocks after the page/share DTO is mapped.
             Blocks: [],
             page.CreatedAtUtc,
-            page.UpdatedAtUtc
+            page.UpdatedAtUtc,
+            canWrite
         );
 }

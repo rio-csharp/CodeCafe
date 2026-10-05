@@ -86,7 +86,8 @@ public sealed class AssistantToolsTests
             [],
             [],
             DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow
+            DateTimeOffset.UtcNow,
+            CanWrite: false
         );
 
     private static async Task<string?> Invoke(AIFunction tool, object arguments)

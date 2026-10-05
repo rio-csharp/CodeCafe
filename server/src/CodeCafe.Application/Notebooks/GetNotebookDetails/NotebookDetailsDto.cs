@@ -13,4 +13,7 @@ public sealed record NotebookDetailsDto(
     IReadOnlyList<NotebookShareDto> Shares,
     int PageCount,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc,
+    // Who the caller is to this notebook; both false for anonymous readers.
+    bool IsOwner,
+    bool CanWrite);

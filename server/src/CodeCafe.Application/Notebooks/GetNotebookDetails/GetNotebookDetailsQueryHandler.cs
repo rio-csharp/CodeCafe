@@ -37,7 +37,7 @@ public sealed class GetNotebookDetailsQueryHandler(
 
         var dto = await NotebookDetailsMapping.ToDtoAsync(
             notebook,
-            includeShares: notebook.OwnerId == currentUserAccessor.User?.Id,
+            currentUserAccessor.User?.Id,
             users,
             cancellationToken
         );

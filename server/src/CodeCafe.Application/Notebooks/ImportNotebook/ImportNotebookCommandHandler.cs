@@ -122,7 +122,10 @@ public sealed class ImportNotebookCommandHandler(
                 Shares: [],
                 pageCount,
                 notebook.CreatedAtUtc,
-                notebook.UpdatedAtUtc
+                notebook.UpdatedAtUtc,
+                // The importer just created the notebook.
+                IsOwner: true,
+                CanWrite: true
             )
         );
     }

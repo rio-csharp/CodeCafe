@@ -177,6 +177,66 @@ public sealed class GetNotebookDetailsQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_Owner_IsOwnerAndCanWrite()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner, NotebookVisibility.Private);
+
+        var result = await CreateHandler(new CurrentUser(owner.Id), notebook)
+            .Handle(new GetNotebookDetailsQuery(notebook.Slug), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.IsOwner);
+        Assert.True(result.Value.CanWrite);
+    }
+
+    [Fact]
+    public async Task Handle_EditorCollaborator_CanWriteButIsNotOwner()
+    {
+        var owner = SeedOwner();
+        var editor = User.Create("editor@example.com", "editor@example.com", "Editor", "hash");
+        var notebook = SeedNotebook(owner, NotebookVisibility.Private);
+        notebook.Share(editor.Id, CollaboratorRole.Editor);
+
+        var result = await CreateHandler(new CurrentUser(editor.Id), notebook)
+            .Handle(new GetNotebookDetailsQuery(notebook.Slug), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value!.IsOwner);
+        Assert.True(result.Value.CanWrite);
+    }
+
+    [Fact]
+    public async Task Handle_ViewerCollaborator_IsNeitherOwnerNorWriter()
+    {
+        var owner = SeedOwner();
+        var viewer = User.Create("viewer@example.com", "viewer@example.com", "Viewer", "hash");
+        var notebook = SeedNotebook(owner, NotebookVisibility.Private);
+        notebook.Share(viewer.Id, CollaboratorRole.Viewer);
+
+        var result = await CreateHandler(new CurrentUser(viewer.Id), notebook)
+            .Handle(new GetNotebookDetailsQuery(notebook.Slug), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value!.IsOwner);
+        Assert.False(result.Value.CanWrite);
+    }
+
+    [Fact]
+    public async Task Handle_AnonymousReader_IsNeitherOwnerNorWriter()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner, NotebookVisibility.Public);
+
+        var result = await CreateHandler(null, notebook)
+            .Handle(new GetNotebookDetailsQuery(notebook.Slug), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value!.IsOwner);
+        Assert.False(result.Value.CanWrite);
+    }
+
+    [Fact]
     public async Task Handle_AccessCodeDoesNotUnlockPrivateNotebook()
     {
         var owner = SeedOwner();

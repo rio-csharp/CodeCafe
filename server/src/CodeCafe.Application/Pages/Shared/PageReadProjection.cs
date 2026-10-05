@@ -36,12 +36,15 @@ public static class PageReadProjection
         var isFavorite = userId is not null
             && (await pages.FindFavoriteIdsAsync(userId.Value, [page.Id], cancellationToken)).Contains(page.Id);
 
+        var canWrite = userId is not null && PageAccess.CanWrite(notebook, page, ancestors, userId.Value);
+
         var blockDtos = BlockMapping.ToDtos(page, await blocks.ListByPageAsync(page.Id, cancellationToken));
         var dto = await PageDetailsMapping.ToDtoAsync(
             page,
             PageHierarchy.PathOf(page, ancestors),
             isFavorite,
             includeShares: notebook.OwnerId == userId,
+            canWrite,
             users,
             cancellationToken
         );

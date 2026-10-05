@@ -12,4 +12,7 @@ public sealed record PageDetailsDto(
     IReadOnlyList<PageShareDto> Shares,
     IReadOnlyList<BlockDto> Blocks,
     DateTimeOffset CreatedAtUtc,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc,
+    // Page-level write access for the caller: notebook owner/editor, or an Editor share on the
+    // page or any ancestor. False for anonymous readers.
+    bool CanWrite);

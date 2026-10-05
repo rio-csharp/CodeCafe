@@ -125,6 +125,89 @@ public sealed class GetPageQueryHandlerTests
         Assert.All(result.Value.Blocks, block => Assert.Equal("paragraph", block.Type));
     }
 
+    [Fact]
+    public async Task Handle_Owner_CanWrite()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var page = Page.Create(notebook.Id, null, "A", "a", "a");
+
+        var result = await CreateHandler(owner.Id, notebook, page)
+            .Handle(new GetPageQuery(page.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.CanWrite);
+    }
+
+    [Fact]
+    public async Task Handle_NotebookEditor_CanWrite()
+    {
+        var owner = SeedOwner();
+        var editor = User.Create("editor@example.com", "editor@example.com", "Editor", "hash");
+        var notebook = SeedNotebook(owner);
+        notebook.Share(editor.Id, CollaboratorRole.Editor);
+        var page = Page.Create(notebook.Id, null, "A", "a", "a");
+
+        var result = await CreateHandler(editor.Id, notebook, page)
+            .Handle(new GetPageQuery(page.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.CanWrite);
+    }
+
+    [Fact]
+    public async Task Handle_EditorPageShare_CanWrite()
+    {
+        var owner = SeedOwner();
+        var guest = User.Create("guest@example.com", "guest@example.com", "Guest", "hash");
+        var notebook = SeedNotebook(owner); // private
+        var page = Page.Create(notebook.Id, null, "Shared", "shared", "a");
+        page.Share(guest.Id, CollaboratorRole.Editor);
+
+        var result = await CreateHandler(guest.Id, notebook, page)
+            .Handle(new GetPageQuery(page.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value!.CanWrite);
+    }
+
+    [Fact]
+    public async Task Handle_ViewerPageShare_CannotWrite()
+    {
+        var owner = SeedOwner();
+        var guest = User.Create("guest@example.com", "guest@example.com", "Guest", "hash");
+        var notebook = SeedNotebook(owner); // private
+        var page = Page.Create(notebook.Id, null, "Shared", "shared", "a");
+        page.Share(guest.Id, CollaboratorRole.Viewer);
+
+        var result = await CreateHandler(guest.Id, notebook, page)
+            .Handle(new GetPageQuery(page.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value!.CanWrite);
+    }
+
+    [Fact]
+    public async Task Handle_AnonymousReader_CannotWrite()
+    {
+        var owner = SeedOwner();
+        var notebook = Notebook.Create(owner.Id, "Notebook", null, "my-notebook", NotebookVisibility.Public);
+        var page = Page.Create(notebook.Id, null, "A", "a", "a");
+        var handler = new GetPageQueryHandler(
+            new StubCurrentUserAccessor(null),
+            new StubNotebookRepository { notebook },
+            new StubPageRepository { page },
+            new StubBlockRepository(),
+            new StubUserRepository(),
+            new StubPasswordHasher()
+        );
+
+        var result = await handler.Handle(new GetPageQuery(page.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value!.CanWrite);
+    }
+
     private static Block NewBlock(Page page, string sortKey, Block? parent = null)
         => Block.Create(page.Id, parent?.Id, "paragraph", """{"spans":[]}""", string.Empty, sortKey);
 

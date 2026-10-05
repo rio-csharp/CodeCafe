@@ -75,6 +75,8 @@ public sealed class MovePageCommandHandler(
                 PageHierarchy.PathOf(page, newAncestors),
                 isFavorite,
                 includeShares: notebook.OwnerId == userId,
+                // The handler just passed RequireWriteAsync for this page.
+                canWrite: true,
                 users,
                 cancellationToken
             )

@@ -99,7 +99,7 @@ public sealed class ImportPageCommandHandler(
             ? []
             : (await PageHierarchy.LoadAncestorsAsync(parent, pages, cancellationToken)).Append(parent).ToList();
         return Result.Success(
-            PageDetailsMapping.ToDto(page, PageHierarchy.PathOf(page, ancestors), isFavorite: false, shareUserNames: new Dictionary<Guid, string>())
+            PageDetailsMapping.ToDto(page, PageHierarchy.PathOf(page, ancestors), isFavorite: false, canWrite: true, shareUserNames: new Dictionary<Guid, string>())
         );
     }
 

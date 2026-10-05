@@ -107,6 +107,9 @@ public sealed class CreateNotebookCommandHandler(
         Shares: [],
         PageCount: 0,
         notebook.CreatedAtUtc,
-        notebook.UpdatedAtUtc
+        notebook.UpdatedAtUtc,
+        // The caller just created the notebook.
+        IsOwner: true,
+        CanWrite: true
     );
 }

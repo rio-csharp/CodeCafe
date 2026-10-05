@@ -7,16 +7,17 @@ namespace CodeCafe.Application.Notebooks.Shared;
 
 public static class NotebookDetailsMapping
 {
-    // includeShares gates the collaborator list: it identifies people, so only the owner gets
-    // it — public notebooks are readable anonymously and must not leak their member list.
+    // Shares are gated on ownership: the list identifies people, so only the owner gets it —
+    // public notebooks are readable anonymously and must not leak their member list.
     public static async Task<NotebookDetailsDto> ToDtoAsync(
         Notebook notebook,
-        bool includeShares,
+        Guid? userId,
         IUserRepository users,
         CancellationToken cancellationToken
     )
     {
-        var shareUserIds = includeShares
+        var isOwner = userId is not null && notebook.OwnerId == userId;
+        var shareUserIds = isOwner
             ? notebook.Shares.Select(share => share.UserId).ToList()
             : [];
         var shareUsers = shareUserIds.Count == 0
@@ -24,10 +25,15 @@ public static class NotebookDetailsMapping
             : await users.FindByIdsAsync(shareUserIds, cancellationToken);
         var namesById = shareUsers.ToDictionary(user => user.Id, user => user.DisplayName);
 
-        return ToDto(notebook, namesById);
+        return ToDto(notebook, namesById, isOwner, NotebookAccess.CanWrite(notebook, userId));
     }
 
-    public static NotebookDetailsDto ToDto(Notebook notebook, IReadOnlyDictionary<Guid, string> shareUserNames)
+    public static NotebookDetailsDto ToDto(
+        Notebook notebook,
+        IReadOnlyDictionary<Guid, string> shareUserNames,
+        bool isOwner,
+        bool canWrite
+    )
         => new(
             notebook.Id,
             notebook.Title,
@@ -48,6 +54,8 @@ public static class NotebookDetailsMapping
                 .ToList(),
             PageCount: 0,
             notebook.CreatedAtUtc,
-            notebook.UpdatedAtUtc
+            notebook.UpdatedAtUtc,
+            isOwner,
+            canWrite
         );
 }
