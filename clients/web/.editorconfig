@@ -1,0 +1,4 @@
+# The root .editorconfig targets the .NET tree, where 4-space indentation is the
+# rule. Frontend code follows the JS ecosystem convention instead.
+[*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc,css,html,svg,yml,yaml}]
+indent_size = 2
