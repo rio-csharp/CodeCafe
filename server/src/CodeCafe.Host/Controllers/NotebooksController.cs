@@ -10,6 +10,7 @@ using CodeCafe.Application.Notebooks.GetNotebookSlugAvailability;
 using CodeCafe.Application.Notebooks.GetNotebookTree;
 using CodeCafe.Application.Notebooks.ImportNotebook;
 using CodeCafe.Application.Notebooks.ListNotebooks;
+using CodeCafe.Application.Notebooks.ListPublicNotebooks;
 using CodeCafe.Application.Notebooks.RevokeNotebookShare;
 using CodeCafe.Application.Notebooks.SetNotebookAccessCode;
 using CodeCafe.Application.Notebooks.SetNotebookFavorite;
@@ -45,6 +46,7 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
     public Task<Result<NotebookDetailsDto>> Import(NotebookExportDto export, CancellationToken cancellationToken)
         => sender.Send(new ImportNotebookCommand(export), cancellationToken);
 
+    // Own + shared notebooks; the public catalog lives at notebooks/public.
     [HttpGet("notebooks")]
     public Task<Result<PagedResult<NotebookSummaryDto>>> List(
         string? tag,
@@ -56,6 +58,16 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
         int? pageSize,
         CancellationToken cancellationToken)
         => sender.Send(new ListNotebooksQuery(tag, favorite, visibility, search, sort, page, pageSize), cancellationToken);
+
+    [AllowAnonymous]
+    [HttpGet("notebooks/public")]
+    public Task<Result<PagedResult<NotebookSummaryDto>>> ListPublic(
+        string? search,
+        NotebookSort? sort,
+        int? page,
+        int? pageSize,
+        CancellationToken cancellationToken)
+        => sender.Send(new ListPublicNotebooksQuery(search, sort, page, pageSize), cancellationToken);
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}")]

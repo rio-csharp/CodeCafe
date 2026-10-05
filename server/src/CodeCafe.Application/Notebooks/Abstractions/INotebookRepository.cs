@@ -12,10 +12,11 @@ public interface INotebookRepository
 
     Task<Notebook?> FindByIdOrSlugAsync(string idOrSlug, CancellationToken cancellationToken);
 
-    Task<int> CountVisibleAsync(Guid userId, NotebookFilter filter, CancellationToken cancellationToken);
+    // A null userId means anonymous: only public notebooks are visible.
+    Task<int> CountVisibleAsync(Guid? userId, NotebookFilter filter, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<Notebook>> ListVisibleAsync(
-        Guid userId,
+        Guid? userId,
         NotebookFilter filter,
         NotebookSort sort,
         int skip,

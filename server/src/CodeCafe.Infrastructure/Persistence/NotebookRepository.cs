@@ -29,11 +29,11 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
                     cancellationToken
                 );
 
-    public Task<int> CountVisibleAsync(Guid userId, NotebookFilter filter, CancellationToken cancellationToken)
+    public Task<int> CountVisibleAsync(Guid? userId, NotebookFilter filter, CancellationToken cancellationToken)
         => VisibleTo(userId, filter).CountAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Notebook>> ListVisibleAsync(
-        Guid userId,
+        Guid? userId,
         NotebookFilter filter,
         NotebookSort sort,
         int skip,
@@ -55,23 +55,27 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
         return await ordered.Skip(skip).Take(take).ToListAsync(cancellationToken);
     }
 
-    private IQueryable<Notebook> VisibleTo(Guid userId, NotebookFilter filter)
+    private IQueryable<Notebook> VisibleTo(Guid? userId, NotebookFilter filter)
     {
-        // A page share on any page of the notebook also surfaces the notebook itself.
-        var query = dbContext.Notebooks.Where(
-            notebook => notebook.OwnerId == userId
-                || notebook.Shares.Any(share => share.UserId == userId)
-                || dbContext.Pages.Any(
-                    page => page.NotebookId == notebook.Id && page.Shares.Any(share => share.UserId == userId)
-                )
-        );
+        // Anonymous callers see the public catalog; authenticated callers see what they own,
+        // what is shared with them, and — via a page share on any page of the notebook —
+        // notebooks surfaced by a shared page.
+        var query = userId is null
+            ? dbContext.Notebooks.Where(notebook => notebook.Visibility == NotebookVisibility.Public)
+            : dbContext.Notebooks.Where(
+                notebook => notebook.OwnerId == userId
+                    || notebook.Shares.Any(share => share.UserId == userId)
+                    || dbContext.Pages.Any(
+                        page => page.NotebookId == notebook.Id && page.Shares.Any(share => share.UserId == userId)
+                    )
+            );
 
         if (filter.Tag is not null)
         {
             query = query.Where(notebook => notebook.Tags.Contains(filter.Tag));
         }
 
-        if (filter.IsFavorite is not null)
+        if (filter.IsFavorite is not null && userId is not null)
         {
             query = query.Where(notebook =>
                 dbContext.NotebookFavorites.Any(

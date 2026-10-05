@@ -56,11 +56,11 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
             ? FindByIdAsync(id, cancellationToken)
             : Task.FromResult(Live.FirstOrDefault(notebook => notebook.Slug == idOrSlug.Trim().ToLowerInvariant()));
 
-    public Task<int> CountVisibleAsync(Guid userId, NotebookFilter filter, CancellationToken cancellationToken)
+    public Task<int> CountVisibleAsync(Guid? userId, NotebookFilter filter, CancellationToken cancellationToken)
         => Task.FromResult(VisibleTo(userId, filter).Count());
 
     public Task<IReadOnlyList<Notebook>> ListVisibleAsync(
-        Guid userId,
+        Guid? userId,
         NotebookFilter filter,
         NotebookSort sort,
         int skip,
@@ -82,19 +82,21 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
         return Task.FromResult<IReadOnlyList<Notebook>>(ordered.Skip(skip).Take(take).ToList());
     }
 
-    private IEnumerable<Notebook> VisibleTo(Guid userId, NotebookFilter filter)
-    {        IEnumerable<Notebook> query = Live.Where(notebook =>
-            notebook.OwnerId == userId
-            || notebook.IsSharedWith(userId)
-            || PageShareGrants.Any(grant => grant.NotebookId == notebook.Id && grant.UserId == userId)
-        );
+    private IEnumerable<Notebook> VisibleTo(Guid? userId, NotebookFilter filter)
+    {        IEnumerable<Notebook> query = userId is null
+            ? Live.Where(notebook => notebook.Visibility == NotebookVisibility.Public)
+            : Live.Where(notebook =>
+                notebook.OwnerId == userId
+                || notebook.IsSharedWith(userId.Value)
+                || PageShareGrants.Any(grant => grant.NotebookId == notebook.Id && grant.UserId == userId)
+            );
         if (filter.Tag is not null)
         {
             query = query.Where(notebook => notebook.Tags.Contains(filter.Tag));
         }
-        if (filter.IsFavorite is not null)
+        if (filter.IsFavorite is not null && userId is not null)
         {
-            query = query.Where(notebook => Favorites.Contains((notebook.Id, userId)) == filter.IsFavorite.Value);
+            query = query.Where(notebook => Favorites.Contains((notebook.Id, userId.Value)) == filter.IsFavorite.Value);
         }
         if (filter.Visibility is not null)
         {

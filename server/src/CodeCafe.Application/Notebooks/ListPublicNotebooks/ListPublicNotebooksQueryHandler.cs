@@ -1,53 +1,41 @@
-using CodeCafe.Application.Auth;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
-using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
+using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Domain.Notebooks;
 
-namespace CodeCafe.Application.Notebooks.ListNotebooks;
+namespace CodeCafe.Application.Notebooks.ListPublicNotebooks;
 
-public sealed class ListNotebooksQueryHandler(
-    ICurrentUserAccessor currentUserAccessor,
+public sealed class ListPublicNotebooksQueryHandler(
     INotebookRepository notebooks,
     IPageRepository pages
-) : IQueryHandler<ListNotebooksQuery, Result<PagedResult<NotebookSummaryDto>>>
+) : IQueryHandler<ListPublicNotebooksQuery, Result<PagedResult<NotebookSummaryDto>>>
 {
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 100;
 
-    public async Task<Result<PagedResult<NotebookSummaryDto>>> Handle(ListNotebooksQuery query, CancellationToken cancellationToken)
+    public async Task<Result<PagedResult<NotebookSummaryDto>>> Handle(ListPublicNotebooksQuery query, CancellationToken cancellationToken)
     {
-        var userId = currentUserAccessor.User?.Id;
-        if (userId is null)
-        {
-            return Result.Failure<PagedResult<NotebookSummaryDto>>(AuthErrors.UserNotFound);
-        }
-
         var page = Math.Max(query.Page ?? 1, 1);
         var pageSize = Math.Clamp(query.PageSize ?? DefaultPageSize, 1, MaxPageSize);
-        // Tag and search are normalized here; the repository owns how they become SQL.
+        // The public catalog is exactly "visibility = Public": a null userId makes the
+        // repository take the anonymous arm. Favorites don't exist without a user.
         var filter = new NotebookFilter(
-            query.Tag?.Trim().ToLowerInvariant() is { Length: > 0 } tag ? tag : null,
-            query.IsFavorite,
-            query.Visibility,
+            null,
+            null,
+            NotebookVisibility.Public,
             query.Search?.Trim() is { Length: > 0 } search ? search : null
         );
         var sort = query.Sort ?? NotebookSort.UpdatedDesc;
 
-        var totalCount = await notebooks.CountVisibleAsync(userId.Value, filter, cancellationToken);
+        var totalCount = await notebooks.CountVisibleAsync(null, filter, cancellationToken);
         var fetched = await notebooks.ListVisibleAsync(
-            userId.Value,
+            null,
             filter,
             sort,
             (page - 1) * pageSize,
             pageSize,
-            cancellationToken
-        );
-        var favoriteIds = await notebooks.FindFavoriteIdsAsync(
-            userId.Value,
-            fetched.Select(notebook => notebook.Id).ToList(),
             cancellationToken
         );
         var pageCounts = await pages.CountByNotebooksAsync(
@@ -62,7 +50,7 @@ public sealed class ListNotebooksQueryHandler(
                 notebook.Description,
                 notebook.Slug,
                 notebook.Visibility,
-                favoriteIds.Contains(notebook.Id),
+                false,
                 notebook.Tags.ToList(),
                 pageCounts.GetValueOrDefault(notebook.Id),
                 notebook.UpdatedAtUtc

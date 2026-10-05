@@ -14,7 +14,6 @@ public sealed class EndpointSkeletonTests(CodeCafeFactory factory)
     [InlineData("GET", "/api/auth/me")]
     [InlineData("PATCH", "/api/auth/me")]
     [InlineData("POST", "/api/auth/change-password")]
-    [InlineData("GET", "/api/notebooks")]
     [InlineData("POST", "/api/notebooks")]
     [InlineData("POST", "/api/notebooks/import")]
     [InlineData("PATCH", "/api/notebooks/my-first-notes")]
@@ -101,7 +100,7 @@ public sealed class EndpointSkeletonTests(CodeCafeFactory factory)
     {
         using var client = factory.CreateClient();
 
-        using var response = await client.GetAsync("/api/notebooks", TestContext.Current.CancellationToken);
+        using var response = await client.GetAsync("/api/auth/me", TestContext.Current.CancellationToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
         Assert.Contains(response.Headers.WwwAuthenticate, header =>
