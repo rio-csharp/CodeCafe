@@ -24,7 +24,7 @@ internal static class ServiceCollectionExtensions
         services.AddControllers(options =>
             {
                 options.Filters.Add(new ResultStatusCodeFilter());
-                options.Conventions.Add(new ApiErrorResponsesConvention());
+                options.Conventions.Add(new ApiResponsesConvention());
             })
             // Enums travel as strings on the wire, both in DTOs and in the error envelope.
             .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));

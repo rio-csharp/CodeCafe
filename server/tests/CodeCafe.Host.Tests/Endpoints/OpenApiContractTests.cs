@@ -135,6 +135,26 @@ public sealed class OpenApiContractTests(CodeCafeFactory factory)
     }
 
     [Fact]
+    public async Task Result_Operations_Document_The_Success_Envelope()
+    {
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        using var document = JsonDocument.Parse(json);
+        var paths = document.RootElement.GetProperty("paths");
+
+        var create = paths.GetProperty("/api/notebooks").GetProperty("post").GetProperty("responses").GetProperty("200");
+        var schema = create.GetProperty("content").GetProperty("application/json").GetProperty("schema");
+        Assert.Equal("#/components/schemas/ResultOfNotebookDetailsDto", schema.GetProperty("$ref").GetString());
+
+        // Operations returning a bare Result still document 200, with the payload-less envelope.
+        var delete = paths.GetProperty("/api/pages/{pageId}").GetProperty("delete").GetProperty("responses").GetProperty("200");
+        var deleteSchema = delete.GetProperty("content").GetProperty("application/json").GetProperty("schema");
+        Assert.Equal("#/components/schemas/Result", deleteSchema.GetProperty("$ref").GetString());
+    }
+
+    [Fact]
     public async Task Rate_Limited_Operation_Documents_429()
     {
         using var client = factory.CreateClient();
