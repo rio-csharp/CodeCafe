@@ -11,9 +11,9 @@ export function RouteErrorBoundary() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-cream px-4 text-center">
-      <h1 className="font-display text-3xl text-roast">{t('routeError.title')}</h1>
-      <p className="text-mocha">{t('routeError.body')}</p>
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-canvas px-4 text-center">
+      <h1 className="font-display text-3xl text-ink">{t('routeError.title')}</h1>
+      <p className="text-muted">{t('routeError.body')}</p>
       <Button
         onClick={() => {
           window.location.reload()
@@ -29,7 +29,7 @@ export function RouteFallback() {
   const { t } = useTranslation()
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-cream text-caramel">
+    <div className="flex min-h-dvh items-center justify-center bg-canvas text-accent">
       <span className="sr-only">{t('catalog.loading')}</span>
       <Spinner className="h-8 w-8" />
     </div>

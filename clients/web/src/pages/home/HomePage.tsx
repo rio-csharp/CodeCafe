@@ -8,7 +8,7 @@ export function HomePage() {
   const [search, setSearch] = useState('')
 
   return (
-    <div className="flex min-h-dvh flex-col bg-cream">
+    <div className="flex min-h-dvh flex-col bg-canvas">
       <SiteHeader />
 
       <main className="flex-1">

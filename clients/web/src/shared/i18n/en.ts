@@ -40,6 +40,12 @@ export const en = {
     label: 'Switch language',
     switchTo: '中文',
   },
+  theme: {
+    label: 'Switch theme',
+    labelWithMode: 'Switch theme, currently {{mode}}',
+    light: 'Light',
+    dark: 'Dark',
+  },
   routeError: {
     title: 'This one spilled',
     body: 'Something broke on this page. Reload to order again.',

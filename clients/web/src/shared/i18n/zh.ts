@@ -40,6 +40,12 @@ export const zh = {
     label: '切换语言',
     switchTo: 'EN',
   },
+  theme: {
+    label: '切换主题',
+    labelWithMode: '切换主题，当前{{mode}}',
+    light: '浅色',
+    dark: '深色',
+  },
   routeError: {
     title: '这杯洒了',
     body: '这个页面出了点问题，重新加载再点一次。',

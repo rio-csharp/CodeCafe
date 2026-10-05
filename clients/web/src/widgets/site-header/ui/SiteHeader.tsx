@@ -1,14 +1,16 @@
 import { useTranslation } from 'react-i18next'
 import { LanguageToggle } from '@/features/switch-language'
+import { ThemeToggle } from '@/features/switch-theme'
+import { Container } from '@/shared/ui'
 
 export function SiteHeader() {
   const { t } = useTranslation()
 
   return (
-    <header className="sticky top-0 z-10 border-b border-latte bg-paper">
-      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+    <header className="sticky top-0 z-10 border-b border-line bg-card">
+      <Container className="flex flex-wrap items-center justify-between gap-3 py-3">
         <div className="flex items-center gap-2">
-          <svg className="h-7 w-7 text-caramel" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <svg className="h-7 w-7 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M4 8h11v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z"
               stroke="currentColor"
@@ -28,13 +30,16 @@ export function SiteHeader() {
               strokeLinecap="round"
             />
           </svg>
-          <span className="font-display text-lg tracking-tight text-espresso">
+          <span className="font-display text-lg tracking-tight text-ink">
             {t('brand.name')}
           </span>
         </div>
 
-        <LanguageToggle />
-      </div>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <LanguageToggle />
+        </div>
+      </Container>
     </header>
   )
 }

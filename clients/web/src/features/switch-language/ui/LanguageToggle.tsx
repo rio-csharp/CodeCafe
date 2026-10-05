@@ -14,7 +14,7 @@ export function LanguageToggle() {
         void i18n.changeLanguage(next)
       }}
       aria-label={t('lang.label')}
-      className="inline-flex items-center gap-1.5 rounded-full border border-latte px-3 py-1.5 text-sm text-roast transition-colors hover:border-caramel hover:text-caramel-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caramel"
+      className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-sm text-ink transition-colors hover:border-accent hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
     >
       <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.6" />
@@ -25,7 +25,7 @@ export function LanguageToggle() {
           strokeLinecap="round"
         />
       </svg>
-      {t('lang.switchTo')}
+      <span className="sr-only sm:not-sr-only">{t('lang.switchTo')}</span>
     </button>
   )
 }

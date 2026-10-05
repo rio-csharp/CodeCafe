@@ -1,13 +1,14 @@
 import { useTranslation } from 'react-i18next'
+import { Container } from '@/shared/ui'
 
 export function SiteFooter() {
   const { t } = useTranslation()
 
   return (
-    <footer className="bg-roast">
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 text-center text-sm text-cream sm:px-6">
+    <footer className="border-t border-line bg-band">
+      <Container className="py-2 text-center text-sm text-band-ink">
         {t('footer.line')}
-      </div>
+      </Container>
     </footer>
   )
 }

@@ -60,7 +60,7 @@ export function SearchInput({ value, onChange }: SearchInputProps) {
   return (
     <div className="relative flex w-full items-center">
       <svg
-        className="pointer-events-none absolute left-4 h-5 w-5 text-mocha"
+        className="pointer-events-none absolute left-4 h-5 w-5 text-muted"
         viewBox="0 0 24 24"
         fill="none"
         aria-hidden="true"
@@ -75,14 +75,14 @@ export function SearchInput({ value, onChange }: SearchInputProps) {
         onChange={handleChange}
         aria-label={t('search.label')}
         placeholder={t('search.placeholder')}
-        className="h-13 w-full rounded-full border border-latte bg-paper pl-12 pr-24 text-espresso placeholder:text-mocha focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel"
+        className="h-13 w-full rounded-full border border-line bg-card pl-12 pr-24 text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
       />
 
       {text.length === 0 ? null : (
         <button
           type="button"
           onClick={handleClear}
-          className="absolute right-3 rounded-full px-3 py-1 text-sm text-mocha transition-colors hover:text-caramel-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caramel"
+          className="absolute right-3 rounded-full px-3 py-1 text-sm text-muted transition-colors hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           {t('search.clear')}
         </button>

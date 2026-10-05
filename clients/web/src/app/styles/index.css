@@ -1,17 +1,44 @@
 @import 'tailwindcss';
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Two layers. This block is the semantic layer components are allowed to use,
+ * carrying the light values. Nothing below may reference the raw cafe palette.
+ */
 @theme {
-  --color-cream: #faf6f0; /* page background */
-  --color-paper: #fffdf9; /* card surface */
-  --color-espresso: #2b2118; /* primary text */
-  --color-roast: #4a382a; /* headings, footer bg */
-  --color-mocha: #7a6a5a; /* secondary text */
-  --color-caramel: #c07a3e; /* accent: links, buttons, focus rings */
-  --color-caramel-deep: #9c5f2c; /* accent hover */
-  --color-latte: #e5d9c8; /* borders, dividers */
+  --color-canvas: #faf6f0; /* page background */
+  --color-card: #fffdf9; /* elevated surface */
+  --color-ink: #2b2118; /* primary text */
+  --color-muted: #7a6a5a; /* secondary text */
+  --color-accent: #c07a3e; /* actions, focus rings */
+  --color-accent-strong: #9c5f2c; /* accent hover/active */
+  --color-line: #e5d9c8; /* borders, dividers */
+  --color-band: #4a382a; /* footer block */
+  --color-band-ink: #faf6f0; /* text on band */
 
   --font-display: 'Fraunces Variable', Georgia, serif;
   --font-body: 'Inter Variable', system-ui, sans-serif;
+}
+
+/*
+ * Same tokens, dark values. Utilities read these variables, so redefining them
+ * here re-themes every component without a single `dark:` class in markup.
+ */
+@layer theme {
+  .dark {
+    --color-canvas: #14120f;
+    --color-card: #1e1b17;
+    --color-ink: #eeeae4;
+    --color-muted: #a49e96;
+    --color-accent: #d08d4e;
+    --color-accent-strong: #e0a266;
+    --color-line: #38342e;
+    --color-band: #25211c;
+    --color-band-ink: #eeeae4;
+
+    color-scheme: dark;
+  }
 }
 
 @layer base {
@@ -21,17 +48,48 @@
 
   body {
     margin: 0;
-    background-color: var(--color-cream);
-    color: var(--color-espresso);
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
     font-family: var(--font-body);
     line-height: 1.45;
+    transition: background-color 150ms ease, color 150ms ease;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Fallback theme crossfade, enabled only for the duration of a switch. */
+  .theme-switching,
+  .theme-switching *,
+  .theme-switching *::before,
+  .theme-switching *::after {
+    transition:
+      background-color 250ms ease,
+      border-color 250ms ease,
+      color 250ms ease,
+      outline-color 250ms ease !important;
   }
 
   *,
   *::before,
   *::after {
     box-sizing: border-box;
+  }
+}
+
+/* Circular reveal from the toggle for browsers with the View Transitions API. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 50%));
+  animation: theme-reveal 450ms ease-out forwards;
+}
+
+@keyframes theme-reveal {
+  to {
+    clip-path: circle(150% at var(--theme-x, 50%) var(--theme-y, 50%));
   }
 }

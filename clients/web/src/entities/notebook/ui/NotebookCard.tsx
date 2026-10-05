@@ -14,11 +14,11 @@ export function NotebookCard({ notebook }: NotebookCardProps) {
   const { t, i18n } = useTranslation()
 
   return (
-    <article className="flex h-full flex-col gap-3 rounded-2xl border border-latte bg-paper p-5 transition-shadow hover:shadow-md hover:ring-1 hover:ring-caramel">
-      <h3 className="font-display text-xl leading-snug text-espresso">{notebook.title}</h3>
+    <article className="flex h-full flex-col gap-3 rounded-2xl border border-line bg-card p-5 transition-shadow hover:shadow-md hover:ring-1 hover:ring-accent">
+      <h3 className="font-display text-xl leading-snug text-ink">{notebook.title}</h3>
 
       {notebook.description === null ? null : (
-        <p className="line-clamp-2 text-sm text-mocha">{notebook.description}</p>
+        <p className="line-clamp-2 text-sm text-muted">{notebook.description}</p>
       )}
 
       {notebook.tags.length === 0 ? null : (
@@ -26,7 +26,7 @@ export function NotebookCard({ notebook }: NotebookCardProps) {
           {notebook.tags.map((tag) => (
             <li
               key={tag}
-              className="rounded-full border border-latte bg-cream px-2.5 py-0.5 text-xs text-roast"
+              className="rounded-full border border-line bg-canvas px-2.5 py-0.5 text-xs text-ink"
             >
               {tag}
             </li>
@@ -34,7 +34,7 @@ export function NotebookCard({ notebook }: NotebookCardProps) {
         </ul>
       )}
 
-      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2 text-xs text-mocha">
+      <footer className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-2 text-xs text-muted">
         <span>{t('card.pageCount', { count: notebook.pageCount })}</span>
         <time dateTime={notebook.updatedAtUtc}>
           {t('card.updatedAt', {
