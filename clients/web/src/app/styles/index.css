@@ -1,0 +1,37 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-cream: #faf6f0; /* page background */
+  --color-paper: #fffdf9; /* card surface */
+  --color-espresso: #2b2118; /* primary text */
+  --color-roast: #4a382a; /* headings, footer bg */
+  --color-mocha: #7a6a5a; /* secondary text */
+  --color-caramel: #c07a3e; /* accent: links, buttons, focus rings */
+  --color-caramel-deep: #9c5f2c; /* accent hover */
+  --color-latte: #e5d9c8; /* borders, dividers */
+
+  --font-display: 'Fraunces Variable', Georgia, serif;
+  --font-body: 'Inter Variable', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-cream);
+    color: var(--color-espresso);
+    font-family: var(--font-body);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}

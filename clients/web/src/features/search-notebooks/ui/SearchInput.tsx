@@ -1,0 +1,92 @@
+import { useEffect, useRef, useState } from 'react'
+import type { ChangeEvent } from 'react'
+import { useTranslation } from 'react-i18next'
+
+export const SEARCH_DEBOUNCE_MS = 300
+
+export interface SearchInputProps {
+  /** The committed (debounced) value owned by the parent. */
+  value: string
+  onChange: (value: string) => void
+}
+
+export function SearchInput({ value, onChange }: SearchInputProps) {
+  const { t } = useTranslation()
+  const [text, setText] = useState(value)
+  const [syncedValue, setSyncedValue] = useState(value)
+  const timerRef = useRef<number | null>(null)
+
+  // A parent-driven change (e.g. a reset from elsewhere) must reach the input,
+  // while our own echo must not fight the user's keystrokes. Adjusting state
+  // during render keeps this to a single extra pass instead of an effect.
+  if (value !== syncedValue) {
+    setSyncedValue(value)
+    setText(value)
+  }
+
+  useEffect(
+    () => () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current)
+      }
+    },
+    [],
+  )
+
+  const schedule = (next: string) => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current)
+    }
+    timerRef.current = window.setTimeout(() => {
+      timerRef.current = null
+      onChange(next)
+    }, SEARCH_DEBOUNCE_MS)
+  }
+
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setText(event.target.value)
+    schedule(event.target.value)
+  }
+
+  const handleClear = () => {
+    if (timerRef.current !== null) {
+      window.clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+    setText('')
+    onChange('')
+  }
+
+  return (
+    <div className="relative flex w-full items-center">
+      <svg
+        className="pointer-events-none absolute left-4 h-5 w-5 text-mocha"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+        <path d="m16 16 4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+
+      <input
+        type="search"
+        value={text}
+        onChange={handleChange}
+        aria-label={t('search.label')}
+        placeholder={t('search.placeholder')}
+        className="h-13 w-full rounded-full border border-latte bg-paper pl-12 pr-24 text-espresso placeholder:text-mocha focus:border-caramel focus:outline-none focus:ring-2 focus:ring-caramel"
+      />
+
+      {text.length === 0 ? null : (
+        <button
+          type="button"
+          onClick={handleClear}
+          className="absolute right-3 rounded-full px-3 py-1 text-sm text-mocha transition-colors hover:text-caramel-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-caramel"
+        >
+          {t('search.clear')}
+        </button>
+      )}
+    </div>
+  )
+}
