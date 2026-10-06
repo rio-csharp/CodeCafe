@@ -73,10 +73,11 @@ describe('NotebookSettingsDialog', () => {
     renderDialog()
 
     await screen.findByDisplayValue('Espresso Notes')
-    const tags = screen.getByRole('region', { name: 'Tags' })
-    await user.type(within(tags).getByLabelText('Type and press Enter'), 'brewing{Enter}')
-    await user.click(within(tags).getByRole('button', { name: 'Save' }))
+    await user.type(screen.getByLabelText('Type and press Enter'), 'brewing{Enter}')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
+    // One save button drives both endpoints; only the dirty half rides out.
     expect(setNotebookTags).toHaveBeenCalledWith('espresso-notes', ['coffee', 'brewing'])
+    expect(updateNotebook).not.toHaveBeenCalled()
   })
 })

@@ -46,13 +46,7 @@ function SettingsBody({ slug }: { slug: string }) {
     return <p className="py-10 text-center text-sm text-danger">{t('list.loadError')}</p>
   }
 
-  return (
-    <div className="flex flex-col gap-6">
-      <BasicsSection slug={slug} notebook={details.data} />
-      <div aria-hidden="true" className="h-px bg-line" />
-      <TagsSection slug={slug} notebook={details.data} />
-    </div>
-  )
+  return <SettingsForm slug={slug} notebook={details.data} />
 }
 
 function useInvalidator(slug: string) {
@@ -80,21 +74,39 @@ export function SettingsError({ code }: { code: string }) {
   )
 }
 
-function BasicsSection({ slug, notebook }: { slug: string; notebook: NotebookDetails }) {
+/** One form, one save button — the two endpoints behind it are plumbing. */
+function SettingsForm({ slug, notebook }: { slug: string; notebook: NotebookDetails }) {
   const { t } = useTranslation()
   const [title, setTitle] = useState(notebook.title)
   const [description, setDescription] = useState(notebook.description ?? '')
   const [visibility, setVisibility] = useState(notebook.visibility)
+  const [tags, setTags] = useState<string[]>(notebook.tags)
+  const [tagDraft, setTagDraft] = useState('')
   const [error, setError] = useState<string | null>(null)
   const invalidate = useInvalidator(slug)
 
+  const basicsDirty =
+    title !== notebook.title ||
+    description !== (notebook.description ?? '') ||
+    visibility !== notebook.visibility
+  const tagsDirty =
+    tags.length !== notebook.tags.length || tags.some((tag, index) => tag !== notebook.tags[index])
+  const dirty = basicsDirty || tagsDirty
+
   const save = useMutation({
-    mutationFn: () =>
-      updateNotebook(slug, {
-        title: title.trim(),
-        description: description.trim() || null,
-        visibility,
-      }),
+    mutationFn: async () => {
+      // Only the touched halves ride out; unchanged halves stay put.
+      await Promise.all([
+        basicsDirty
+          ? updateNotebook(slug, {
+              title: title.trim(),
+              description: description.trim() || null,
+              visibility,
+            })
+          : Promise.resolve(null),
+        tagsDirty ? setNotebookTags(slug, tags) : Promise.resolve(null),
+      ])
+    },
     onSuccess: () => {
       setError(null)
       invalidate()
@@ -104,10 +116,14 @@ function BasicsSection({ slug, notebook }: { slug: string; notebook: NotebookDet
     },
   })
 
-  const dirty =
-    title !== notebook.title ||
-    description !== (notebook.description ?? '') ||
-    visibility !== notebook.visibility
+  const addTag = () => {
+    const tag = tagDraft.trim().toLowerCase()
+    if (tag.length === 0 || tags.includes(tag) || tags.length >= 20) {
+      return
+    }
+    setTags([...tags, tag])
+    setTagDraft('')
+  }
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
@@ -157,49 +173,6 @@ function BasicsSection({ slug, notebook }: { slug: string; notebook: NotebookDet
         </select>
       </DialogField>
 
-      {error !== null ? <SettingsError code={error} /> : null}
-
-      <div className="flex justify-end">
-        <Button type="submit" disabled={!dirty || title.trim().length === 0 || save.isPending}>
-          {save.isPending ? t('settings.saving') : t('settings.save')}
-        </Button>
-      </div>
-    </form>
-  )
-}
-
-function TagsSection({ slug, notebook }: { slug: string; notebook: NotebookDetails }) {
-  const { t } = useTranslation()
-  const [tags, setTags] = useState<string[]>(notebook.tags)
-  const [draft, setDraft] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const invalidate = useInvalidator(slug)
-
-  const save = useMutation({
-    mutationFn: () => setNotebookTags(slug, tags),
-    onSuccess: () => {
-      setError(null)
-      invalidate()
-    },
-    onError: (cause) => {
-      setError(cause instanceof ApiError ? cause.code : 'unknown')
-    },
-  })
-
-  const addTag = () => {
-    const tag = draft.trim().toLowerCase()
-    if (tag.length === 0 || tags.includes(tag) || tags.length >= 20) {
-      return
-    }
-    setTags([...tags, tag])
-    setDraft('')
-  }
-
-  const dirty =
-    tags.length !== notebook.tags.length || tags.some((tag, index) => tag !== notebook.tags[index])
-
-  return (
-    <section aria-label={t('settings.tags')}>
       <DialogField label={t('settings.tags')}>
         <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-canvas p-2">
           {tags.map((tag) => (
@@ -221,9 +194,9 @@ function TagsSection({ slug, notebook }: { slug: string; notebook: NotebookDetai
             </span>
           ))}
           <input
-            value={draft}
+            value={tagDraft}
             onChange={(event) => {
-              setDraft(event.target.value)
+              setTagDraft(event.target.value)
             }}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
@@ -239,23 +212,13 @@ function TagsSection({ slug, notebook }: { slug: string; notebook: NotebookDetai
         </div>
       </DialogField>
 
-      {error !== null ? (
-        <div className="mt-2">
-          <SettingsError code={error} />
-        </div>
-      ) : null}
+      {error !== null ? <SettingsError code={error} /> : null}
 
-      <div className="mt-3 flex justify-end">
-        <Button
-          variant="ghost"
-          disabled={!dirty || save.isPending}
-          onClick={() => {
-            save.mutate()
-          }}
-        >
+      <div className="flex justify-end">
+        <Button type="submit" disabled={!dirty || title.trim().length === 0 || save.isPending}>
           {save.isPending ? t('settings.saving') : t('settings.save')}
         </Button>
       </div>
-    </section>
+    </form>
   )
 }
