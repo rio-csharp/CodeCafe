@@ -9,11 +9,13 @@ import {
 } from '@/entities/notebook'
 import type {
   NotebookDetails,
+  NotebookSummary,
   NotebookSort,
   NotebookVisibility,
 } from '@/entities/notebook'
 import { useSessionStore } from '@/entities/session'
 import { CreateNotebookDialog } from '@/features/create-notebook'
+import { NotebookSettingsDialog } from '@/features/manage-notebook'
 import { SearchInput } from '@/features/search-notebooks'
 import { LanguageToggle } from '@/features/switch-language'
 import { ThemeToggle } from '@/features/switch-theme'
@@ -53,6 +55,7 @@ export function HomePage() {
   const [sort, setSort] = useState<NotebookSort>('UpdatedDesc')
   const [visibility, setVisibility] = useState<NotebookVisibility | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [settingsSlug, setSettingsSlug] = useState<string | null>(null)
 
   const signedIn = status === 'authenticated'
   const activeTab: ShelfTab = signedIn ? tab : 'public'
@@ -212,6 +215,9 @@ export function HomePage() {
               sort={sort}
               favoritesOnly={activeTab === 'favorites'}
               visibility={activeTab === 'mine' ? visibility : null}
+              onOpenSettings={(notebook) => {
+                setSettingsSlug(notebook.slug)
+              }}
             />
           )}
         </div>
@@ -233,6 +239,13 @@ export function HomePage() {
           </div>
         ) : null}
       </Container>
+
+      <NotebookSettingsDialog
+        slug={settingsSlug}
+        onClose={() => {
+          setSettingsSlug(null)
+        }}
+      />
 
       <CreateNotebookDialog
         open={createOpen}
@@ -258,11 +271,13 @@ function MineShelf({
   sort,
   favoritesOnly,
   visibility,
+  onOpenSettings,
 }: {
   search: string
   sort: NotebookSort
   favoritesOnly: boolean
   visibility: NotebookVisibility | null
+  onOpenSettings: (notebook: NotebookSummary) => void
 }) {
   const { t } = useTranslation()
 
@@ -289,6 +304,7 @@ function MineShelf({
         void query.fetchNextPage()
       }}
       showOwnership
+      onOpenSettings={onOpenSettings}
     />
   )
 }

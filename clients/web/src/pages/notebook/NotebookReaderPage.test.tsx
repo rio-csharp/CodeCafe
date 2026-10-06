@@ -28,6 +28,7 @@ const NOTEBOOK: NotebookDetails = {
   slug: 'espresso-notes',
   visibility: 'Public',
   hasAccessCode: false,
+  shares: [],
   tags: ['coffee'],
   pageCount: 2,
   createdAtUtc: '2026-01-01T00:00:00.000Z',

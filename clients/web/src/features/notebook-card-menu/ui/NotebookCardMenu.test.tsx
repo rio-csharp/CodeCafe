@@ -14,7 +14,7 @@ function renderMenu() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <NotebookCardMenu notebookId="nb-1" title="Espresso Notes" />
+      <NotebookCardMenu notebookId="nb-1" title="Espresso Notes" onSettings={vi.fn()} />
     </QueryClientProvider>,
   )
 }

@@ -131,6 +131,7 @@ describe('HomePage', () => {
       visibility: 'Private',
       hasAccessCode: false,
       tags: [],
+      shares: [],
       pageCount: 0,
       createdAtUtc: '2026-01-08T00:00:00.000Z',
       updatedAtUtc: '2026-01-08T00:00:00.000Z',

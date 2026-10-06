@@ -5,6 +5,14 @@ export type { CreateNotebookInput } from './api/createNotebook'
 export { deleteNotebook } from './api/trash'
 export { emptyTrash, listTrash, purgeTrashedNotebook, restoreTrashedNotebook } from './api/trash'
 export type { TrashEntry } from './api/trash'
+export {
+  revokeNotebookShare,
+  setNotebookAccessCode,
+  setNotebookTags,
+  shareNotebook,
+  updateNotebook,
+} from './api/manageNotebook'
+export type { NotebookPatch } from './api/manageNotebook'
 export { getNotebookDetails } from './api/getNotebookDetails'
 export type { GetNotebookDetailsParams } from './api/getNotebookDetails'
 export { getNotebookTree } from './api/getNotebookTree'
@@ -16,6 +24,8 @@ export type { ListMyNotebooksParams } from './api/listMyNotebooks'
 export { formatRelativeTime } from './lib/formatRelativeTime'
 export { notebookKeys } from './model/types'
 export type {
+  CollaboratorRole,
+  NotebookShare,
   MyNotebookListFilters,
   NotebookDetails,
   NotebookListFilters,

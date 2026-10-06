@@ -20,6 +20,8 @@ export interface NotebookGridProps {
   onLoadMore?: () => void
   /** Shows visibility badges and favorite stars — pass true on "my notebooks". */
   showOwnership?: boolean
+  /** Settings dialog opener; required on owned shelves, unused elsewhere. */
+  onOpenSettings?: (notebook: NotebookSummary) => void
 }
 
 /**
@@ -36,6 +38,7 @@ export function NotebookGrid({
   isFetchingNextPage = false,
   onLoadMore,
   showOwnership = false,
+  onOpenSettings,
 }: NotebookGridProps) {
   const { t } = useTranslation()
 
@@ -91,8 +94,14 @@ export function NotebookGrid({
             cornerAction={
               <span className="absolute top-2 right-2 flex items-center gap-0.5">
                 <FavoriteNotebookButton notebookId={notebook.id} isFavorite={notebook.isFavorite} />
-                {showOwnership ? (
-                  <NotebookCardMenu notebookId={notebook.id} title={notebook.title} />
+                {showOwnership && onOpenSettings !== undefined ? (
+                  <NotebookCardMenu
+                    notebookId={notebook.id}
+                    title={notebook.title}
+                    onSettings={() => {
+                      onOpenSettings(notebook)
+                    }}
+                  />
                 ) : null}
               </span>
             }

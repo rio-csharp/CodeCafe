@@ -29,9 +29,17 @@ export interface MyNotebookListFilters extends NotebookListFilters {
   visibility: NotebookVisibility | null
 }
 
+export type CollaboratorRole = 'Viewer' | 'Editor'
+
+export interface NotebookShare {
+  userId: string
+  userName: string
+  role: CollaboratorRole
+}
+
 /**
  * Full notebook metadata. `isOwner` / `canWrite` are the caller's relationship
- * to it — both false for anonymous readers, which is all M4 does with them.
+ * to it — both false for anonymous readers.
  */
 export interface NotebookDetails {
   id: string
@@ -41,6 +49,7 @@ export interface NotebookDetails {
   visibility: NotebookVisibility
   hasAccessCode: boolean
   tags: string[]
+  shares: NotebookShare[]
   pageCount: number
   createdAtUtc: string
   updatedAtUtc: string
