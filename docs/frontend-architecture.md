@@ -77,4 +77,6 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 - **M2 — foundations** (see `frontend-m2-foundations.md`): semantic theme tokens, dark mode with a
   two-way toggle (OS preference as the initial default), responsive consolidation.
 - **M3 — auth** ✅: login/register, token plumbing, logged-in homepage (own + shared alongside the public catalog).
-- **M4+** — notebook reader, editor, trash, search, AI. Planned later.
+- **M4 — notebook reader** (see `frontend-m4-reader.md`): read-only notebook browsing —
+  routing, page tree, block rendering.
+- **M5+** — editor, creation, trash, search, AI. Planned later.
