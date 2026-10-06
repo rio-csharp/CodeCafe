@@ -23,6 +23,7 @@ export const en = {
     sortCreated: 'Recently created',
     sortTitle: 'By title',
     emptyMine: 'No notebooks yet — create your first one.',
+    emptyFavorites: 'No favorites yet.',
     emptyPublic: 'No public notebooks yet.',
   },
   visibility: {

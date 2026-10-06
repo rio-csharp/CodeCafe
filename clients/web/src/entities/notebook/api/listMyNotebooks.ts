@@ -35,8 +35,10 @@ export function listMyNotebooks({
   if (trimmed.length > 0) {
     query.set('search', trimmed)
   }
+  // The controller binds `favorite`, not `isFavorite` — an unknown parameter
+  // is silently ignored, which turns the favorites shelf into "everything".
   if (favoritesOnly) {
-    query.set('isFavorite', 'true')
+    query.set('favorite', 'true')
   }
   if (visibility !== null) {
     query.set('visibility', visibility)

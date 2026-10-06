@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
@@ -8,7 +8,6 @@ import {
   notebookKeys,
 } from '@/entities/notebook'
 import type {
-  MyNotebookListFilters,
   NotebookDetails,
   NotebookSort,
   NotebookVisibility,
@@ -21,6 +20,8 @@ import { ThemeToggle } from '@/features/switch-theme'
 import { Button, buttonClass, Container } from '@/shared/ui'
 import { NotebookGrid } from '@/widgets/notebook-list'
 import { UserMenu } from '@/widgets/site-header'
+
+type ShelfTab = 'favorites' | 'mine' | 'public'
 
 const SORT_OPTIONS = ['UpdatedDesc', 'CreatedDesc', 'TitleAsc'] as const satisfies readonly NotebookSort[]
 
@@ -37,8 +38,9 @@ const VISIBILITY_OPTIONS = [
 ] as const satisfies readonly NotebookVisibility[]
 
 /**
- * The shelf: notebooks front and center, no site chrome. Controls float in the
- * top-right corner; a soft warm glow behind the masthead is the only flourish.
+ * The shelf: one centered search box, three tabs under it, cards below. The
+ * search and sort always act on the tab being looked at. Anonymous visitors
+ * get the public tab without the strip.
  */
 export function HomePage() {
   const { t } = useTranslation()
@@ -46,7 +48,14 @@ export function HomePage() {
   const queryClient = useQueryClient()
   const status = useSessionStore((state) => state.status)
   const user = useSessionStore((state) => state.user)
+  const [tab, setTab] = useState<ShelfTab>('mine')
+  const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<NotebookSort>('UpdatedDesc')
+  const [visibility, setVisibility] = useState<NotebookVisibility | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+
+  const signedIn = status === 'authenticated'
+  const activeTab: ShelfTab = signedIn ? tab : 'public'
 
   const onCreated = (notebook: NotebookDetails) => {
     void queryClient.invalidateQueries({ queryKey: notebookKeys.mine() })
@@ -71,22 +80,22 @@ export function HomePage() {
             {t('header.login')}
           </Link>
         ) : null}
-        {status === 'authenticated' && user !== null ? (
-          <UserMenu displayName={user.displayName} />
-        ) : null}
+        {signedIn && user !== null ? <UserMenu displayName={user.displayName} /> : null}
       </div>
 
-      <Container width="standard" className="relative py-16 sm:py-24">
+      <Container width="standard" className="relative py-16 sm:py-20">
         {status === 'anonymous' ? (
-          <header className="pb-14">
+          <header className="pb-12 text-center">
             <p className="text-xs font-semibold tracking-[0.2em] text-accent-strong uppercase">
               {t('home.overline')}
             </p>
             <h1 className="mt-3 text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
               {t('brand.name')}
             </h1>
-            <p className="mt-4 max-w-md text-lg leading-relaxed text-muted">{t('home.pitch')}</p>
-            <div className="mt-8 flex gap-3">
+            <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-muted">
+              {t('home.pitch')}
+            </p>
+            <div className="mt-8 flex justify-center gap-3">
               <Link to="/register" className={buttonClass('primary')}>
                 {t('home.createAccount')}
               </Link>
@@ -97,19 +106,116 @@ export function HomePage() {
           </header>
         ) : null}
 
-        {status === 'authenticated' && user !== null ? (
-          <>
-            <p className="pb-6 text-sm text-muted">{greeting(t, user.displayName)}</p>
-            <FavoritesShelf />
-            <MyShelf
-              onCreate={() => {
-                setCreateOpen(true)
-              }}
-            />
-          </>
+        {signedIn && user !== null ? (
+          <p className="pb-6 text-center text-sm text-muted">
+            {greeting(t, user.displayName)}
+          </p>
         ) : null}
 
-        <PublicShelf />
+        {/* The one search box; it filters whichever tab is showing. */}
+        <div className="mx-auto max-w-md">
+          <SearchInput value={search} onChange={setSearch} />
+        </div>
+
+        {signedIn ? (
+          <div className="relative mt-6 flex items-center justify-center">
+            <div
+              role="tablist"
+              className="inline-flex gap-1 rounded-full border border-line bg-card p-1"
+            >
+              {(['favorites', 'mine', 'public'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === option}
+                  onClick={() => {
+                    setTab(option)
+                  }}
+                  className={pillClass(activeTab === option)}
+                >
+                  {t(
+                    option === 'favorites'
+                      ? 'home.favorites'
+                      : option === 'mine'
+                        ? 'home.mine'
+                        : 'home.publicNotebooks',
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <Button
+              variant="primary"
+              onClick={() => {
+                setCreateOpen(true)
+              }}
+              className="absolute right-0 hidden items-center gap-1.5 sm:inline-flex"
+            >
+              <svg
+                viewBox="0 0 16 16"
+                className="size-3.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M8 3v10M3 8h10" />
+              </svg>
+              {t('home.newNotebook')}
+            </Button>
+          </div>
+        ) : null}
+
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+          <SortGroup sort={sort} onChange={setSort} />
+          {activeTab === 'mine' ? (
+            <select
+              aria-label={t('createNotebook.visibility')}
+              value={visibility ?? ''}
+              onChange={(event) => {
+                const value = event.target.value
+                setVisibility(value === '' ? null : (value as NotebookVisibility))
+              }}
+              className="h-9 rounded-full border border-line bg-card px-3 text-xs text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              <option value="">{t('home.visibilityAll')}</option>
+              {VISIBILITY_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {t(`visibility.${option}`)}
+                </option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+
+        <div className="mt-5">
+          {activeTab === 'public' ? (
+            <PublicShelf search={search} sort={sort} />
+          ) : (
+            <MineShelf
+              search={search}
+              sort={sort}
+              favoritesOnly={activeTab === 'favorites'}
+              visibility={activeTab === 'mine' ? visibility : null}
+            />
+          )}
+        </div>
+
+        {/* On phones the corner button hides; this one takes over. */}
+        {signedIn ? (
+          <div className="mt-8 text-center sm:hidden">
+            <Button
+              variant="primary"
+              onClick={() => {
+                setCreateOpen(true)
+              }}
+            >
+              {t('home.newNotebook')}
+            </Button>
+          </div>
+        ) : null}
       </Container>
 
       <CreateNotebookDialog
@@ -130,146 +236,53 @@ function greeting(t: (key: string, options?: Record<string, unknown>) => string,
   return t(`home.greeting.${key}`, { name })
 }
 
-/** Section header: quiet label, hairline rule, controls — wraps to a second row on phones. */
-function ShelfHeader({ title, children }: { title: string; children?: React.ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-3 pb-4">
-      <h2 className="shrink-0 text-sm font-semibold text-ink">{title}</h2>
-      {/* The rule only earns its place on one line; stacked, it just adds noise. */}
-      <div aria-hidden="true" className="hidden h-px min-w-4 flex-1 bg-line sm:block" />
-      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
-        {children}
-      </div>
-    </div>
-  )
-}
-
-/** Starred notebooks pulled out on their own shelf; hidden when there are none. */
-function FavoritesShelf() {
+/** Own + shared notebooks; the favorites tab is this same query, starred. */
+function MineShelf({
+  search,
+  sort,
+  favoritesOnly,
+  visibility,
+}: {
+  search: string
+  sort: NotebookSort
+  favoritesOnly: boolean
+  visibility: NotebookVisibility | null
+}) {
   const { t } = useTranslation()
-
-  const query = useQuery({
-    queryKey: notebookKeys.myFavorites(),
-    queryFn: ({ signal }) =>
-      listMyNotebooks({ favoritesOnly: true, page: 1, pageSize: 50, signal }),
-  })
-
-  const items = query.data?.items ?? []
-  if (!query.isPending && !query.isError && items.length === 0) {
-    return null
-  }
-
-  return (
-    <section aria-label={t('home.favorites')} className="pb-12">
-      <ShelfHeader title={t('home.favorites')} />
-      <NotebookGrid
-        items={items}
-        isPending={query.isPending}
-        isError={query.isError}
-        onRetry={() => {
-          void query.refetch()
-        }}
-        emptyText=""
-        showOwnership
-      />
-    </section>
-  )
-}
-
-/** Own + shared notebooks, with the filters only the authenticated list has. */
-function MyShelf({ onCreate }: { onCreate: () => void }) {
-  const { t } = useTranslation()
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<NotebookSort>('UpdatedDesc')
-  const [visibility, setVisibility] = useState<NotebookVisibility | null>(null)
-
-  const filters: MyNotebookListFilters = {
-    search,
-    sort,
-    favoritesOnly: false,
-    visibility,
-  }
 
   const query = useInfiniteQuery({
-    queryKey: notebookKeys.myList(filters),
+    queryKey: notebookKeys.myList({ search, sort, favoritesOnly, visibility }),
     queryFn: ({ pageParam, signal }) =>
-      listMyNotebooks({ search, sort, visibility, page: pageParam, signal }),
+      listMyNotebooks({ search, sort, favoritesOnly, visibility, page: pageParam, signal }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
   })
 
   return (
-    <section aria-label={t('home.mine')} className="pb-12">
-      <ShelfHeader title={t('home.mine')}>
-        <SortGroup sort={sort} onChange={setSort} />
-        <Button variant="primary" onClick={onCreate} className="inline-flex items-center gap-1.5">
-          <svg
-            viewBox="0 0 16 16"
-            className="size-3.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            aria-hidden="true"
-          >
-            <path d="M8 3v10M3 8h10" />
-          </svg>
-          {t('home.newNotebook')}
-        </Button>
-      </ShelfHeader>
-
-      {/* One toolbar row: the search owns the space, the filter rides along. */}
-      <div className="flex flex-wrap items-center gap-2 pb-4">
-        <div className="min-w-40 flex-1">
-          <SearchInput value={search} onChange={setSearch} />
-        </div>
-        <select
-          aria-label={t('createNotebook.visibility')}
-          value={visibility ?? ''}
-          onChange={(event) => {
-            const value = event.target.value
-            setVisibility(value === '' ? null : (value as NotebookVisibility))
-          }}
-          className="h-11 shrink-0 rounded-xl border border-line bg-card px-3 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-        >
-          <option value="">{t('home.visibilityAll')}</option>
-          {VISIBILITY_OPTIONS.map((option) => (
-            <option key={option} value={option}>
-              {t(`visibility.${option}`)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <NotebookGrid
-        items={query.data?.pages.flatMap((page) => page.items) ?? []}
-        isPending={query.isPending}
-        isError={query.isError}
-        onRetry={() => {
-          void query.refetch()
-        }}
-        emptyText={t('home.emptyMine')}
-        hasNextPage={query.hasNextPage}
-        isFetchingNextPage={query.isFetchingNextPage}
-        onLoadMore={() => {
-          void query.fetchNextPage()
-        }}
-        showOwnership
-      />
-    </section>
+    <NotebookGrid
+      items={query.data?.pages.flatMap((page) => page.items) ?? []}
+      isPending={query.isPending}
+      isError={query.isError}
+      onRetry={() => {
+        void query.refetch()
+      }}
+      emptyText={favoritesOnly ? t('home.emptyFavorites') : t('home.emptyMine')}
+      hasNextPage={query.hasNextPage}
+      isFetchingNextPage={query.isFetchingNextPage}
+      onLoadMore={() => {
+        void query.fetchNextPage()
+      }}
+      showOwnership
+    />
   )
 }
 
 /** Every public notebook, anonymous-readable. */
-function PublicShelf() {
+function PublicShelf({ search, sort }: { search: string; sort: NotebookSort }) {
   const { t } = useTranslation()
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState<NotebookSort>('UpdatedDesc')
-
-  const filters = { search, sort }
 
   const query = useInfiniteQuery({
-    queryKey: notebookKeys.publicList(filters),
+    queryKey: notebookKeys.publicList({ search, sort }),
     queryFn: ({ pageParam, signal }) =>
       listNotebooks({ search, sort, page: pageParam, signal }),
     initialPageParam: 1,
@@ -277,30 +290,20 @@ function PublicShelf() {
   })
 
   return (
-    <section aria-label={t('home.publicNotebooks')}>
-      <ShelfHeader title={t('home.publicNotebooks')}>
-        <SortGroup sort={sort} onChange={setSort} />
-      </ShelfHeader>
-
-      <div className="pb-5">
-        <SearchInput value={search} onChange={setSearch} />
-      </div>
-
-      <NotebookGrid
-        items={query.data?.pages.flatMap((page) => page.items) ?? []}
-        isPending={query.isPending}
-        isError={query.isError}
-        onRetry={() => {
-          void query.refetch()
-        }}
-        emptyText={t('home.emptyPublic')}
-        hasNextPage={query.hasNextPage}
-        isFetchingNextPage={query.isFetchingNextPage}
-        onLoadMore={() => {
-          void query.fetchNextPage()
-        }}
-      />
-    </section>
+    <NotebookGrid
+      items={query.data?.pages.flatMap((page) => page.items) ?? []}
+      isPending={query.isPending}
+      isError={query.isError}
+      onRetry={() => {
+        void query.refetch()
+      }}
+      emptyText={t('home.emptyPublic')}
+      hasNextPage={query.hasNextPage}
+      isFetchingNextPage={query.isFetchingNextPage}
+      onLoadMore={() => {
+        void query.fetchNextPage()
+      }}
+    />
   )
 }
 

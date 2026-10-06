@@ -140,7 +140,8 @@ describe('HomePage', () => {
     })
     renderHomePage()
 
-    await user.click(await screen.findByRole('button', { name: 'New notebook' }))
+    // Two copies exist (desktop corner + mobile row); jsdom renders both.
+    await user.click((await screen.findAllByRole('button', { name: 'New notebook' }))[0])
     await user.type(screen.getByLabelText('Title'), 'Fresh Ideas')
     await user.click(screen.getByRole('button', { name: 'Create' }))
 

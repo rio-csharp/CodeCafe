@@ -23,6 +23,7 @@ export const zh = {
     sortCreated: '最新创建',
     sortTitle: '按名称',
     emptyMine: '还没有笔记本，新建一本吧。',
+    emptyFavorites: '还没有收藏的笔记本。',
     emptyPublic: '暂时没有公开的笔记本。',
   },
   visibility: {
