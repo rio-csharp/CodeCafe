@@ -92,6 +92,9 @@ export const zh = {
     notebookMissing: '这个笔记本不存在，或者它还没公开',
     pageMissing: '这一页找不到了',
     backHome: '回首页',
+    fullWidth: '通栏',
+    outline: '大纲',
+    noHeadings: '还没有小标题',
     emptyNotebook: '这本菜单还是空白',
   },
 }

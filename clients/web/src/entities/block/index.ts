@@ -1,5 +1,7 @@
 export { assembleBlockTree } from './model/assembleBlockTree'
 export type { BlockNode } from './model/assembleBlockTree'
+export { blockAnchorId, extractOutline } from './model/outline'
+export type { OutlineHeading } from './model/outline'
 export type {
   AudioContent,
   BlockDto,

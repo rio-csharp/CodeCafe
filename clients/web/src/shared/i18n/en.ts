@@ -92,6 +92,9 @@ export const en = {
     notebookMissing: "This notebook doesn't exist, or it isn't public yet.",
     pageMissing: 'This page is missing',
     backHome: 'Back home',
+    fullWidth: 'Full width',
+    outline: 'Outline',
+    noHeadings: 'No headings yet',
     emptyNotebook: "Nothing's been written on this menu yet",
   },
 }

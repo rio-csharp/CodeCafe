@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NotebookDetails, PageTreeNode } from '@/entities/notebook'
@@ -82,6 +83,32 @@ function page(title: string, path: string): PageDetails {
   }
 }
 
+function pageWithHeadings(): PageDetails {
+  return {
+    ...page('Grinding', '/grinding'),
+    blocks: [
+      {
+        id: 'heading-1',
+        parentBlockId: null,
+        type: 'heading',
+        content: { level: 2, spans: [{ text: 'Beans', marks: [] }] },
+        sortKey: 'a',
+        version: 1,
+        updatedAtUtc: '2026-01-07T12:00:00.000Z',
+      },
+      {
+        id: 'heading-2',
+        parentBlockId: null,
+        type: 'heading',
+        content: { level: 3, spans: [{ text: 'Grind size', marks: [] }] },
+        sortKey: 'b',
+        version: 1,
+        updatedAtUtc: '2026-01-07T12:00:00.000Z',
+      },
+    ],
+  }
+}
+
 const notFound = () =>
   new ApiError({ status: 404, code: 'notebooks.not_found', kind: 'NotFound', message: 'nope' })
 
@@ -126,6 +153,75 @@ describe('NotebookReaderPage', () => {
     renderReader('/notebooks/espresso-notes/grinding')
 
     expect(await screen.findByText('Start with fresh beans.')).toBeInTheDocument()
+  })
+
+  it('offers a way back to the menu from every page', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+
+    expect(await screen.findByRole('link', { name: 'Back home' })).toHaveAttribute('href', '/')
+  })
+
+  it('starts wide and lets the reader trade width back', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    const { container } = renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 2, name: 'Grinding' })
+
+    const toggle = screen.getByRole('button', { name: 'Full width' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(container.querySelector('main')).not.toHaveClass('max-w-3xl')
+
+    await user.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(container.querySelector('main')).toHaveClass('max-w-3xl')
+  })
+
+  it('drops the site chrome so only the reading surface remains', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 2, name: 'Grinding' })
+
+    expect(screen.queryByText('Brewed with ❤️ and caffeine')).not.toBeInTheDocument()
+    expect(screen.queryByText("Today's Menu")).not.toBeInTheDocument()
+  })
+
+  it('lists the page headings in the outline panel', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(pageWithHeadings())
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 2, name: 'Grinding' })
+
+    const outline = screen.getByRole('navigation', { name: 'Outline' })
+    expect(within(outline).getByRole('link', { name: 'Beans' })).toHaveAttribute(
+      'href',
+      '#block-heading-1',
+    )
+    expect(within(outline).getByRole('link', { name: 'Grind size' })).toBeInTheDocument()
+    // The heading itself carries the matching id, or the link goes nowhere.
+    expect(document.getElementById('block-heading-1')?.tagName).toBe('H2')
+  })
+
+  it('lets the reader hide either side panel', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 2, name: 'Grinding' })
+
+    const treeToggle = screen.getByRole('button', { name: 'Contents' })
+    expect(treeToggle).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(treeToggle)
+
+    expect(treeToggle).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('navigation', { name: 'Contents' }).closest('aside')).toHaveClass(
+      'md:hidden',
+    )
   })
 
   it('offers the tree as a disclosure so mobile readers can reach it', async () => {

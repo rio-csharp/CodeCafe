@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { BlockNode } from '../model/assembleBlockTree'
+import { blockAnchorId } from '../model/outline'
 import type {
   AudioContent,
   BlockDto,
@@ -87,7 +88,9 @@ function renderBlock(block: BlockDto): ReactNode {
     case 'paragraph':
       return <ParagraphBlock content={block.content as ParagraphContent} />
     case 'heading':
-      return <HeadingBlock content={block.content as HeadingContent} />
+      return (
+        <HeadingBlock id={blockAnchorId(block.id)} content={block.content as HeadingContent} />
+      )
     case 'quote':
       return <QuoteBlock content={block.content as QuoteContent} />
     case 'callout':

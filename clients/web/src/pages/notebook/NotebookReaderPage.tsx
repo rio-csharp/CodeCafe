@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useParams } from 'react-router'
-import { BlockList, assembleBlockTree } from '@/entities/block'
+import { BlockList, assembleBlockTree, extractOutline } from '@/entities/block'
+import type { BlockNode } from '@/entities/block'
 import { getNotebookDetails, getNotebookTree, notebookKeys } from '@/entities/notebook'
 import { getPageByPath, pageKeys } from '@/entities/page'
 import type { PageDetails } from '@/entities/page'
@@ -16,6 +17,7 @@ import {
   NotebookReaderLayout,
   PageErrorState,
   PageMissingState,
+  PageOutline,
   ReaderSkeletonLayout,
   findFirstPagePath,
   normalizePagePath,
@@ -63,6 +65,13 @@ export function NotebookReaderPage() {
   const notebookTitle = details.data?.title
   const pageTitle = page.data?.title
   const brand = t('brand.name')
+
+  // One assembly feeds both the article and the outline, so they cannot drift.
+  const nodes = useMemo(
+    () => (page.data === undefined ? [] : assembleBlockTree(page.data.blocks)),
+    [page.data],
+  )
+  const outline = useMemo(() => extractOutline(nodes), [nodes])
 
   useEffect(() => {
     document.title = [pageTitle, notebookTitle, brand].filter(Boolean).join(' · ')
@@ -121,14 +130,19 @@ export function NotebookReaderPage() {
   }
 
   return (
-    <NotebookReaderLayout notebook={notebook} roots={roots} activePath={pagePath}>
-      <PageBody page={page} />
+    <NotebookReaderLayout
+      notebook={notebook}
+      roots={roots}
+      activePath={pagePath}
+      outline={<PageOutline headings={outline} />}
+    >
+      <PageBody page={page} nodes={nodes} />
     </NotebookReaderLayout>
   )
 }
 
 /** Everything but the chrome: whichever state the page lookup landed in. */
-function PageBody({ page }: { page: UseQueryResult<PageDetails, Error> }) {
+function PageBody({ page, nodes }: { page: UseQueryResult<PageDetails, Error>; nodes: BlockNode[] }) {
   if (page.isPending) {
     return <ContentSkeleton />
   }
@@ -146,12 +160,10 @@ function PageBody({ page }: { page: UseQueryResult<PageDetails, Error> }) {
     )
   }
 
-  return <PageArticle page={page.data} />
+  return <PageArticle page={page.data} nodes={nodes} />
 }
 
-function PageArticle({ page }: { page: PageDetails }) {
-  const nodes = useMemo(() => assembleBlockTree(page.blocks), [page.blocks])
-
+function PageArticle({ page, nodes }: { page: PageDetails; nodes: BlockNode[] }) {
   return (
     <article>
       <h2 className="font-display text-3xl leading-tight text-ink">{page.title}</h2>
