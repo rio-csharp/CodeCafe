@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Navigate, useParams } from 'react-router'
 import { BlockList, assembleBlockTree, extractOutline } from '@/entities/block'
 import type { BlockNode } from '@/entities/block'
-import { getNotebookDetails, getNotebookTree, notebookKeys } from '@/entities/notebook'
+import { flattenPages, getNotebookDetails, getNotebookTree, notebookKeys } from '@/entities/notebook'
 import { getPageByPath, pageKeys } from '@/entities/page'
 import type { PageDetails } from '@/entities/page'
 import { ApiError } from '@/shared/api'
@@ -113,6 +113,11 @@ export function NotebookReaderPage() {
   }
 
   const roots = tree.data.roots
+  const flatPages = flattenPages(roots)
+  const pageIndex = pagePath === null ? -1 : flatPages.findIndex((entry) => entry.path === pagePath)
+  const prevPage = pageIndex > 0 ? flatPages[pageIndex - 1] : null
+  const nextPage = pageIndex >= 0 && pageIndex < flatPages.length - 1 ? flatPages[pageIndex + 1] : null
+
 
   // The notebook root is not a page: jump to the first one, or admit there is none.
   if (pagePath === null) {
@@ -143,6 +148,8 @@ export function NotebookReaderPage() {
         },
       ]}
       pageTitle={page.data?.title ?? null}
+      prevPage={prevPage}
+      nextPage={nextPage}
       refreshing={page.isRefetching}
       onRefresh={() => {
         void page.refetch()

@@ -21,6 +21,7 @@ export { listNotebooks, NOTEBOOK_PAGE_SIZE } from './api/listNotebooks'
 export type { ListNotebooksParams } from './api/listNotebooks'
 export { listMyNotebooks } from './api/listMyNotebooks'
 export type { ListMyNotebooksParams } from './api/listMyNotebooks'
+export { flattenPages } from './lib/flattenPages'
 export { formatRelativeTime } from './lib/formatRelativeTime'
 export { notebookKeys } from './model/types'
 export type {

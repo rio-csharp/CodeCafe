@@ -164,7 +164,7 @@ describe('NotebookReaderPage', () => {
     expect(await screen.findByRole('link', { name: 'Back home' })).toHaveAttribute('href', '/')
   })
 
-  it('starts wide and lets the reader trade width back', async () => {
+  it('starts narrow and lets the reader go full width', async () => {
     const user = userEvent.setup()
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
@@ -172,13 +172,13 @@ describe('NotebookReaderPage', () => {
     await screen.findByRole('heading', { level: 2, name: 'Grinding' })
 
     const toggle = screen.getByRole('button', { name: 'Full width' })
-    expect(toggle).toHaveAttribute('aria-pressed', 'true')
-    expect(container.querySelector('main')).not.toHaveClass('max-w-3xl')
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(container.querySelector('main > div')).toHaveClass('max-w-3xl')
 
     await user.click(toggle)
 
-    expect(toggle).toHaveAttribute('aria-pressed', 'false')
-    expect(container.querySelector('main')).toHaveClass('max-w-3xl')
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(container.querySelector('main > div')).not.toHaveClass('max-w-3xl')
   })
 
   it('drops the site chrome so only the reading surface remains', async () => {
@@ -207,21 +207,31 @@ describe('NotebookReaderPage', () => {
     expect(document.getElementById('block-heading-1')?.tagName).toBe('H2')
   })
 
-  it('lets the reader hide either side panel', async () => {
+  it('opens the panels as mobile drawers and closes them again', async () => {
     const user = userEvent.setup()
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
     renderReader('/notebooks/espresso-notes/grinding')
     await screen.findByRole('heading', { level: 2, name: 'Grinding' })
 
-    const treeToggle = screen.getByRole('button', { name: 'Contents' })
-    expect(treeToggle).toHaveAttribute('aria-pressed', 'true')
-
-    await user.click(treeToggle)
-
-    expect(treeToggle).toHaveAttribute('aria-pressed', 'false')
+    const contentsPill = screen.getByRole('button', { name: 'Contents' })
+    expect(contentsPill).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('navigation', { name: 'Contents' }).closest('aside')).toHaveClass(
-      'md:hidden',
+      'hidden',
+    )
+
+    await user.click(contentsPill)
+
+    expect(contentsPill).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('navigation', { name: 'Contents' }).closest('aside')).toHaveClass(
+      'fixed',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(contentsPill).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('navigation', { name: 'Contents' }).closest('aside')).toHaveClass(
+      'hidden',
     )
   })
 
@@ -253,7 +263,10 @@ describe('NotebookReaderPage', () => {
 
     expect(await screen.findByText('This page is missing')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Brewing' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: 'Espresso Notes' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Espresso Notes' })).toHaveAttribute(
+      'href',
+      '/espresso-notes',
+    )
   })
 
   it('serves the empty state when the notebook has no visible pages', async () => {

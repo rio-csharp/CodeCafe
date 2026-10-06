@@ -1,7 +1,5 @@
 export { NotebookReaderLayout, ReaderSkeletonLayout } from './ui/NotebookReaderLayout'
 export type { NotebookReaderLayoutProps } from './ui/NotebookReaderLayout'
-export { NotebookTopBar } from './ui/NotebookTopBar'
-export type { NotebookTopBarProps } from './ui/NotebookTopBar'
 export { PageOutline } from './ui/PageOutline'
 export { ReaderChrome } from './ui/ReaderChrome'
 export type { ReaderChromeProps } from './ui/ReaderChrome'
