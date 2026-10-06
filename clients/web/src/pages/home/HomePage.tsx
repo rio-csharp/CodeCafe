@@ -130,13 +130,16 @@ function greeting(t: (key: string, options?: Record<string, unknown>) => string,
   return t(`home.greeting.${key}`, { name })
 }
 
-/** Section header: quiet label, hairline rule, controls right-aligned. */
+/** Section header: quiet label, hairline rule, controls — wraps to a second row on phones. */
 function ShelfHeader({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 pb-4">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-3 pb-4">
       <h2 className="shrink-0 text-sm font-semibold text-ink">{title}</h2>
-      <div aria-hidden="true" className="h-px min-w-4 flex-1 bg-line" />
-      <div className="flex shrink-0 items-center gap-2">{children}</div>
+      {/* The rule only earns its place on one line; stacked, it just adds noise. */}
+      <div aria-hidden="true" className="hidden h-px min-w-4 flex-1 bg-line sm:block" />
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+        {children}
+      </div>
     </div>
   )
 }
