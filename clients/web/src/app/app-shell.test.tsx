@@ -25,7 +25,6 @@ it('mounts the homepage shell with real copy', async () => {
 
   expect(await screen.findByText('Write notebooks here, then share them.')).toBeInTheDocument()
   expect(await screen.findByText('No public notebooks yet.')).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: 'Create account' })).toBeInTheDocument()
 })
 
 it('switches every visible string to Chinese without a reload', async () => {

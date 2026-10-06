@@ -95,14 +95,6 @@ export function HomePage() {
             <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-muted">
               {t('home.pitch')}
             </p>
-            <div className="mt-8 flex justify-center gap-3">
-              <Link to="/register" className={buttonClass('primary')}>
-                {t('home.createAccount')}
-              </Link>
-              <Link to="/login" className={buttonClass('ghost')}>
-                {t('header.login')}
-              </Link>
-            </div>
           </header>
         ) : null}
 

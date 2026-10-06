@@ -86,7 +86,6 @@ describe('HomePage', () => {
 
     expect(await screen.findByText('Shared Knowledge')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'CodeCafe' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Create account' })).toBeInTheDocument()
     expect(screen.queryByText('My notebooks')).not.toBeInTheDocument()
   })
 
