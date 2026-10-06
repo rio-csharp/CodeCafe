@@ -20,7 +20,10 @@ export interface NotebookCardProps {
  */
 export function NotebookCard({ notebook, showOwnership = false, cornerAction }: NotebookCardProps) {
   const { t, i18n } = useTranslation()
-  const ownerInitial = notebook.ownerDisplayName.trim().charAt(0).toUpperCase()
+  // Tolerate a stale backend that predates ownerDisplayName: no attribution
+  // beats a thrown page.
+  const ownerName = notebook.ownerDisplayName ?? ''
+  const ownerInitial = ownerName.trim().charAt(0).toUpperCase()
 
   return (
     <li className="group relative h-full">
@@ -84,7 +87,7 @@ export function NotebookCard({ notebook, showOwnership = false, cornerAction }: 
             >
               {ownerInitial === '' ? '·' : ownerInitial}
             </span>
-            <span className="truncate text-xs text-muted">{notebook.ownerDisplayName}</span>
+            <span className="truncate text-xs text-muted">{ownerName}</span>
           </span>
           <span className="shrink-0 text-xs whitespace-nowrap text-muted tabular-nums">
             {formatRelativeTime(notebook.updatedAtUtc, i18n.language)}
