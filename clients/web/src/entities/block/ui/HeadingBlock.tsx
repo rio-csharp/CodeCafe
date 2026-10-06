@@ -17,7 +17,7 @@ export function HeadingBlock({ content, id }: HeadingBlockProps) {
 
   return createElement(
     `h${level}`,
-    { id, className: `scroll-mt-6 ${className} font-display text-ink` },
+    { id, className: `scroll-mt-6 ${className} font-semibold text-ink` },
     <SpanRenderer spans={content.spans} />,
   )
 }

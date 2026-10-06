@@ -9,7 +9,7 @@ export function TreeSkeleton() {
 
   return (
     <div aria-busy="true" aria-live="polite" className="flex flex-col gap-2">
-      <span className="sr-only">{t('catalog.loading')}</span>
+      <span className="sr-only">{t('list.loading')}</span>
       {TREE_ROWS.map((key, index) => (
         <div
           key={key}
@@ -27,7 +27,7 @@ export function ContentSkeleton() {
 
   return (
     <div aria-busy="true" aria-live="polite" className="flex flex-col gap-3">
-      <span className="sr-only">{t('catalog.loading')}</span>
+      <span className="sr-only">{t('list.loading')}</span>
       <div className="h-7 w-2/3 animate-pulse rounded bg-line" />
       {CONTENT_ROWS.map((key, index) => (
         <div

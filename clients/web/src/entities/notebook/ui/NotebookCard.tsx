@@ -27,7 +27,7 @@ export function NotebookCard({ notebook, showOwnership = false }: NotebookCardPr
           {/* A serif monogram: the notebook's initial, stamped on warm paper. */}
           <span
             aria-hidden="true"
-            className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-soft font-display text-lg text-accent-strong"
+            className="grid size-10 shrink-0 place-items-center rounded-lg bg-accent-soft text-base font-semibold text-accent-strong"
           >
             {notebook.title.trim().charAt(0).toUpperCase() || '·'}
           </span>
@@ -51,7 +51,7 @@ export function NotebookCard({ notebook, showOwnership = false }: NotebookCardPr
           </span>
         </div>
 
-        <h3 className="mt-3 font-display text-lg leading-snug text-ink">{notebook.title}</h3>
+        <h3 className="mt-3 text-base leading-snug font-semibold text-ink">{notebook.title}</h3>
 
         {/* Fixed two-line height keeps the grid's bottom edges aligned. */}
         <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-muted">

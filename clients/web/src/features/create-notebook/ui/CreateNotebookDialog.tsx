@@ -83,7 +83,7 @@ function DialogForm({ onClose, onCreated }: Omit<CreateNotebookDialogProps, 'ope
         aria-label={t('createNotebook.title')}
         className="relative w-full max-w-md rounded-lg border border-line bg-card p-6 shadow-xl"
       >
-        <h2 className="font-display text-xl text-ink">{t('createNotebook.title')}</h2>
+        <h2 className="text-lg font-semibold text-ink">{t('createNotebook.title')}</h2>
 
         <form className="mt-5 flex flex-col gap-4" onSubmit={submit}>
           <label className="flex flex-col gap-1.5 text-sm text-ink">

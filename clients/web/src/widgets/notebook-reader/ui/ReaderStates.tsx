@@ -17,7 +17,7 @@ export function NotebookMissingState() {
 
       <main className="flex flex-1 items-center justify-center py-16">
         <Container className="max-w-md text-center">
-          <p className="font-display text-2xl text-ink">{t('reader.notebookMissing')}</p>
+          <p className="text-xl font-semibold text-ink">{t('reader.notebookMissing')}</p>
 
           <Link
             to="/"
@@ -38,7 +38,7 @@ export function PageMissingState() {  const { t } = useTranslation()
 
   return (
     <div className="rounded-2xl border border-line bg-card p-8 text-center">
-      <p className="font-display text-xl text-ink">{t('reader.pageMissing')}</p>
+      <p className="text-lg font-semibold text-ink">{t('reader.pageMissing')}</p>
 
       <Link
         to="/"
@@ -55,7 +55,7 @@ export function EmptyNotebookState() {
 
   return (
     <div className="rounded-2xl border border-line bg-card p-8 text-center">
-      <p className="font-display text-xl text-ink">{t('reader.emptyNotebook')}</p>
+      <p className="text-lg font-semibold text-ink">{t('reader.emptyNotebook')}</p>
     </div>
   )
 }
@@ -66,10 +66,10 @@ export function PageErrorState({ onRetry }: { onRetry: () => void }) {
 
   return (
     <div className="rounded-2xl border border-line bg-card p-8 text-center">
-      <p className="font-display text-xl text-ink">{t('catalog.error.title')}</p>
+      <p className="text-lg font-semibold text-ink">{t('list.loadError')}</p>
 
       <div className="mt-4 flex justify-center">
-        <Button onClick={onRetry}>{t('catalog.error.retry')}</Button>
+        <Button onClick={onRetry}>{t('list.retry')}</Button>
       </div>
     </div>
   )
@@ -85,10 +85,10 @@ export function NotebookErrorState({ onRetry }: { onRetry: () => void }) {
 
       <main className="flex flex-1 items-center justify-center py-16">
         <Container className="max-w-md text-center">
-          <p className="font-display text-2xl text-ink">{t('catalog.error.title')}</p>
+          <p className="text-xl font-semibold text-ink">{t('list.loadError')}</p>
 
           <div className="mt-6 flex justify-center">
-            <Button onClick={onRetry}>{t('catalog.error.retry')}</Button>
+            <Button onClick={onRetry}>{t('list.retry')}</Button>
           </div>
         </Container>
       </main>

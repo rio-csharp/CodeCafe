@@ -30,7 +30,7 @@ export function AuthLayout({ title, footer, children }: AuthLayoutProps) {
               <p className="mt-1 text-sm text-muted">{t('auth.tagline')}</p>
             </div>
 
-            <h1 className="mt-6 text-center font-display text-2xl text-ink">{title}</h1>
+            <h1 className="mt-6 text-center text-xl font-semibold text-ink">{title}</h1>
 
             <div className="mt-6">{children}</div>
 

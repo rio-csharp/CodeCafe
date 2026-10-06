@@ -178,7 +178,7 @@ function PageBody({ page, nodes }: { page: UseQueryResult<PageDetails, Error>; n
 function PageArticle({ page, nodes }: { page: PageDetails; nodes: BlockNode[] }) {
   return (
     <article>
-      <h2 className="font-display text-3xl leading-tight text-ink">{page.title}</h2>
+      <h2 className="text-2xl leading-tight font-semibold text-ink">{page.title}</h2>
       <div className="mt-6">
         <BlockList nodes={nodes} />
       </div>
