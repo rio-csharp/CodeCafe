@@ -38,8 +38,7 @@ const VISIBILITY_OPTIONS = [
 
 /**
  * The shelf: notebooks front and center, no site chrome. Controls float in the
- * top-right corner; anonymous visitors get a compact masthead, signed-in
- * readers go straight to their own shelf above the public one.
+ * top-right corner; a soft warm glow behind the masthead is the only flourish.
  */
 export function HomePage() {
   const { t } = useTranslation()
@@ -57,6 +56,12 @@ export function HomePage() {
 
   return (
     <div className="relative min-h-dvh bg-canvas">
+      {/* One warm wash, strongest at the top and gone by the first shelf. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[22rem] bg-[radial-gradient(65%_100%_at_35%_0%,var(--color-accent-soft),transparent_75%)]"
+      />
+
       {/* Chrome-free homepage: the controls float over the content corner. */}
       <div className="absolute top-3 right-3 z-10 flex items-center gap-1 sm:top-4 sm:right-4">
         <ThemeToggle />
@@ -71,13 +76,16 @@ export function HomePage() {
         ) : null}
       </div>
 
-      <Container width="narrow" className="py-16 sm:py-24">
+      <Container width="narrow" className="relative py-16 sm:py-24">
         {status === 'anonymous' ? (
-          <header className="pb-12">
-            <h1 className="font-display text-5xl tracking-tight text-ink sm:text-6xl">
+          <header className="pb-14">
+            <p className="text-xs font-semibold tracking-[0.2em] text-accent-strong uppercase">
+              {t('home.overline')}
+            </p>
+            <h1 className="mt-3 font-display text-5xl tracking-tight text-ink sm:text-6xl">
               {t('brand.name')}
             </h1>
-            <p className="mt-4 text-lg text-muted">{t('home.pitch')}</p>
+            <p className="mt-4 max-w-md text-lg leading-relaxed text-muted">{t('home.pitch')}</p>
             <div className="mt-8 flex gap-3">
               <Link to="/register" className={buttonClass('primary')}>
                 {t('home.createAccount')}
@@ -89,12 +97,15 @@ export function HomePage() {
           </header>
         ) : null}
 
-        {status === 'authenticated' ? (
-          <MyShelf
-            onCreate={() => {
-              setCreateOpen(true)
-            }}
-          />
+        {status === 'authenticated' && user !== null ? (
+          <>
+            <p className="pb-6 text-sm text-muted">{greeting(t, user.displayName)}</p>
+            <MyShelf
+              onCreate={() => {
+                setCreateOpen(true)
+              }}
+            />
+          </>
         ) : null}
 
         <PublicShelf />
@@ -107,6 +118,24 @@ export function HomePage() {
         }}
         onCreated={onCreated}
       />
+    </div>
+  )
+}
+
+/** A small time-of-day hello — the one warm touch, no fanfare. */
+function greeting(t: (key: string, options?: Record<string, unknown>) => string, name: string): string {
+  const hour = new Date().getHours()
+  const key = hour < 6 ? 'night' : hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
+  return t(`home.greeting.${key}`, { name })
+}
+
+/** Section header: quiet label, hairline rule, controls right-aligned. */
+function ShelfHeader({ title, children }: { title: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 pb-4">
+      <h2 className="shrink-0 text-sm font-semibold text-ink">{title}</h2>
+      <div aria-hidden="true" className="h-px min-w-4 flex-1 bg-line" />
+      <div className="flex shrink-0 items-center gap-2">{children}</div>
     </div>
   )
 }
@@ -135,13 +164,9 @@ function MyShelf({ onCreate }: { onCreate: () => void }) {
 
   return (
     <section aria-label={t('home.mine')} className="pb-12">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-        <h2 className="font-display text-2xl text-ink">{t('home.mine')}</h2>
-        <Button
-          variant="primary"
-          onClick={onCreate}
-          className="inline-flex items-center gap-1.5"
-        >
+      <ShelfHeader title={t('home.mine')}>
+        <SortGroup sort={sort} onChange={setSort} />
+        <Button variant="primary" onClick={onCreate} className="inline-flex items-center gap-1.5">
           <svg
             viewBox="0 0 16 16"
             className="size-3.5"
@@ -155,9 +180,9 @@ function MyShelf({ onCreate }: { onCreate: () => void }) {
           </svg>
           {t('home.newNotebook')}
         </Button>
-      </div>
+      </ShelfHeader>
 
-      <div className="flex flex-wrap items-center gap-2 pt-3 pb-1">
+      <div className="flex flex-wrap items-center gap-2 pb-2">
         <div role="group" className="flex gap-1 rounded-full border border-line bg-card p-1">
           {([false, true] as const).map((value) => (
             <button
@@ -190,8 +215,6 @@ function MyShelf({ onCreate }: { onCreate: () => void }) {
             </option>
           ))}
         </select>
-
-        <SortGroup sort={sort} onChange={setSort} />
       </div>
 
       <NotebookRows
@@ -231,16 +254,12 @@ function PublicShelf() {
 
   return (
     <section aria-label={t('home.publicNotebooks')}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-        <h2 className="font-display text-2xl text-ink">{t('home.publicNotebooks')}</h2>
-        <div className="w-full sm:w-64">
+      <ShelfHeader title={t('home.publicNotebooks')}>
+        <SortGroup sort={sort} onChange={setSort} />
+        <div className="w-52">
           <SearchInput value={search} onChange={setSearch} />
         </div>
-      </div>
-
-      <div className="pt-3 pb-1">
-        <SortGroup sort={sort} onChange={setSort} />
-      </div>
+      </ShelfHeader>
 
       <NotebookRows
         items={query.data?.pages.flatMap((page) => page.items) ?? []}
@@ -283,7 +302,7 @@ function SortGroup({ sort, onChange }: { sort: NotebookSort; onChange: (sort: No
 
 function pillClass(active: boolean): string {
   return [
-    'rounded-full px-3 py-1 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+    'rounded-full px-3 py-1 text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
     active ? 'bg-accent-soft text-accent-strong' : 'text-muted hover:text-ink',
   ].join(' ')
 }

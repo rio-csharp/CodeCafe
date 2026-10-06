@@ -3,6 +3,13 @@ export const zh = {
     name: 'CodeCafe',
   },
   home: {
+    overline: '共享笔记',
+    greeting: {
+      morning: '早上好，{{name}}。',
+      afternoon: '下午好，{{name}}。',
+      evening: '晚上好，{{name}}。',
+      night: '夜深了，{{name}}。',
+    },
     pitch: '在这里写笔记，再把它们分享出去。',
     createAccount: '创建账号',
     mine: '我的笔记本',
@@ -14,7 +21,7 @@ export const zh = {
     sortRecent: '最近更新',
     sortCreated: '最新创建',
     sortTitle: '按名称',
-    emptyMine: '还没有笔记本，点击右上角新建一本。',
+    emptyMine: '还没有笔记本，新建一本吧。',
     emptyPublic: '暂时没有公开的笔记本。',
   },
   visibility: {

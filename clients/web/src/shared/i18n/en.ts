@@ -3,6 +3,13 @@ export const en = {
     name: 'CodeCafe',
   },
   home: {
+    overline: 'SHARED NOTEBOOKS',
+    greeting: {
+      morning: 'Good morning, {{name}}.',
+      afternoon: 'Good afternoon, {{name}}.',
+      evening: 'Good evening, {{name}}.',
+      night: 'Up late, {{name}}?',
+    },
     pitch: 'Write notebooks here, then share them.',
     createAccount: 'Create account',
     mine: 'My notebooks',
@@ -14,7 +21,7 @@ export const en = {
     sortRecent: 'Recently updated',
     sortCreated: 'Recently created',
     sortTitle: 'By title',
-    emptyMine: 'No notebooks yet — create one from the top right.',
+    emptyMine: 'No notebooks yet — create your first one.',
     emptyPublic: 'No public notebooks yet.',
   },
   visibility: {

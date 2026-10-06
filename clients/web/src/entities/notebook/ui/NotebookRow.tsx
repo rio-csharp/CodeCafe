@@ -10,8 +10,8 @@ export interface NotebookRowProps {
 }
 
 /**
- * One notebook as a list row, not a card: the title is the link, the meta sits
- * right-aligned, and hairlines between rows do the separating.
+ * One notebook as a shelf row. The icon tile anchors the eye, the title is the
+ * link, and the chevron only slides in on hover — quiet until you reach for it.
  */
 export function NotebookRow({ notebook, showOwnership = false }: NotebookRowProps) {
   const { t, i18n } = useTranslation()
@@ -20,16 +20,31 @@ export function NotebookRow({ notebook, showOwnership = false }: NotebookRowProp
     <li>
       <Link
         to={`/notebooks/${encodeURIComponent(notebook.slug)}`}
-        className="group -mx-2 flex items-center gap-4 rounded-md px-2 py-3.5 transition-colors hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="group -mx-3 flex items-center gap-3.5 rounded-lg px-3 py-3 transition-colors hover:bg-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
+        {/* The shelf's visual anchor: a warm tile instead of a bare line. */}
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent-strong transition-transform duration-200 group-hover:-rotate-3 group-hover:scale-105">
+          <svg
+            viewBox="0 0 16 16"
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 2.5h7a2 2 0 0 1 2 2v9H5a2 2 0 0 1-2-2v-9Z" />
+            <path d="M5.5 5.5h4M5.5 8h4" />
+          </svg>
+        </span>
+
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate font-medium text-ink transition-colors group-hover:text-accent-strong">
-              {notebook.title}
-            </span>
+            <span className="truncate font-medium text-ink">{notebook.title}</span>
 
             {showOwnership && notebook.visibility !== 'Private' ? (
-              <span className="shrink-0 rounded border border-line px-1.5 py-px text-[11px] leading-4 text-muted">
+              <span className="shrink-0 rounded-full border border-line px-2 py-px text-[11px] leading-4 text-muted">
                 {t(`visibility.${notebook.visibility}`)}
               </span>
             ) : null}
@@ -52,7 +67,7 @@ export function NotebookRow({ notebook, showOwnership = false }: NotebookRowProp
         </div>
 
         {notebook.tags.length > 0 ? (
-          <div className="hidden shrink-0 gap-2 text-xs text-muted md:flex">
+          <div className="hidden shrink-0 gap-2 text-xs text-muted lg:flex">
             {notebook.tags.slice(0, 3).map((tag) => (
               <span key={tag}>#{tag}</span>
             ))}
@@ -64,6 +79,19 @@ export function NotebookRow({ notebook, showOwnership = false }: NotebookRowProp
           {' · '}
           {formatRelativeTime(notebook.updatedAtUtc, i18n.language)}
         </div>
+
+        <svg
+          viewBox="0 0 16 16"
+          className="size-4 shrink-0 -translate-x-1 text-accent-strong opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M6 3.5 10.5 8 6 12.5" />
+        </svg>
       </Link>
     </li>
   )
