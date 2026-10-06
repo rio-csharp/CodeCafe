@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using CodeCafe.Application.Common;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
@@ -12,9 +13,12 @@ internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> log
         CancellationToken cancellationToken)
     {
         // The client already disconnected; writing a response body would fail on the broken
-        // connection and nobody would read it anyway.
-        if (exception is OperationCanceledException && httpContext.RequestAborted.IsCancellationRequested)
+        // connection and nobody would read it anyway. Npgsql reports a connect-phase cancel as
+        // a "transient" InvalidOperationException wrapping a SocketException rather than an
+        // OperationCanceledException, so the check walks the whole chain.
+        if (httpContext.RequestAborted.IsCancellationRequested && IsClientDisconnect(exception))
         {
+            logger.LogDebug(exception, "Request aborted by the client.");
             return true;
         }
 
@@ -47,5 +51,17 @@ internal sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> log
         await ErrorResponses.WriteAsync(
             httpContext, statusCode, code, message, kind, cancellationToken);
         return true;
+    }
+
+    private static bool IsClientDisconnect(Exception exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is OperationCanceledException or SocketException or IOException)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }
