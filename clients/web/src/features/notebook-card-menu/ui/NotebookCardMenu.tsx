@@ -8,6 +8,8 @@ export interface NotebookCardMenuProps {
   title: string
   /** Opens the settings dialog for this notebook. */
   onSettings: () => void
+  /** Opens the sharing dialog for this notebook. */
+  onShare: () => void
 }
 
 /**
@@ -15,7 +17,7 @@ export interface NotebookCardMenuProps {
  * notebook lands in the trash and can come back — so there is deliberately
  * no confirm step here.
  */
-export function NotebookCardMenu({ notebookId, title, onSettings }: NotebookCardMenuProps) {
+export function NotebookCardMenu({ notebookId, title, onSettings, onShare }: NotebookCardMenuProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -97,6 +99,19 @@ export function NotebookCardMenu({ notebookId, title, onSettings }: NotebookCard
             className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             {t('menu.settings')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setOpen(false)
+              onShare()
+            }}
+            className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {t('menu.share')}
           </button>
           <button
             type="button"

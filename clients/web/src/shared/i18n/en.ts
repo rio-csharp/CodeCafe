@@ -31,6 +31,12 @@ export const en = {
     Unlisted: 'Unlisted',
     Public: 'Public',
   },
+  dialog: {
+    close: 'Close',
+  },
+  shareDialog: {
+    title: 'Sharing',
+  },
   settings: {
     title: 'Notebook settings',
     close: 'Close',
@@ -77,6 +83,7 @@ export const en = {
     label: 'Menu for "{{title}}"',
     delete: 'Delete',
     settings: 'Settings',
+    share: 'Share',
   },
   card: {
     noDescription: 'No description',

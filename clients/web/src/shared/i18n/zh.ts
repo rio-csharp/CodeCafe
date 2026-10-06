@@ -31,6 +31,12 @@ export const zh = {
     Unlisted: '不列出',
     Public: '公开',
   },
+  dialog: {
+    close: '关闭',
+  },
+  shareDialog: {
+    title: '共享',
+  },
   settings: {
     title: '笔记本设置',
     close: '关闭',
@@ -77,6 +83,7 @@ export const zh = {
     label: '「{{title}}」的菜单',
     delete: '删除',
     settings: '设置',
+    share: '共享',
   },
   card: {
     noDescription: '暂无描述',

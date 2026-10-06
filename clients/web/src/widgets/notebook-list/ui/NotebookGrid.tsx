@@ -22,6 +22,8 @@ export interface NotebookGridProps {
   showOwnership?: boolean
   /** Settings dialog opener; required on owned shelves, unused elsewhere. */
   onOpenSettings?: (notebook: NotebookSummary) => void
+  /** Sharing dialog opener; paired with onOpenSettings. */
+  onShareNotebook?: (notebook: NotebookSummary) => void
 }
 
 /**
@@ -39,6 +41,7 @@ export function NotebookGrid({
   onLoadMore,
   showOwnership = false,
   onOpenSettings,
+  onShareNotebook,
 }: NotebookGridProps) {
   const { t } = useTranslation()
 
@@ -94,12 +97,15 @@ export function NotebookGrid({
             cornerAction={
               <span className="absolute top-2 right-2 flex items-center gap-0.5">
                 <FavoriteNotebookButton notebookId={notebook.id} isFavorite={notebook.isFavorite} />
-                {showOwnership && onOpenSettings !== undefined ? (
+                {showOwnership && onOpenSettings !== undefined && onShareNotebook !== undefined ? (
                   <NotebookCardMenu
                     notebookId={notebook.id}
                     title={notebook.title}
                     onSettings={() => {
                       onOpenSettings(notebook)
+                    }}
+                    onShare={() => {
+                      onShareNotebook(notebook)
                     }}
                   />
                 ) : null}

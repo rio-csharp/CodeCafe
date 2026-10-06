@@ -3,22 +3,14 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import {
-  getNotebookDetails,
-  shareNotebook,
-  updateNotebook,
-} from '@/entities/notebook'
+import { getNotebookDetails, updateNotebook } from '@/entities/notebook'
 import type { NotebookDetails } from '@/entities/notebook'
-import { ApiError } from '@/shared/api'
 import { NotebookSettingsDialog } from './NotebookSettingsDialog'
 
 vi.mock('@/entities/notebook', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/notebook')>()),
   getNotebookDetails: vi.fn(),
   updateNotebook: vi.fn(),
-  shareNotebook: vi.fn(),
-  revokeNotebookShare: vi.fn(),
-  setNotebookAccessCode: vi.fn(),
   setNotebookTags: vi.fn(),
 }))
 
@@ -52,7 +44,6 @@ function renderDialog() {
 beforeEach(() => {
   vi.mocked(getNotebookDetails).mockReset()
   vi.mocked(updateNotebook).mockReset()
-  vi.mocked(shareNotebook).mockReset()
   vi.mocked(getNotebookDetails).mockResolvedValue(NOTEBOOK)
 })
 
@@ -63,7 +54,7 @@ describe('NotebookSettingsDialog', () => {
     renderDialog()
 
     await screen.findByDisplayValue('Espresso Notes')
-    const basics = screen.getByRole('region', { name: 'Basics' })
+    const basics = screen.getByRole('form', { name: 'Basics' })
     const titleInput = within(basics).getByDisplayValue('Espresso Notes')
     await user.clear(titleInput)
     await user.type(titleInput, 'Filter Notes')
@@ -75,22 +66,17 @@ describe('NotebookSettingsDialog', () => {
     )
   })
 
-  it('maps share_target_not_found to its own copy', async () => {
+  it('adds a tag on Enter and saves the whole set', async () => {
     const user = userEvent.setup()
-    vi.mocked(shareNotebook).mockRejectedValue(
-      new ApiError({
-        status: 404,
-        code: 'share_target_not_found',
-        kind: 'NotFound',
-        message: 'no such user',
-      }),
-    )
+    const { setNotebookTags } = await import('@/entities/notebook')
+    vi.mocked(setNotebookTags).mockResolvedValue(null)
     renderDialog()
 
     await screen.findByDisplayValue('Espresso Notes')
-    await user.type(screen.getByLabelText('Their account email'), 'ghost@example.com')
-    await user.click(screen.getByRole('button', { name: 'Add' }))
+    const tags = screen.getByRole('region', { name: 'Tags' })
+    await user.type(within(tags).getByLabelText('Type and press Enter'), 'brewing{Enter}')
+    await user.click(within(tags).getByRole('button', { name: 'Save' }))
 
-    expect(await screen.findByText('No user with that email.')).toBeInTheDocument()
+    expect(setNotebookTags).toHaveBeenCalledWith('espresso-notes', ['coffee', 'brewing'])
   })
 })

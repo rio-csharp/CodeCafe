@@ -16,6 +16,7 @@ import type {
 import { useSessionStore } from '@/entities/session'
 import { CreateNotebookDialog } from '@/features/create-notebook'
 import { NotebookSettingsDialog } from '@/features/manage-notebook'
+import { ShareNotebookDialog } from '@/features/share-notebook'
 import { SearchInput } from '@/features/search-notebooks'
 import { LanguageToggle } from '@/features/switch-language'
 import { ThemeToggle } from '@/features/switch-theme'
@@ -56,6 +57,7 @@ export function HomePage() {
   const [visibility, setVisibility] = useState<NotebookVisibility | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
   const [settingsSlug, setSettingsSlug] = useState<string | null>(null)
+  const [shareSlug, setShareSlug] = useState<string | null>(null)
 
   const signedIn = status === 'authenticated'
   const activeTab: ShelfTab = signedIn ? tab : 'public'
@@ -218,6 +220,9 @@ export function HomePage() {
               onOpenSettings={(notebook) => {
                 setSettingsSlug(notebook.slug)
               }}
+              onShareNotebook={(notebook) => {
+                setShareSlug(notebook.slug)
+              }}
             />
           )}
         </div>
@@ -247,6 +252,13 @@ export function HomePage() {
         }}
       />
 
+      <ShareNotebookDialog
+        slug={shareSlug}
+        onClose={() => {
+          setShareSlug(null)
+        }}
+      />
+
       <CreateNotebookDialog
         open={createOpen}
         onClose={() => {
@@ -272,12 +284,14 @@ function MineShelf({
   favoritesOnly,
   visibility,
   onOpenSettings,
+  onShareNotebook,
 }: {
   search: string
   sort: NotebookSort
   favoritesOnly: boolean
   visibility: NotebookVisibility | null
   onOpenSettings: (notebook: NotebookSummary) => void
+  onShareNotebook: (notebook: NotebookSummary) => void
 }) {
   const { t } = useTranslation()
 
@@ -305,6 +319,7 @@ function MineShelf({
       }}
       showOwnership
       onOpenSettings={onOpenSettings}
+      onShareNotebook={onShareNotebook}
     />
   )
 }
