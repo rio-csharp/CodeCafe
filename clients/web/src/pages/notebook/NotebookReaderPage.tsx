@@ -134,7 +134,19 @@ export function NotebookReaderPage() {
       notebook={notebook}
       roots={roots}
       activePath={pagePath}
-      outline={<PageOutline headings={outline} />}
+      rightTabs={[
+        {
+          id: 'outline',
+          label: t('reader.outline'),
+          icon: <path d="M2.5 4h11M2.5 8h7M2.5 11.5h9" />,
+          content: <PageOutline headings={outline} />,
+        },
+      ]}
+      pageTitle={page.data?.title ?? null}
+      refreshing={page.isRefetching}
+      onRefresh={() => {
+        void page.refetch()
+      }}
     >
       <PageBody page={page} nodes={nodes} />
     </NotebookReaderLayout>

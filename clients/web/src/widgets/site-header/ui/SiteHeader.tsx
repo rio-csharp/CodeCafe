@@ -14,9 +14,9 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-card">
-      <Container className="flex flex-wrap items-center justify-between gap-3 py-3">
+      <Container className="flex flex-wrap items-center justify-between gap-3 py-2">
         <div className="flex items-center gap-2">
-          <svg className="h-7 w-7 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <svg className="h-6 w-6 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M4 8h11v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z"
               stroke="currentColor"
@@ -36,7 +36,7 @@ export function SiteHeader() {
               strokeLinecap="round"
             />
           </svg>
-          <span className="font-display text-lg tracking-tight text-ink">{t('brand.name')}</span>
+          <span className="font-display text-base tracking-tight text-ink">{t('brand.name')}</span>
         </div>
 
         <div className="flex items-center gap-2">

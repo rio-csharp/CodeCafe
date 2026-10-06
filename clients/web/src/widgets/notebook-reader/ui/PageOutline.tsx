@@ -17,10 +17,6 @@ export function PageOutline({ headings }: PageOutlineProps) {
 
   return (
     <nav aria-label={t('reader.outline')} className="flex flex-col gap-2 p-4 text-sm">
-      <h2 className="text-xs font-semibold tracking-wide text-muted uppercase">
-        {t('reader.outline')}
-      </h2>
-
       {headings.length === 0 ? (
         <p className="text-xs text-muted">{t('reader.noHeadings')}</p>
       ) : (

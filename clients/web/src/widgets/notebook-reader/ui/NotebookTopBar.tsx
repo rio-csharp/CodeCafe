@@ -7,24 +7,21 @@ export interface NotebookTopBarProps {
   notebook: NotebookDetails
   treeOpen: boolean
   onToggleTree: () => void
-  outlineOpen: boolean
-  onToggleOutline: () => void
-  contentWide: boolean
-  onToggleContentWidth: () => void
+  rightOpen: boolean
+  onToggleRight: () => void
 }
 
 /**
- * The reader's whole horizontal chrome: one strip. Everything else on screen is
- * either a panel or the page being read.
+ * The reader's whole horizontal chrome: one strip. Everything else on screen
+ * is either a panel or the page being read; page-level actions live in the
+ * sticky chrome inside the text column, not here.
  */
 export function NotebookTopBar({
   notebook,
   treeOpen,
   onToggleTree,
-  outlineOpen,
-  onToggleOutline,
-  contentWide,
-  onToggleContentWidth,
+  rightOpen,
+  onToggleRight,
 }: NotebookTopBarProps) {
   const { t } = useTranslation()
 
@@ -57,30 +54,8 @@ export function NotebookTopBar({
           <path d="M3 4.5h10M3 8h10M3 11.5h6" />
         </PanelToggle>
 
-        <PanelToggle label={t('reader.outline')} pressed={outlineOpen} onClick={onToggleOutline}>
-          <path d="M2.5 4h11M2.5 8h7M2.5 11.5h9" />
-        </PanelToggle>
-
-        <PanelToggle
-          label={t('reader.fullWidth')}
-          pressed={contentWide}
-          onClick={onToggleContentWidth}
-        >
-          {contentWide ? (
-            <>
-              <path d="M3 9.5h4v4" />
-              <path d="M13 6.5h-4v-4" />
-              <path d="M9.5 6.5 14 2" />
-              <path d="M6.5 9.5 2 14" />
-            </>
-          ) : (
-            <>
-              <path d="M10 2h4v4" />
-              <path d="M6 14H2v-4" />
-              <path d="M14 2 9.5 6.5" />
-              <path d="M2 14l4.5-4.5" />
-            </>
-          )}
+        <PanelToggle label={t('reader.sidePanel')} pressed={rightOpen} onClick={onToggleRight}>
+          <path d="M2.5 2.5h11v11h-11z M9.5 2.5v11" />
         </PanelToggle>
       </div>
     </header>
