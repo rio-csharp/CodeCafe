@@ -1,5 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { NotebookCard } from '@/entities/notebook'
+import type { ReactNode } from 'react'
+
 import type { NotebookSummary } from '@/entities/notebook'
 import { FavoriteNotebookButton } from '@/features/toggle-notebook-favorite'
 import { NotebookCardMenu } from '@/features/notebook-card-menu'
@@ -15,6 +17,8 @@ export interface NotebookGridProps {
   isError: boolean
   onRetry?: () => void
   emptyText: string
+  /** Rich empty state; beats emptyText when provided. */
+  emptyState?: ReactNode
   hasNextPage?: boolean
   isFetchingNextPage?: boolean
   onLoadMore?: () => void
@@ -36,6 +40,7 @@ export function NotebookGrid({
   isError,
   onRetry,
   emptyText,
+  emptyState,
   hasNextPage = false,
   isFetchingNextPage = false,
   onLoadMore,
@@ -79,6 +84,9 @@ export function NotebookGrid({
   }
 
   if (items.length === 0) {
+    if (emptyState !== undefined) {
+      return <>{emptyState}</>
+    }
     return (
       <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-muted">
         {emptyText}

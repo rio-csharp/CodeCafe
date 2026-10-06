@@ -21,7 +21,7 @@ import { SearchInput } from '@/features/search-notebooks'
 import { LanguageToggle } from '@/features/switch-language'
 import { ThemeToggle } from '@/features/switch-theme'
 import { Button, buttonClass, Container } from '@/shared/ui'
-import { NotebookGrid } from '@/widgets/notebook-list'
+import { EmptyShelf, NotebookGrid } from '@/widgets/notebook-list'
 import { UserMenu } from '@/widgets/site-header'
 
 type ShelfTab = 'favorites' | 'mine' | 'public'
@@ -110,7 +110,7 @@ export function HomePage() {
         ) : null}
 
         {/* The one search box; it filters whichever tab is showing. */}
-        <div className="mx-auto max-w-md">
+        <div className="mx-auto max-w-2xl">
           <SearchInput value={search} onChange={setSearch} />
         </div>
 
@@ -164,6 +164,7 @@ export function HomePage() {
               </Link>
               <Button
                 variant="primary"
+                size="sm"
                 onClick={() => {
                   setCreateOpen(true)
                 }}
@@ -222,6 +223,9 @@ export function HomePage() {
               }}
               onShareNotebook={(notebook) => {
                 setShareSlug(notebook.slug)
+              }}
+              onCreateClick={() => {
+                setCreateOpen(true)
               }}
             />
           )}
@@ -285,6 +289,7 @@ function MineShelf({
   visibility,
   onOpenSettings,
   onShareNotebook,
+  onCreateClick,
 }: {
   search: string
   sort: NotebookSort
@@ -292,6 +297,7 @@ function MineShelf({
   visibility: NotebookVisibility | null
   onOpenSettings: (notebook: NotebookSummary) => void
   onShareNotebook: (notebook: NotebookSummary) => void
+  onCreateClick: () => void
 }) {
   const { t } = useTranslation()
 
@@ -312,6 +318,31 @@ function MineShelf({
         void query.refetch()
       }}
       emptyText={favoritesOnly ? t('home.emptyFavorites') : t('home.emptyMine')}
+      emptyState={
+        search.trim().length > 0 ? (
+          <EmptyShelf
+            icon={<SearchGlyph />}
+            title={t('home.emptySearch', { query: search.trim() })}
+          />
+        ) : favoritesOnly ? (
+          <EmptyShelf
+            icon={<StarGlyph />}
+            title={t('home.emptyFavorites')}
+            hint={t('home.emptyFavoritesHint')}
+          />
+        ) : (
+          <EmptyShelf
+            icon={<NotebookGlyph />}
+            title={t('home.emptyMine')}
+            hint={t('home.emptyMineHint')}
+            action={
+              <Button size="sm" onClick={onCreateClick}>
+                {t('home.newNotebook')}
+              </Button>
+            }
+          />
+        )
+      }
       hasNextPage={query.hasNextPage}
       isFetchingNextPage={query.isFetchingNextPage}
       onLoadMore={() => {
@@ -345,6 +376,14 @@ function PublicShelf({ search, sort }: { search: string; sort: NotebookSort }) {
         void query.refetch()
       }}
       emptyText={t('home.emptyPublic')}
+      emptyState={
+        search.trim().length > 0 ? (
+          <EmptyShelf
+            icon={<SearchGlyph />}
+            title={t('home.emptySearch', { query: search.trim() })}
+          />
+        ) : undefined
+      }
       hasNextPage={query.hasNextPage}
       isFetchingNextPage={query.isFetchingNextPage}
       onLoadMore={() => {
@@ -380,4 +419,29 @@ function pillClass(active: boolean): string {
     'rounded-full px-3 py-1 text-xs transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
     active ? 'bg-accent-soft text-accent-strong' : 'text-muted hover:text-ink',
   ].join(' ')
+}
+
+/* Small line glyphs for the empty shelves. */
+function StarGlyph() {
+  return (
+    <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 2.5 12.3 7.2l5.2.8-3.75 3.65.9 5.15L10 14.4l-4.65 2.4.9-5.15L2.5 8l5.2-.8Z" />
+    </svg>
+  )
+}
+
+function NotebookGlyph() {
+  return (
+    <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5.5 2.5h9a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1v-13a1 1 0 0 1 1-1ZM8 2.5v15" />
+    </svg>
+  )
+}
+
+function SearchGlyph() {
+  return (
+    <svg viewBox="0 0 20 20" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+      <path d="M13.5 13.5 17 17M9 15A6 6 0 1 0 9 3a6 6 0 0 0 0 12Z" />
+    </svg>
+  )
 }
