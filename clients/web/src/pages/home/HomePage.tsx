@@ -137,13 +137,33 @@ export function HomePage() {
               ))}
             </div>
 
-            <Button
-              variant="primary"
-              onClick={() => {
-                setCreateOpen(true)
-              }}
-              className="absolute right-0 hidden items-center gap-1.5 sm:inline-flex"
-            >
+            <div className="absolute right-0 hidden items-center gap-1 sm:flex">
+              <Link
+                to="/trash"
+                aria-label={t('trash.entry')}
+                title={t('trash.entry')}
+                className="grid size-9 place-items-center rounded-full text-muted transition-colors hover:bg-muted-soft hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  className="size-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M2.5 4h11M6.5 4V2.5h3V4M3.5 4l.7 9a1 1 0 0 0 1 .9h5.6a1 1 0 0 0 1-.9l.7-9M6.5 7v4M9.5 7v4" />
+                </svg>
+              </Link>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setCreateOpen(true)
+                }}
+                className="inline-flex items-center gap-1.5"
+              >
               <svg
                 viewBox="0 0 16 16"
                 className="size-3.5"
@@ -155,8 +175,9 @@ export function HomePage() {
               >
                 <path d="M8 3v10M3 8h10" />
               </svg>
-              {t('home.newNotebook')}
-            </Button>
+                {t('home.newNotebook')}
+              </Button>
+            </div>
           </div>
         ) : null}
 
@@ -195,9 +216,9 @@ export function HomePage() {
           )}
         </div>
 
-        {/* On phones the corner button hides; this one takes over. */}
+        {/* On phones the corner cluster hides; this row takes over. */}
         {signedIn ? (
-          <div className="mt-8 text-center sm:hidden">
+          <div className="mt-8 flex items-center justify-center gap-3 sm:hidden">
             <Button
               variant="primary"
               onClick={() => {
@@ -206,6 +227,9 @@ export function HomePage() {
             >
               {t('home.newNotebook')}
             </Button>
+            <Link to="/trash" className={buttonClass('ghost')}>
+              {t('trash.entry')}
+            </Link>
           </div>
         ) : null}
       </Container>

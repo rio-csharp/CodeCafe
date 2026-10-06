@@ -31,6 +31,22 @@ export const en = {
     Unlisted: 'Unlisted',
     Public: 'Public',
   },
+  trash: {
+    title: 'Trash',
+    backHome: 'Back home',
+    empty: 'The trash is empty.',
+    deletedAt: 'Deleted {{time}}',
+    restore: 'Restore',
+    purge: 'Delete forever',
+    purgeConfirm: 'Sure? No undo.',
+    emptyAll: 'Empty trash',
+    emptyAllConfirm: 'Empty it all?',
+    entry: 'Trash',
+  },
+  menu: {
+    label: 'Menu for "{{title}}"',
+    delete: 'Delete',
+  },
   card: {
     noDescription: 'No description',
   },

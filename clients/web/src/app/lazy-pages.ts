@@ -9,3 +9,4 @@ export const RegisterPage = lazy(async () => ({
 export const NotebookReaderPage = lazy(async () => ({
   default: (await import('@/pages/notebook')).NotebookReaderPage,
 }))
+export const TrashPage = lazy(async () => ({ default: (await import('@/pages/trash')).TrashPage }))

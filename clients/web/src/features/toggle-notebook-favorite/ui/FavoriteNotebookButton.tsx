@@ -48,7 +48,7 @@ export function FavoriteNotebookButton({ notebookId, isFavorite }: FavoriteNoteb
         mutation.mutate(!isFavorite)
       }}
       className={[
-        'absolute top-3 right-3 rounded-md p-1.5 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
+        'rounded-md p-1.5 transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent',
         'sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100',
         isFavorite
           ? 'text-accent opacity-100'

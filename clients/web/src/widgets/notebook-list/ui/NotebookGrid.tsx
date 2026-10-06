@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { NotebookCard } from '@/entities/notebook'
 import type { NotebookSummary } from '@/entities/notebook'
 import { FavoriteNotebookButton } from '@/features/toggle-notebook-favorite'
+import { NotebookCardMenu } from '@/features/notebook-card-menu'
 import { Button } from '@/shared/ui'
 
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const
@@ -88,7 +89,12 @@ export function NotebookGrid({
             notebook={notebook}
             showOwnership={showOwnership}
             cornerAction={
-              <FavoriteNotebookButton notebookId={notebook.id} isFavorite={notebook.isFavorite} />
+              <span className="absolute top-2 right-2 flex items-center gap-0.5">
+                <FavoriteNotebookButton notebookId={notebook.id} isFavorite={notebook.isFavorite} />
+                {showOwnership ? (
+                  <NotebookCardMenu notebookId={notebook.id} title={notebook.title} />
+                ) : null}
+              </span>
             }
           />
         ))}

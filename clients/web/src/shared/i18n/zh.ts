@@ -31,6 +31,22 @@ export const zh = {
     Unlisted: '不列出',
     Public: '公开',
   },
+  trash: {
+    title: '回收站',
+    backHome: '回首页',
+    empty: '回收站是空的。',
+    deletedAt: '删除于 {{time}}',
+    restore: '恢复',
+    purge: '彻底删除',
+    purgeConfirm: '确认删除？不可恢复',
+    emptyAll: '清空回收站',
+    emptyAllConfirm: '确认清空？',
+    entry: '回收站',
+  },
+  menu: {
+    label: '「{{title}}」的菜单',
+    delete: '删除',
+  },
   card: {
     noDescription: '暂无描述',
   },

@@ -1,5 +1,5 @@
 import { createBrowserRouter } from 'react-router'
-import { HomePage, LoginPage, NotebookReaderPage, RegisterPage } from './lazy-pages'
+import { HomePage, LoginPage, NotebookReaderPage, RegisterPage, TrashPage } from './lazy-pages'
 import { LazyPage, RouteErrorBoundary } from './route-boundary'
 
 export const router = createBrowserRouter([
@@ -27,6 +27,15 @@ export const router = createBrowserRouter([
     element: (
       <LazyPage>
         <RegisterPage />
+      </LazyPage>
+    ),
+  },
+  {
+    path: '/trash',
+    errorElement: <RouteErrorBoundary />,
+    element: (
+      <LazyPage>
+        <TrashPage />
       </LazyPage>
     ),
   },
