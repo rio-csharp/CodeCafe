@@ -50,6 +50,7 @@ public static class DependencyInjection
         );
 
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPersonalAccessTokenRepository, PersonalAccessTokenRepository>();
         services.AddScoped<INotebookRepository, NotebookRepository>();
         services.AddScoped<IPageRepository, PageRepository>();
         services.AddScoped<IBlockRepository, BlockRepository>();

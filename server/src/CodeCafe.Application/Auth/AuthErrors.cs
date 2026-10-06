@@ -36,4 +36,12 @@ public static class AuthErrors
         "The current password is incorrect.",
         ErrorKind.Unauthorized
     );
+
+    // One uniform failure for unknown and foreign token ids, so the endpoint cannot be
+    // used to probe which personal access tokens exist.
+    public static readonly Error PersonalAccessTokenNotFound = new(
+        "personal_access_token_not_found",
+        "The personal access token was not found.",
+        ErrorKind.NotFound
+    );
 }

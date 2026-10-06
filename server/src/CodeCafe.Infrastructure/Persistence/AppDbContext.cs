@@ -20,6 +20,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<PersonalAccessToken> PersonalAccessTokens => Set<PersonalAccessToken>();
+
     public DbSet<Notebook> Notebooks => Set<Notebook>();
 
     public DbSet<NotebookFavorite> NotebookFavorites => Set<NotebookFavorite>();

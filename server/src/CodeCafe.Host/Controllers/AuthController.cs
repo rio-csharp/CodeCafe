@@ -2,6 +2,10 @@ using CodeCafe.Application.Auth.ChangePassword;
 using CodeCafe.Application.Auth.GetCurrentUser;
 using CodeCafe.Application.Auth.Login;
 using CodeCafe.Application.Auth.Logout;
+using CodeCafe.Application.Auth.PersonalAccessTokens.CreatePersonalAccessToken;
+using CodeCafe.Application.Auth.PersonalAccessTokens.ListPersonalAccessTokens;
+using CodeCafe.Application.Auth.PersonalAccessTokens.RevokePersonalAccessToken;
+using CodeCafe.Application.Auth.PersonalAccessTokens.Shared;
 using CodeCafe.Application.Auth.RefreshToken;
 using CodeCafe.Application.Auth.Register;
 using CodeCafe.Application.Auth.Shared;
@@ -62,4 +66,20 @@ public sealed class AuthController(ISender sender) : ControllerBase
     [EnableRateLimiting(RateLimiterExtensions.AuthPolicy)]
     public Task<Result> ChangePassword(ChangePasswordRequest request, CancellationToken cancellationToken)
         => sender.Send(new ChangePasswordCommand(request.CurrentPassword, request.NewPassword), cancellationToken);
+
+    // The raw token is returned in this response only; afterwards the API stores just its hash.
+    [HttpPost("auth/tokens")]
+    [Authorize]
+    public Task<Result<CreatedPersonalAccessTokenDto>> CreatePersonalAccessToken(CreatePersonalAccessTokenRequest request, CancellationToken cancellationToken)
+        => sender.Send(new CreatePersonalAccessTokenCommand(request.Name, request.ExpiresInDays), cancellationToken);
+
+    [HttpGet("auth/tokens")]
+    [Authorize]
+    public Task<Result<IReadOnlyList<PersonalAccessTokenDto>>> ListPersonalAccessTokens(CancellationToken cancellationToken)
+        => sender.Send(new ListPersonalAccessTokensQuery(), cancellationToken);
+
+    [HttpDelete("auth/tokens/{id:guid}")]
+    [Authorize]
+    public Task<Result> RevokePersonalAccessToken(Guid id, CancellationToken cancellationToken)
+        => sender.Send(new RevokePersonalAccessTokenCommand(id), cancellationToken);
 }
