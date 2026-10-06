@@ -30,6 +30,13 @@ export const zh = {
     Unlisted: '不列出',
     Public: '公开',
   },
+  card: {
+    noDescription: '暂无描述',
+  },
+  favorite: {
+    add: '收藏',
+    remove: '取消收藏',
+  },
   list: {
     pageCount: '{{count}} 页',
     loadMore: '加载更多',

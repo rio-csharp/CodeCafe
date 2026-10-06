@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { NotebookCard } from '@/entities/notebook'
 import type { NotebookSummary } from '@/entities/notebook'
+import { FavoriteNotebookButton } from '@/features/toggle-notebook-favorite'
 import { Button } from '@/shared/ui'
 
 const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const
@@ -82,7 +83,14 @@ export function NotebookGrid({
     <>
       <ul className={GRID_CLASS}>
         {items.map((notebook) => (
-          <NotebookCard key={notebook.id} notebook={notebook} showOwnership={showOwnership} />
+          <NotebookCard
+            key={notebook.id}
+            notebook={notebook}
+            showOwnership={showOwnership}
+            cornerAction={
+              <FavoriteNotebookButton notebookId={notebook.id} isFavorite={notebook.isFavorite} />
+            }
+          />
         ))}
       </ul>
 

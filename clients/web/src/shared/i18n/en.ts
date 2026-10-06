@@ -30,6 +30,13 @@ export const en = {
     Unlisted: 'Unlisted',
     Public: 'Public',
   },
+  card: {
+    noDescription: 'No description',
+  },
+  favorite: {
+    add: 'Favorite',
+    remove: 'Unfavorite',
+  },
   list: {
     pageCount: '{{count}} pages',
     loadMore: 'Load more',

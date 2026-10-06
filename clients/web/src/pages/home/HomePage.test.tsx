@@ -28,6 +28,7 @@ const MINE: NotebookSummary = {
   tags: ['coffee'],
   pageCount: 3,
   updatedAtUtc: '2026-01-07T12:00:00.000Z',
+  ownerDisplayName: 'Ada',
 }
 
 const PUBLIC: NotebookSummary = {
@@ -40,6 +41,7 @@ const PUBLIC: NotebookSummary = {
   tags: [],
   pageCount: 12,
   updatedAtUtc: '2026-01-06T12:00:00.000Z',
+  ownerDisplayName: 'Grace',
 }
 
 const EMPTY_PAGE = {
@@ -98,7 +100,7 @@ describe('HomePage', () => {
     // Visibility badge and favorite star only appear on the "mine" shelf.
     const shelf = screen.getAllByRole('list')[0]
     expect(within(shelf).getByText('Unlisted')).toBeInTheDocument()
-    expect(within(shelf).getByRole('img', { name: 'Favorites' })).toBeInTheDocument()
+    expect(within(shelf).getByRole('button', { name: 'Unfavorite' })).toBeInTheDocument()
     // The masthead is for visitors.
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
   })

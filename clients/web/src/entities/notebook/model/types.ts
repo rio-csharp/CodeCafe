@@ -13,6 +13,8 @@ export interface NotebookSummary {
   tags: string[]
   pageCount: number
   updatedAtUtc: string
+  /** Attribution for the shelf: whose notebook this is. */
+  ownerDisplayName: string
 }
 
 export interface NotebookListFilters {
