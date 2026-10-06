@@ -26,7 +26,7 @@ export function NotebookCatalog({ search }: NotebookCatalogProps) {
   const filters = { search, sort }
 
   const query = useInfiniteQuery({
-    queryKey: notebookKeys.list(filters),
+    queryKey: notebookKeys.publicList(filters),
     queryFn: ({ pageParam, signal }) =>
       listNotebooks({ search, sort, page: pageParam, signal }),
     initialPageParam: 1,
@@ -96,7 +96,7 @@ export function NotebookCatalog({ search }: NotebookCatalogProps) {
               <div className="mt-4">
                 <Button
                   onClick={() => {
-                    void queryClient.resetQueries({ queryKey: notebookKeys.list(filters) })
+                    void queryClient.resetQueries({ queryKey: notebookKeys.publicList(filters) })
                   }}
                 >
                   {t('catalog.error.retry')}

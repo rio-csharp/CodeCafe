@@ -23,8 +23,13 @@ export interface NotebookListFilters {
   sort: NotebookSortOption
 }
 
-/** Page number lives in the infinite query, not in the key. */
+/**
+ * Page number lives in the infinite query, not in the key. The public catalog
+ * and the signed-in list are separate namespaces so logging in cannot hand one
+ * the other's cache.
+ */
 export const notebookKeys = {
   all: ['notebooks'],
-  list: (filters: NotebookListFilters) => ['notebooks', filters],
+  publicList: (filters: NotebookListFilters) => ['notebooks', 'public', filters],
+  mine: () => ['notebooks', 'mine'],
 }

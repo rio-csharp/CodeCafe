@@ -7,7 +7,7 @@ import { zh } from './zh'
 export const SUPPORTED_LANGUAGES = ['en', 'zh'] as const
 export type Language = (typeof SUPPORTED_LANGUAGES)[number]
 
-/** The only localStorage key the app owns. */
+/** One of the three localStorage keys the app owns: lang, theme, refresh. */
 export const LANGUAGE_STORAGE_KEY = 'codecafe.lang'
 
 export const FALLBACK_LANGUAGE: Language = 'en'

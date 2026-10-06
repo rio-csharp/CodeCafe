@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Hero } from '@/widgets/hero'
+import { MyNotebooks } from '@/widgets/my-notebooks'
 import { NotebookCatalog } from '@/widgets/notebook-catalog'
 import { SiteFooter } from '@/widgets/site-footer'
 import { SiteHeader } from '@/widgets/site-header'
@@ -13,6 +14,7 @@ export function HomePage() {
 
       <main className="flex-1">
         <Hero value={search} onChange={setSearch} />
+        <MyNotebooks />
         <NotebookCatalog search={search} />
       </main>
 

@@ -1,3 +1,5 @@
+import { Suspense } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouteError } from 'react-router'
 import { Button, Spinner } from '@/shared/ui'
@@ -23,6 +25,11 @@ export function RouteErrorBoundary() {
       </Button>
     </div>
   )
+}
+
+/** Every route is code-split; this is the shared `Suspense` boundary around one. */
+export function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>
 }
 
 export function RouteFallback() {

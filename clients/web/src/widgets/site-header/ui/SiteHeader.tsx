@@ -1,10 +1,16 @@
 import { useTranslation } from 'react-i18next'
+import { Link, useLocation } from 'react-router'
+import { useSessionStore } from '@/entities/session'
 import { LanguageToggle } from '@/features/switch-language'
 import { ThemeToggle } from '@/features/switch-theme'
-import { Container } from '@/shared/ui'
+import { buttonClass, Container } from '@/shared/ui'
+import { UserMenu } from './UserMenu'
 
 export function SiteHeader() {
   const { t } = useTranslation()
+  const location = useLocation()
+  const status = useSessionStore((state) => state.status)
+  const user = useSessionStore((state) => state.user)
 
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-card">
@@ -30,14 +36,27 @@ export function SiteHeader() {
               strokeLinecap="round"
             />
           </svg>
-          <span className="font-display text-lg tracking-tight text-ink">
-            {t('brand.name')}
-          </span>
+          <span className="font-display text-lg tracking-tight text-ink">{t('brand.name')}</span>
         </div>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <LanguageToggle />
+
+          {/* `unknown` renders neither state — a boot refresh is still in flight. */}
+          {status === 'anonymous' ? (
+            <Link
+              to="/login"
+              state={{ from: location.pathname }}
+              className={buttonClass('ghost')}
+            >
+              {t('header.login')}
+            </Link>
+          ) : null}
+
+          {status === 'authenticated' && user !== null ? (
+            <UserMenu displayName={user.displayName} />
+          ) : null}
         </div>
       </Container>
     </header>

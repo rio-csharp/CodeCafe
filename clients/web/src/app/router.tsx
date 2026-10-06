@@ -1,16 +1,33 @@
-import { Suspense } from 'react'
 import { createBrowserRouter } from 'react-router'
-import { HomePage } from './lazy-pages'
-import { RouteErrorBoundary, RouteFallback } from './route-boundary'
+import { HomePage, LoginPage, RegisterPage } from './lazy-pages'
+import { LazyPage, RouteErrorBoundary } from './route-boundary'
 
 export const router = createBrowserRouter([
   {
     path: '/',
     errorElement: <RouteErrorBoundary />,
     element: (
-      <Suspense fallback={<RouteFallback />}>
+      <LazyPage>
         <HomePage />
-      </Suspense>
+      </LazyPage>
+    ),
+  },
+  {
+    path: '/login',
+    errorElement: <RouteErrorBoundary />,
+    element: (
+      <LazyPage>
+        <LoginPage />
+      </LazyPage>
+    ),
+  },
+  {
+    path: '/register',
+    errorElement: <RouteErrorBoundary />,
+    element: (
+      <LazyPage>
+        <RegisterPage />
+      </LazyPage>
     ),
   },
 ])

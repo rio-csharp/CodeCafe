@@ -24,6 +24,21 @@ export interface ResultEnvelope<T> {
   isSuccess: boolean
 }
 
+export interface AuthUserDto {
+  id: string
+  email: string
+  displayName: string
+}
+
+/** Register, login and refresh all answer with this same session shape. */
+export interface AuthSessionDto {
+  user: AuthUserDto
+  accessToken: string
+  /** ISO 8601. */
+  accessTokenExpiresAtUtc: string
+  refreshToken: string
+}
+
 export interface PagedResult<T> {
   items: T[]
   page: number
