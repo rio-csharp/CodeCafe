@@ -1,4 +1,6 @@
 export { createNotebook } from './api/createNotebook'
+export { getNotebookSlugAvailability } from './api/getNotebookSlugAvailability'
+export type { NotebookSlugAvailability } from './api/getNotebookSlugAvailability'
 export type { CreateNotebookInput } from './api/createNotebook'
 export { getNotebookDetails } from './api/getNotebookDetails'
 export type { GetNotebookDetailsParams } from './api/getNotebookDetails'
