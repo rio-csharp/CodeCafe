@@ -15,10 +15,15 @@ export interface JsonRequestInit extends Omit<RequestInit, 'signal'> {
 export async function requestJson<T>(path: string, init: JsonRequestInit = {}): Promise<T> {
   const { signal, headers, ...rest } = init
 
+  // ASP.NET refuses a body it cannot identify (415); a JSON gateway declares
+  // JSON the moment a body is present. Callers may still override.
+  const withContentType =
+    rest.body !== undefined ? mergeHeader(headers, 'Content-Type', 'application/json') : headers
+
   const response = await fetch(path, {
     ...rest,
     signal: withTimeout(signal),
-    headers: mergeHeader(headers, 'Accept', 'application/json'),
+    headers: mergeHeader(withContentType, 'Accept', 'application/json'),
   })
 
   return unwrapResponse<T>(response)

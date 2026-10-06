@@ -45,6 +45,33 @@ function stubFetch(handler: (url: string, init?: RequestInit) => Promise<Respons
   return mock
 }
 
+describe('content negotiation', () => {
+  it('declares application/json whenever a body rides along', async () => {
+    const fetchMock = stubFetch(async () => success({ ok: true }))
+
+    await apiFetch('/api/notebooks', { method: 'POST', body: JSON.stringify({ title: 'x' }) })
+
+    const headers = new Headers(fetchMock.mock.calls[0][1]?.headers)
+    expect(headers.get('Content-Type')).toBe('application/json')
+    expect(headers.get('Accept')).toBe('application/json')
+  })
+
+  it('leaves a caller-set Content-Type alone and bodiless requests bare', async () => {
+    const fetchMock = stubFetch(async () => success({ ok: true }))
+
+    await apiFetch('/api/x', {
+      method: 'POST',
+      body: 'raw',
+      headers: { 'Content-Type': 'text/plain' },
+    })
+    await apiFetch('/api/y')
+
+    const [custom, bare] = fetchMock.mock.calls
+    expect(new Headers(custom[1]?.headers).get('Content-Type')).toBe('text/plain')
+    expect(new Headers(bare[1]?.headers).get('Content-Type')).toBeNull()
+  })
+})
+
 function bearerOf(init: RequestInit | undefined): string | null {
   return new Headers(init?.headers).get('Authorization')
 }
