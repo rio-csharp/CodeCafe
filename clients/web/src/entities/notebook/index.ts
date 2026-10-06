@@ -1,3 +1,5 @@
+export { createNotebook } from './api/createNotebook'
+export type { CreateNotebookInput } from './api/createNotebook'
 export { getNotebookDetails } from './api/getNotebookDetails'
 export type { GetNotebookDetailsParams } from './api/getNotebookDetails'
 export { getNotebookTree } from './api/getNotebookTree'
@@ -9,14 +11,14 @@ export type { ListMyNotebooksParams } from './api/listMyNotebooks'
 export { formatRelativeTime } from './lib/formatRelativeTime'
 export { notebookKeys } from './model/types'
 export type {
+  MyNotebookListFilters,
   NotebookDetails,
   NotebookListFilters,
   NotebookSort,
-  NotebookSortOption,
   NotebookSummary,
   NotebookTree,
   NotebookVisibility,
   PageTreeNode,
 } from './model/types'
-export { NotebookCard } from './ui/NotebookCard'
-export type { NotebookCardProps } from './ui/NotebookCard'
+export { NotebookRow } from './ui/NotebookRow'
+export type { NotebookRowProps } from './ui/NotebookRow'

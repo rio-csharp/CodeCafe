@@ -1,17 +1,18 @@
 import type { PagedResult } from '@/shared/api'
 import { apiFetch } from '@/shared/api'
-import type { NotebookSortOption, NotebookSummary } from '../model/types'
+import type { NotebookSort, NotebookSummary } from '../model/types'
 
 export const NOTEBOOK_PAGE_SIZE = 12
 
 export interface ListNotebooksParams {
   search: string
-  sort: NotebookSortOption
+  sort: NotebookSort
   page: number
   pageSize?: number
   signal?: AbortSignal
 }
 
+/** The anonymous catalog: every public notebook. */
 export function listNotebooks({
   search,
   sort,

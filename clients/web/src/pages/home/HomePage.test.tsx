@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listMyNotebooks, listNotebooks } from '@/entities/notebook'
+import { createNotebook, listMyNotebooks, listNotebooks } from '@/entities/notebook'
 import type { NotebookSummary } from '@/entities/notebook'
 import { useSessionStore } from '@/entities/session'
 import type { AuthUser } from '@/entities/session'
@@ -12,6 +13,7 @@ vi.mock('@/entities/notebook', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/notebook')>()),
   listNotebooks: vi.fn(),
   listMyNotebooks: vi.fn(),
+  createNotebook: vi.fn(),
 }))
 
 const USER: AuthUser = { id: 'u1', email: 'ada@example.com', displayName: 'Ada' }
@@ -21,11 +23,23 @@ const MINE: NotebookSummary = {
   title: 'Espresso Notes',
   description: 'Short and strong.',
   slug: 'espresso-notes',
-  visibility: 'Private',
-  isFavorite: false,
+  visibility: 'Unlisted',
+  isFavorite: true,
   tags: ['coffee'],
   pageCount: 3,
   updatedAtUtc: '2026-01-07T12:00:00.000Z',
+}
+
+const PUBLIC: NotebookSummary = {
+  id: '22222222-2222-2222-2222-222222222222',
+  title: 'Shared Knowledge',
+  description: null,
+  slug: 'shared-knowledge',
+  visibility: 'Public',
+  isFavorite: false,
+  tags: [],
+  pageCount: 12,
+  updatedAtUtc: '2026-01-06T12:00:00.000Z',
 }
 
 const EMPTY_PAGE = {
@@ -36,12 +50,19 @@ const EMPTY_PAGE = {
   hasNextPage: false,
 }
 
+function pageOf(...items: NotebookSummary[]) {
+  return { ...EMPTY_PAGE, items, totalCount: items.length }
+}
+
 function renderHomePage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <HomePage />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/notebooks/*" element={<div>reader stub</div>} />
+        </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
   )
@@ -50,44 +71,91 @@ function renderHomePage() {
 beforeEach(() => {
   vi.mocked(listNotebooks).mockReset()
   vi.mocked(listMyNotebooks).mockReset()
+  vi.mocked(createNotebook).mockReset()
   vi.mocked(listNotebooks).mockResolvedValue(EMPTY_PAGE)
+  vi.mocked(listMyNotebooks).mockResolvedValue(EMPTY_PAGE)
   useSessionStore.setState({ status: 'anonymous', user: null })
 })
 
 describe('HomePage', () => {
-  it('keeps the anonymous homepage free of a shelf', async () => {
+  it('greets anonymous visitors with a masthead and the public shelf only', async () => {
+    vi.mocked(listNotebooks).mockResolvedValue(pageOf(PUBLIC))
     renderHomePage()
 
-    expect(await screen.findByText('Every notebook, freshly brewed.')).toBeInTheDocument()
-    expect(screen.getByText("Today's Menu")).toBeInTheDocument()
+    expect(await screen.findByText('Shared Knowledge')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'CodeCafe' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Create account' })).toBeInTheDocument()
     expect(screen.queryByText('My notebooks')).not.toBeInTheDocument()
-    expect(vi.mocked(listMyNotebooks)).not.toHaveBeenCalled()
   })
 
-  it('shows my notebooks above the catalog when signed in', async () => {
+  it('shows signed-in readers their own shelf with ownership cues', async () => {
     useSessionStore.setState({ status: 'authenticated', user: USER })
-    vi.mocked(listMyNotebooks).mockResolvedValue({
-      items: [MINE],
-      page: 1,
-      pageSize: 12,
-      totalCount: 1,
-      hasNextPage: false,
-    })
-
+    vi.mocked(listMyNotebooks).mockResolvedValue(pageOf(MINE))
     renderHomePage()
 
-    expect(await screen.findByText('My notebooks')).toBeInTheDocument()
     expect(await screen.findByText('Espresso Notes')).toBeInTheDocument()
-    expect(vi.mocked(listMyNotebooks)).toHaveBeenCalledWith({ page: 1, signal: expect.anything() })
+    expect(screen.getByText('My notebooks')).toBeInTheDocument()
+    // Visibility badge and favorite star only appear on the "mine" shelf.
+    const shelf = screen.getAllByRole('list')[0]
+    expect(within(shelf).getByText('Unlisted')).toBeInTheDocument()
+    expect(within(shelf).getByRole('img', { name: 'Favorites' })).toBeInTheDocument()
+    // The masthead is for visitors.
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
   })
 
-  it('serves themed copy when the shelf is empty', async () => {
+  it('refetches "mine" when the favorites filter is toggled', async () => {
+    const user = userEvent.setup()
     useSessionStore.setState({ status: 'authenticated', user: USER })
-    vi.mocked(listMyNotebooks).mockResolvedValue(EMPTY_PAGE)
-
     renderHomePage()
 
-    expect(await screen.findByText('My notebooks')).toBeInTheDocument()
-    expect(await screen.findByText('Your shelf is empty')).toBeInTheDocument()
+    await screen.findByText('My notebooks')
+    await user.click(screen.getByRole('button', { name: 'Favorites' }))
+
+    expect(vi.mocked(listMyNotebooks)).toHaveBeenCalledWith(
+      expect.objectContaining({ favoritesOnly: true }),
+    )
+  })
+
+  it('creates a notebook from the dialog and lands on it', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({ status: 'authenticated', user: USER })
+    vi.mocked(createNotebook).mockResolvedValue({
+      id: '33333333-3333-3333-3333-333333333333',
+      title: 'Fresh Ideas',
+      description: null,
+      slug: 'fresh-ideas',
+      visibility: 'Private',
+      hasAccessCode: false,
+      tags: [],
+      pageCount: 0,
+      createdAtUtc: '2026-01-08T00:00:00.000Z',
+      updatedAtUtc: '2026-01-08T00:00:00.000Z',
+      isOwner: true,
+      canWrite: true,
+    })
+    renderHomePage()
+
+    await user.click(await screen.findByRole('button', { name: 'New notebook' }))
+    await user.type(screen.getByLabelText('Title'), 'Fresh Ideas')
+    await user.click(screen.getByRole('button', { name: 'Create' }))
+
+    expect(vi.mocked(createNotebook)).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Fresh Ideas', visibility: 'Private' }),
+    )
+    expect(await screen.findByText('reader stub')).toBeInTheDocument() // navigated to the reader
+  })
+
+  it('filters the public shelf by the debounced search', async () => {
+    const user = userEvent.setup()
+    renderHomePage()
+
+    await user.type(await screen.findByRole('searchbox'), 'rust')
+
+    await screen.findByDisplayValue('rust')
+    await vi.waitFor(() => {
+      expect(vi.mocked(listNotebooks)).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'rust' }),
+      )
+    })
   })
 })

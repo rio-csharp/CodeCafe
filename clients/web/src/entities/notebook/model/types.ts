@@ -3,9 +3,6 @@ export type NotebookVisibility = 'Private' | 'Unlisted' | 'Public'
 /** Mirrors the backend `NotebookSort` enum, which travels as a string. */
 export type NotebookSort = 'UpdatedDesc' | 'CreatedDesc' | 'TitleAsc'
 
-/** The two orderings the homepage offers. */
-export type NotebookSortOption = Extract<NotebookSort, 'UpdatedDesc' | 'TitleAsc'>
-
 export interface NotebookSummary {
   id: string
   title: string
@@ -20,7 +17,13 @@ export interface NotebookSummary {
 
 export interface NotebookListFilters {
   search: string
-  sort: NotebookSortOption
+  sort: NotebookSort
+}
+
+/** The authenticated list can additionally filter by ownership-side flags. */
+export interface MyNotebookListFilters extends NotebookListFilters {
+  favoritesOnly: boolean
+  visibility: NotebookVisibility | null
 }
 
 /**
@@ -67,6 +70,7 @@ export const notebookKeys = {
   all: ['notebooks'],
   publicList: (filters: NotebookListFilters) => ['notebooks', 'public', filters],
   mine: () => ['notebooks', 'mine'],
+  myList: (filters: MyNotebookListFilters) => ['notebooks', 'mine', filters],
   details: (slug: string) => ['notebooks', 'details', slug],
   tree: (slug: string) => ['notebooks', 'tree', slug],
 }

@@ -23,22 +23,22 @@ beforeEach(() => {
 it('mounts the homepage shell with real copy', async () => {
   render(<Providers />)
 
-  expect(await screen.findByText('Every notebook, freshly brewed.')).toBeInTheDocument()
-  expect(screen.getByText("Today's Menu")).toBeInTheDocument()
-  expect(await screen.findByText("The barista hasn't started yet")).toBeInTheDocument()
-  expect(screen.getByText('Brewed with ❤️ and caffeine')).toBeInTheDocument()
+  expect(await screen.findByText('Write notebooks here, then share them.')).toBeInTheDocument()
+  expect(screen.getByText('Public notebooks')).toBeInTheDocument()
+  expect(await screen.findByText('No public notebooks yet.')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Create account' })).toBeInTheDocument()
 })
 
 it('switches every visible string to Chinese without a reload', async () => {
   const user = userEvent.setup()
   render(<Providers />)
 
-  await screen.findByText('Every notebook, freshly brewed.')
+  await screen.findByText('Write notebooks here, then share them.')
   await user.click(screen.getByRole('button', { name: 'Switch language' }))
 
-  expect(await screen.findByText('每一本笔记，都是一杯现磨。')).toBeInTheDocument()
-  expect(screen.getByText('今日菜单')).toBeInTheDocument()
-  expect(screen.getByText('用 ❤️ 和咖啡因酿造')).toBeInTheDocument()
+  expect(await screen.findByText('在这里写笔记，再把它们分享出去。')).toBeInTheDocument()
+  expect(screen.getByText('公开笔记本')).toBeInTheDocument()
+  expect(screen.getByText('暂时没有公开的笔记本。')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: '切换语言' })).toBeInTheDocument()
   expect(document.documentElement.lang).toBe('zh')
   expect(window.localStorage.getItem('codecafe.lang')).toBe('zh')

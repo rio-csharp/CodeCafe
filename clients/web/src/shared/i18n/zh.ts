@@ -2,36 +2,49 @@ export const zh = {
   brand: {
     name: 'CodeCafe',
   },
-  hero: {
-    title: '每一本笔记，都是一杯现磨。',
-    subtitle: '逛逛大家的公共笔记本，找一杯对你口味的。',
+  home: {
+    pitch: '在这里写笔记，再把它们分享出去。',
+    createAccount: '创建账号',
+    mine: '我的笔记本',
+    publicNotebooks: '公开笔记本',
+    newNotebook: '新建笔记本',
+    filterAll: '全部',
+    filterFavorites: '已收藏',
+    visibilityAll: '全部可见性',
+    sortRecent: '最近更新',
+    sortCreated: '最新创建',
+    sortTitle: '按名称',
+    emptyMine: '还没有笔记本，点击右上角新建一本。',
+    emptyPublic: '暂时没有公开的笔记本。',
+  },
+  visibility: {
+    Private: '私有',
+    Unlisted: '不列出',
+    Public: '公开',
+  },
+  list: {
+    pageCount: '{{count}} 页',
+    loadMore: '加载更多',
+    loading: '加载中…',
+    loadError: '加载失败，请重试。',
+    retry: '重试',
+  },
+  createNotebook: {
+    title: '新建笔记本',
+    name: '标题',
+    namePlaceholder: '给笔记本起个名字',
+    description: '描述（可选）',
+    descriptionPlaceholder: '一句话说明这本笔记',
+    visibility: '可见性',
+    submit: '创建',
+    submitting: '创建中…',
+    cancel: '取消',
+    error: '创建失败，请稍后再试。',
   },
   search: {
     label: '搜索笔记本',
-    placeholder: '搜搜今天的菜单…',
+    placeholder: '搜索笔记本…',
     clear: '清空',
-  },
-  catalog: {
-    title: '今日菜单',
-    sort: {
-      label: '排序方式',
-      recent: '刚出炉',
-      title: '按名称',
-    },
-    loading: '正在萃取…',
-    loadMore: '再来一份',
-    empty: {
-      title: '咖啡师还没上班',
-      body: '菜单暂时是空的，过会儿再来看看。',
-    },
-    error: {
-      title: '厨房出了点状况',
-      retry: '再试一次',
-    },
-  },
-  card: {
-    pageCount: '{{count}} 页',
-    updatedAt: '更新于 {{time}}',
   },
   footer: {
     line: '用 ❤️ 和咖啡因酿造',
@@ -66,10 +79,6 @@ export const zh = {
     login: '登录',
     logout: '退出',
     accountMenu: '账户菜单',
-  },
-  myNotebooks: {
-    title: '我的笔记本',
-    empty: '你的菜单还是空的',
   },
   lang: {
     label: '切换语言',

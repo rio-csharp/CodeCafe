@@ -8,6 +8,8 @@ const CONTAINER_CLASS = 'mx-auto w-full px-4 sm:px-6'
 
 const WIDTH_CLASS = {
   standard: 'max-w-6xl',
+  /** Reading and listing surfaces: long lines stop being readable past this. */
+  narrow: 'max-w-3xl',
   wide: 'max-w-screen-2xl',
 } as const
 
