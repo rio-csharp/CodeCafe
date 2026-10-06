@@ -215,11 +215,11 @@ function MyShelf({ onCreate }: { onCreate: () => void }) {
         </Button>
       </ShelfHeader>
 
-      <div className="pb-5">
-        <SearchInput value={search} onChange={setSearch} />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 pb-2">
+      {/* One toolbar row: the search owns the space, the filter rides along. */}
+      <div className="flex flex-wrap items-center gap-2 pb-4">
+        <div className="min-w-40 flex-1">
+          <SearchInput value={search} onChange={setSearch} />
+        </div>
         <select
           aria-label={t('createNotebook.visibility')}
           value={visibility ?? ''}
@@ -227,7 +227,7 @@ function MyShelf({ onCreate }: { onCreate: () => void }) {
             const value = event.target.value
             setVisibility(value === '' ? null : (value as NotebookVisibility))
           }}
-          className="rounded-full border border-line bg-card px-3 py-1.5 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className="h-11 shrink-0 rounded-xl border border-line bg-card px-3 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
         >
           <option value="">{t('home.visibilityAll')}</option>
           {VISIBILITY_OPTIONS.map((option) => (
