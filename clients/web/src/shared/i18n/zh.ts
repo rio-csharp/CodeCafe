@@ -13,6 +13,7 @@ export const zh = {
     pitch: '在这里写笔记，再把它们分享出去。',
     createAccount: '创建账号',
     mine: '我的笔记本',
+    favorites: '收藏',
     publicNotebooks: '公开笔记本',
     newNotebook: '新建笔记本',
     filterAll: '全部',

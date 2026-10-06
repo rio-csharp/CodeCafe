@@ -23,7 +23,7 @@ export function AuthLayout({ title, footer, children }: AuthLayoutProps) {
             <div className="text-center">
               <Link
                 to="/"
-                className="font-display text-2xl tracking-tight text-ink hover:text-accent-strong"
+                className="text-xl font-semibold tracking-tight text-ink hover:text-accent-strong"
               >
                 {t('brand.name')}
               </Link>

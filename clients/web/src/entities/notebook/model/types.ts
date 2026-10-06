@@ -71,6 +71,7 @@ export const notebookKeys = {
   publicList: (filters: NotebookListFilters) => ['notebooks', 'public', filters],
   mine: () => ['notebooks', 'mine'],
   myList: (filters: MyNotebookListFilters) => ['notebooks', 'mine', filters],
+  myFavorites: () => ['notebooks', 'mine', 'favorites'],
   details: (slug: string) => ['notebooks', 'details', slug],
   tree: (slug: string) => ['notebooks', 'tree', slug],
 }

@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
@@ -82,7 +82,7 @@ export function HomePage() {
             <p className="text-xs font-semibold tracking-[0.2em] text-accent-strong uppercase">
               {t('home.overline')}
             </p>
-            <h1 className="mt-3 font-display text-5xl tracking-tight text-ink sm:text-6xl">
+            <h1 className="mt-3 text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
               {t('brand.name')}
             </h1>
             <p className="mt-4 max-w-md text-lg leading-relaxed text-muted">{t('home.pitch')}</p>
@@ -100,6 +100,7 @@ export function HomePage() {
         {status === 'authenticated' && user !== null ? (
           <>
             <p className="pb-6 text-sm text-muted">{greeting(t, user.displayName)}</p>
+            <FavoritesShelf />
             <MyShelf
               onCreate={() => {
                 setCreateOpen(true)
@@ -140,24 +141,56 @@ function ShelfHeader({ title, children }: { title: string; children?: React.Reac
   )
 }
 
+/** Starred notebooks pulled out on their own shelf; hidden when there are none. */
+function FavoritesShelf() {
+  const { t } = useTranslation()
+
+  const query = useQuery({
+    queryKey: notebookKeys.myFavorites(),
+    queryFn: ({ signal }) =>
+      listMyNotebooks({ favoritesOnly: true, page: 1, pageSize: 50, signal }),
+  })
+
+  const items = query.data?.items ?? []
+  if (!query.isPending && !query.isError && items.length === 0) {
+    return null
+  }
+
+  return (
+    <section aria-label={t('home.favorites')} className="pb-12">
+      <ShelfHeader title={t('home.favorites')} />
+      <NotebookGrid
+        items={items}
+        isPending={query.isPending}
+        isError={query.isError}
+        onRetry={() => {
+          void query.refetch()
+        }}
+        emptyText=""
+        showOwnership
+      />
+    </section>
+  )
+}
+
 /** Own + shared notebooks, with the filters only the authenticated list has. */
 function MyShelf({ onCreate }: { onCreate: () => void }) {
   const { t } = useTranslation()
+  const [search, setSearch] = useState('')
   const [sort, setSort] = useState<NotebookSort>('UpdatedDesc')
-  const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [visibility, setVisibility] = useState<NotebookVisibility | null>(null)
 
   const filters: MyNotebookListFilters = {
-    search: '',
+    search,
     sort,
-    favoritesOnly,
+    favoritesOnly: false,
     visibility,
   }
 
   const query = useInfiniteQuery({
     queryKey: notebookKeys.myList(filters),
     queryFn: ({ pageParam, signal }) =>
-      listMyNotebooks({ search: '', sort, favoritesOnly, visibility, page: pageParam, signal }),
+      listMyNotebooks({ search, sort, visibility, page: pageParam, signal }),
     initialPageParam: 1,
     getNextPageParam: (lastPage) => (lastPage.hasNextPage ? lastPage.page + 1 : undefined),
   })
@@ -182,23 +215,11 @@ function MyShelf({ onCreate }: { onCreate: () => void }) {
         </Button>
       </ShelfHeader>
 
-      <div className="flex flex-wrap items-center gap-2 pb-2">
-        <div role="group" className="flex gap-1 rounded-full border border-line bg-card p-1">
-          {([false, true] as const).map((value) => (
-            <button
-              key={String(value)}
-              type="button"
-              aria-pressed={favoritesOnly === value}
-              onClick={() => {
-                setFavoritesOnly(value)
-              }}
-              className={pillClass(favoritesOnly === value)}
-            >
-              {value ? t('home.filterFavorites') : t('home.filterAll')}
-            </button>
-          ))}
-        </div>
+      <div className="pb-5">
+        <SearchInput value={search} onChange={setSearch} />
+      </div>
 
+      <div className="flex flex-wrap items-center gap-2 pb-2">
         <select
           aria-label={t('createNotebook.visibility')}
           value={visibility ?? ''}

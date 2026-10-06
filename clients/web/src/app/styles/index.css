@@ -30,8 +30,6 @@
   --color-info-soft: #e3edf6;
   --color-muted-soft: #f4efe8;
 
-  --font-display: 'Fraunces Variable', Georgia, serif;
-  --font-body: 'Inter Variable', system-ui, sans-serif;
 }
 
 /*
@@ -74,7 +72,6 @@
     margin: 0;
     background-color: var(--color-canvas);
     color: var(--color-ink);
-    font-family: var(--font-body);
     line-height: 1.45;
     transition: background-color 150ms ease, color 150ms ease;
     -webkit-font-smoothing: antialiased;

@@ -13,6 +13,7 @@ export const en = {
     pitch: 'Write notebooks here, then share them.',
     createAccount: 'Create account',
     mine: 'My notebooks',
+    favorites: 'Favorites',
     publicNotebooks: 'Public notebooks',
     newNotebook: 'New notebook',
     filterAll: 'All',

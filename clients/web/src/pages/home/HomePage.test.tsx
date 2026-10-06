@@ -103,17 +103,20 @@ describe('HomePage', () => {
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
   })
 
-  it('refetches "mine" when the favorites filter is toggled', async () => {
+  it('searches within the signed-in reader\'s own shelf', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({ status: 'authenticated', user: USER })
     renderHomePage()
 
     await screen.findByText('My notebooks')
-    await user.click(screen.getByRole('button', { name: 'Favorites' }))
+    const boxes = screen.getAllByRole('searchbox')
+    await user.type(boxes[0], 'espresso')
 
-    expect(vi.mocked(listMyNotebooks)).toHaveBeenCalledWith(
-      expect.objectContaining({ favoritesOnly: true }),
-    )
+    await vi.waitFor(() => {
+      expect(vi.mocked(listMyNotebooks)).toHaveBeenCalledWith(
+        expect.objectContaining({ search: 'espresso' }),
+      )
+    })
   })
 
   it('creates a notebook from the dialog and lands on it', async () => {

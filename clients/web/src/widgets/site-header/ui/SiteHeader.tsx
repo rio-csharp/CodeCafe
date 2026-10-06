@@ -36,7 +36,7 @@ export function SiteHeader() {
               strokeLinecap="round"
             />
           </svg>
-          <span className="font-display text-base tracking-tight text-ink">{t('brand.name')}</span>
+          <span className="text-base font-semibold tracking-tight text-ink">{t('brand.name')}</span>
         </div>
 
         <div className="flex items-center gap-2">
