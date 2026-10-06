@@ -1,11 +1,13 @@
 import { useTranslation } from 'react-i18next'
-import { NotebookRow } from '@/entities/notebook'
+import { NotebookCard } from '@/entities/notebook'
 import type { NotebookSummary } from '@/entities/notebook'
 import { Button } from '@/shared/ui'
 
-const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e'] as const
+const SKELETON_KEYS = ['a', 'b', 'c', 'd', 'e', 'f'] as const
 
-export interface NotebookRowsProps {
+const GRID_CLASS = 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'
+
+export interface NotebookGridProps {
   items: readonly NotebookSummary[]
   isPending: boolean
   isError: boolean
@@ -19,10 +21,10 @@ export interface NotebookRowsProps {
 }
 
 /**
- * A paged list of notebook rows with its four states. Presentational: the
+ * A paged grid of notebook cards with its four states. Presentational: the
  * owning page runs the queries and hands the pieces down.
  */
-export function NotebookRows({
+export function NotebookGrid({
   items,
   isPending,
   isError,
@@ -32,19 +34,23 @@ export function NotebookRows({
   isFetchingNextPage = false,
   onLoadMore,
   showOwnership = false,
-}: NotebookRowsProps) {
+}: NotebookGridProps) {
   const { t } = useTranslation()
 
   if (isPending) {
     return (
-      <ul aria-hidden="true" className="divide-y divide-line">
+      <ul aria-hidden="true" className={GRID_CLASS}>
         {SKELETON_KEYS.map((key) => (
-          <li key={key} className="flex items-center gap-4 py-3.5">
-            <div className="min-w-0 flex-1">
-              <div className="h-4 w-2/5 animate-pulse rounded bg-line" />
-              <div className="mt-1.5 h-3 w-3/5 animate-pulse rounded bg-line" />
+          <li key={key} className="rounded-xl border border-line bg-card p-5">
+            <div className="flex items-start justify-between">
+              <div className="size-10 animate-pulse rounded-lg bg-line" />
             </div>
-            <div className="h-3 w-20 shrink-0 animate-pulse rounded bg-line" />
+            <div className="mt-3 h-5 w-2/3 animate-pulse rounded bg-line" />
+            <div className="mt-2 h-3 w-full animate-pulse rounded bg-line" />
+            <div className="mt-1.5 h-3 w-4/5 animate-pulse rounded bg-line" />
+            <div className="mt-4 border-t border-line/60 pt-3">
+              <div className="ml-auto h-3 w-24 animate-pulse rounded bg-line" />
+            </div>
           </li>
         ))}
       </ul>
@@ -53,7 +59,7 @@ export function NotebookRows({
 
   if (isError) {
     return (
-      <div className="py-8 text-center">
+      <div className="rounded-xl border border-line bg-card py-12 text-center">
         <p className="text-sm text-muted">{t('list.loadError')}</p>
         {onRetry !== undefined ? (
           <Button variant="ghost" className="mt-3" onClick={onRetry}>
@@ -65,19 +71,23 @@ export function NotebookRows({
   }
 
   if (items.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted">{emptyText}</p>
+    return (
+      <p className="rounded-xl border border-dashed border-line py-12 text-center text-sm text-muted">
+        {emptyText}
+      </p>
+    )
   }
 
   return (
     <>
-      <ul className="divide-y divide-line">
+      <ul className={GRID_CLASS}>
         {items.map((notebook) => (
-          <NotebookRow key={notebook.id} notebook={notebook} showOwnership={showOwnership} />
+          <NotebookCard key={notebook.id} notebook={notebook} showOwnership={showOwnership} />
         ))}
       </ul>
 
       {hasNextPage && onLoadMore !== undefined ? (
-        <div className="pt-4 text-center">
+        <div className="pt-6 text-center">
           <Button
             variant="ghost"
             disabled={isFetchingNextPage}

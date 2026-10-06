@@ -1,2 +1,2 @@
-export { NotebookRows } from './ui/NotebookRows'
-export type { NotebookRowsProps } from './ui/NotebookRows'
+export { NotebookGrid } from './ui/NotebookGrid'
+export type { NotebookGridProps } from './ui/NotebookGrid'

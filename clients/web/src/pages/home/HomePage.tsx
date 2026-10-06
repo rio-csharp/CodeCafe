@@ -19,7 +19,7 @@ import { SearchInput } from '@/features/search-notebooks'
 import { LanguageToggle } from '@/features/switch-language'
 import { ThemeToggle } from '@/features/switch-theme'
 import { Button, buttonClass, Container } from '@/shared/ui'
-import { NotebookRows } from '@/widgets/notebook-list'
+import { NotebookGrid } from '@/widgets/notebook-list'
 import { UserMenu } from '@/widgets/site-header'
 
 const SORT_OPTIONS = ['UpdatedDesc', 'CreatedDesc', 'TitleAsc'] as const satisfies readonly NotebookSort[]
@@ -76,7 +76,7 @@ export function HomePage() {
         ) : null}
       </div>
 
-      <Container width="narrow" className="relative py-16 sm:py-24">
+      <Container width="standard" className="relative py-16 sm:py-24">
         {status === 'anonymous' ? (
           <header className="pb-14">
             <p className="text-xs font-semibold tracking-[0.2em] text-accent-strong uppercase">
@@ -217,7 +217,7 @@ function MyShelf({ onCreate }: { onCreate: () => void }) {
         </select>
       </div>
 
-      <NotebookRows
+      <NotebookGrid
         items={query.data?.pages.flatMap((page) => page.items) ?? []}
         isPending={query.isPending}
         isError={query.isError}
@@ -256,12 +256,13 @@ function PublicShelf() {
     <section aria-label={t('home.publicNotebooks')}>
       <ShelfHeader title={t('home.publicNotebooks')}>
         <SortGroup sort={sort} onChange={setSort} />
-        <div className="w-52">
-          <SearchInput value={search} onChange={setSearch} />
-        </div>
       </ShelfHeader>
 
-      <NotebookRows
+      <div className="pb-5">
+        <SearchInput value={search} onChange={setSearch} />
+      </div>
+
+      <NotebookGrid
         items={query.data?.pages.flatMap((page) => page.items) ?? []}
         isPending={query.isPending}
         isError={query.isError}

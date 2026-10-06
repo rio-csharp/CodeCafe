@@ -20,5 +20,5 @@ export type {
   NotebookVisibility,
   PageTreeNode,
 } from './model/types'
-export { NotebookRow } from './ui/NotebookRow'
-export type { NotebookRowProps } from './ui/NotebookRow'
+export { NotebookCard } from './ui/NotebookCard'
+export type { NotebookCardProps } from './ui/NotebookCard'
