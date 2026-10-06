@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { logout } from '@/entities/session'
 import { buttonClass } from '@/shared/ui'
 
@@ -75,6 +76,16 @@ export function UserMenu({ displayName }: UserMenuProps) {
           aria-label={t('header.accountMenu')}
           className="absolute right-0 z-20 mt-2 min-w-40 rounded-xl border border-line bg-card p-1 shadow-lg"
         >
+          <Link
+            role="menuitem"
+            to="/trash"
+            onClick={() => {
+              setOpen(false)
+            }}
+            className="block rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {t('trash.entry')}
+          </Link>
           <button
             type="button"
             role="menuitem"

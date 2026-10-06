@@ -231,21 +231,22 @@ export function HomePage() {
           )}
         </div>
 
-        {/* On phones the corner cluster hides; this row takes over. */}
+        {/* On phones the corner cluster hides; create becomes a floating button
+            and trash moves into the account menu. */}
         {signedIn ? (
-          <div className="mt-8 flex items-center justify-center gap-3 sm:hidden">
-            <Button
-              variant="primary"
-              onClick={() => {
-                setCreateOpen(true)
-              }}
-            >
-              {t('home.newNotebook')}
-            </Button>
-            <Link to="/trash" className={buttonClass('ghost')}>
-              {t('trash.entry')}
-            </Link>
-          </div>
+          <button
+            type="button"
+            aria-label={t('home.newNotebook')}
+            title={t('home.newNotebook')}
+            onClick={() => {
+              setCreateOpen(true)
+            }}
+            className="fixed right-5 bottom-6 z-40 grid size-12 place-items-center rounded-full bg-accent text-card shadow-lg transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong sm:hidden"
+          >
+            <svg viewBox="0 0 16 16" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
+          </button>
         ) : null}
       </Container>
 
