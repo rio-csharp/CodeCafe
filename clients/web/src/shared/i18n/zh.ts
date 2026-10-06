@@ -86,4 +86,12 @@ export const zh = {
     body: '这个页面出了点问题，重新加载再点一次。',
     reload: '重新加载',
   },
+  reader: {
+    contents: '目录',
+    toggleBranch: '展开或收起「{{title}}」的子页面',
+    notebookMissing: '这个笔记本不存在，或者它还没公开',
+    pageMissing: '这一页找不到了',
+    backHome: '回首页',
+    emptyNotebook: '这本菜单还是空白',
+  },
 }

@@ -86,4 +86,12 @@ export const en = {
     body: 'Something broke on this page. Reload to order again.',
     reload: 'Reload',
   },
+  reader: {
+    contents: 'Contents',
+    toggleBranch: 'Toggle the subsections of {{title}}',
+    notebookMissing: "This notebook doesn't exist, or it isn't public yet.",
+    pageMissing: 'This page is missing',
+    backHome: 'Back home',
+    emptyNotebook: "Nothing's been written on this menu yet",
+  },
 }

@@ -17,6 +17,19 @@
   --color-band: #4a382a; /* footer block */
   --color-band-ink: #faf6f0; /* text on band */
 
+  /* Status palette: callouts, colour marks and highlights. Every `-soft` pairs
+     with its non-soft partner at >= 4.5:1, in both themes. */
+  --color-accent-soft: #fbf1e4; /* primary variant surface */
+  --color-success: #376b48;
+  --color-success-soft: #e4efe6;
+  --color-danger: #a1433a;
+  --color-danger-soft: #f7e6e2;
+  --color-warning: #8f5f1c;
+  --color-warning-soft: #f6ead3;
+  --color-info: #3d6a8a;
+  --color-info-soft: #e3edf6;
+  --color-muted-soft: #f4efe8;
+
   --font-display: 'Fraunces Variable', Georgia, serif;
   --font-body: 'Inter Variable', system-ui, sans-serif;
 }
@@ -36,6 +49,17 @@
     --color-line: #38342e;
     --color-band: #25211c;
     --color-band-ink: #eeeae4;
+
+    --color-accent-soft: #2b1f16;
+    --color-success: #8fc79b;
+    --color-success-soft: #1c2a20;
+    --color-danger: #e39b90;
+    --color-danger-soft: #2e1c19;
+    --color-warning: #e0b169;
+    --color-warning-soft: #2c2318;
+    --color-info: #8fb8dc;
+    --color-info-soft: #182430;
+    --color-muted-soft: #232019;
 
     color-scheme: dark;
   }

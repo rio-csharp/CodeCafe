@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { listNotebooks } from '@/entities/notebook'
 import type { NotebookSummary } from '@/entities/notebook'
@@ -36,7 +37,9 @@ function renderCatalog() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <NotebookCatalog search="" />
+      <MemoryRouter>
+        <NotebookCatalog search="" />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
 }

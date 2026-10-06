@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router'
 import { describe, expect, it } from 'vitest'
 import type { NotebookSummary } from '../model/types'
 import { NotebookCard } from './NotebookCard'
@@ -15,9 +16,17 @@ const NOTEBOOK: NotebookSummary = {
   updatedAtUtc: '2026-01-07T12:00:00.000Z',
 }
 
+function renderCard(notebook: NotebookSummary = NOTEBOOK) {
+  return render(
+    <MemoryRouter>
+      <NotebookCard notebook={notebook} />
+    </MemoryRouter>,
+  )
+}
+
 describe('NotebookCard', () => {
   it('renders the title, tags and page count', () => {
-    render(<NotebookCard notebook={NOTEBOOK} />)
+    renderCard()
 
     expect(screen.getByRole('heading', { level: 3, name: 'Espresso Notes' })).toBeInTheDocument()
     expect(screen.getByText('coffee')).toBeInTheDocument()
@@ -25,14 +34,23 @@ describe('NotebookCard', () => {
     expect(screen.getByText('3 pages')).toBeInTheDocument()
   })
 
+  it('links the whole card to the notebook reader', () => {
+    renderCard()
+
+    expect(screen.getByRole('link', { name: /Espresso Notes/ })).toHaveAttribute(
+      'href',
+      '/notebooks/espresso-notes',
+    )
+  })
+
   it('omits the description when it is null', () => {
-    render(<NotebookCard notebook={{ ...NOTEBOOK, description: null }} />)
+    renderCard({ ...NOTEBOOK, description: null })
 
     expect(screen.queryByText('Short and strong.')).not.toBeInTheDocument()
   })
 
   it('renders the description when it is present', () => {
-    render(<NotebookCard notebook={NOTEBOOK} />)
+    renderCard()
 
     expect(screen.getByText('Short and strong.')).toBeInTheDocument()
   })

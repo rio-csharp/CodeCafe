@@ -6,3 +6,6 @@ export const LoginPage = lazy(async () => ({ default: (await import('@/pages/log
 export const RegisterPage = lazy(async () => ({
   default: (await import('@/pages/register')).RegisterPage,
 }))
+export const NotebookReaderPage = lazy(async () => ({
+  default: (await import('@/pages/notebook')).NotebookReaderPage,
+}))

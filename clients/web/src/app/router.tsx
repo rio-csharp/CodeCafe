@@ -1,5 +1,5 @@
 import { createBrowserRouter } from 'react-router'
-import { HomePage, LoginPage, RegisterPage } from './lazy-pages'
+import { HomePage, LoginPage, NotebookReaderPage, RegisterPage } from './lazy-pages'
 import { LazyPage, RouteErrorBoundary } from './route-boundary'
 
 export const router = createBrowserRouter([
@@ -27,6 +27,16 @@ export const router = createBrowserRouter([
     element: (
       <LazyPage>
         <RegisterPage />
+      </LazyPage>
+    ),
+  },
+  {
+    // The splat is the page path; it matches the bare notebook root too.
+    path: '/notebooks/:slug/*',
+    errorElement: <RouteErrorBoundary />,
+    element: (
+      <LazyPage>
+        <NotebookReaderPage />
       </LazyPage>
     ),
   },

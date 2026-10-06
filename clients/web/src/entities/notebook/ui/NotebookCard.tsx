@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { formatRelativeTime } from '../lib/formatRelativeTime'
 import type { NotebookSummary } from '../model/types'
@@ -6,15 +7,15 @@ export interface NotebookCardProps {
   notebook: NotebookSummary
 }
 
-/**
- * Plain `<article>` in M1 — the reader page is a later milestone, so there is
- * nothing to link to yet.
- */
+/** Whole-card link into the reader; the focus ring sits on the card itself. */
 export function NotebookCard({ notebook }: NotebookCardProps) {
   const { t, i18n } = useTranslation()
 
   return (
-    <article className="flex h-full flex-col gap-3 rounded-2xl border border-line bg-card p-5 transition-shadow hover:shadow-md hover:ring-1 hover:ring-accent">
+    <Link
+      to={`/notebooks/${encodeURIComponent(notebook.slug)}`}
+      className="flex h-full flex-col gap-3 rounded-2xl border border-line bg-card p-5 transition-shadow hover:shadow-md hover:ring-1 hover:ring-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+    >
       <h3 className="font-display text-xl leading-snug text-ink">{notebook.title}</h3>
 
       {notebook.description === null ? null : (
@@ -42,6 +43,6 @@ export function NotebookCard({ notebook }: NotebookCardProps) {
           })}
         </time>
       </footer>
-    </article>
+    </Link>
   )
 }
