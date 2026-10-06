@@ -67,6 +67,20 @@ public sealed class ListPublicNotebooksQueryHandlerTests
 
     private static ListPublicNotebooksQuery Query() => new(null, null, null, null);
 
+    [Fact]
+    public async Task Handle_AttributesEachNotebookToItsOwnersDisplayName()
+    {
+        var owner = SeedUser("owner@example.com");
+        var notebook = SeedNotebook(owner, "brew-guide", NotebookVisibility.Public);
+        var repository = new StubNotebookRepository { notebook };
+        var users = new StubUserRepository { owner };
+        var handler = new ListPublicNotebooksQueryHandler(repository, new StubPageRepository(), users);
+
+        var result = await handler.Handle(Query(), CancellationToken.None);
+
+        Assert.Equal("User", Assert.Single(result.Value!.Items).OwnerDisplayName);
+    }
+
     private static User SeedUser(string email) => User.Create(email, email, "User", "hash");
 
     private static Notebook SeedNotebook(
@@ -80,6 +94,6 @@ public sealed class ListPublicNotebooksQueryHandlerTests
     {
         var repository = new StubNotebookRepository();
         repository.AddRange(notebooks);
-        return new ListPublicNotebooksQueryHandler(repository, new StubPageRepository());
+        return new ListPublicNotebooksQueryHandler(repository, new StubPageRepository(), new StubUserRepository());
     }
 }

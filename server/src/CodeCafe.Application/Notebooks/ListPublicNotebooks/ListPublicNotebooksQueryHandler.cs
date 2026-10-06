@@ -1,3 +1,4 @@
+using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Notebooks.Abstractions;
@@ -9,7 +10,8 @@ namespace CodeCafe.Application.Notebooks.ListPublicNotebooks;
 
 public sealed class ListPublicNotebooksQueryHandler(
     INotebookRepository notebooks,
-    IPageRepository pages
+    IPageRepository pages,
+    IUserRepository users
 ) : IQueryHandler<ListPublicNotebooksQuery, Result<PagedResult<NotebookSummaryDto>>>
 {
     private const int DefaultPageSize = 20;
@@ -43,6 +45,8 @@ public sealed class ListPublicNotebooksQueryHandler(
             cancellationToken
         );
 
+        var ownerNames = await OwnerNames(fetched, users, cancellationToken);
+
         var items = fetched
             .Select(notebook => new NotebookSummaryDto(
                 notebook.Id,
@@ -53,10 +57,22 @@ public sealed class ListPublicNotebooksQueryHandler(
                 false,
                 notebook.Tags.ToList(),
                 pageCounts.GetValueOrDefault(notebook.Id),
-                notebook.UpdatedAtUtc
+                notebook.UpdatedAtUtc,
+                ownerNames.GetValueOrDefault(notebook.OwnerId, string.Empty)
             ))
             .ToList();
 
         return Result.Success(new PagedResult<NotebookSummaryDto>(items, page, pageSize, totalCount));
+    }
+
+    internal static async Task<Dictionary<Guid, string>> OwnerNames(
+        IReadOnlyList<Domain.Notebooks.Notebook> notebooks,
+        IUserRepository users,
+        CancellationToken cancellationToken
+    )
+    {
+        var ownerIds = notebooks.Select(notebook => notebook.OwnerId).Distinct().ToList();
+        var owners = await users.FindByIdsAsync(ownerIds, cancellationToken);
+        return owners.ToDictionary(user => user.Id, user => user.DisplayName);
     }
 }

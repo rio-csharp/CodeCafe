@@ -10,4 +10,6 @@ public sealed record NotebookSummaryDto(
     bool IsFavorite,
     IReadOnlyList<string> Tags,
     int PageCount,
-    DateTimeOffset UpdatedAtUtc);
+    DateTimeOffset UpdatedAtUtc,
+    // Attribution matters on a sharing product: every card shows whose book this is.
+    string OwnerDisplayName);

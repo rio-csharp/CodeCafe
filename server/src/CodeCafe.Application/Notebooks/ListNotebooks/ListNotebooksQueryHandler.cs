@@ -1,4 +1,5 @@
 using CodeCafe.Application.Auth;
+using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
@@ -11,7 +12,8 @@ namespace CodeCafe.Application.Notebooks.ListNotebooks;
 public sealed class ListNotebooksQueryHandler(
     ICurrentUserAccessor currentUserAccessor,
     INotebookRepository notebooks,
-    IPageRepository pages
+    IPageRepository pages,
+    IUserRepository users
 ) : IQueryHandler<ListNotebooksQuery, Result<PagedResult<NotebookSummaryDto>>>
 {
     private const int DefaultPageSize = 20;
@@ -55,6 +57,12 @@ public sealed class ListNotebooksQueryHandler(
             cancellationToken
         );
 
+        var ownerNames = await ListPublicNotebooks.ListPublicNotebooksQueryHandler.OwnerNames(
+            fetched,
+            users,
+            cancellationToken
+        );
+
         var items = fetched
             .Select(notebook => new NotebookSummaryDto(
                 notebook.Id,
@@ -65,7 +73,8 @@ public sealed class ListNotebooksQueryHandler(
                 favoriteIds.Contains(notebook.Id),
                 notebook.Tags.ToList(),
                 pageCounts.GetValueOrDefault(notebook.Id),
-                notebook.UpdatedAtUtc
+                notebook.UpdatedAtUtc,
+                ownerNames.GetValueOrDefault(notebook.OwnerId, string.Empty)
             ))
             .ToList();
 

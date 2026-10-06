@@ -41,7 +41,8 @@ public sealed class ListNotebooksQueryHandlerTests
         var handler = new ListNotebooksQueryHandler(
             new StubCurrentUserAccessor(new CurrentUser(owner.Id)),
             repository,
-            new StubPageRepository()
+            new StubPageRepository(),
+            new StubUserRepository()
         );
 
         var result = await handler.Handle(Query() with { IsFavorite = true }, CancellationToken.None);
@@ -65,7 +66,8 @@ public sealed class ListNotebooksQueryHandlerTests
         var handler = new ListNotebooksQueryHandler(
             new StubCurrentUserAccessor(new CurrentUser(owner.Id)),
             repository,
-            new StubPageRepository()
+            new StubPageRepository(),
+            new StubUserRepository()
         );
 
         var result = await handler.Handle(Query() with { IsFavorite = true }, CancellationToken.None);
@@ -140,7 +142,8 @@ public sealed class ListNotebooksQueryHandlerTests
         var handler = new ListNotebooksQueryHandler(
             new StubCurrentUserAccessor(null),
             new StubNotebookRepository(),
-            new StubPageRepository()
+            new StubPageRepository(),
+            new StubUserRepository()
         );
 
         var result = await handler.Handle(Query(), CancellationToken.None);
@@ -228,7 +231,8 @@ public sealed class ListNotebooksQueryHandlerTests
         return new ListNotebooksQueryHandler(
             new StubCurrentUserAccessor(new CurrentUser(currentUser.Id)),
             repository,
-            pages ?? new StubPageRepository()
+            pages ?? new StubPageRepository(),
+            new StubUserRepository()
         );
     }
 }
