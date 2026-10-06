@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -62,10 +62,12 @@ describe('NotebookSettingsDialog', () => {
     vi.mocked(updateNotebook).mockResolvedValue(NOTEBOOK)
     renderDialog()
 
-    const titleInput = await screen.findByDisplayValue('Espresso Notes')
+    await screen.findByDisplayValue('Espresso Notes')
+    const basics = screen.getByRole('region', { name: 'Basics' })
+    const titleInput = within(basics).getByDisplayValue('Espresso Notes')
     await user.clear(titleInput)
     await user.type(titleInput, 'Filter Notes')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await user.click(within(basics).getByRole('button', { name: 'Save' }))
 
     expect(updateNotebook).toHaveBeenCalledWith(
       'espresso-notes',
