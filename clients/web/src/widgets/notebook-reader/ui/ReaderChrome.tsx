@@ -8,6 +8,9 @@ export interface ReaderChromeProps {
   onRefresh: () => void
   wide: boolean
   onToggleWide: () => void
+  /** Shown only when the caller also passes onEdit. */
+  canEdit?: boolean
+  onEdit?: () => void
 }
 
 /**
@@ -15,7 +18,7 @@ export interface ReaderChromeProps {
  * title being read plus small labelled pills (refresh, copy link, width).
  * Labels hide on phones, where icons alone carry the meaning.
  */
-export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide }: ReaderChromeProps) {
+export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide, canEdit = false, onEdit }: ReaderChromeProps) {
   const { t } = useTranslation()
 
   return (
@@ -23,6 +26,12 @@ export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide 
       <h1 className="min-w-0 truncate text-lg font-semibold text-ink">{title}</h1>
 
       <div className="flex shrink-0 items-center gap-2">
+        {canEdit && onEdit !== undefined ? (
+          <ChromePill label={t('reader.edit')} onClick={onEdit}>
+            <path d="M11.7 2.9a1.4 1.4 0 0 1 2 2L6 12.6l-2.8.8.8-2.8Z" />
+          </ChromePill>
+        ) : null}
+
         <ChromePill
           label={t('reader.refresh')}
           onClick={onRefresh}

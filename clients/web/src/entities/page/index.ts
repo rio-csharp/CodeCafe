@@ -1,4 +1,8 @@
 export { getPageByPath } from './api/getPageByPath'
 export type { GetPageByPathParams } from './api/getPageByPath'
+export { createPage } from './api/createPage'
+export type { CreatePageParams } from './api/createPage'
+export { updatePage } from './api/updatePage'
+export type { UpdatePageData } from './api/updatePage'
 export { pageKeys } from './model/types'
 export type { PageDetails } from './model/types'

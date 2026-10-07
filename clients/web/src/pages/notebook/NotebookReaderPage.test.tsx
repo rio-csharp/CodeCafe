@@ -5,7 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NotebookDetails, PageTreeNode } from '@/entities/notebook'
 import { getNotebookDetails, getNotebookTree } from '@/entities/notebook'
-import { getPageByPath } from '@/entities/page'
+import { createPage, getPageByPath, updatePage } from '@/entities/page'
 import type { PageDetails } from '@/entities/page'
 import { ApiError } from '@/shared/api'
 import { NotebookReaderPage } from './NotebookReaderPage'
@@ -19,6 +19,8 @@ vi.mock('@/entities/notebook', async (importOriginal) => ({
 vi.mock('@/entities/page', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/page')>()),
   getPageByPath: vi.fn(),
+  updatePage: vi.fn(),
+  createPage: vi.fn(),
 }))
 
 const NOTEBOOK: NotebookDetails = {
@@ -131,6 +133,8 @@ beforeEach(() => {
   vi.mocked(getNotebookDetails).mockReset()
   vi.mocked(getNotebookTree).mockReset()
   vi.mocked(getPageByPath).mockReset()
+  vi.mocked(updatePage).mockReset()
+  vi.mocked(createPage).mockReset()
   vi.mocked(getNotebookDetails).mockResolvedValue(NOTEBOOK)
   vi.mocked(getNotebookTree).mockResolvedValue(TREE)
 })
@@ -278,6 +282,78 @@ describe('NotebookReaderPage', () => {
       await screen.findByText("Nothing's been written on this menu yet"),
     ).toBeInTheDocument()
     expect(vi.mocked(getPageByPath)).not.toHaveBeenCalled()
+  })
+
+  it('lets a writer rename the page from the chrome', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockResolvedValue(page('Grinding finer', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.clear(title)
+    await user.type(title, 'Grinding finer')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).toHaveBeenCalledWith('page-1', { title: 'Grinding finer' })
+    // Saved and back in reading mode, with the reader's own chrome restored.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
+  })
+
+  it('hides the edit pill from readers without write access', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('creates a page from the tree header and lands in edit mode', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled'))
+    vi.mocked(createPage).mockResolvedValue(page('Untitled', '/untitled'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'New page' }))
+
+    expect(vi.mocked(createPage)).toHaveBeenCalledWith({
+      slug: 'espresso-notes',
+      title: 'Untitled',
+      parentPath: null,
+    })
+    // Straight into edit mode on the new page, title ready to be named.
+    expect(await screen.findByRole('textbox', { name: 'Page title' })).toHaveValue('Untitled')
+  })
+
+  it('creates a subpage under a tree node', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/grinding/untitled'))
+    vi.mocked(createPage).mockResolvedValue(page('Untitled', '/grinding/untitled'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'New subpage under Grinding' }))
+
+    expect(vi.mocked(createPage)).toHaveBeenCalledWith({
+      slug: 'espresso-notes',
+      title: 'Untitled',
+      parentPath: '/grinding',
+    })
+    expect(await screen.findByRole('textbox', { name: 'Page title' })).toHaveValue('Untitled')
+  })
+
+  it('hides page creation from readers without write access', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    expect(screen.queryByRole('button', { name: 'New page' })).not.toBeInTheDocument()
   })
 
   it('skips archived pages when picking the first page', async () => {

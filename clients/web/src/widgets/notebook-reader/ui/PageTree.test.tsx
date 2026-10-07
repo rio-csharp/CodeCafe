@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { PageTreeNode } from '@/entities/notebook'
 import { PageTree } from './PageTree'
 
@@ -120,6 +120,26 @@ describe('PageTree', () => {
 
     expect(screen.getByRole('link', { name: 'Setup' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Guide' })).not.toHaveAttribute('aria-current')
+  })
+
+  it('offers subpage creation on each row when the handler is present', async () => {
+    const user = userEvent.setup()
+    const onAddChild = vi.fn()
+    render(
+      <MemoryRouter>
+        <PageTree slug="book" roots={ROOTS} onAddChild={onAddChild} />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'New subpage under Guide' }))
+
+    expect(onAddChild).toHaveBeenCalledWith('/guide')
+  })
+
+  it('hides the subpage buttons without a handler', () => {
+    renderTree()
+
+    expect(screen.queryByRole('button', { name: /New subpage/ })).not.toBeInTheDocument()
   })
 
   it('compares paths without caring about leading slashes', () => {

@@ -70,4 +70,18 @@ describe('ReaderChrome', () => {
       expect(screen.getByRole('button', { name: 'reader.linkCopied' })).toBeInTheDocument()
     })
   })
+
+  it('hides the edit pill from readers and offers it to writers', async () => {
+    const user = userEvent.setup()
+    const onEdit = vi.fn()
+    const { unmount } = renderChrome()
+
+    expect(screen.queryByRole('button', { name: 'reader.edit' })).not.toBeInTheDocument()
+
+    unmount()
+    renderChrome({ canEdit: true, onEdit })
+    await user.click(screen.getByRole('button', { name: 'reader.edit' }))
+
+    expect(onEdit).toHaveBeenCalledOnce()
+  })
 })

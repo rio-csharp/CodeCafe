@@ -25,6 +25,11 @@ export interface NotebookReaderLayoutProps {
   rightTabs?: readonly RightPanelTab[]
   /** The open page's title; the sticky in-text chrome only shows with one. */
   pageTitle?: string | null
+  /** Edit affordance in the chrome; hidden while null. */
+  canEdit?: boolean
+  onEdit?: () => void
+  /** Page creation from the tree header (root) or a node (subpage); writers only. */
+  onAddPage?: (parentPath?: string) => void
   refreshing?: boolean
   onRefresh?: () => void
   /** Linear reading order neighbours; the mobile toolbar shows them. */
@@ -47,6 +52,9 @@ export function NotebookReaderLayout({
   activePath = null,
   rightTabs = [],
   pageTitle = null,
+  canEdit = false,
+  onEdit,
+  onAddPage,
   refreshing = false,
   onRefresh,
   prevPage = null,
@@ -126,6 +134,21 @@ export function NotebookReaderLayout({
             </Link>
             <p className="text-[11px] text-muted">{t('reader.pageCount', { count: notebook.pageCount })}</p>
           </div>
+          {canEdit && onAddPage !== undefined ? (
+            <button
+              type="button"
+              aria-label={t('reader.addPage')}
+              title={t('reader.addPage')}
+              onClick={() => {
+                onAddPage()
+              }}
+              className="grid size-8 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-muted-soft hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                <path d="M8 3.5v9M3.5 8h9" />
+              </svg>
+            </button>
+          ) : null}
           {mobilePanel === 'tree' ? <DrawerCloseButton ref={drawerCloseRef} onClose={closeDrawer} /> : null}
         </div>
         <div className="border-b border-line px-3 py-2">
@@ -160,6 +183,13 @@ export function NotebookReaderLayout({
             roots={roots}
             activePath={activePath}
             filter={treeQuery}
+            onAddChild={
+              canEdit && onAddPage !== undefined
+                ? (parentPath) => {
+                    onAddPage(parentPath)
+                  }
+                : undefined
+            }
             onNavigate={closeDrawer}
           />
         </div>
@@ -183,6 +213,8 @@ export function NotebookReaderLayout({
               onToggleWide={() => {
                 setContentWide((wide) => !wide)
               }}
+              canEdit={canEdit}
+              onEdit={onEdit}
             />
           ) : null}
           {children}

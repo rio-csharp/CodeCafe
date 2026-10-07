@@ -1,14 +1,15 @@
-import { useEffect, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Navigate, useParams } from 'react-router'
+import { Navigate, useNavigate, useParams } from 'react-router'
 import { BlockList, assembleBlockTree, extractOutline } from '@/entities/block'
 import type { BlockNode } from '@/entities/block'
 import { flattenPages, getNotebookDetails, getNotebookTree, notebookKeys } from '@/entities/notebook'
-import { getPageByPath, pageKeys } from '@/entities/page'
+import { createPage, getPageByPath, pageKeys, updatePage } from '@/entities/page'
 import type { PageDetails } from '@/entities/page'
 import { ApiError } from '@/shared/api'
+import { PageEditor } from '@/widgets/page-editor'
 import {
   ContentSkeleton,
   EmptyNotebookState,
@@ -66,6 +67,40 @@ export function NotebookReaderPage() {
   const notebookTitle = details.data?.title
   const pageTitle = page.data?.title
   const brand = t('brand.name')
+
+  const queryClient = useQueryClient()
+  // The path of the page being edited; any other pagePath means "not editing".
+  // Deriving it this way keeps navigation from needing a reset effect.
+  const [editingPath, setEditingPath] = useState<string | null>(null)
+  const editing = editingPath !== null && editingPath === pagePath
+
+  const saveTitle = useMutation({
+    mutationFn: ({ pageId, title }: { pageId: string; title: string }) =>
+      updatePage(pageId, { title }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: pageKeys.all })
+      void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
+      setEditingPath(null)
+    },
+  })
+
+  const navigate = useNavigate()
+  // New pages open straight in edit mode so the title can be named right away.
+  const addPage = useMutation({
+    mutationFn: (parentPath: string | null) =>
+      createPage({ slug, title: t('editor.untitled'), parentPath }),
+    onSuccess: (created) => {
+      void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
+      setEditingPath(normalizePagePath(created.path))
+      void navigate(toPageHref(slug, created.path))
+    },
+  })
+
+  const handleAddPage = (parentPath?: string) => {
+    if (!addPage.isPending) {
+      addPage.mutate(parentPath ?? null)
+    }
+  }
 
   // One assembly feeds both the article and the outline, so they cannot drift.
   const nodes = useMemo(
@@ -127,7 +162,12 @@ export function NotebookReaderPage() {
     }
 
     return (
-      <NotebookReaderLayout notebook={notebook} roots={roots}>
+      <NotebookReaderLayout
+        notebook={notebook}
+        roots={roots}
+        canEdit={notebook.canWrite}
+        onAddPage={notebook.canWrite ? handleAddPage : undefined}
+      >
         <EmptyNotebookState />
       </NotebookReaderLayout>
     )
@@ -146,7 +186,12 @@ export function NotebookReaderPage() {
           content: <PageOutline headings={outline} />,
         },
       ]}
-      pageTitle={page.data?.title ?? null}
+      pageTitle={editing ? null : (page.data?.title ?? null)}
+      canEdit={notebook.canWrite}
+      onEdit={() => {
+        setEditingPath(pagePath)
+      }}
+      onAddPage={notebook.canWrite ? handleAddPage : undefined}
       prevPage={prevPage}
       nextPage={nextPage}
       refreshing={page.isRefetching}
@@ -154,7 +199,22 @@ export function NotebookReaderPage() {
         void page.refetch()
       }}
     >
-      <PageBody page={page} nodes={nodes} />
+      {editing && page.data !== undefined ? (
+        <PageEditor
+          page={page.data}
+          saving={saveTitle.isPending}
+          error={saveTitle.isError ? t('editor.saveFailed') : null}
+          onSave={(title) => {
+            saveTitle.mutate({ pageId: page.data.id, title })
+          }}
+          onCancel={() => {
+            saveTitle.reset()
+            setEditingPath(null)
+          }}
+        />
+      ) : (
+        <PageBody page={page} nodes={nodes} />
+      )}
     </NotebookReaderLayout>
   )
 }

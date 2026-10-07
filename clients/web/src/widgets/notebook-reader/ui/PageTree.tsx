@@ -12,11 +12,13 @@ export interface PageTreeProps {
   activePath?: string | null
   /** Title substring; non-empty swaps the tree for flat search results. */
   filter?: string
+  /** Per-node subpage creation; writers only, hidden otherwise. */
+  onAddChild?: (parentPath: string) => void
   /** Lets the mobile drawer close itself once a page is chosen. */
   onNavigate?: () => void
 }
 
-export function PageTree({ slug, roots, activePath = null, filter = '', onNavigate }: PageTreeProps) {
+export function PageTree({ slug, roots, activePath = null, filter = '', onAddChild, onNavigate }: PageTreeProps) {
   const { t } = useTranslation()
   const nodes = useMemo(() => visibleTree(roots), [roots])
   const expanded = useMemo(() => ancestorPathsOf(roots, activePath), [roots, activePath])
@@ -48,6 +50,7 @@ export function PageTree({ slug, roots, activePath = null, filter = '', onNaviga
             active={active}
             expanded={expanded}
             depth={0}
+            onAddChild={onAddChild}
             onNavigate={onNavigate}
           />
         ))}
@@ -114,10 +117,11 @@ interface TreeItemProps {
   active: string | null
   expanded: ReadonlySet<string>
   depth: number
+  onAddChild?: (parentPath: string) => void
   onNavigate?: () => void
 }
 
-function TreeItem({ slug, node, active, expanded, depth, onNavigate }: TreeItemProps) {
+function TreeItem({ slug, node, active, expanded, depth, onAddChild, onNavigate }: TreeItemProps) {
   const { t } = useTranslation()
   const self = normalizePagePath(node.path)
   const hasChildren = node.children.length > 0
@@ -129,7 +133,7 @@ function TreeItem({ slug, node, active, expanded, depth, onNavigate }: TreeItemP
   return (
     <li>
       <div
-        className="flex items-center gap-1"
+        className="group flex items-center gap-1"
         style={{ paddingLeft: `${depth * 0.75}rem` }}
       >
         {hasChildren ? (
@@ -168,6 +172,22 @@ function TreeItem({ slug, node, active, expanded, depth, onNavigate }: TreeItemP
         >
           {node.title}
         </Link>
+
+        {onAddChild !== undefined ? (
+          <button
+            type="button"
+            aria-label={t('reader.addSubpage', { title: node.title })}
+            title={t('reader.addSubpage', { title: node.title })}
+            onClick={() => {
+              onAddChild(node.path)
+            }}
+            className="grid size-5 shrink-0 place-items-center rounded text-muted transition-all hover:bg-accent-soft hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          >
+            <svg viewBox="0 0 16 16" className="size-3" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+              <path d="M8 3.5v9M3.5 8h9" />
+            </svg>
+          </button>
+        ) : null}
       </div>
 
       {isOpen ? (
@@ -180,6 +200,7 @@ function TreeItem({ slug, node, active, expanded, depth, onNavigate }: TreeItemP
               active={active}
               expanded={expanded}
               depth={depth + 1}
+              onAddChild={onAddChild}
               onNavigate={onNavigate}
             />
           ))}

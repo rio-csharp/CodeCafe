@@ -194,7 +194,18 @@ export const en = {
     copyLink: 'Copy link',
     linkCopied: 'Copied',
     outline: 'Outline',
+    edit: 'Edit',
+    addPage: 'New page',
+    addSubpage: 'New subpage under {{title}}',
     noHeadings: 'No headings yet',
     emptyNotebook: "Nothing's been written on this menu yet",
+  },
+  editor: {
+    save: 'Save',
+    saving: 'Saving…',
+    cancel: 'Cancel',
+    titlePlaceholder: 'Page title',
+    untitled: 'Untitled',
+    saveFailed: 'Could not save. Please try again.',
   },
 }

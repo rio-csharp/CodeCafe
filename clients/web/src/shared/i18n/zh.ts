@@ -190,7 +190,18 @@ export const zh = {
     copyLink: '复制链接',
     linkCopied: '已复制',
     outline: '大纲',
+    edit: '编辑',
+    addPage: '新建页面',
+    addSubpage: '在「{{title}}」下新建子页面',
     noHeadings: '还没有小标题',
     emptyNotebook: '这本菜单还是空白',
+  },
+  editor: {
+    save: '保存',
+    saving: '保存中…',
+    cancel: '取消',
+    titlePlaceholder: '页面标题',
+    untitled: '未命名',
+    saveFailed: '保存失败，请重试。',
   },
 }
