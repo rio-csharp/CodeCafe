@@ -91,6 +91,7 @@ export const en = {
   favorite: {
     add: 'Favorite',
     remove: 'Unfavorite',
+    error: 'Could not update favorite. Please try again.',
   },
   list: {
     pageCount: '{{count}} pages',

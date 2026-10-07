@@ -91,6 +91,7 @@ export const zh = {
   favorite: {
     add: '收藏',
     remove: '取消收藏',
+    error: '更新收藏失败，请重试。',
   },
   list: {
     pageCount: '{{count}} 页',
