@@ -19,8 +19,8 @@ export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide 
   const { t } = useTranslation()
 
   return (
-    <div className="sticky top-0 z-10 -mx-4 -mt-6 mb-4 flex items-center justify-between gap-3 bg-canvas/95 px-4 py-2 backdrop-blur-sm sm:-mx-8 sm:px-8 xl:-mx-12 xl:px-12">
-      <h1 className="min-w-0 truncate text-xl font-semibold text-ink">{title}</h1>
+    <div className="sticky top-0 z-10 -mx-4 -mt-6 mb-4 flex items-center justify-between gap-3 bg-card/95 px-4 py-2 backdrop-blur-sm sm:-mx-8 sm:px-8 xl:-mx-12 xl:px-12">
+      <h1 className="min-w-0 truncate text-lg font-semibold text-ink">{title}</h1>
 
       <div className="flex shrink-0 items-center gap-2">
         <ChromePill

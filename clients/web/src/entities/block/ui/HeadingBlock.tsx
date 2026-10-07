@@ -23,10 +23,10 @@ export function HeadingBlock({ content, id }: HeadingBlockProps) {
 }
 
 const HEADING_CLASS = [
-  'mt-2 text-3xl',
   'mt-2 text-2xl',
   'mt-2 text-xl',
-  'text-lg',
+  'mt-2 text-lg',
   'text-base',
-  'text-sm uppercase tracking-wide text-muted',
+  'text-sm',
+  'text-xs uppercase tracking-wide text-muted',
 ] as const

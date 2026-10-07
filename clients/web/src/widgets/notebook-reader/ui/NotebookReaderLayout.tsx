@@ -101,7 +101,7 @@ export function NotebookReaderLayout({
           mobilePanel === 'tree'
             ? 'fixed inset-y-0 left-0 z-40 flex w-[280px] shadow-2xl'
             : 'hidden'
-        } min-h-0 flex-col border-r border-line bg-card lg:static lg:z-auto lg:flex lg:w-auto lg:shadow-none`}
+        } min-h-0 flex-col border-r border-line bg-canvas lg:static lg:z-auto lg:flex lg:w-auto lg:shadow-none`}
       >
         <div className="flex items-center gap-2 border-b border-line px-3 py-3">
           <Link
@@ -160,7 +160,7 @@ export function NotebookReaderLayout({
           mobilePanel === 'right'
             ? 'fixed inset-y-0 right-0 z-40 flex w-[300px] shadow-2xl'
             : 'hidden'
-        } min-h-0 flex-col border-l border-line bg-card lg:static lg:z-auto lg:flex lg:w-auto lg:shadow-none`}
+        } min-h-0 flex-col border-l border-line bg-canvas lg:static lg:z-auto lg:flex lg:w-auto lg:shadow-none`}
       >
         {mobilePanel === 'right' ? (
           <div className="flex justify-end border-b border-line px-2 py-1.5 lg:hidden">
@@ -282,21 +282,24 @@ function DrawerCloseButton({ ref, onClose }: { ref: React.Ref<HTMLButtonElement>
 export function ReaderSkeletonLayout() {
   return (
     <div className="grid h-dvh grid-cols-1 bg-canvas lg:grid-cols-[280px_minmax(0,1fr)_300px]">
-      <aside className="hidden min-h-0 flex-col border-r border-line bg-card lg:flex">
+      <aside className="hidden min-h-0 flex-col border-r border-line bg-canvas lg:flex">
         <div className="border-b border-line px-3 py-3">
           <div className="h-4 w-2/3 animate-pulse rounded bg-line" />
           <div className="mt-1.5 h-2.5 w-1/4 animate-pulse rounded bg-line" />
+        </div>
+        <div className="border-b border-line px-3 py-2">
+          <div className="h-[34px] animate-pulse rounded-md bg-line" />
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           <TreeSkeleton />
         </div>
       </aside>
-      <main className="min-h-0 min-w-0 overflow-y-auto">
+      <main className="min-h-0 min-w-0 overflow-y-auto bg-card">
         <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-8 xl:px-12">
           <ContentSkeleton />
         </div>
       </main>
-      <aside className="hidden border-l border-line bg-card lg:block" />
+      <aside className="hidden border-l border-line bg-canvas lg:block" />
     </div>
   )
 }

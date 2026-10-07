@@ -179,16 +179,14 @@ function PageBody({ page, nodes }: { page: UseQueryResult<PageDetails, Error>; n
     )
   }
 
-  return <PageArticle page={page.data} nodes={nodes} />
+  return <PageArticle nodes={nodes} />
 }
 
-function PageArticle({ page, nodes }: { page: PageDetails; nodes: BlockNode[] }) {
+/** The chrome already pins the title; the article starts straight at the blocks. */
+function PageArticle({ nodes }: { nodes: BlockNode[] }) {
   return (
-    <article>
-      <h2 className="text-2xl leading-tight font-semibold text-ink">{page.title}</h2>
-      <div className="mt-6">
-        <BlockList nodes={nodes} />
-      </div>
+    <article className="text-sm leading-relaxed">
+      <BlockList nodes={nodes} />
     </article>
   )
 }

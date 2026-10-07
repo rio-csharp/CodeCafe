@@ -141,7 +141,7 @@ describe('NotebookReaderPage', () => {
 
     renderReader('/notebooks/espresso-notes')
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Grinding' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
     expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
       expect.objectContaining({ slug: 'espresso-notes', path: '/grinding' }),
     )
@@ -169,7 +169,7 @@ describe('NotebookReaderPage', () => {
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
     const { container } = renderReader('/notebooks/espresso-notes/grinding')
-    await screen.findByRole('heading', { level: 2, name: 'Grinding' })
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
 
     const toggle = screen.getByRole('button', { name: 'Full width' })
     expect(toggle).toHaveAttribute('aria-pressed', 'false')
@@ -185,7 +185,7 @@ describe('NotebookReaderPage', () => {
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
     renderReader('/notebooks/espresso-notes/grinding')
-    await screen.findByRole('heading', { level: 2, name: 'Grinding' })
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
 
     expect(screen.queryByText('Brewed with ❤️ and caffeine')).not.toBeInTheDocument()
     expect(screen.queryByText("Today's Menu")).not.toBeInTheDocument()
@@ -195,7 +195,7 @@ describe('NotebookReaderPage', () => {
     vi.mocked(getPageByPath).mockResolvedValue(pageWithHeadings())
 
     renderReader('/notebooks/espresso-notes/grinding')
-    await screen.findByRole('heading', { level: 2, name: 'Grinding' })
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
 
     const outline = screen.getByRole('navigation', { name: 'Outline' })
     expect(within(outline).getByRole('link', { name: 'Beans' })).toHaveAttribute(
@@ -212,7 +212,7 @@ describe('NotebookReaderPage', () => {
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
     renderReader('/notebooks/espresso-notes/grinding')
-    await screen.findByRole('heading', { level: 2, name: 'Grinding' })
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
 
     const contentsPill = screen.getByRole('button', { name: 'Contents' })
     expect(contentsPill).toHaveAttribute('aria-pressed', 'false')
@@ -292,7 +292,7 @@ describe('NotebookReaderPage', () => {
 
     renderReader('/notebooks/espresso-notes')
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Brewing' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Brewing' })).toBeInTheDocument()
     expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/brewing' }),
     )
