@@ -110,6 +110,20 @@ public sealed class BlockPayloadsTests
     }
 
     [Fact]
+    public void ValidateAndNormalize_DomainInvariantFailure_CarriesTheReason()
+    {
+        // A bare domain is not an absolute URL; the client should be able to say so.
+        var result = Validate(
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"site","marks":[{"kind":"link","href":"codes.cafe"}]}]}"""
+        );
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(BlockErrors.InvalidBlockPayload.Code, result.Error!.Code);
+        Assert.Contains("absolute", result.Error.Message);
+    }
+
+    [Fact]
     public void ValidateAndNormalize_RejectsSpanTextWithNewline()
     {
         var result = Validate(BlockTypes.Paragraph, """{"spans":[{"text":"one\ntwo","marks":[]}]}""");

@@ -17,6 +17,14 @@ public static class BlockErrors
         ErrorKind.Validation
     );
 
+    // Deserialization and domain-invariant failures carry the underlying reason so clients can
+    // show users exactly what was rejected, e.g. a non-absolute link href.
+    public static Error InvalidBlockPayloadReason(string reason) => new(
+        "invalid_block_payload",
+        $"The block payload does not match its type's contract: {reason}",
+        ErrorKind.Validation
+    );
+
     // Writes are strict: unknown types are rejected instead of being stored opaquely.
     public static readonly Error UnsupportedBlockType = new(
         "unsupported_block_type",

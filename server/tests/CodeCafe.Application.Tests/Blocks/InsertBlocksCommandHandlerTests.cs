@@ -134,7 +134,7 @@ public sealed class InsertBlocksCommandHandlerTests
         );
 
         Assert.False(result.IsSuccess);
-        Assert.Equal(BlockErrors.InvalidBlockPayload, result.Error);
+        Assert.Equal(BlockErrors.InvalidBlockPayload.Code, result.Error!.Code);
         Assert.Empty(blocks);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }

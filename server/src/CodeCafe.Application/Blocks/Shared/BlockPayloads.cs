@@ -138,14 +138,15 @@ public static class BlockPayloads
             payload = JsonSerializer.Deserialize<TPayload>(content, PayloadJson.Options);
         }
         // Domain validation (mark constructors, Spans invariants) surfaces from the converter
-        // pipeline as JsonException or ArgumentException; both mean the payload is invalid.
-        catch (JsonException)
+        // pipeline as JsonException or ArgumentException; both mean the payload is invalid. The
+        // reason rides along so clients can say precisely what was rejected.
+        catch (JsonException exception)
         {
-            return Result.Failure<NormalizedBlockPayload>(BlockErrors.InvalidBlockPayload);
+            return Result.Failure<NormalizedBlockPayload>(BlockErrors.InvalidBlockPayloadReason(exception.Message));
         }
-        catch (ArgumentException)
+        catch (ArgumentException exception)
         {
-            return Result.Failure<NormalizedBlockPayload>(BlockErrors.InvalidBlockPayload);
+            return Result.Failure<NormalizedBlockPayload>(BlockErrors.InvalidBlockPayloadReason(exception.Message));
         }
 
         if (payload is null)
