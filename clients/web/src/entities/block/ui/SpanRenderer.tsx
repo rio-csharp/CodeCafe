@@ -1,25 +1,6 @@
 import type { ReactNode } from 'react'
-import type { MarkDto, PaletteColor, SpanDto } from '../model/types'
-
-/** Text colour per palette entry. */
-const COLOR_CLASS: Record<PaletteColor, string> = {
-  primary: 'text-accent-strong',
-  success: 'text-success',
-  danger: 'text-danger',
-  warning: 'text-warning',
-  info: 'text-info',
-  muted: 'text-muted',
-}
-
-/** Highlight background per palette entry; the ink colour stays inherited. */
-const HIGHLIGHT_CLASS: Record<PaletteColor, string> = {
-  primary: 'bg-accent-soft',
-  success: 'bg-success-soft',
-  danger: 'bg-danger-soft',
-  warning: 'bg-warning-soft',
-  info: 'bg-info-soft',
-  muted: 'bg-muted-soft',
-}
+import type { MarkDto, SpanDto } from '../model/types'
+import { SPAN_COLOR_CLASS, SPAN_HIGHLIGHT_CLASS } from './spanPalette'
 
 const CODE_CLASS =
   'rounded-sm bg-muted-soft px-1 py-0.5 font-mono text-[0.9em] text-ink'
@@ -98,13 +79,13 @@ function applyMark(content: ReactNode, mark: MarkDto, key: string): ReactNode {
       )
     case 'color':
       return (
-        <span key={key} className={COLOR_CLASS[mark.name]}>
+        <span key={key} className={SPAN_COLOR_CLASS[mark.name]}>
           {content}
         </span>
       )
     case 'highlight':
       return (
-        <span key={key} className={`${HIGHLIGHT_CLASS[mark.name]} rounded px-0.5`}>
+        <span key={key} className={`${SPAN_HIGHLIGHT_CLASS[mark.name]} rounded px-0.5`}>
           {content}
         </span>
       )

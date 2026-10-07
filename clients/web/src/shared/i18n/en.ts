@@ -206,6 +206,9 @@ export const en = {
     cancel: 'Cancel',
     titlePlaceholder: 'Page title',
     untitled: 'Untitled',
+    paragraph: 'Paragraph',
+    heading: 'Heading',
+    writePlaceholder: 'Type something…',
     saveFailed: 'Could not save. Please try again.',
   },
 }

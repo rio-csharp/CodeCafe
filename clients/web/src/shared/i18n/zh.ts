@@ -202,6 +202,9 @@ export const zh = {
     cancel: '取消',
     titlePlaceholder: '页面标题',
     untitled: '未命名',
+    paragraph: '段落',
+    heading: '标题',
+    writePlaceholder: '输入内容…',
     saveFailed: '保存失败，请重试。',
   },
 }

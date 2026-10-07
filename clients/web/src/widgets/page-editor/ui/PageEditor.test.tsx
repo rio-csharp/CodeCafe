@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { PageDetails } from '@/entities/page'
@@ -54,7 +54,7 @@ describe('PageEditor', () => {
     await user.type(title, '  Grinding finer  ')
     await user.click(screen.getByRole('button', { name: 'editor.save' }))
 
-    expect(onSave).toHaveBeenCalledWith('Grinding finer')
+    expect(onSave).toHaveBeenCalledWith('Grinding finer', [])
   })
 
   it('refuses to save a blank title', async () => {
@@ -80,12 +80,49 @@ describe('PageEditor', () => {
 
     await user.click(title)
     await user.keyboard('{Control>}{Enter}{/Control}')
-    expect(onSave).toHaveBeenCalledWith('Grinding')
+    expect(onSave).toHaveBeenCalledWith('Grinding', [])
+  })
+
+  it('turns paragraph edits into an Update op on save', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    renderEditor({ onSave })
+
+    // jsdom does not type into contenteditable; edit the DOM, then fire input.
+    const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+    block.textContent = 'Start with fresh beans!'
+    fireEvent.input(block)
+    await user.click(screen.getByRole('button', { name: 'editor.save' }))
+
+    expect(onSave).toHaveBeenCalledWith('Grinding', [
+      {
+        kind: 'Update',
+        blockId: 'block-1',
+        content: { spans: [{ text: 'Start with fresh beans!', marks: [] }] },
+        baseVersion: 1,
+      },
+    ])
   })
 
   it('surfaces a save failure inline', () => {
     renderEditor({ error: 'editor.saveFailed' })
 
     expect(screen.getByRole('alert')).toHaveTextContent('editor.saveFailed')
+  })
+
+  it('splits a paragraph on Enter and reports the new block as an insert', async () => {    const user = userEvent.setup()
+    const onSave = vi.fn()
+    renderEditor({ onSave })
+
+    const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+    fireEvent.keyDown(block, { key: 'Enter' })
+
+    expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(2)
+
+    await user.click(screen.getByRole('button', { name: 'editor.save' }))
+    const [, ops] = onSave.mock.calls[0] as [string, unknown[]]
+    expect(ops).toHaveLength(2)
+    expect(ops[0]).toMatchObject({ kind: 'Update', blockId: 'block-1' })
+    expect(ops[1]).toMatchObject({ kind: 'Insert', after: 'block-1' })
   })
 })

@@ -1,11 +1,13 @@
-import type { BlockDto } from '@/entities/block'
+import { assembleBlockTree } from '@/entities/block'
+import type { BlockDto, BlockNode } from '@/entities/block'
 
 /**
  * One block inside an editing session. Blocks created mid-session get a
- * client-minted temp id; the batch API maps those to real ids on save.
+ * client-minted `temp-*` id; the batch API maps those to real ids on save.
  */
 export interface EditorBlock {
   id: string
+  isNew: boolean
   parentBlockId: string | null
   type: string
   content: unknown
@@ -16,17 +18,73 @@ export interface EditorBlock {
 }
 
 /**
- * The draft starts as a faithful, deeply detached copy of the page's blocks:
- * editing mutates payloads in place, so sharing references with the query
- * cache would leak unsaved edits into the reader.
+ * The draft starts as a faithful copy of the page's blocks in preorder (the
+ * display order), deeply detached: editing mutates payloads in place, so
+ * sharing references with the query cache would leak unsaved edits into the
+ * reader.
  */
 export function toEditorDraft(blocks: readonly BlockDto[]): EditorBlock[] {
-  return blocks.map((block) => ({
+  const draft: EditorBlock[] = []
+  const walk = (nodes: readonly BlockNode[]): void => {
+    for (const node of nodes) {
+      draft.push(toEditorBlock(node.block))
+      walk(node.children)
+    }
+  }
+  walk(assembleBlockTree(blocks))
+  return draft
+}
+
+export function mintTempId(): string {
+  return `temp-${crypto.randomUUID()}`
+}
+
+/** A fresh paragraph, unsaved until the batch lands. */
+export function emptyParagraphBlock(): EditorBlock {
+  return {
+    id: mintTempId(),
+    isNew: true,
+    parentBlockId: null,
+    type: 'paragraph',
+    content: { spans: [] },
+    sortKey: '',
+    version: 0,
+  }
+}
+
+export function replaceBlockContent(
+  draft: readonly EditorBlock[],
+  id: string,
+  content: unknown,
+): EditorBlock[] {
+  return draft.map((block) => (block.id === id ? { ...block, content } : block))
+}
+
+/** Sibling insertion: the new block lands right after `afterId` in the array. */
+export function insertBlockAfter(
+  draft: readonly EditorBlock[],
+  afterId: string,
+  block: EditorBlock,
+): EditorBlock[] {
+  const index = draft.findIndex((entry) => entry.id === afterId)
+  if (index === -1) {
+    return [...draft, block]
+  }
+  return [...draft.slice(0, index + 1), block, ...draft.slice(index + 1)]
+}
+
+export function removeBlock(draft: readonly EditorBlock[], id: string): EditorBlock[] {
+  return draft.filter((block) => block.id !== id)
+}
+
+function toEditorBlock(block: BlockDto): EditorBlock {
+  return {
     id: block.id,
+    isNew: false,
     parentBlockId: block.parentBlockId,
     type: block.type,
     content: structuredClone(block.content),
     sortKey: block.sortKey,
     version: block.version,
-  }))
+  }
 }

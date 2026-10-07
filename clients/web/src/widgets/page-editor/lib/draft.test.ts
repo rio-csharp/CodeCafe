@@ -21,6 +21,7 @@ describe('toEditorDraft', () => {
 
     expect(entry).toEqual({
       id: 'block-1',
+      isNew: false,
       parentBlockId: null,
       type: 'paragraph',
       content: { spans: [{ text: 'Start with fresh beans.', marks: [] }] },

@@ -3,8 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useParams } from 'react-router'
-import { BlockList, assembleBlockTree, extractOutline } from '@/entities/block'
-import type { BlockNode } from '@/entities/block'
+import { applyBlockOps, BlockList, assembleBlockTree, extractOutline } from '@/entities/block'
+import type { BlockNode, BlockOpWire } from '@/entities/block'
 import { flattenPages, getNotebookDetails, getNotebookTree, notebookKeys } from '@/entities/notebook'
 import { createPage, getPageByPath, pageKeys, updatePage } from '@/entities/page'
 import type { PageDetails } from '@/entities/page'
@@ -74,9 +74,27 @@ export function NotebookReaderPage() {
   const [editingPath, setEditingPath] = useState<string | null>(null)
   const editing = editingPath !== null && editingPath === pagePath
 
-  const saveTitle = useMutation({
-    mutationFn: ({ pageId, title }: { pageId: string; title: string }) =>
-      updatePage(pageId, { title }),
+  const savePage = useMutation({
+    mutationFn: async ({
+      pageId,
+      title,
+      previousTitle,
+      ops,
+    }: {
+      pageId: string
+      title: string
+      previousTitle: string
+      ops: BlockOpWire[]
+    }) => {
+      const writes: Promise<unknown>[] = []
+      if (title !== previousTitle) {
+        writes.push(updatePage(pageId, { title }))
+      }
+      if (ops.length > 0) {
+        writes.push(applyBlockOps(pageId, ops))
+      }
+      await Promise.all(writes)
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: pageKeys.all })
       void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
@@ -202,13 +220,13 @@ export function NotebookReaderPage() {
       {editing && page.data !== undefined ? (
         <PageEditor
           page={page.data}
-          saving={saveTitle.isPending}
-          error={saveTitle.isError ? t('editor.saveFailed') : null}
-          onSave={(title) => {
-            saveTitle.mutate({ pageId: page.data.id, title })
+          saving={savePage.isPending}
+          error={savePage.isError ? t('editor.saveFailed') : null}
+          onSave={(title, ops) => {
+            savePage.mutate({ pageId: page.data.id, title, previousTitle: page.data.title, ops })
           }}
           onCancel={() => {
-            saveTitle.reset()
+            savePage.reset()
             setEditingPath(null)
           }}
         />
