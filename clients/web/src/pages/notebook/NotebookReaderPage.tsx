@@ -21,6 +21,7 @@ import {
   ReaderSkeletonLayout,
   findFirstPagePath,
   normalizePagePath,
+  pageNeighbours,
   toPageHref,
 } from '@/widgets/notebook-reader'
 
@@ -114,9 +115,7 @@ export function NotebookReaderPage() {
 
   const roots = tree.data.roots
   const flatPages = flattenPages(roots)
-  const pageIndex = pagePath === null ? -1 : flatPages.findIndex((entry) => entry.path === pagePath)
-  const prevPage = pageIndex > 0 ? flatPages[pageIndex - 1] : null
-  const nextPage = pageIndex >= 0 && pageIndex < flatPages.length - 1 ? flatPages[pageIndex + 1] : null
+  const { prev: prevPage, next: nextPage } = pageNeighbours(flatPages, pagePath)
 
 
   // The notebook root is not a page: jump to the first one, or admit there is none.

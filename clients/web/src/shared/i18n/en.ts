@@ -178,6 +178,8 @@ export const en = {
   },
   reader: {
     contents: 'Contents',
+    searchPages: 'Search pages',
+    noMatchingPages: 'No pages match your search',
     toggleBranch: 'Toggle the subsections of {{title}}',
     notebookMissing: "This notebook doesn't exist, or it isn't public yet.",
     pageMissing: 'This page is missing',

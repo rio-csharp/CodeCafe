@@ -7,6 +7,7 @@ import { ContentSkeleton, TreeSkeleton } from './ReaderSkeletons'
 import { PageTree } from './PageTree'
 import { ReaderChrome } from './ReaderChrome'
 import { RightPanel } from './RightPanel'
+import { toPageHref } from '../lib/tree'
 import type { RightPanelTab } from './RightPanel'
 
 /** A flat pointer to a page — what the prev/next pills need. */
@@ -57,6 +58,8 @@ export function NotebookReaderLayout({
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none')
   // Narrow reads better; the chrome's pill widens when wanted. Not persisted.
   const [contentWide, setContentWide] = useState(false)
+  // Tree title filter, client-side: the whole tree is already here.
+  const [treeQuery, setTreeQuery] = useState('')
   const mainRef = useRef<HTMLElement>(null)
   const drawerCloseRef = useRef<HTMLButtonElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
@@ -125,13 +128,45 @@ export function NotebookReaderLayout({
           </div>
           {mobilePanel === 'tree' ? <DrawerCloseButton ref={drawerCloseRef} onClose={closeDrawer} /> : null}
         </div>
+        <div className="border-b border-line px-3 py-2">
+          <label className="relative block">
+            <span className="sr-only">{t('reader.searchPages')}</span>
+            <svg
+              viewBox="0 0 16 16"
+              className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <circle cx="7" cy="7" r="4.5" />
+              <path d="m10.5 10.5 3 3" />
+            </svg>
+            <input
+              type="search"
+              value={treeQuery}
+              placeholder={t('reader.searchPages')}
+              onChange={(event) => {
+                setTreeQuery(event.target.value)
+              }}
+              className="w-full rounded-md border border-line bg-card py-1.5 pr-2 pl-8 text-sm text-ink placeholder:text-muted focus:outline focus:outline-2 focus:outline-accent"
+            />
+          </label>
+        </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
-          <PageTree slug={notebook.slug} roots={roots} activePath={activePath} onNavigate={closeDrawer} />
+          <PageTree
+            slug={notebook.slug}
+            roots={roots}
+            activePath={activePath}
+            filter={treeQuery}
+            onNavigate={closeDrawer}
+          />
         </div>
       </aside>
 
       {/* The text column. */}
-      <main ref={mainRef} className="min-h-0 min-w-0 overflow-y-auto">
+      <main ref={mainRef} className="min-h-0 min-w-0 overflow-y-auto bg-card">
         <div
           className={`px-4 py-6 pb-24 sm:px-8 lg:pb-6 xl:px-12 ${
             contentWide ? '' : 'mx-auto w-full max-w-3xl'
@@ -170,55 +205,50 @@ export function NotebookReaderLayout({
         <RightPanel tabs={rightTabs} />
       </aside>
 
-      {/* Mobile: prev / panel toggles / next, floating over the text. */}
+      {/* Mobile: panel toggles pinned to the corners, prev/next in the middle. */}
       <div className="pointer-events-none fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-2 lg:hidden">
         <div className="pointer-events-auto">
-          {prevPage !== null ? (
-            <ToolbarPill
-              label={t('reader.previousPage', { title: prevPage.title })}
-              onClick={() => {
-                void navigate(`/${notebook.slug}/${prevPage.path}`)
-              }}
-            >
-              <path d="M9.5 3.5 5.5 8l4 4.5" />
-              <span className="hidden max-w-20 truncate sm:inline">{prevPage.title}</span>
-            </ToolbarPill>
-          ) : null}
-        </div>
-        <div className="pointer-events-auto flex items-center gap-2">
           <ToolbarPill
             label={t('reader.contents')}
             pressed={mobilePanel === 'tree'}
             onClick={() => {
               setMobilePanel((panel) => (panel === 'tree' ? 'none' : 'tree'))
             }}
-          >
-            <path d="M3 3.5h10M3 8h10M3 12.5h10" />
-            <span>{t('reader.contents')}</span>
-          </ToolbarPill>
+            icon={<path d="M3 3.5h10M3 8h10M3 12.5h10" />}
+          />
+        </div>
+        <div className="pointer-events-auto flex items-center gap-2">
+          {prevPage !== null ? (
+            <ToolbarPill
+              label={t('reader.previousPage', { title: prevPage.title })}
+              onClick={() => {
+                void navigate(toPageHref(notebook.slug, prevPage.path))
+              }}
+              icon={<path d="M9.5 3.5 5.5 8l4 4.5" />}
+              text={prevPage.title}
+            />
+          ) : null}
+          {nextPage !== null ? (
+            <ToolbarPill
+              label={t('reader.nextPage', { title: nextPage.title })}
+              onClick={() => {
+                void navigate(toPageHref(notebook.slug, nextPage.path))
+              }}
+              icon={<path d="m6.5 3.5 4 4.5-4 4.5" />}
+              text={nextPage.title}
+              iconLast
+            />
+          ) : null}
+        </div>
+        <div className="pointer-events-auto">
           <ToolbarPill
             label={t('reader.outline')}
             pressed={mobilePanel === 'right'}
             onClick={() => {
               setMobilePanel((panel) => (panel === 'right' ? 'none' : 'right'))
             }}
-          >
-            <span>{t('reader.outline')}</span>
-            <path d="M13 3.5v9M3 3.5h6M3 8h6M3 12.5h6" />
-          </ToolbarPill>
-        </div>
-        <div className="pointer-events-auto">
-          {nextPage !== null ? (
-            <ToolbarPill
-              label={t('reader.nextPage', { title: nextPage.title })}
-              onClick={() => {
-                void navigate(`/${notebook.slug}/${nextPage.path}`)
-              }}
-            >
-              <span className="hidden max-w-20 truncate sm:inline">{nextPage.title}</span>
-              <path d="m6.5 3.5 4 4.5-4 4.5" />
-            </ToolbarPill>
-          ) : null}
+            icon={<path d="M13 3.5v9M3 3.5h6M3 8h6M3 12.5h6" />}
+          />
         </div>
       </div>
 
@@ -231,17 +261,21 @@ export function NotebookReaderLayout({
   )
 }
 
-/** The floating toolbar's pill. Children are icon paths plus an optional label span. */
+/** The floating toolbar's pill: an icon, plus an optional label that only wider phones show. */
 function ToolbarPill({
   label,
   pressed,
   onClick,
-  children,
+  icon,
+  text,
+  iconLast = false,
 }: {
   label: string
   pressed?: boolean
   onClick: () => void
-  children: ReactNode
+  icon: ReactNode
+  text?: string
+  iconLast?: boolean
 }) {
   return (
     <button
@@ -250,12 +284,16 @@ function ToolbarPill({
       title={label}
       aria-pressed={pressed}
       onClick={onClick}
-      className="flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-2 text-xs font-medium text-ink shadow-lg transition-colors hover:bg-muted-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+      className={`flex items-center gap-1.5 rounded-full border border-line bg-card px-3 py-2 text-xs font-medium text-ink shadow-lg transition-colors hover:bg-muted-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent ${
+        iconLast ? 'flex-row-reverse' : ''
+      }`}
     >
       <svg viewBox="0 0 16 16" className="size-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {children}
+        {icon}
       </svg>
-      {children}
+      {text !== undefined ? (
+        <span className="hidden max-w-20 truncate sm:inline">{text}</span>
+      ) : null}
     </button>
   )
 }

@@ -2,25 +2,39 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import type { PageTreeNode } from '@/entities/notebook'
-import { ancestorPathsOf, normalizePagePath, toPageHref, visibleTree } from '../lib/tree'
+import { ancestorPathsOf, normalizePagePath, searchVisibleTree, toPageHref, visibleTree } from '../lib/tree'
+import type { PageSearchMatch } from '../lib/tree'
 
 export interface PageTreeProps {
   slug: string
   roots: readonly PageTreeNode[]
   /** The page currently open, in the node's own path form. */
   activePath?: string | null
+  /** Title substring; non-empty swaps the tree for flat search results. */
+  filter?: string
   /** Lets the mobile drawer close itself once a page is chosen. */
   onNavigate?: () => void
 }
 
-export function PageTree({ slug, roots, activePath = null, onNavigate }: PageTreeProps) {
+export function PageTree({ slug, roots, activePath = null, filter = '', onNavigate }: PageTreeProps) {
   const { t } = useTranslation()
   const nodes = useMemo(() => visibleTree(roots), [roots])
   const expanded = useMemo(() => ancestorPathsOf(roots, activePath), [roots, activePath])
   const active = activePath === null ? null : normalizePagePath(activePath)
+  const searching = filter.trim().length > 0
+  const matches = useMemo(
+    () => (searching ? searchVisibleTree(nodes, filter) : []),
+    [nodes, filter, searching],
+  )
 
   if (nodes.length === 0) {
     return null
+  }
+
+  if (searching) {
+    return (
+      <SearchResults slug={slug} matches={matches} active={active} onNavigate={onNavigate} />
+    )
   }
 
   return (
@@ -37,6 +51,58 @@ export function PageTree({ slug, roots, activePath = null, onNavigate }: PageTre
             onNavigate={onNavigate}
           />
         ))}
+      </ul>
+    </nav>
+  )
+}
+
+/** Flat title matches, each with its ancestor trail for context. */
+function SearchResults({
+  slug,
+  matches,
+  active,
+  onNavigate,
+}: {
+  slug: string
+  matches: readonly PageSearchMatch[]
+  active: string | null
+  onNavigate?: () => void
+}) {
+  const { t } = useTranslation()
+
+  if (matches.length === 0) {
+    return <p className="px-2 py-1 text-sm text-muted">{t('reader.noMatchingPages')}</p>
+  }
+
+  return (
+    <nav aria-label={t('reader.searchPages')} className="text-sm">
+      <ul className="flex flex-col gap-1">
+        {matches.map(({ node, trail }) => {
+          const self = normalizePagePath(node.path)
+          const isActive = self === active
+          return (
+            <li key={node.id}>
+              <Link
+                to={toPageHref(slug, node.path)}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={onNavigate}
+                className={[
+                  'block rounded px-2 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+                  isActive
+                    ? 'bg-accent-soft font-medium text-accent-strong'
+                    : 'text-ink hover:bg-muted-soft hover:text-accent-strong',
+                ].join(' ')}
+              >
+                <span className="block truncate">{node.title}</span>
+                {trail.length > 0 ? (
+                  <span className="block truncate text-xs font-normal text-muted">
+                    {trail.join(' / ')}
+                  </span>
+                ) : null}
+              </Link>
+            </li>
+          )
+        })}
       </ul>
     </nav>
   )

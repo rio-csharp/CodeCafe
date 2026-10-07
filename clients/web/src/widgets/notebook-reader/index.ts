@@ -20,6 +20,8 @@ export {
   ancestorPathsOf,
   findFirstPagePath,
   normalizePagePath,
+  pageNeighbours,
   toPageHref,
   visibleTree,
 } from './lib/tree'
+export type { PageNeighbour } from './lib/tree'

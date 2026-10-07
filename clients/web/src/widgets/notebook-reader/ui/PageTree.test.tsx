@@ -55,10 +55,10 @@ const ROOTS: PageTreeNode[] = [
   },
 ]
 
-function renderTree(activePath: string | null = null) {
+function renderTree(activePath: string | null = null, filter = '') {
   return render(
     <MemoryRouter initialEntries={[`/notebooks/book${activePath ?? ''}`]}>
-      <PageTree slug="book" roots={ROOTS} activePath={activePath} />
+      <PageTree slug="book" roots={ROOTS} activePath={activePath} filter={filter} />
     </MemoryRouter>,
   )
 }
@@ -126,5 +126,27 @@ describe('PageTree', () => {
     renderTree('guide')
 
     expect(screen.getByRole('link', { name: 'Guide' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('filters pages by title, keeping the ancestor trail for context', () => {
+    renderTree(null, 'setup')
+
+    const match = screen.getByRole('link', { name: /Setup/ })
+    expect(match).toHaveAttribute('href', '/notebooks/book/guide/setup')
+    expect(match).toHaveTextContent('Guide')
+    expect(screen.queryByRole('link', { name: 'Guide' })).not.toBeInTheDocument()
+  })
+
+  it('matches titles case-insensitively and skips archived pages', () => {
+    renderTree(null, 'HIDDEN')
+
+    expect(screen.getByText('No pages match your search')).toBeInTheDocument()
+  })
+
+  it('shows a polite empty state when nothing matches', () => {
+    renderTree(null, 'espresso')
+
+    expect(screen.getByText('No pages match your search')).toBeInTheDocument()
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
   })
 })

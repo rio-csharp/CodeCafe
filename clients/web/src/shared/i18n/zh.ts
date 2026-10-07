@@ -174,6 +174,8 @@ export const zh = {
   },
   reader: {
     contents: '目录',
+    searchPages: '搜索页面',
+    noMatchingPages: '没有匹配的页面',
     toggleBranch: '展开或收起「{{title}}」的子页面',
     notebookMissing: '这个笔记本不存在，或者它还没公开',
     pageMissing: '这一页找不到了',
