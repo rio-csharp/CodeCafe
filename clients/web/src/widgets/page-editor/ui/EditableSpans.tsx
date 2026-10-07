@@ -1,86 +1,85 @@
 import type { ReactNode } from 'react'
-import { SPAN_COLOR_CLASS, SPAN_HIGHLIGHT_CLASS } from '@/entities/block'
 import type { MarkDto, SpanDto } from '@/entities/block'
+import { SPAN_COLOR_CLASS, SPAN_HIGHLIGHT_CLASS } from '@/entities/block'
+
+const CODE_CLASS = 'rounded bg-muted-soft px-1 py-0.5 font-mono text-[0.875em] text-ink'
+const KBD_CLASS = 'rounded border border-line bg-muted-soft px-1 font-mono text-[0.8125em]'
 
 /**
- * The edit-mode span renderer. Identical styling to the reader's
- * `SpanRenderer`, but colour/highlight marks also carry `data-*` attributes:
- * `parseEditableDom` reads the DOM back into spans, and classes alone are not
- * a reliable channel.
+ * The editing-time counterpart of the reader's MarkedSpan. Differences:
+ * colour/highlight/name marks carry data-* attributes so parseEditableDom can
+ * read them back, and nothing sets contentEditable={false} — inline code and
+ * kbd text must stay editable here.
  */
-export function EditableSpans({ spans }: { spans: readonly SpanDto[] }) {
-  return (
-    <>
-      {spans.map((span, index) => (
-        <MarkedSpan key={index} span={span} />
-      ))}
-    </>
-  )
-}
-
-function MarkedSpan({ span }: { span: SpanDto }) {
-  let content: ReactNode = span.text
-  for (let index = span.marks.length - 1; index >= 0; index -= 1) {
-    const mark = span.marks[index]
-    if (mark !== undefined) {
-      content = applyMark(content, mark, `m${index}`)
-    }
-  }
-  return <>{content}</>
-}
-
-function applyMark(content: ReactNode, mark: MarkDto, key: string): ReactNode {
+function EditableMark({ mark, children }: { mark: MarkDto; children: ReactNode }) {
   switch (mark.kind) {
     case 'bold':
-      return <strong key={key}>{content}</strong>
+      return <strong>{children}</strong>
     case 'italic':
-      return <em key={key}>{content}</em>
+      return <em>{children}</em>
     case 'underline':
-      return <u key={key}>{content}</u>
+      return <u>{children}</u>
     case 'strike':
-      return <s key={key}>{content}</s>
+      return <s>{children}</s>
     case 'code':
       return (
-        <code key={key} className="rounded-sm bg-muted-soft px-1 py-0.5 font-mono text-[0.9em] text-ink">
-          {content}
+        <code data-spellcheck="false" className={CODE_CLASS}>
+          {children}
         </code>
       )
     case 'kbd':
-      return (
-        <kbd key={key} className="rounded border border-line bg-canvas px-1.5 py-0.5 font-mono text-[0.85em] text-ink shadow-sm">
-          {content}
-        </kbd>
-      )
+      return <kbd className={KBD_CLASS}>{children}</kbd>
     case 'sup':
-      return <sup key={key}>{content}</sup>
+      return <sup>{children}</sup>
     case 'sub':
-      return <sub key={key}>{content}</sub>
+      return <sub>{children}</sub>
     case 'link':
       return (
-        // In edit mode the link is text, not a navigation target.
-        <a key={key} href={mark.href} className="text-accent-strong underline underline-offset-2">
-          {content}
+        <a href={mark.href} className="text-accent underline decoration-accent/40 underline-offset-2">
+          {children}
         </a>
       )
     case 'color':
       return (
-        <span key={key} data-color={mark.name} className={SPAN_COLOR_CLASS[mark.name]}>
-          {content}
+        <span data-color={mark.name} className={SPAN_COLOR_CLASS[mark.name]}>
+          {children}
         </span>
       )
     case 'highlight':
       return (
-        <span key={key} data-highlight={mark.name} className={`${SPAN_HIGHLIGHT_CLASS[mark.name]} rounded px-0.5`}>
-          {content}
+        <span data-highlight={mark.name} className={`rounded px-0.5 ${SPAN_HIGHLIGHT_CLASS[mark.name]}`}>
+          {children}
         </span>
       )
     case 'abbr':
       return (
-        <abbr key={key} title={mark.title} className="cursor-help decoration-line decoration-dotted underline underline-offset-2">
-          {content}
+        <abbr title={mark.title} className="underline decoration-dotted underline-offset-2">
+          {children}
         </abbr>
       )
     default:
-      return content
+      return <>{children}</>
   }
+}
+
+export function EditableSpans({ spans }: { spans: readonly SpanDto[] }) {
+  return (
+    <>
+      {spans.map((span, index) => {
+        let node: ReactNode = span.text
+        for (let m = span.marks.length - 1; m >= 0; m -= 1) {
+          node = (
+            <EditableMark key={`m${m}`} mark={span.marks[m]!}>
+              {node}
+            </EditableMark>
+          )
+        }
+        return (
+          <span key={index} style={{ display: 'contents' }}>
+            {node}
+          </span>
+        )
+      })}
+    </>
+  )
 }

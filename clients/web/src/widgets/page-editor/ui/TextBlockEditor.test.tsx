@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { SpanDto } from '@/entities/block'
 import { TextBlockEditor } from './TextBlockEditor'
+import { setSelectionOffsets } from '../lib/editableDom'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -77,7 +78,7 @@ describe('TextBlockEditor', () => {
       )
     }).not.toThrow()
 
-    expect(element.textContent).toBe('hello world')
+    expect(screen.getByRole('textbox').textContent).toBe('hello world')
   })
 
   it('reports Enter as a split at the caret offset', () => {
@@ -99,5 +100,123 @@ describe('TextBlockEditor', () => {
     fireEvent.keyDown(element, { key: 'Backspace' })
 
     expect(onMergeBackward).toHaveBeenCalledOnce()
+  })
+
+  it('shows the toolbar on selection and applies bold through it', () => {
+    render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 0, 5)
+    fireEvent.mouseUp(element)
+
+    const bold = screen.getByRole('button', { name: 'editor.marks.bold' })
+    expect(bold).toHaveAttribute('aria-pressed', 'false')
+    // Hovering tells the user the shortcut exists.
+    expect(bold).toHaveAttribute('title', 'editor.marks.bold (Ctrl+B)')
+    fireEvent.click(bold)
+
+    // Applying a mark remounts the editable div; re-query it.
+    const remounted = screen.getByRole('textbox')
+    expect(remounted.querySelector('strong')?.textContent).toBe('hello')
+    // Toggling an already-bold selection now reports the button as active.
+    expect(screen.getByRole('button', { name: 'editor.marks.bold' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('applies marks through Ctrl+B without opening the toolbar', () => {
+    render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
+
+    const element = screen.getByRole('textbox')
+    element.focus()
+    setSelectionOffsets(element, 6, 11)
+    fireEvent.keyDown(element, { key: 'b', ctrlKey: true })
+
+    expect(screen.getByRole('textbox').querySelector('strong')?.textContent).toBe('world')
+  })
+
+  it('adds a link through the toolbar input', async () => {
+    render(<Harness initial={[{ text: 'my site', marks: [] }]} />)
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 3, 7)
+    fireEvent.mouseUp(element)
+    fireEvent.click(screen.getByRole('button', { name: 'editor.marks.link' }))
+
+    const input = screen.getByRole('textbox', { name: 'editor.linkPlaceholder' })
+    fireEvent.change(input, { target: { value: 'https://example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: 'editor.applyLink' }))
+
+    const anchor = screen.getByRole('textbox').querySelector('a')
+    expect(anchor).toHaveAttribute('href', 'https://example.com')
+    expect(anchor?.textContent).toBe('site')
+  })
+
+  it('prefills an existing link for editing and can remove it', () => {
+    render(
+      <Harness
+        initial={[{ text: 'site', marks: [{ kind: 'link', href: 'https://old.test' }] }]}
+      />,
+    )
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 0, 4)
+    fireEvent.mouseUp(element)
+    fireEvent.click(screen.getByRole('button', { name: 'editor.marks.link' }))
+
+    // The existing href is prefilled and editable.
+    const input = screen.getByRole('textbox', { name: 'editor.linkPlaceholder' })
+    expect(input).toHaveValue('https://old.test')
+
+    fireEvent.change(input, { target: { value: 'https://new.test' } })
+    fireEvent.click(screen.getByRole('button', { name: 'editor.applyLink' }))
+    expect(screen.getByRole('textbox').querySelector('a')).toHaveAttribute(
+      'href',
+      'https://new.test',
+    )
+
+    // Reopen and remove it entirely.
+    const remounted = screen.getByRole('textbox')
+    setSelectionOffsets(remounted, 0, 4)
+    fireEvent.mouseUp(remounted)
+    fireEvent.click(screen.getByRole('button', { name: 'editor.marks.link' }))
+    fireEvent.click(screen.getByRole('button', { name: 'editor.removeLink' }))
+
+    expect(screen.getByRole('textbox').querySelector('a')).toBeNull()
+  })
+
+  it('replaces browser-created nodes instead of duplicating them when a mark lands', () => {
+    // Regression: typing into an empty block creates DOM nodes React never
+    // rendered; applying a mark must swap them out, not append a second copy.
+    render(<Harness initial={[]} />)
+
+    const element = screen.getByRole('textbox')
+    element.textContent = 'hello world'
+    fireEvent.input(element)
+
+    setSelectionOffsets(element, 0, 5)
+    fireEvent.mouseUp(element)
+    fireEvent.click(screen.getByRole('button', { name: 'editor.marks.bold' }))
+
+    const remounted = screen.getByRole('textbox')
+    expect(remounted.textContent).toBe('hello world')
+    expect(remounted.querySelector('strong')?.textContent).toBe('hello')
+  })
+
+  it('retracts the toolbar when the selection leaves the block', () => {
+    render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 0, 5)
+    fireEvent.mouseUp(element)
+    expect(screen.getByRole('toolbar')).toBeInTheDocument()
+
+    // Clicking elsewhere collapses the selection; the browser then fires
+    // selectionchange on the document.
+    window.getSelection()?.removeAllRanges()
+    fireEvent(document, new Event('selectionchange'))
+
+    expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
   })
 })

@@ -221,7 +221,13 @@ export function NotebookReaderPage() {
         <PageEditor
           page={page.data}
           saving={savePage.isPending}
-          error={savePage.isError ? t('editor.saveFailed') : null}
+          error={
+            savePage.isError
+              ? savePage.error instanceof ApiError
+                ? t('editor.saveFailedWithReason', { reason: savePage.error.message })
+                : t('editor.saveFailed')
+              : null
+          }
           onSave={(title, ops) => {
             savePage.mutate({ pageId: page.data.id, title, previousTitle: page.data.title, ops })
           }}

@@ -14,23 +14,58 @@ export function getCaretOffset(root: HTMLElement): number {
   if (!root.contains(range.endContainer)) {
     return 0
   }
-  const before = range.cloneRange()
-  before.selectNodeContents(root)
-  before.setEnd(range.endContainer, range.endOffset)
-  return before.toString().length
+  return offsetAtPoint(root, range.endContainer, range.endOffset)
+}
+
+/** Selection endpoints as plain-text offsets; null when outside the block. */
+export function getSelectionOffsets(root: HTMLElement): { start: number; end: number } | null {
+  const selection = window.getSelection()
+  if (
+    selection === null ||
+    selection.anchorNode === null ||
+    selection.focusNode === null ||
+    !root.contains(selection.anchorNode) ||
+    !root.contains(selection.focusNode)
+  ) {
+    return null
+  }
+  const anchor = offsetAtPoint(root, selection.anchorNode, selection.anchorOffset)
+  const focus = offsetAtPoint(root, selection.focusNode, selection.focusOffset)
+  return { start: Math.min(anchor, focus), end: Math.max(anchor, focus) }
+}
+
+function offsetAtPoint(root: HTMLElement, node: Node, offset: number): number {
+  const range = document.createRange()
+  range.selectNodeContents(root)
+  range.setEnd(node, offset)
+  return range.toString().length
 }
 
 export function setCaretOffset(root: HTMLElement, offset: number): void {
+  setSelectionOffsets(root, offset, offset)
+}
+
+/** Restore a (possibly non-collapsed) selection from plain-text offsets. */
+export function setSelectionOffsets(root: HTMLElement, start: number, end: number): void {
+  const anchor = locatePoint(root, start)
+  const focus = locatePoint(root, end)
+  const selection = window.getSelection()
+  if (anchor === null || focus === null || selection === null) {
+    return
+  }
+  selection.setBaseAndExtent(anchor.node, anchor.offset, focus.node, focus.offset)
+}
+
+function locatePoint(root: HTMLElement, target: number): { node: Node; offset: number } | null {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-  let remaining = offset
+  let remaining = target
   let lastText: Node | null = null
   let node = walker.nextNode()
 
   while (node !== null) {
     const length = node.textContent?.length ?? 0
     if (remaining <= length) {
-      placeCaret(node, remaining)
-      return
+      return { node, offset: remaining }
     }
     remaining -= length
     lastText = node
@@ -39,19 +74,9 @@ export function setCaretOffset(root: HTMLElement, offset: number): void {
 
   // Past the end: land after the last text node (an empty block gets offset 0).
   if (lastText !== null) {
-    placeCaret(lastText, lastText.textContent?.length ?? 0)
-  } else {
-    placeCaret(root, 0)
+    return { node: lastText, offset: lastText.textContent?.length ?? 0 }
   }
-}
-
-function placeCaret(node: Node, offset: number): void {
-  const range = document.createRange()
-  range.setStart(node, offset)
-  range.collapse(true)
-  const selection = window.getSelection()
-  selection?.removeAllRanges()
-  selection?.addRange(range)
+  return { node: root, offset: 0 }
 }
 
 /**

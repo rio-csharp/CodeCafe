@@ -303,6 +303,31 @@ describe('NotebookReaderPage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
   })
 
+  it('shows the server-provided reason when saving fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockRejectedValue(
+      new ApiError({
+        status: 400,
+        code: 'invalid_block_payload',
+        kind: 'Validation',
+        message: "The block payload does not match its type's contract.",
+      }),
+    )
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.type(title, 'x')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "The block payload does not match its type's contract.",
+    )
+  })
+
   it('hides the edit pill from readers without write access', async () => {
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 

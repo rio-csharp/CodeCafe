@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getCaretOffset, parseEditableDom, setCaretOffset } from './editableDom'
+import { getCaretOffset, getSelectionOffsets, parseEditableDom, setCaretOffset, setSelectionOffsets } from './editableDom'
 
 function editable(html: string): HTMLElement {
   const element = document.createElement('div')
@@ -55,5 +55,13 @@ describe('caret offsets', () => {
     setCaretOffset(element, 99)
 
     expect(getCaretOffset(element)).toBe(3)
+  })
+
+  it('round-trips a non-collapsed selection', () => {
+    const element = editable('ab<strong>cd</strong>ef')
+
+    setSelectionOffsets(element, 1, 5)
+
+    expect(getSelectionOffsets(element)).toEqual({ start: 1, end: 5 })
   })
 })
