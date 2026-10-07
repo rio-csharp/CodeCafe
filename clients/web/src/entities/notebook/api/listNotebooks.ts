@@ -12,7 +12,7 @@ export interface ListNotebooksParams {
   signal?: AbortSignal
 }
 
-/** The anonymous catalog: every public notebook. */
+/** Every public notebook, with per-user favorites when signed in. */
 export function listNotebooks({
   search,
   sort,

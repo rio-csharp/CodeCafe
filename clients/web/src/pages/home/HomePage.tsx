@@ -282,7 +282,7 @@ function greeting(t: (key: string, options?: Record<string, unknown>) => string,
   return t(`home.greeting.${key}`, { name })
 }
 
-/** Own + shared notebooks; the favorites tab is this same query, starred. */
+/** The favorites filter also includes starred public notebooks. */
 function MineShelf({
   search,
   sort,
@@ -349,7 +349,7 @@ function MineShelf({
       onLoadMore={() => {
         void query.fetchNextPage()
       }}
-      showOwnership
+      showOwnership={!favoritesOnly}
       onOpenSettings={onOpenSettings}
       onShareNotebook={onShareNotebook}
     />
@@ -359,9 +359,10 @@ function MineShelf({
 /** Every public notebook, anonymous-readable. */
 function PublicShelf({ search, sort }: { search: string; sort: NotebookSort }) {
   const { t } = useTranslation()
+  const userId = useSessionStore((state) => state.user?.id ?? null)
 
   const query = useInfiniteQuery({
-    queryKey: notebookKeys.publicList({ search, sort }),
+    queryKey: [...notebookKeys.publicList({ search, sort }), userId],
     queryFn: ({ pageParam, signal }) =>
       listNotebooks({ search, sort, page: pageParam, signal }),
     initialPageParam: 1,

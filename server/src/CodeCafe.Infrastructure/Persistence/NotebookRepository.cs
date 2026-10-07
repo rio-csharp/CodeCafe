@@ -59,11 +59,12 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
     {
         // Anonymous callers see the public catalog; authenticated callers see what they own,
         // what is shared with them, and — via a page share on any page of the notebook —
-        // notebooks surfaced by a shared page.
+        // notebooks surfaced by a shared page. The favorites shelf also includes public notebooks.
         var query = userId is null
             ? dbContext.Notebooks.Where(notebook => notebook.Visibility == NotebookVisibility.Public)
             : dbContext.Notebooks.Where(
-                notebook => notebook.OwnerId == userId
+                notebook => (filter.IsFavorite == true && notebook.Visibility == NotebookVisibility.Public)
+                    || notebook.OwnerId == userId
                     || notebook.Shares.Any(share => share.UserId == userId)
                     || dbContext.Pages.Any(
                         page => page.NotebookId == notebook.Id && page.Shares.Any(share => share.UserId == userId)

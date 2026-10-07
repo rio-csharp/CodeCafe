@@ -1,4 +1,5 @@
 using CodeCafe.Application.Notebooks.ListPublicNotebooks;
+using CodeCafe.Application.Common.Security;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 
@@ -68,13 +69,39 @@ public sealed class ListPublicNotebooksQueryHandlerTests
     private static ListPublicNotebooksQuery Query() => new(null, null, null, null);
 
     [Fact]
+    public async Task Handle_ReturnsFavoriteStateForSignedInUser()
+    {
+        var owner = SeedUser("owner@example.com");
+        var viewer = SeedUser("viewer@example.com");
+        var notebook = SeedNotebook(owner, "brew-guide", NotebookVisibility.Public);
+        var repository = new StubNotebookRepository { notebook };
+        repository.Favorites.Add((notebook.Id, viewer.Id));
+        var handler = new ListPublicNotebooksQueryHandler(
+            repository,
+            new StubPageRepository(),
+            new StubUserRepository { owner },
+            new StubCurrentUserAccessor(new CurrentUser(viewer.Id))
+        );
+
+        var result = await handler.Handle(Query(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(Assert.Single(result.Value!.Items).IsFavorite);
+    }
+
+    [Fact]
     public async Task Handle_AttributesEachNotebookToItsOwnersDisplayName()
     {
         var owner = SeedUser("owner@example.com");
         var notebook = SeedNotebook(owner, "brew-guide", NotebookVisibility.Public);
         var repository = new StubNotebookRepository { notebook };
         var users = new StubUserRepository { owner };
-        var handler = new ListPublicNotebooksQueryHandler(repository, new StubPageRepository(), users);
+        var handler = new ListPublicNotebooksQueryHandler(
+            repository,
+            new StubPageRepository(),
+            users,
+            new StubCurrentUserAccessor(null)
+        );
 
         var result = await handler.Handle(Query(), CancellationToken.None);
 
@@ -94,6 +121,11 @@ public sealed class ListPublicNotebooksQueryHandlerTests
     {
         var repository = new StubNotebookRepository();
         repository.AddRange(notebooks);
-        return new ListPublicNotebooksQueryHandler(repository, new StubPageRepository(), new StubUserRepository());
+        return new ListPublicNotebooksQueryHandler(
+            repository,
+            new StubPageRepository(),
+            new StubUserRepository(),
+            new StubCurrentUserAccessor(null)
+        );
     }
 }

@@ -83,10 +83,12 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
     }
 
     private IEnumerable<Notebook> VisibleTo(Guid? userId, NotebookFilter filter)
-    {        IEnumerable<Notebook> query = userId is null
+    {
+        IEnumerable<Notebook> query = userId is null
             ? Live.Where(notebook => notebook.Visibility == NotebookVisibility.Public)
             : Live.Where(notebook =>
-                notebook.OwnerId == userId
+                (filter.IsFavorite == true && notebook.Visibility == NotebookVisibility.Public)
+                || notebook.OwnerId == userId
                 || notebook.IsSharedWith(userId.Value)
                 || PageShareGrants.Any(grant => grant.NotebookId == notebook.Id && grant.UserId == userId)
             );

@@ -54,6 +54,46 @@ public sealed class ListNotebooksQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_FavoriteFilterIncludesPublicNotebooks()
+    {
+        var owner = SeedUser("owner@example.com");
+        var other = SeedUser("other@example.com");
+        var publicNotebook = SeedNotebook(other, "public-notebook", NotebookVisibility.Public);
+        var plainPublic = SeedNotebook(other, "plain-public", NotebookVisibility.Public);
+        var privateNotebook = SeedNotebook(other, "private-notebook");
+        var unlisted = SeedNotebook(other, "unlisted-notebook", NotebookVisibility.Unlisted);
+        var trashed = SeedNotebook(other, "trashed", NotebookVisibility.Public);
+        trashed.SoftDelete(DateTimeOffset.UtcNow);
+        var repository = new StubNotebookRepository { publicNotebook, plainPublic, privateNotebook, unlisted, trashed };
+        foreach (var notebook in new[] { publicNotebook, privateNotebook, unlisted, trashed })
+        {
+            repository.Favorites.Add((notebook.Id, owner.Id));
+        }
+        var handler = new ListNotebooksQueryHandler(
+            new StubCurrentUserAccessor(new CurrentUser(owner.Id)),
+            repository,
+            new StubPageRepository(),
+            new StubUserRepository()
+        );
+
+        var result = await handler.Handle(Query() with { IsFavorite = true }, CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var item = Assert.Single(result.Value!.Items);
+        Assert.Equal("public-notebook", item.Slug);
+        Assert.True(item.IsFavorite);
+        Assert.Equal(1, result.Value.TotalCount);
+
+        var mine = await handler.Handle(Query(), CancellationToken.None);
+        Assert.Empty(mine.Value!.Items);
+
+        publicNotebook.UpdateDetails(publicNotebook.Title, null, NotebookVisibility.Private);
+        var afterPrivatizing = await handler.Handle(Query() with { IsFavorite = true }, CancellationToken.None);
+        Assert.Empty(afterPrivatizing.Value!.Items);
+        Assert.Equal(0, afterPrivatizing.Value.TotalCount);
+    }
+
+    [Fact]
     public async Task Handle_FavoriteFilterOnlySeesTheCurrentUsersFavorites()
     {
         var owner = SeedUser("owner@example.com");
@@ -217,8 +257,12 @@ public sealed class ListNotebooksQueryHandlerTests
 
     private static User SeedUser(string email) => User.Create(email, email, "User", "hash");
 
-    private static Notebook SeedNotebook(User owner, string slug)
-        => Notebook.Create(owner.Id, $"Title {slug}", null, slug, NotebookVisibility.Private);
+    private static Notebook SeedNotebook(
+        User owner,
+        string slug,
+        NotebookVisibility visibility = NotebookVisibility.Private
+    )
+        => Notebook.Create(owner.Id, $"Title {slug}", null, slug, visibility);
 
     private static ListNotebooksQueryHandler CreateHandler(
         User currentUser,

@@ -15,7 +15,7 @@ public sealed class SetNotebookFavoriteCommandHandler(
 {
     public async Task<Result> Handle(SetNotebookFavoriteCommand command, CancellationToken cancellationToken)
     {
-        var context = await NotebookAccess.RequireOwnerOrSharedAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
+        var context = await NotebookAccess.RequireFavoritableAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
         if (context.Error is { } error)
         {
             return Result.Failure(error);

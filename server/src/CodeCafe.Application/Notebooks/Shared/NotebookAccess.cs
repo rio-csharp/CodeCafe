@@ -90,8 +90,7 @@ public static class NotebookAccess
             : Result.Success(new NotebookAccessContext(notebook, userId));
     }
 
-    // Favorites are per-user, so anyone the notebook is listed for may set their own.
-    public static async Task<Result<NotebookAccessContext>> RequireOwnerOrSharedAsync(
+    public static async Task<Result<NotebookAccessContext>> RequireFavoritableAsync(
         string notebookIdOrSlug,
         ICurrentUserAccessor currentUserAccessor,
         INotebookRepository notebooks,
@@ -104,7 +103,7 @@ public static class NotebookAccess
         }
 
         var notebook = await notebooks.FindByIdOrSlugAsync(notebookIdOrSlug, cancellationToken);
-        return notebook is null || (notebook.OwnerId != userId && !notebook.IsSharedWith(userId))
+        return notebook is null || (notebook.Visibility != NotebookVisibility.Public && notebook.OwnerId != userId && !notebook.IsSharedWith(userId))
             ? Result.Failure<NotebookAccessContext>(NotebookErrors.NotFound)
             : Result.Success(new NotebookAccessContext(notebook, userId));
     }

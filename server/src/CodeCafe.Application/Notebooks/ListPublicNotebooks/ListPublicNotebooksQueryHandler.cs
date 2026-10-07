@@ -1,6 +1,7 @@
 using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;
+using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Application.Pages.Abstractions;
@@ -11,7 +12,8 @@ namespace CodeCafe.Application.Notebooks.ListPublicNotebooks;
 public sealed class ListPublicNotebooksQueryHandler(
     INotebookRepository notebooks,
     IPageRepository pages,
-    IUserRepository users
+    IUserRepository users,
+    ICurrentUserAccessor currentUserAccessor
 ) : IQueryHandler<ListPublicNotebooksQuery, Result<PagedResult<NotebookSummaryDto>>>
 {
     private const int DefaultPageSize = 20;
@@ -21,8 +23,7 @@ public sealed class ListPublicNotebooksQueryHandler(
     {
         var page = Math.Max(query.Page ?? 1, 1);
         var pageSize = Math.Clamp(query.PageSize ?? DefaultPageSize, 1, MaxPageSize);
-        // The public catalog is exactly "visibility = Public": a null userId makes the
-        // repository take the anonymous arm. Favorites don't exist without a user.
+        // Keep catalog selection anonymous so signing in does not narrow it to owned/shared notebooks.
         var filter = new NotebookFilter(
             null,
             null,
@@ -40,6 +41,9 @@ public sealed class ListPublicNotebooksQueryHandler(
             pageSize,
             cancellationToken
         );
+        IReadOnlySet<Guid> favoriteIds = currentUserAccessor.User?.Id is { } userId
+            ? await notebooks.FindFavoriteIdsAsync(userId, fetched.Select(notebook => notebook.Id).ToList(), cancellationToken)
+            : new HashSet<Guid>();
         var pageCounts = await pages.CountByNotebooksAsync(
             fetched.Select(notebook => notebook.Id).ToList(),
             cancellationToken
@@ -54,7 +58,7 @@ public sealed class ListPublicNotebooksQueryHandler(
                 notebook.Description,
                 notebook.Slug,
                 notebook.Visibility,
-                false,
+                favoriteIds.Contains(notebook.Id),
                 notebook.Tags.ToList(),
                 pageCounts.GetValueOrDefault(notebook.Id),
                 notebook.UpdatedAtUtc,

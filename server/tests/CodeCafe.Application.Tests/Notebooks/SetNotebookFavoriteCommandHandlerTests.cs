@@ -67,6 +67,43 @@ public sealed class SetNotebookFavoriteCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_LetsAnySignedInUserFavoriteAPublicNotebook()
+    {
+        var owner = SeedOwner();
+        var viewer = User.Create("viewer@example.com", "viewer@example.com", "Viewer", "hash");
+        var notebook = Notebook.Create(owner.Id, "Public title", null, "public-slug", NotebookVisibility.Public);
+        var notebooks = new StubNotebookRepository { notebook };
+        var handler = CreateHandler(viewer.Id, notebooks, new StubUnitOfWork());
+
+        var result = await handler.Handle(
+            new SetNotebookFavoriteCommand(notebook.Slug, true),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsSuccess);
+        Assert.Contains((notebook.Id, viewer.Id), notebooks.Favorites);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsNotFound_WhenNotebookIsUnlistedAndNotShared()
+    {
+        var owner = SeedOwner();
+        var stranger = User.Create("stranger@example.com", "stranger@example.com", "Stranger", "hash");
+        var notebook = Notebook.Create(owner.Id, "Unlisted title", null, "unlisted-slug", NotebookVisibility.Unlisted);
+        var notebooks = new StubNotebookRepository { notebook };
+        var handler = CreateHandler(stranger.Id, notebooks, new StubUnitOfWork());
+
+        var result = await handler.Handle(
+            new SetNotebookFavoriteCommand(notebook.Slug, true),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(NotebookErrors.NotFound, result.Error);
+        Assert.Empty(notebooks.Favorites);
+    }
+
+    [Fact]
     public async Task Handle_ReturnsNotFound_WhenNotebookNotVisibleToCaller()
     {
         var owner = SeedOwner();
