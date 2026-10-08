@@ -158,7 +158,7 @@ describe('TextBlockEditor', () => {
     render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
 
     const element = screen.getByRole('textbox')
-    const textNode = element.firstChild?.firstChild
+    const textNode = element.firstChild?.firstChild?.firstChild
     expect(textNode?.nodeType).toBe(Node.TEXT_NODE)
     // The drag starts in the block but ends down in the page: the focus node
     // lands outside the block entirely, so the in-block portion is clamped.
@@ -188,9 +188,9 @@ describe('TextBlockEditor', () => {
     window
       .getSelection()
       ?.setBaseAndExtent(
-        first.firstChild?.firstChild as Node,
+        first.firstChild?.firstChild?.firstChild as Node,
         1,
-        second.firstChild?.firstChild as Node,
+        second.firstChild?.firstChild?.firstChild as Node,
         3,
       )
     fireEvent.mouseUp(document.body)

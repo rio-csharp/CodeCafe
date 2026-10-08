@@ -12,7 +12,7 @@ export function TodoBlock({ content }: { content: TodoContent }) {
         readOnly
         className="mt-1 size-4 shrink-0 accent-accent"
       />
-      <span className={content.checked ? 'text-muted line-through' : 'text-ink'}>
+      <span className={`whitespace-pre-wrap ${content.checked ? "text-muted line-through" : "text-ink"}`}>
         <SpanRenderer spans={content.spans} />
       </span>
     </div>

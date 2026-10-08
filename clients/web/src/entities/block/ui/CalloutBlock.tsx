@@ -13,7 +13,7 @@ const VARIANT_CLASS: Record<PaletteColor, string> = {
 
 export function CalloutBlock({ content }: { content: CalloutContent }) {
   return (
-    <aside className={`rounded-xl border px-4 py-3 ${VARIANT_CLASS[content.variant]}`}>
+    <aside className={`whitespace-pre-wrap rounded-xl border px-4 py-3 ${VARIANT_CLASS[content.variant]}`}>
       <SpanRenderer spans={content.spans} />
     </aside>
   )

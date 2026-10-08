@@ -64,7 +64,8 @@ function EditableMark({ mark, children }: { mark: MarkDto; children: ReactNode }
 
 export function EditableSpans({ spans }: { spans: readonly SpanDto[] }) {
   return (
-    <>
+    // pre-wrap: Shift+Enter line breaks (\n in span text) must stay visible.
+    <span className="whitespace-pre-wrap">
       {spans.map((span, index) => {
         let node: ReactNode = span.text
         for (let m = span.marks.length - 1; m >= 0; m -= 1) {
@@ -80,6 +81,6 @@ export function EditableSpans({ spans }: { spans: readonly SpanDto[] }) {
           </span>
         )
       })}
-    </>
+    </span>
   )
 }
