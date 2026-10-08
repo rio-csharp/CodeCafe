@@ -27,15 +27,28 @@ function edit(block: BlockDto, text: string): EditorBlock {
   }
 }
 
-function fresh(id: string, text: string): EditorBlock {
+function fresh(id: string, text: string, parentBlockId: string | null = null): EditorBlock {
   return {
     id,
     isNew: true,
-    parentBlockId: null,
+    parentBlockId,
     type: 'paragraph',
     content: { spans: [{ text, marks: [] }] },
     sortKey: '',
     version: 0,
+  }
+}
+
+/** An untouched existing block, placed at a (possibly new) parent. */
+function placed(block: BlockDto, parentBlockId: string | null): EditorBlock {
+  return {
+    id: block.id,
+    isNew: false,
+    parentBlockId,
+    type: block.type,
+    content: block.content,
+    sortKey: block.sortKey,
+    version: block.version,
   }
 }
 
@@ -104,5 +117,64 @@ describe('diffToOps', () => {
     expect(ops).toHaveLength(2)
     expect(ops[0]).toMatchObject({ kind: 'Update', blockId: 'a' })
     expect(ops[1]).toMatchObject({ kind: 'Insert', tempId: 'temp-1', after: 'a' })
+  })
+
+  it('moves a reordered block to its new predecessor', () => {
+    const original = [source('a', 'one'), source('b', 'two'), source('c', 'three')]
+    const draft = [edit(original[2]!, 'three'), edit(original[0]!, 'one'), edit(original[1]!, 'two')]
+
+    expect(diffToOps(original, draft)).toEqual([{ kind: 'Move', blockId: 'c' }])
+  })
+
+  it('indents with a parent reference, the only way into a childless block', () => {
+    const original = [source('p', 'parent'), source('b', 'child')]
+    const draft = [edit(original[0]!, 'parent'), placed(original[1]!, 'p')]
+
+    expect(diffToOps(original, draft)).toEqual([{ kind: 'Move', blockId: 'b', parent: 'p' }])
+  })
+
+  it('outdents by naming the new same-level predecessor', () => {
+    const parent = source('p', 'parent')
+    const nested = { ...source('c', 'child'), parentBlockId: 'p' }
+    const draft = [edit(parent, 'parent'), placed(nested, null)]
+
+    expect(diffToOps([parent, nested], draft)).toEqual([
+      { kind: 'Move', blockId: 'c', after: 'p' },
+    ])
+  })
+
+  it('moves rescued children out of a doomed subtree BEFORE deleting it', () => {
+    const parent = source('p', 'parent')
+    const doomed = source('b', 'gone')
+    const orphan = { ...source('c', 'orphan'), parentBlockId: 'b' }
+    // b is merged away; its child c is re-parented onto p.
+    const draft = [edit(parent, 'parentgone'), placed(orphan, 'p')]
+
+    const ops = diffToOps([parent, doomed, orphan], draft)
+    expect(ops.map((op) => op.kind)).toEqual(['Update', 'Move', 'Delete'])
+    expect(ops[1]).toMatchObject({ kind: 'Move', blockId: 'c', parent: 'p' })
+    expect(ops[2]).toMatchObject({ kind: 'Delete', blockId: 'b' })
+  })
+
+  it('defers moves that reference a fresh temp id until after the inserts', () => {
+    const old = source('x', 'old')
+    const nested = { ...source('c', 'child'), parentBlockId: 'x' }
+    // Slash-conversion: x leaves, a fresh block takes its place and its child.
+    const draft = [fresh('temp-1', 'new'), placed(nested, 'temp-1')]
+
+    const ops = diffToOps([old, nested], draft)
+    expect(ops.map((op) => op.kind)).toEqual(['Insert', 'Move', 'Delete'])
+    expect(ops[1]).toMatchObject({ kind: 'Move', blockId: 'c', parent: 'temp-1' })
+    expect(ops[2]).toMatchObject({ kind: 'Delete', blockId: 'x' })
+  })
+
+  it('keeps an empty new paragraph that survived as a parent', () => {
+    const original = [source('b', 'child')]
+    const draft = [fresh('temp-1', ''), placed(original[0]!, 'temp-1')]
+
+    const ops = diffToOps(original, draft)
+    expect(ops.map((op) => op.kind)).toEqual(['Insert', 'Move'])
+    expect(ops[0]).toMatchObject({ kind: 'Insert', tempId: 'temp-1' })
+    expect(ops[1]).toMatchObject({ kind: 'Move', blockId: 'b', parent: 'temp-1' })
   })
 })

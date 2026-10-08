@@ -32,6 +32,11 @@ export interface TextBlockEngineProps {
   onFocusPrevious: () => void
   onFocusNext: () => void
   onFocusHandled: () => void
+  /** Tab / Shift+Tab: change depth; receives the caret offset for refocusing. */
+  onIndent?: (offset: number) => void
+  onOutdent?: (offset: number) => void
+  /** Ctrl/Cmd+Shift+ArrowUp/Down: reorder within the sibling group. */
+  onMoveBlock?: (direction: -1 | 1, offset: number) => void
   /** Present when slash-conversion is enabled; receives the target and the text after the `/query` prefix. */
   onTransform?: (target: SlashTarget, spans: SpanDto[]) => void
 }
@@ -72,6 +77,9 @@ export function TextBlockEditor({
   onFocusPrevious,
   onFocusNext,
   onFocusHandled,
+  onIndent,
+  onOutdent,
+  onMoveBlock,
   onTransform,
 }: TextBlockEditorProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -285,6 +293,26 @@ export function TextBlockEditor({
         return
       }
     }
+    if (event.key === 'Tab') {
+      event.preventDefault()
+      const offset = getCaretOffset(element)
+      if (event.shiftKey) {
+        onOutdent?.(offset)
+      } else {
+        onIndent?.(offset)
+      }
+      return
+    }
+    // Ctrl/Cmd+Shift+Arrow reorders the block within its sibling group.
+    if (
+      (event.metaKey || event.ctrlKey) &&
+      event.shiftKey &&
+      (event.key === 'ArrowUp' || event.key === 'ArrowDown')
+    ) {
+      event.preventDefault()
+      onMoveBlock?.(event.key === 'ArrowUp' ? -1 : 1, getCaretOffset(element))
+      return
+    }
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
       onSplit(getCaretOffset(element))
@@ -305,9 +333,6 @@ export function TextBlockEditor({
     ) {
       event.preventDefault()
       onFocusNext()
-    } else if (event.key === 'Tab') {
-      // Indent/outdent arrive with the block-moving slice.
-      event.preventDefault()
     }
   }
 

@@ -219,12 +219,14 @@ describe('PageEditor', () => {
     await user.click(screen.getByRole('button', { name: 'editor.save' }))
     const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
     expect(ops).toHaveLength(2)
-    expect(ops[0]).toMatchObject({ kind: 'Delete', blockId: 'block-1' })
-    expect(ops[1]).toMatchObject({
-      kind: 'Insert',
-      type: 'todo',
-      content: { checked: false, spans: [] },
-    })
+    expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'block-1' }))
+    expect(ops).toContainEqual(
+      expect.objectContaining({
+        kind: 'Insert',
+        type: 'todo',
+        content: { checked: false, spans: [] },
+      }),
+    )
   })
 
   describe('nested blocks', () => {
@@ -331,6 +333,130 @@ describe('PageEditor', () => {
       expect(ops).toContainEqual(
         expect.objectContaining({ kind: 'Insert', type: 'quote', parent: 'block-1' }),
       )
+    })
+
+    it('outdents a child with Shift+Tab', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: NESTED, onSave })
+
+      fireEvent.keyDown(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!, {
+        key: 'Tab',
+        shiftKey: true,
+      })
+
+      // The block moved across levels, so it remounted: re-query it.
+      const child = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!
+      expect(child.closest('div.ml-3')).toBeNull()
+      expect(child).toHaveTextContent('child')
+      expect(child).toHaveFocus()
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toEqual([
+        expect.objectContaining({ kind: 'Move', blockId: 'child-1', after: 'block-1' }),
+      ])
+    })
+
+    it('hoists children when their empty parent is deleted with Backspace', () => {
+      const shell: PageDetails = {
+        ...PAGE,
+        blocks: [
+          {
+            id: 'shell',
+            parentBlockId: null,
+            type: 'paragraph',
+            content: { spans: [] },
+            sortKey: 'a',
+            version: 1,
+            updatedAtUtc: '2026-01-07T12:00:00.000Z',
+          },
+          {
+            id: 'kid',
+            parentBlockId: 'shell',
+            type: 'paragraph',
+            content: { spans: [{ text: 'kid', marks: [] }] },
+            sortKey: 'a',
+            version: 1,
+            updatedAtUtc: '2026-01-07T12:00:00.000Z',
+          },
+        ],
+      }
+      renderEditor({ page: shell })
+
+      const empty = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!
+      setSelectionOffsets(empty, 0, 0)
+      fireEvent.keyDown(empty, { key: 'Backspace' })
+
+      const boxes = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(boxes).toHaveLength(1)
+      expect(boxes[0]).toHaveTextContent('kid')
+      expect(boxes[0]!.closest('div.ml-3')).toBeNull()
+    })
+  })
+
+  describe('moving blocks', () => {
+    const TWO: PageDetails = {
+      ...PAGE,
+      blocks: [
+        PAGE.blocks[0]!,
+        {
+          id: 'block-2',
+          parentBlockId: null,
+          type: 'paragraph',
+          content: { spans: [{ text: 'Second block', marks: [] }] },
+          sortKey: 'b',
+          version: 1,
+          updatedAtUtc: '2026-01-07T12:00:00.000Z',
+        },
+      ],
+    }
+
+    it('indents a block with Tab and saves a Move op', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: TWO, onSave })
+
+      fireEvent.keyDown(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!, {
+        key: 'Tab',
+      })
+
+      // The block moved across levels, so it remounted: re-query it.
+      const second = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!
+      expect(second.closest('div.ml-3')).not.toBeNull()
+      expect(second).toHaveTextContent('Second block')
+      expect(second).toHaveFocus()
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toEqual([
+        expect.objectContaining({ kind: 'Move', blockId: 'block-2', parent: 'block-1' }),
+      ])
+    })
+
+    it('Tab on the first block does nothing', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: TWO, onSave })
+
+      const first = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!
+      fireEvent.keyDown(first, { key: 'Tab' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toEqual([])
+    })
+
+    it('reorders siblings with Ctrl+Shift+Arrow keys', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: TWO, onSave })
+
+      const second = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!
+      fireEvent.keyDown(second, { key: 'ArrowUp', ctrlKey: true, shiftKey: true })
+
+      const boxes = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(boxes[0]).toHaveTextContent('Second block')
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toEqual([expect.objectContaining({ kind: 'Move', blockId: 'block-2' })])
     })
   })
 })

@@ -14,6 +14,13 @@ import {
 } from '../lib/draft'
 import type { EditorBlock } from '../lib/draft'
 import { diffToOps } from '../lib/ops'
+import {
+  hoistChildren,
+  indentBlock,
+  moveBlockInGroup,
+  outdentBlock,
+  transferChildren,
+} from '../lib/moving'
 import { joinSpans, spansPlainText, splitSpansAt } from '../lib/spans'
 import { ParagraphEditor } from './blocks/ParagraphEditor'
 import { HeadingEditor } from './blocks/HeadingEditor'
@@ -171,35 +178,48 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     const text = spansPlainText(spansOf(current))
     const hasChildren = (groups.get(id)?.length ?? 0) > 0
 
-    // An empty childless block under Backspace just goes away. Hoisting a
-    // deleted block's children arrives with block moving; until then a block
-    // with children stays put.
+    // An empty block under Backspace just goes away; its children are hoisted
+    // into its place first (the diff turns that into Move ops + a Delete).
     if (text.length === 0) {
-      if (hasChildren) {
-        return
-      }
       const previousText = textBlocks[index - 1]
       if (previousText !== undefined) {
         setFocusRequest({ id: previousText.id, offset: spansPlainText(spansOf(previousText)).length })
       }
-      setDraft((draftNow) => removeBlock(draftNow, id))
+      setDraft((draftNow) =>
+        removeBlock(hasChildren ? hoistChildren(draftNow, id) : draftNow, id),
+      )
       return
     }
     // Merging crosses into the immediate VISUAL neighbour only: a divider (or
-    // any uneditable block) in between means nothing happens, and children of
-    // the merged-away block would be orphaned, so those blocks stay put too.
+    // any uneditable block) in between means nothing happens. The merged-away
+    // block's children follow its text onto the surviving block.
     const visibleIndex = visibleBlocks.findIndex((entry) => entry.id === id)
     const previous = visibleBlocks[visibleIndex - 1]
-    if (previous === undefined || !TEXT_TYPES.has(previous.type) || hasChildren) {
+    if (previous === undefined || !TEXT_TYPES.has(previous.type)) {
       return
     }
     const junction = spansPlainText(spansOf(previous)).length
     const merged = joinSpans(spansOf(previous), spansOf(current))
     setDraft((draftNow) => {
+      const withChildren = hasChildren ? transferChildren(draftNow, id, previous.id) : draftNow
       const content = { ...(previous.content as object), spans: merged }
-      return removeBlock(replaceBlockContent(draftNow, previous.id, content), id)
+      return removeBlock(replaceBlockContent(withChildren, previous.id, content), id)
     })
     setFocusRequest({ id: previous.id, offset: junction })
+  }
+
+  /** Applies a draft-moving gesture and keeps the caret where it was. */
+  const applyMove = (
+    id: string,
+    offset: number,
+    move: (draft: readonly EditorBlock[], id: string) => EditorBlock[] | null,
+  ) => {
+    const next = move(draft, id)
+    if (next === null) {
+      return
+    }
+    setDraft(next)
+    setFocusRequest({ id, offset })
   }
 
   const focusNeighbor = (id: string, direction: -1 | 1) => {
@@ -267,6 +287,17 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       },
       onFocusHandled: () => {
         setFocusRequest(null)
+      },
+      onIndent: (offset: number) => {
+        applyMove(block.id, offset, indentBlock)
+      },
+      onOutdent: (offset: number) => {
+        applyMove(block.id, offset, outdentBlock)
+      },
+      onMoveBlock: (direction: -1 | 1, offset: number) => {
+        applyMove(block.id, offset, (draftNow, blockId) =>
+          moveBlockInGroup(draftNow, blockId, direction),
+        )
       },
     }
 
