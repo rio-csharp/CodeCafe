@@ -904,4 +904,37 @@ describe('PageEditor', () => {
       expect(screen.getByText('Start with fresh beans.')).toBeInTheDocument()
     })
   })
+
+  describe('paste', () => {
+    it('pastes multi-line markdown as blocks, replacing an empty paragraph', async () => {
+      const user = userEvent.setup()
+      renderEditor()
+
+      await user.click(screen.getByRole('button', { name: 'editor.appendBlock' }))
+      const paragraphs = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      fireEvent.paste(paragraphs[1]!, {
+        clipboardData: { getData: () => '# Brew\n- [ ] beans\nplain' },
+      })
+
+      expect(screen.getByRole('textbox', { name: 'editor.heading' })).toHaveTextContent('Brew')
+      expect(screen.getByRole('textbox', { name: 'editor.todo' })).toHaveTextContent('beans')
+      // The original paragraph and the pasted tail are the two paragraphs left.
+      const remaining = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(remaining).toHaveLength(2)
+      expect(remaining[0]).toHaveTextContent('Start with fresh beans.')
+      expect(remaining[1]).toHaveTextContent('plain')
+    })
+
+    it('joins the first pasted line into a non-empty block at the caret', () => {
+      renderEditor()
+
+      const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+      fireEvent.paste(block, { clipboardData: { getData: () => 'one\ntwo' } })
+
+      const paragraphs = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(paragraphs).toHaveLength(2)
+      expect(paragraphs[0]).toHaveTextContent('oneStart with fresh beans.')
+      expect(paragraphs[1]).toHaveTextContent('two')
+    })
+  })
 })

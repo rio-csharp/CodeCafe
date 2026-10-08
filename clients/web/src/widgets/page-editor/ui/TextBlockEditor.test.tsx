@@ -142,7 +142,7 @@ describe('TextBlockEditor', () => {
     expect(screen.getByRole('textbox').querySelector('br')).not.toBeNull()
   })
 
-  it('paste keeps soft breaks and normalizes Windows line endings', () => {
+  it('paste without a block handler inserts text as-is, normalizing Windows line endings', () => {
     const onChange = vi.fn()
     renderEditor([{ text: 'ab', marks: [] }], { onChange })
 
@@ -151,6 +151,22 @@ describe('TextBlockEditor', () => {
     fireEvent.paste(element, { clipboardData: { getData: () => 'x\r\ny' } })
 
     expect(onChange).toHaveBeenCalledWith([{ text: 'abx\ny', marks: [] }])
+  })
+
+  it('routes multi-line pastes to the block-level handler', () => {
+    const onChange = vi.fn()
+    const onPasteBlocks = vi.fn()
+    renderEditor([{ text: 'ab', marks: [] }], { onChange, onPasteBlocks })
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 2, 2)
+    fireEvent.paste(element, { clipboardData: { getData: () => '# Title\nbody' } })
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(onPasteBlocks).toHaveBeenCalledWith(2, [
+      { type: 'heading', content: { level: 1, spans: [{ text: 'Title', marks: [] }] } },
+      { type: 'paragraph', content: { spans: [{ text: 'body', marks: [] }] } },
+    ])
   })
 
   it('reports Backspace at the start as a backward merge', () => {

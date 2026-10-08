@@ -66,11 +66,20 @@ export function insertBlockAfter(
   afterId: string,
   block: EditorBlock,
 ): EditorBlock[] {
+  return insertBlocksAfter(draft, afterId, [block])
+}
+
+/** Batch sibling insertion, same landing spot as {@link insertBlockAfter}. */
+export function insertBlocksAfter(
+  draft: readonly EditorBlock[],
+  afterId: string,
+  blocks: readonly EditorBlock[],
+): EditorBlock[] {
   const index = draft.findIndex((entry) => entry.id === afterId)
   if (index === -1) {
-    return [...draft, block]
+    return [...draft, ...blocks]
   }
-  return [...draft.slice(0, index + 1), block, ...draft.slice(index + 1)]
+  return [...draft.slice(0, index + 1), ...blocks, ...draft.slice(index + 1)]
 }
 
 export function removeBlock(draft: readonly EditorBlock[], id: string): EditorBlock[] {

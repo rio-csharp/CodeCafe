@@ -17,6 +17,8 @@ import {
 import { applyLink, linkHrefInRange, normalizeHref, rangeMarks, toggleMark } from '../lib/marks'
 import type { SimpleMarkKind } from '../lib/marks'
 import { insertTextAt, spansEqual, spansPlainText, splitSpansAt } from '../lib/spans'
+import { parsePastedBlocks } from '../lib/paste'
+import type { PastedBlock } from '../lib/paste'
 import { EditableSpans } from './EditableSpans'
 import { MarkToolbar } from './MarkToolbar'
 import { SlashMenu } from './SlashMenu'
@@ -42,6 +44,8 @@ export interface TextBlockEngineProps {
   onMoveBlock?: (direction: -1 | 1, offset: number) => void
   /** Present when slash-conversion is enabled; receives the target and the text after the `/query` prefix. */
   onTransform?: (target: SlashTarget, spans: SpanDto[]) => void
+  /** Multi-line paste becomes whole blocks; without it, text lands in this block as-is. */
+  onPasteBlocks?: (offset: number, blocks: PastedBlock[]) => void
 }
 
 export interface TextBlockEditorProps extends TextBlockEngineProps {
@@ -85,6 +89,7 @@ export function TextBlockEditor({
   onOutdent,
   onMoveBlock,
   onTransform,
+  onPasteBlocks,
 }: TextBlockEditorProps) {
   const ref = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -351,13 +356,20 @@ export function TextBlockEditor({
     if (element === null) {
       return
     }
-    // Soft line breaks paste as-is (the server keeps '\n'); normalize the
-    // line endings so Windows clipboards do not leak CR into the text.
+    // Normalize line endings so Windows clipboards do not leak CR.
     const text = event.clipboardData.getData('text/plain').replace(/\r\n?/g, '\n')
     if (text.length === 0) {
       return
     }
     const offset = getCaretOffset(element)
+    const parsed = parsePastedBlocks(text)
+    if (parsed !== null && onPasteBlocks !== undefined) {
+      // A multi-line paste supersedes any open slash menu along with the text.
+      setSlashQuery(null)
+      onPasteBlocks(offset, parsed)
+      return
+    }
+    // Single-line text (or no block-level handler): a plain in-block insert.
     pendingSelectionRef.current = { start: offset + text.length, end: offset + text.length }
     const next = insertTextAt(spans, offset, text)
     if (onTransform !== undefined) {

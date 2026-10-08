@@ -7,6 +7,7 @@ import type { PageDetails } from '@/entities/page'
 import {
   emptyParagraphBlock,
   insertBlockAfter,
+  insertBlocksAfter,
   mintTempId,
   removeBlock,
   replaceBlockContent,
@@ -26,7 +27,9 @@ import {
   removeBlocks,
   transferChildren,
 } from '../lib/moving'
-import { joinSpans, spansPlainText, splitSpansAt } from '../lib/spans'
+import { insertTextAt, joinSpans, spansPlainText, splitSpansAt } from '../lib/spans'
+import { pastedPlainText } from '../lib/paste'
+import type { PastedBlock } from '../lib/paste'
 import { ParagraphEditor } from './blocks/ParagraphEditor'
 import { HeadingEditor } from './blocks/HeadingEditor'
 import { QuoteEditor } from './blocks/QuoteEditor'
@@ -442,6 +445,73 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     setFocusRequest({ id, offset })
   }
 
+  /**
+   * Multi-line paste. The first pasted block's text joins the current block
+   * at the caret (an EMPTY current block gives way to the paste entirely);
+   * the rest land as fresh siblings right after it.
+   */
+  const pasteBlocks = (id: string, offset: number, pasted: PastedBlock[]) => {
+    const source = draft.find((entry) => entry.id === id)
+    if (source === undefined || !TEXT_TYPES.has(source.type) || pasted.length === 0) {
+      return
+    }
+    const fresh: EditorBlock[] = pasted.map((block) => ({
+      id: mintTempId(),
+      isNew: true,
+      parentBlockId: source.parentBlockId,
+      type: block.type,
+      content: block.content,
+      sortKey: '',
+      version: 0,
+    }))
+    const tail = fresh.slice(1)
+    const focusEnd = (block: EditorBlock) => ({
+      id: block.id,
+      offset: spansPlainText(spansOf(block)).length,
+    })
+    const lastTextualOf = (blocks: EditorBlock[]) =>
+      [...blocks].reverse().find((entry) => TEXT_TYPES.has(entry.type))
+
+    if (spansPlainText(spansOf(source)).length === 0) {
+      // The empty block is replaced; its children follow onto the last pasted
+      // block so the tree stays intact.
+      const anchor = fresh[fresh.length - 1]!.id
+      const next = draft
+        .flatMap((entry) => (entry.id === id ? fresh : [entry]))
+        .map((entry) =>
+          entry.parentBlockId === id ? { ...entry, parentBlockId: anchor } : entry,
+        )
+      setDraft(next)
+      const target = lastTextualOf(fresh)
+      if (target !== undefined) {
+        setFocusRequest(focusEnd(target))
+      }
+      return
+    }
+
+    const headText = pastedPlainText(pasted[0]!)
+    if (headText !== null) {
+      const merged = insertTextAt(spansOf(source), offset, headText)
+      const withHead = replaceBlockContent(draft, id, {
+        ...(source.content as object),
+        spans: merged,
+      })
+      setDraft(tail.length > 0 ? insertBlocksAfter(withHead, id, tail) : withHead)
+      const tailTextual = lastTextualOf(tail)
+      setFocusRequest(
+        tailTextual !== undefined ? focusEnd(tailTextual) : { id, offset: offset + headText.length },
+      )
+      return
+    }
+
+    // The head carries no text (code, divider): everything lands after.
+    setDraft(insertBlocksAfter(draft, id, fresh))
+    const target = lastTextualOf(fresh)
+    if (target !== undefined) {
+      setFocusRequest(focusEnd(target))
+    }
+  }
+
   const focusNeighbor = (id: string, direction: -1 | 1) => {
     const index = textBlocks.findIndex((entry) => entry.id === id)
     const target = textBlocks[index + direction]
@@ -523,6 +593,9 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
         applyMove(block.id, offset, (draftNow, blockId) =>
           moveBlockInGroup(draftNow, blockId, direction),
         )
+      },
+      onPasteBlocks: (offset: number, blocks: PastedBlock[]) => {
+        pasteBlocks(block.id, offset, blocks)
       },
     }
 
