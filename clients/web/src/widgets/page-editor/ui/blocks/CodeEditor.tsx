@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { highlightCode, HIGHLIGHT_LANGUAGES } from '@/entities/block'
 import type { CodeContent } from '@/entities/block'
@@ -23,26 +23,15 @@ const CODE_TYPOGRAPHY = 'px-3 py-2 font-mono text-[13px] leading-relaxed whitesp
 export function CodeEditor({ block, onChange }: CodeEditorProps) {
   const { t } = useTranslation()
   const content = block.content as CodeContent
-  const languageListId = useId()
 
   return (
     <div className="rounded-xl bg-muted-soft/60">
-      <input
+      <LanguageCombobox
         value={content.language}
-        list={languageListId}
-        aria-label={t('editor.codeLanguage')}
-        placeholder={t('editor.codeLanguage')}
-        onChange={(event) => {
-          onChange({ ...content, language: event.target.value })
+        onPick={(language) => {
+          onChange({ ...content, language })
         }}
-        className={`${INPUT_CLASS} ml-2 mt-1`}
       />
-      {/* Free input stays possible; the datalist only suggests highlightable languages. */}
-      <datalist id={languageListId}>
-        {HIGHLIGHT_LANGUAGES.map((language) => (
-          <option key={language} value={language} />
-        ))}
-      </datalist>
       <div className="relative">
         <pre aria-hidden className={`hljs text-ink ${CODE_TYPOGRAPHY}`}>
           <code
@@ -76,6 +65,113 @@ export function CodeEditor({ block, onChange }: CodeEditorProps) {
           className={`absolute inset-0 h-full w-full resize-none overflow-hidden bg-transparent text-transparent caret-accent placeholder:text-muted/60 focus:outline-none ${CODE_TYPOGRAPHY}`}
         />
       </div>
+    </div>
+  )
+}
+
+/**
+ * The language field: free text with a themed suggestion dropdown. A native
+ * <datalist> would be drawn by the OS and ignore the app's palette, so the
+ * listbox is hand-rolled — arrows move, Enter picks, Escape closes, typing
+ * filters, and anything unlisted still works.
+ */
+function LanguageCombobox({
+  value,
+  onPick,
+}: {
+  value: string
+  onPick: (language: string) => void
+}) {
+  const { t } = useTranslation()
+  const listboxId = useId()
+  const [open, setOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const query = value.trim().toLowerCase()
+  const options = HIGHLIGHT_LANGUAGES.filter((language) => language.includes(query)).slice(0, 8)
+
+  const pick = (language: string) => {
+    onPick(language)
+    setOpen(false)
+  }
+
+  return (
+    <div className="relative ml-2 mt-1 self-start">
+      <input
+        value={value}
+        role="combobox"
+        aria-expanded={open && options.length > 0}
+        aria-controls={listboxId}
+        aria-label={t('editor.codeLanguage')}
+        placeholder={t('editor.codeLanguage')}
+        onChange={(event) => {
+          onPick(event.target.value)
+          setOpen(true)
+          setActiveIndex(0)
+        }}
+        onFocus={() => {
+          setOpen(true)
+          setActiveIndex(0)
+        }}
+        onBlur={() => {
+          // mousedown on an option beats blur, so clicks still register.
+          setOpen(false)
+        }}
+        onKeyDown={(event) => {
+          // ArrowDown opens a closed list, like a native select.
+          if (!open) {
+            if (event.key === 'ArrowDown') {
+              setOpen(true)
+              setActiveIndex(0)
+            }
+            return
+          }
+          if (options.length === 0) {
+            return
+          }
+          if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault()
+            const delta = event.key === 'ArrowDown' ? 1 : -1
+            setActiveIndex((current) => (current + delta + options.length) % options.length)
+          } else if (event.key === 'Enter') {
+            event.preventDefault()
+            pick(options[activeIndex] ?? options[0]!)
+          } else if (event.key === 'Escape') {
+            // Close the list, not the editor: keep the event from bubbling up.
+            event.stopPropagation()
+            setOpen(false)
+          }
+        }}
+        className={INPUT_CLASS}
+      />
+      {open && options.length > 0 ? (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-label={t('editor.codeLanguage')}
+          className="absolute left-0 z-20 mt-1 max-h-48 min-w-40 overflow-y-auto rounded-lg border border-line bg-card py-1 shadow-lg"
+        >
+          {options.map((language, index) => (
+            <li
+              key={language}
+              role="option"
+              aria-selected={index === activeIndex}
+              onMouseDown={(event) => {
+                event.preventDefault()
+                pick(language)
+              }}
+              onMouseEnter={() => {
+                setActiveIndex(index)
+              }}
+              className={`cursor-pointer px-3 py-1 font-mono text-xs ${
+                index === activeIndex ? 'bg-accent-soft text-accent-strong' : 'text-ink'
+              }`}
+            >
+              {language}
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   )
 }

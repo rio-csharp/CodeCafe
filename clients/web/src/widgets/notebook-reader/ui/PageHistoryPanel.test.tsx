@@ -93,35 +93,47 @@ describe('PageHistoryPanel', () => {
     expect(await screen.findByText('history.empty')).toBeInTheDocument()
   })
 
-  it('hides restore from readers', async () => {
+  it('hides restore from readers, even inside the preview dialog', async () => {
+    const user = userEvent.setup()
     vi.mocked(listPageRevisions).mockResolvedValue({
       items: [group('2026-01-07T12:00:00.000Z')],
       nextCursor: null,
     })
+    vi.mocked(getPageAtRevision).mockResolvedValue({
+      atUtc: '2026-01-07T12:00:00.000Z',
+      blocks: PAST,
+    })
     renderPanel({ canWrite: false })
 
-    await screen.findByText('history.updated · history.added')
+    await user.click(await screen.findByRole('button', { name: 'history.view' }))
+    await screen.findByRole('dialog')
+
     expect(screen.queryByRole('button', { name: 'history.restore' })).not.toBeInTheDocument()
   })
 
-  it('restores after a two-click confirm and reports the restore', async () => {
+  it('restores from the preview dialog with a single click and closes it', async () => {
     const user = userEvent.setup()
     const onRestored = vi.fn()
     vi.mocked(listPageRevisions).mockResolvedValue({
       items: [group('2026-01-07T12:00:00.000Z')],
       nextCursor: null,
     })
+    vi.mocked(getPageAtRevision).mockResolvedValue({
+      atUtc: '2026-01-07T12:00:00.000Z',
+      blocks: PAST,
+    })
     vi.mocked(restorePageRevision).mockResolvedValue(undefined)
     renderPanel({ onRestored })
 
-    await user.click(await screen.findByRole('button', { name: 'history.restore' }))
-    expect(restorePageRevision).not.toHaveBeenCalled()
+    await user.click(await screen.findByRole('button', { name: 'history.view' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'history.restore' }))
 
-    await user.click(screen.getByRole('button', { name: 'history.restoreConfirm' }))
     expect(restorePageRevision).toHaveBeenCalledWith('page-1', '2026-01-07T12:00:00.000Z')
     await vi.waitFor(() => {
       expect(onRestored).toHaveBeenCalledOnce()
     })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('opens a preview dialog with the snapshot and a diff against now', async () => {
@@ -149,31 +161,6 @@ describe('PageHistoryPanel', () => {
     expect(screen.getByText('history.diffRemoved')).toBeInTheDocument()
     // The historical content renders inside the dialog.
     expect(dialog).toHaveTextContent('old text')
-  })
-
-  it('restores from the preview dialog and closes it', async () => {
-    const user = userEvent.setup()
-    const onRestored = vi.fn()
-    vi.mocked(listPageRevisions).mockResolvedValue({
-      items: [group('2026-01-07T12:00:00.000Z')],
-      nextCursor: null,
-    })
-    vi.mocked(getPageAtRevision).mockResolvedValue({
-      atUtc: '2026-01-07T12:00:00.000Z',
-      blocks: PAST,
-    })
-    vi.mocked(restorePageRevision).mockResolvedValue(undefined)
-    renderPanel({ onRestored })
-
-    await user.click(await screen.findByRole('button', { name: 'history.view' }))
-    const dialog = await screen.findByRole('dialog')
-    await user.click(within(dialog).getByRole('button', { name: 'history.restore' }))
-    await user.click(within(dialog).getByRole('button', { name: 'history.restoreConfirm' }))
-
-    await vi.waitFor(() => {
-      expect(onRestored).toHaveBeenCalledOnce()
-    })
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('pages through history with the cursor', async () => {

@@ -5,9 +5,7 @@ import type { BlockDto } from '@/entities/block'
 import { formatRelativeTime } from '@/entities/notebook'
 import { listPageRevisions, pageKeys } from '@/entities/page'
 import type { PageRevisionGroup, RevisionChangeKind } from '@/entities/page'
-import { useRestoreRevision } from '../lib/useRestoreRevision'
 import { RevisionPreviewDialog } from './RevisionPreviewDialog'
-import { RevisionRestoreButton } from './RevisionRestoreButton'
 
 export interface PageHistoryPanelProps {
   pageId: string
@@ -27,10 +25,9 @@ const KIND_LABEL: Record<RevisionChangeKind, string> = {
 }
 
 /**
- * The page's revision log in the reader's right panel: batches newest-first,
- * each with a change summary and a preview that opens the version's content
- * plus a diff against now. Restoring is two clicks — the log is append-only
- * server-side, so a restore can itself be undone by restoring again.
+ * The page's revision log in the reader's right panel: one line per batch
+ * (time + change summary), newest-first. Clicking a batch opens the preview
+ * dialog — historical content, a diff against now, and the restore button.
  */
 export function PageHistoryPanel({ pageId, currentBlocks, canWrite, onRestored }: PageHistoryPanelProps) {
   const { t, i18n } = useTranslation()
@@ -42,8 +39,6 @@ export function PageHistoryPanel({ pageId, currentBlocks, canWrite, onRestored }
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
   })
-
-  const restore = useRestoreRevision(pageId, onRestored)
 
   const groups = history.data?.pages.flatMap((page) => page.items) ?? []
 
@@ -79,50 +74,35 @@ export function PageHistoryPanel({ pageId, currentBlocks, canWrite, onRestored }
       ) : (
         <ul className="flex flex-col gap-2">
           {groups.map((group) => (
-            <li
-              key={group.atUtc}
-              className="flex flex-col gap-1.5 rounded-lg border border-line px-3 py-2"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs font-medium text-ink" title={group.atUtc}>
+            <li key={group.atUtc}>
+              {/* One line per batch: time and summary, click anywhere to preview. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingAt(group.atUtc)
+                }}
+                aria-label={t('history.view')}
+                className="flex w-full items-center gap-2 rounded-lg border border-line px-3 py-2 text-left transition-colors hover:bg-muted-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                <span
+                  className="shrink-0 text-xs font-medium text-ink"
+                  title={group.atUtc}
+                >
                   {formatRelativeTime(group.atUtc, i18n.language)}
                 </span>
+                <span className="min-w-0 flex-1 truncate text-xs text-muted">
+                  {summarize(group)}
+                </span>
                 {group.source === 'Ai' ? (
-                  <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent-strong">
+                  <span className="shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-[10px] font-medium text-accent-strong">
                     {t('history.aiBadge')}
                   </span>
                 ) : null}
-              </div>
-              <p className="text-xs text-muted">{summarize(group)}</p>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setViewingAt(group.atUtc)
-                  }}
-                  className="self-start rounded-md px-2 py-1 text-xs font-medium text-accent-strong transition-colors hover:bg-muted-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-                >
-                  {t('history.view')}
-                </button>
-                {canWrite ? (
-                  <RevisionRestoreButton
-                    pending={restore.isPending}
-                    onRestore={() => {
-                      restore.mutate(group.atUtc)
-                    }}
-                  />
-                ) : null}
-              </div>
+              </button>
             </li>
           ))}
         </ul>
       )}
-
-      {restore.isError ? (
-        <p role="alert" className="text-xs text-danger">
-          {t('history.restoreFailed')}
-        </p>
-      ) : null}
 
       {history.hasNextPage ? (
         <button

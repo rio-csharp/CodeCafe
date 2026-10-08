@@ -14,9 +14,10 @@ or the Save button commits, Escape cancels.
 Editing surface: inline spans with marks (floating toolbar + Ctrl/Cmd+B/I/U),
 slash-menu conversion, block selection (Escape, Shift+arrows), drag-and-drop via
 the six-dot handle, Tab/Shift+Tab indent, Ctrl/Cmd+Shift+arrows reorder, soft line
-breaks (Shift+Enter), nested blocks, callouts as containers, code (highlighted,
-language picked from a datalist of the bundled hljs grammars or typed freely),
-table, image, audio, bulleted/numbered lists.
+breaks (Shift+Enter), nested blocks, callouts as containers, code (highlighted;
+the language field is a themed combobox — free text plus a hand-rolled listbox,
+because a native <datalist> is OS-drawn and ignores the palette), table, image,
+audio, bulleted/numbered lists.
 
 ## Undo/redo (session-local)
 
@@ -57,15 +58,15 @@ it into a paragraph instead of merging upward; the next Backspace merges.
 
 The reader's right panel has a History tab (`PageHistoryPanel`) backed by the
 revisions API (`GET /api/pages/{id}/revisions`, cursor-paginated, batches
-newest-first). Each batch shows a relative timestamp, a per-kind change summary,
-and an AI badge for `Ai`-sourced batches. **View** opens a preview dialog: the
-historical content rendered read-only (`GET .../revisions/at?atUtc=...`, a
-read-only server-side reconstruction), plus a block-level diff against the
+newest-first): one line per batch — relative time, per-kind change summary, an
+AI badge for `Ai`-sourced batches. Clicking a batch opens the preview dialog:
+the historical content rendered read-only (`GET .../revisions/at?atUtc=...`, a
+read-only server-side reconstruction) plus a block-level diff against the
 current version (`lib/revisionDiff.ts`: added / removed / edited / moved).
-Writers get a two-click restore (`POST .../revisions/restore`, the shared
-`RevisionRestoreButton` + `useRestoreRevision`); the restore is itself recorded
-as a new batch, so it can be undone by restoring again. The tab hides while
-editing — restoring under an open draft would silently discard it.
+Writers get a one-click restore in the dialog (`POST .../revisions/restore`) —
+no confirm step: the log is append-only, so a restore is itself undoable by
+restoring again, and that is the safety net. The tab hides while editing —
+restoring under an open draft would silently discard it.
 
 ## Deliberately out of scope (still)
 
