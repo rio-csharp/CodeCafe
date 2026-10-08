@@ -179,6 +179,29 @@ describe('PageEditor', () => {
     expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(2)
   })
 
+  it('keeps a divider visible between blocks while editing', () => {
+    const withDivider: PageDetails = {
+      ...PAGE,
+      blocks: [
+        PAGE.blocks[0]!,
+        {
+          id: 'block-divider',
+          parentBlockId: null,
+          type: 'divider',
+          content: {},
+          sortKey: 'b',
+          version: 1,
+          updatedAtUtc: '2026-01-07T12:00:00.000Z',
+        },
+      ],
+    }
+    const { container } = renderEditor({ page: withDivider })
+
+    const rule = container.querySelector('hr')
+    expect(rule).not.toBeNull()
+    expect(rule?.parentElement).toHaveClass('py-2')
+  })
+
   it('converts a paragraph to a to-do via the slash menu and saves delete + insert', async () => {
     const user = userEvent.setup()
     const onSave = vi.fn()

@@ -297,7 +297,12 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
           return (
             <div key={block.id}>
               {block.type === 'divider' ? (
-                <DividerBlock />
+                // Editor blocks butt up against each other (the reader's list
+                // has gap-4, the editor does not), so the rule needs its own
+                // breathing room to stay visible.
+                <div className="py-2">
+                  <DividerBlock />
+                </div>
               ) : TEXT_TYPES.has(block.type) ? (
                 <>
                   {editor}
