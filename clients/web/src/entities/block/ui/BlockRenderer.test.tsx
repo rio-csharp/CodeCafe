@@ -226,6 +226,20 @@ describe('BlockRenderer', () => {
     expect(screen.getByText('const')).toHaveClass('hljs-keyword')
   })
 
+  it('shows the code language label, and hides it when unset', () => {
+    renderBlock({
+      type: 'code',
+      content: { code: 'const x = 1;', language: 'javascript' },
+    })
+    expect(screen.getByText('javascript')).toBeInTheDocument()
+  })
+
+  it('hides the language label when the language is blank', () => {
+    const { container } = renderBlock({ type: 'code', content: { code: 'plain', language: '  ' } })
+
+    expect(container.textContent).toBe('plain')
+  })
+
   it('renders a whole list of blocks', () => {
     const nodes: BlockNode[] = ['one', 'two'].map((value, index) => ({
       block: {
