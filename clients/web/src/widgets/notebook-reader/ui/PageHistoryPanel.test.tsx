@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listPageRevisions, restorePageRevision } from '@/entities/page'
+import type { BlockDto } from '@/entities/block'
+import { getPageAtRevision, listPageRevisions, restorePageRevision } from '@/entities/page'
 import type { PageRevisionGroup, RevisionSource } from '@/entities/page'
 import { PageHistoryPanel } from './PageHistoryPanel'
 
@@ -14,7 +15,32 @@ vi.mock('@/entities/page', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/page')>()),
   listPageRevisions: vi.fn(),
   restorePageRevision: vi.fn(),
+  getPageAtRevision: vi.fn(),
 }))
+
+const CURRENT: BlockDto[] = [
+  {
+    id: 'block-now',
+    parentBlockId: null,
+    type: 'paragraph',
+    content: { spans: [{ text: 'current text', marks: [] }] },
+    sortKey: 'a',
+    version: 2,
+    updatedAtUtc: '2026-01-07T12:00:00.000Z',
+  },
+]
+
+const PAST: BlockDto[] = [
+  {
+    id: 'block-then',
+    parentBlockId: null,
+    type: 'paragraph',
+    content: { spans: [{ text: 'old text', marks: [] }] },
+    sortKey: 'a',
+    version: 1,
+    updatedAtUtc: '2026-01-06T12:00:00.000Z',
+  },
+]
 
 function group(atUtc: string, source: RevisionSource = 'Human'): PageRevisionGroup {
   return {
@@ -31,7 +57,12 @@ function renderPanel({ canWrite = true, onRestored = vi.fn() } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <PageHistoryPanel pageId="page-1" canWrite={canWrite} onRestored={onRestored} />
+      <PageHistoryPanel
+        pageId="page-1"
+        currentBlocks={CURRENT}
+        canWrite={canWrite}
+        onRestored={onRestored}
+      />
     </QueryClientProvider>,
   )
 }
@@ -40,6 +71,7 @@ describe('PageHistoryPanel', () => {
   beforeEach(() => {
     vi.mocked(listPageRevisions).mockReset()
     vi.mocked(restorePageRevision).mockReset()
+    vi.mocked(getPageAtRevision).mockReset()
   })
 
   it('lists revision groups with a change summary and an AI badge', async () => {
@@ -90,6 +122,58 @@ describe('PageHistoryPanel', () => {
     await vi.waitFor(() => {
       expect(onRestored).toHaveBeenCalledOnce()
     })
+  })
+
+  it('opens a preview dialog with the snapshot and a diff against now', async () => {
+    const user = userEvent.setup()
+    vi.mocked(listPageRevisions).mockResolvedValue({
+      items: [group('2026-01-07T12:00:00.000Z')],
+      nextCursor: null,
+    })
+    vi.mocked(getPageAtRevision).mockResolvedValue({
+      atUtc: '2026-01-07T12:00:00.000Z',
+      blocks: PAST,
+    })
+    renderPanel()
+
+    await user.click(await screen.findByRole('button', { name: 'history.view' }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(getPageAtRevision).toHaveBeenCalledWith(
+      'page-1',
+      '2026-01-07T12:00:00.000Z',
+      expect.anything(),
+    )
+    // Current block is an addition, the past one a removal.
+    expect(screen.getByText('history.diffAdded')).toBeInTheDocument()
+    expect(screen.getByText('history.diffRemoved')).toBeInTheDocument()
+    // The historical content renders inside the dialog.
+    expect(dialog).toHaveTextContent('old text')
+  })
+
+  it('restores from the preview dialog and closes it', async () => {
+    const user = userEvent.setup()
+    const onRestored = vi.fn()
+    vi.mocked(listPageRevisions).mockResolvedValue({
+      items: [group('2026-01-07T12:00:00.000Z')],
+      nextCursor: null,
+    })
+    vi.mocked(getPageAtRevision).mockResolvedValue({
+      atUtc: '2026-01-07T12:00:00.000Z',
+      blocks: PAST,
+    })
+    vi.mocked(restorePageRevision).mockResolvedValue(undefined)
+    renderPanel({ onRestored })
+
+    await user.click(await screen.findByRole('button', { name: 'history.view' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'history.restore' }))
+    await user.click(within(dialog).getByRole('button', { name: 'history.restoreConfirm' }))
+
+    await vi.waitFor(() => {
+      expect(onRestored).toHaveBeenCalledOnce()
+    })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('pages through history with the cursor', async () => {

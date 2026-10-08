@@ -7,12 +7,14 @@ export type { UpdatePageData } from './api/updatePage'
 export { listPageRevisions } from './api/listPageRevisions'
 export type { ListPageRevisionsParams } from './api/listPageRevisions'
 export { restorePageRevision } from './api/restorePageRevision'
+export { getPageAtRevision } from './api/getPageAtRevision'
 export { pageKeys } from './model/types'
 export type {
   BlockRevision,
   CursorPage,
   PageDetails,
   PageRevisionGroup,
+  PageRevisionSnapshot,
   RevisionChangeKind,
   RevisionSource,
 } from './model/types'

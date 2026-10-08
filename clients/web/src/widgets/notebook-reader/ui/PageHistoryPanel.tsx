@@ -1,12 +1,18 @@
 import { useState } from 'react'
-import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
+import type { BlockDto } from '@/entities/block'
 import { formatRelativeTime } from '@/entities/notebook'
-import { listPageRevisions, pageKeys, restorePageRevision } from '@/entities/page'
+import { listPageRevisions, pageKeys } from '@/entities/page'
 import type { PageRevisionGroup, RevisionChangeKind } from '@/entities/page'
+import { useRestoreRevision } from '../lib/useRestoreRevision'
+import { RevisionPreviewDialog } from './RevisionPreviewDialog'
+import { RevisionRestoreButton } from './RevisionRestoreButton'
 
 export interface PageHistoryPanelProps {
   pageId: string
+  /** The live blocks; the preview dialog diffs against them. */
+  currentBlocks: readonly BlockDto[]
   /** Writers get the restore button; readers only browse. */
   canWrite: boolean
   /** Called after a successful restore so the reader can refetch the page. */
@@ -22,14 +28,13 @@ const KIND_LABEL: Record<RevisionChangeKind, string> = {
 
 /**
  * The page's revision log in the reader's right panel: batches newest-first,
- * each with a change summary. Restoring is a two-click affair — the log is
- * append-only server-side, so a restore can itself be undone by restoring
- * again, but the current unsaved-looking state still gets replaced.
+ * each with a change summary and a preview that opens the version's content
+ * plus a diff against now. Restoring is two clicks — the log is append-only
+ * server-side, so a restore can itself be undone by restoring again.
  */
-export function PageHistoryPanel({ pageId, canWrite, onRestored }: PageHistoryPanelProps) {
+export function PageHistoryPanel({ pageId, currentBlocks, canWrite, onRestored }: PageHistoryPanelProps) {
   const { t, i18n } = useTranslation()
-  const queryClient = useQueryClient()
-  const [confirmingAt, setConfirmingAt] = useState<string | null>(null)
+  const [viewingAt, setViewingAt] = useState<string | null>(null)
 
   const history = useInfiniteQuery({
     queryKey: pageKeys.revisions(pageId),
@@ -38,14 +43,7 @@ export function PageHistoryPanel({ pageId, canWrite, onRestored }: PageHistoryPa
     getNextPageParam: (last) => last.nextCursor,
   })
 
-  const restore = useMutation({
-    mutationFn: (atUtc: string) => restorePageRevision(pageId, atUtc),
-    onSuccess: () => {
-      setConfirmingAt(null)
-      void queryClient.invalidateQueries({ queryKey: pageKeys.revisions(pageId) })
-      onRestored()
-    },
-  })
+  const restore = useRestoreRevision(pageId, onRestored)
 
   const groups = history.data?.pages.flatMap((page) => page.items) ?? []
 
@@ -65,7 +63,7 @@ export function PageHistoryPanel({ pageId, canWrite, onRestored }: PageHistoryPa
         <p className="text-xs text-muted">{t('history.loading')}</p>
       ) : history.isError ? (
         <div className="flex items-center gap-2">
-          <p className="text-xs text-danger">{t('history.restoreFailed')}</p>
+          <p className="text-xs text-danger">{t('history.loadFailed')}</p>
           <button
             type="button"
             onClick={() => {
@@ -96,30 +94,25 @@ export function PageHistoryPanel({ pageId, canWrite, onRestored }: PageHistoryPa
                 ) : null}
               </div>
               <p className="text-xs text-muted">{summarize(group)}</p>
-              {canWrite ? (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  disabled={restore.isPending}
                   onClick={() => {
-                    if (confirmingAt === group.atUtc) {
-                      restore.mutate(group.atUtc)
-                    } else {
-                      setConfirmingAt(group.atUtc)
-                    }
+                    setViewingAt(group.atUtc)
                   }}
-                  className={`self-start rounded-md px-2 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50 ${
-                    confirmingAt === group.atUtc
-                      ? 'bg-danger-soft text-danger'
-                      : 'text-accent-strong hover:bg-muted-soft'
-                  }`}
+                  className="self-start rounded-md px-2 py-1 text-xs font-medium text-accent-strong transition-colors hover:bg-muted-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 >
-                  {restore.isPending && confirmingAt === group.atUtc
-                    ? t('history.restoring')
-                    : confirmingAt === group.atUtc
-                      ? t('history.restoreConfirm')
-                      : t('history.restore')}
+                  {t('history.view')}
                 </button>
-              ) : null}
+                {canWrite ? (
+                  <RevisionRestoreButton
+                    pending={restore.isPending}
+                    onRestore={() => {
+                      restore.mutate(group.atUtc)
+                    }}
+                  />
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>
@@ -142,6 +135,19 @@ export function PageHistoryPanel({ pageId, canWrite, onRestored }: PageHistoryPa
         >
           {history.isFetchingNextPage ? t('history.loading') : t('history.loadMore')}
         </button>
+      ) : null}
+
+      {viewingAt !== null ? (
+        <RevisionPreviewDialog
+          pageId={pageId}
+          atUtc={viewingAt}
+          currentBlocks={currentBlocks}
+          canWrite={canWrite}
+          onRestored={onRestored}
+          onClose={() => {
+            setViewingAt(null)
+          }}
+        />
       ) : null}
     </div>
   )

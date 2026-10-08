@@ -44,3 +44,9 @@ export interface CursorPage<T> {
   items: T[]
   nextCursor: string | null
 }
+
+/** A reconstructed page state at a past instant; blocks mirror the live BlockDto shape. */
+export interface PageRevisionSnapshot {
+  atUtc: string
+  blocks: BlockDto[]
+}

@@ -217,6 +217,7 @@ export function NotebookReaderPage() {
                 content: (
                   <PageHistoryPanel
                     pageId={page.data.id}
+                    currentBlocks={page.data.blocks}
                     canWrite={notebook.canWrite}
                     onRestored={() => {
                       void queryClient.invalidateQueries({ queryKey: pageKeys.all })
