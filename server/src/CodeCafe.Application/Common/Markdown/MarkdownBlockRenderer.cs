@@ -203,7 +203,43 @@ internal static class MarkdownBlockRenderer
     // Soft line breaks export as markdown hard breaks (backslash-newline); the
     // continuation line re-imports as a lazy continuation of the same block.
     private static string RenderMultiline(Spans spans)
-        => RenderSpans(spans).Replace("\n", "\\\n");
+    {
+        var text = RenderSpans(spans).Replace("\n", "\\\n");
+        var lines = text.Split('\n');
+        for (var i = 1; i < lines.Length; i++)
+        {
+            lines[i] = EscapeContinuationStart(lines[i]);
+        }
+
+        return string.Join('\n', lines);
+    }
+
+    // A continuation line re-imports as a lazy continuation of the same block —
+    // unless it opens with a block-level marker, which would interrupt the block
+    // and change the tree. EscapeText already neutralizes '*' and backticks;
+    // handle the rest.
+    private static string EscapeContinuationStart(string line)
+    {
+        if (line.Length == 0)
+        {
+            return line;
+        }
+        if (line[0] is '#' or '>' or '<' or '~' or '=' or '-' or '+')
+        {
+            return "\\" + line;
+        }
+        var digits = 0;
+        while (digits < line.Length && char.IsAsciiDigit(line[digits]))
+        {
+            digits++;
+        }
+        if (digits > 0 && digits < line.Length && line[digits] is '.' or ')')
+        {
+            return $"{line[..digits]}\\{line[digits]}{line[(digits + 1)..]}";
+        }
+
+        return line;
+    }
 
     private static string RenderSpan(Span span)
     {
