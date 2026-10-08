@@ -231,6 +231,8 @@ export const en = {
       divider: 'Divider',
       code: 'Code',
       table: 'Table',
+      image: 'Image',
+      audio: 'Audio',
     },
     codeLanguage: 'Language',
     code: 'Code',

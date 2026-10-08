@@ -332,7 +332,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
         entry.parentBlockId === id ? { ...entry, parentBlockId: fresh.id } : entry,
       )
     })
-    if (target.type !== 'divider') {
+    if (target.type !== 'divider' && target.type !== 'image' && target.type !== 'audio') {
       setFocusRequest({ id: fresh.id, offset: 0 })
     }
   }

@@ -3,16 +3,24 @@ import type { EditorBlock } from './draft'
 import { spansPlainText } from './spans'
 
 /**
- * Spans-typed payloads with no text are dropped instead of saved empty — but
- * only paragraphs: an empty heading/quote/todo is a deliberate conversion
- * result, while an empty paragraph is usually Enter-then-save junk.
+ * Payloads with no content are dropped instead of saved empty — but only
+ * paragraphs (an empty heading/quote/todo is a deliberate conversion result,
+ * while an empty paragraph is usually Enter-then-save junk) and untouched
+ * media shells (the server rejects an empty image/audio URL).
  */
 function isEmptyNewTextBlock(block: EditorBlock): boolean {
-  if (!block.isNew || block.type !== 'paragraph') {
+  if (!block.isNew) {
     return false
   }
-  const spans = (block.content as { spans?: SpanDto[] }).spans
-  return spans === undefined || spansPlainText(spans).trim().length === 0
+  if (block.type === 'paragraph') {
+    const spans = (block.content as { spans?: SpanDto[] }).spans
+    return spans === undefined || spansPlainText(spans).trim().length === 0
+  }
+  if (block.type === 'image' || block.type === 'audio') {
+    const url = (block.content as { url?: string }).url
+    return url === undefined || url.trim().length === 0
+  }
+  return false
 }
 
 /**

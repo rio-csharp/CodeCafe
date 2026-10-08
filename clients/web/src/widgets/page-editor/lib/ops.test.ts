@@ -109,6 +109,35 @@ describe('diffToOps', () => {
     expect(diffToOps(original, draft)).toEqual([])
   })
 
+  it('drops untouched media shells, whose empty URLs the server rejects', () => {
+    const original = [source('a', 'one')]
+    const shell: EditorBlock = {
+      id: 'temp-img',
+      isNew: true,
+      parentBlockId: null,
+      type: 'image',
+      content: { url: '', alt: null, isDecorative: true, caption: null },
+      sortKey: '',
+      version: 0,
+    }
+    const filled: EditorBlock = {
+      ...shell,
+      id: 'temp-filled',
+      content: { url: 'https://x.test/a.png', alt: null, isDecorative: true, caption: null },
+    }
+
+    expect(diffToOps(original, [edit(original[0]!, 'one'), shell])).toEqual([])
+    expect(diffToOps(original, [edit(original[0]!, 'one'), filled])).toEqual([
+      {
+        kind: 'Insert',
+        tempId: 'temp-filled',
+        type: 'image',
+        content: { url: 'https://x.test/a.png', alt: null, isDecorative: true, caption: null },
+        after: 'a',
+      },
+    ])
+  })
+
   it('splits round-trip: update the left half, insert the right', () => {
     const original = [source('a', 'onetwo')]
     const draft = [edit(original[0]!, 'one'), fresh('temp-1', 'two')]

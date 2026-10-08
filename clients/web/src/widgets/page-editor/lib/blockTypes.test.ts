@@ -13,7 +13,7 @@ describe('detectSlashQuery', () => {
 
 describe('filterSlashItems', () => {
   it('returns everything for an empty query', () => {
-    expect(filterSlashItems('')).toHaveLength(12)
+    expect(filterSlashItems('')).toHaveLength(14)
   })
 
   it('matches ids and keywords case-insensitively', () => {
@@ -49,5 +49,16 @@ describe('contentForTarget', () => {
     expect(contentForTarget({ type: 'divider' }, spans)).toEqual({})
     expect(contentForTarget({ type: 'bulleted-list' }, spans)).toEqual({ spans })
     expect(contentForTarget({ type: 'numbered-list' }, spans)).toEqual({ spans })
+    expect(contentForTarget({ type: 'image' }, spans)).toEqual({
+      url: '',
+      alt: null,
+      isDecorative: true,
+      caption: null,
+    })
+    expect(contentForTarget({ type: 'audio' }, spans)).toEqual({
+      url: '',
+      mimeType: 'audio/mpeg',
+      duration: null,
+    })
   })
 })

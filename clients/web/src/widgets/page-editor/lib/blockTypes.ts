@@ -13,6 +13,8 @@ export type SlashTarget =
   | { type: 'divider' }
   | { type: 'code' }
   | { type: 'table' }
+  | { type: 'image' }
+  | { type: 'audio' }
 
 export interface SlashItem {
   /** Stable id; the i18n label lives at `editor.slash.<id>`. */
@@ -35,6 +37,8 @@ export const SLASH_ITEMS: readonly SlashItem[] = [
   { id: 'divider', target: { type: 'divider' }, keywords: ['divider', 'hr', 'line', 'rule', '分割', '分隔'] },
   { id: 'code', target: { type: 'code' }, keywords: ['code', 'snippet', '代码', '代码块'] },
   { id: 'table', target: { type: 'table' }, keywords: ['table', 'grid', '表格'] },
+  { id: 'image', target: { type: 'image' }, keywords: ['image', 'img', 'picture', 'photo', '图片', '图像'] },
+  { id: 'audio', target: { type: 'audio' }, keywords: ['audio', 'music', 'sound', '音频', '音乐'] },
 ]
 
 /** Case-insensitive filter over ids, keywords and (via keywords) both locales. */
@@ -84,6 +88,11 @@ export function contentForTarget(target: SlashTarget, spans: SpanDto[]): Record<
           [[], []],
         ],
       }
+    case 'image':
+      // An empty shell the user fills in; dropped unsaved if left untouched.
+      return { url: '', alt: null, isDecorative: true, caption: null }
+    case 'audio':
+      return { url: '', mimeType: 'audio/mpeg', duration: null }
     default:
       return { spans }
   }

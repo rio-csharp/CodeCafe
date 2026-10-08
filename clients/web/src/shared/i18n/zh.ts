@@ -230,6 +230,8 @@ export const zh = {
       divider: '分割线',
       code: '代码块',
       table: '表格',
+      image: '图片',
+      audio: '音频',
     },
     codeLanguage: '语言',
     code: '代码块',
