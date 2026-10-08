@@ -239,7 +239,7 @@ internal static class MarkdownDocumentParser
     private static ParsedMarkdownBlock ParseListItem(ListItemBlock item, bool ordered, int headingLevelOffset)
     {
         // The item's first paragraph becomes the item's own block; nested lists and anything
-        // else become its children. Extra hard-break segments join the children.
+        // else become its children.
         ParsedMarkdownBlock? first = null;
         var children = new List<ParsedMarkdownBlock>();
         var itemType = ordered ? BlockTypes.NumberedList : BlockTypes.BulletedList;

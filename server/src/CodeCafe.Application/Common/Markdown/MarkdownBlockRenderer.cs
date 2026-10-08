@@ -68,7 +68,7 @@ internal static class MarkdownBlockRenderer
         {
             case BlockTypes.Paragraph:
             {
-                var line = RenderSpans(GetPayload<ParagraphPayload>(block).Spans);
+                var line = RenderMultiline(GetPayload<ParagraphPayload>(block).Spans);
                 // A line starting with '#' would re-import as a heading — splitting a notebook
                 // file into pages — so escape it to keep the paragraph intact on round trips.
                 if (line.StartsWith('#'))
@@ -82,23 +82,24 @@ internal static class MarkdownBlockRenderer
             case BlockTypes.Heading:
             {
                 var payload = GetPayload<HeadingPayload>(block);
+                // ATX headings are single-line; soft breaks degrade to spaces.
                 output.Append(indent).Append(new string('#', Math.Min(payload.Level + headingHashOffset, 6))).Append(' ')
-                    .AppendLine(RenderSpans(payload.Spans));
+                    .AppendLine(RenderSpans(payload.Spans).Replace("\n", " "));
                 break;
             }
             case BlockTypes.Todo:
             {
                 var payload = GetPayload<TodoPayload>(block);
                 output.Append(indent).Append(payload.Checked ? "- [x] " : "- [ ] ")
-                    .AppendLine(RenderSpans(payload.Spans));
+                    .AppendLine(RenderMultiline(payload.Spans));
                 break;
             }
             case BlockTypes.BulletedList:
-                output.Append(indent).Append("- ").AppendLine(RenderSpans(GetPayload<ListItemPayload>(block).Spans));
+                output.Append(indent).Append("- ").AppendLine(RenderMultiline(GetPayload<ListItemPayload>(block).Spans));
                 break;
             case BlockTypes.NumberedList:
                 output.Append(indent).Append(numbers.GetValueOrDefault(block.Id, 1)).Append(". ")
-                    .AppendLine(RenderSpans(GetPayload<ListItemPayload>(block).Spans));
+                    .AppendLine(RenderMultiline(GetPayload<ListItemPayload>(block).Spans));
                 break;
             case BlockTypes.Code:
             {
@@ -109,12 +110,12 @@ internal static class MarkdownBlockRenderer
                 break;
             }
             case BlockTypes.Quote:
-                RenderQuote(output, indent, RenderSpans(GetPayload<QuotePayload>(block).Spans));
+                RenderQuote(output, indent, RenderMultiline(GetPayload<QuotePayload>(block).Spans));
                 break;
             case BlockTypes.Callout:
             {
                 var payload = GetPayload<CalloutPayload>(block);
-                RenderQuote(output, indent, $"[!{payload.Variant.ToString().ToUpperInvariant()}]\n{RenderSpans(payload.Spans)}");
+                RenderQuote(output, indent, $"[!{payload.Variant.ToString().ToUpperInvariant()}]\n{RenderMultiline(payload.Spans)}");
                 break;
             }
             case BlockTypes.Divider:
@@ -181,7 +182,8 @@ internal static class MarkdownBlockRenderer
         {
             // A bare | would end the cell. The escape is unreliable inside code spans (GFM
             // parses them first), a known edge the importer accepts as a parse artifact.
-            output.Append(' ').Append(RenderSpans(cell).Replace("|", "\\|", StringComparison.Ordinal)).Append(" |");
+            // Pipe-table rows are single-line, so soft breaks degrade to spaces.
+            output.Append(' ').Append(RenderSpans(cell).Replace("\n", " ").Replace("|", "\\|", StringComparison.Ordinal)).Append(" |");
         }
 
         output.AppendLine();
@@ -197,6 +199,11 @@ internal static class MarkdownBlockRenderer
 
     private static string RenderSpans(Spans spans)
         => string.Concat(spans.Items.Select(RenderSpan));
+
+    // Soft line breaks export as markdown hard breaks (backslash-newline); the
+    // continuation line re-imports as a lazy continuation of the same block.
+    private static string RenderMultiline(Spans spans)
+        => RenderSpans(spans).Replace("\n", "\\\n");
 
     private static string RenderSpan(Span span)
     {

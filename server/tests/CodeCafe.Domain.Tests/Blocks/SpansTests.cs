@@ -95,11 +95,11 @@ public sealed class SpansTests
     }
 
     [Theory]
-    [InlineData("a\nb")]
-    [InlineData("a\rb")]
-    [InlineData("a\r\nb")]
-    public void Create_LineBreakInText_Throws(string text) =>
-        Assert.Throws<ArgumentException>(() => Spans.Create([new Span(text, [])]));
+    [InlineData("a\nb", "a\nb")]
+    [InlineData("a\rb", "a\nb")]
+    [InlineData("a\r\nb", "a\nb")]
+    public void Create_LineBreaks_NormalizeToLf(string text, string expected) =>
+        Assert.Equal(expected, Spans.Create([new Span(text, [])]).Items[0].Text);
 
     [Fact]
     public void Create_SupAndSub_Throws() =>

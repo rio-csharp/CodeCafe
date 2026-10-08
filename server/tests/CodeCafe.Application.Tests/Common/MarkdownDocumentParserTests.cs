@@ -174,23 +174,21 @@ public sealed class MarkdownDocumentParserTests
     }
 
     [Fact]
-    public void Paragraph_HardBreak_SplitsBlocks()
+    public void Paragraph_HardBreak_BecomesSoftBreak()
     {
         var blocks = Parse("first  \nsecond");
 
-        Assert.Equal(2, blocks.Count);
-        Assert.Equal("first", Payload<ParagraphPayload>(blocks[0]).Spans.ToPlainText());
-        Assert.Equal("second", Payload<ParagraphPayload>(blocks[1]).Spans.ToPlainText());
+        var paragraph = Payload<ParagraphPayload>(Assert.Single(blocks));
+        Assert.Equal("first\nsecond", paragraph.Spans.ToPlainText());
     }
 
     [Fact]
-    public void Paragraph_HardBreakInsideEmphasis_SplitsBlocksKeepingMarks()
+    public void Paragraph_HardBreakInsideEmphasis_KeepsMarksAcrossTheBreak()
     {
         var blocks = Parse("**one  \ntwo**");
 
-        Assert.Equal(2, blocks.Count);
-        AssertSpan(Payload<ParagraphPayload>(blocks[0]).Spans, "one", typeof(BoldMark));
-        AssertSpan(Payload<ParagraphPayload>(blocks[1]).Spans, "two", typeof(BoldMark));
+        var paragraph = Payload<ParagraphPayload>(Assert.Single(blocks));
+        AssertSpan(paragraph.Spans, "one\ntwo", typeof(BoldMark));
     }
 
     [Fact]
@@ -335,12 +333,12 @@ public sealed class MarkdownDocumentParserTests
     }
 
     [Fact]
-    public void Quote_HardBreak_SplitsIntoQuoteBlocks()
+    public void Quote_HardBreak_BecomesSoftBreak()
     {
         var blocks = Parse("> one  \n> two");
 
-        Assert.Equal(2, blocks.Count);
-        Assert.All(blocks, block => Assert.Equal(BlockTypes.Quote, block.Type));
+        var quote = Payload<QuotePayload>(Assert.Single(blocks));
+        Assert.Equal("one\ntwo", quote.Spans.ToPlainText());
     }
 
     [Fact]

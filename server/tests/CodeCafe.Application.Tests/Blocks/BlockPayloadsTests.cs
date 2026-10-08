@@ -124,12 +124,12 @@ public sealed class BlockPayloadsTests
     }
 
     [Fact]
-    public void ValidateAndNormalize_RejectsSpanTextWithNewline()
+    public void ValidateAndNormalize_AcceptsSpanTextWithNewline()
     {
-        var result = Validate(BlockTypes.Paragraph, """{"spans":[{"text":"one\ntwo","marks":[]}]}""");
+        var result = Validate(BlockTypes.Paragraph, """{"spans":[{"text":"one\r\ntwo","marks":[]}]}""");
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal(BlockErrors.InvalidBlockPayload.Code, result.Error!.Code);
+        Assert.True(result.IsSuccess);
+        Assert.Equal("one\ntwo", result.Value!.PlainText);
     }
 
     [Fact]

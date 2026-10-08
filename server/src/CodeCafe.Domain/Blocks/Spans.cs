@@ -58,10 +58,9 @@ public sealed class Spans : IEquatable<Spans>
         {
             ArgumentNullException.ThrowIfNull(span);
             var text = span.Text ?? throw new ArgumentException("Span text must not be null.", nameof(spans));
-            if (text.Contains('\n') || text.Contains('\r'))
-            {
-                throw new ArgumentException("Span text must not contain line breaks; lines are separate blocks.", nameof(spans));
-            }
+            // Soft line breaks (Shift+Enter in the editor) are legal text; line
+            // endings normalize to LF so the canonical form is stable.
+            text = text.Replace("\r\n", "\n").Replace('\r', '\n');
 
             var marks = CanonicalizeMarks(span.Marks);
             if (text.Length == 0)

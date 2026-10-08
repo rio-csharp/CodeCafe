@@ -56,6 +56,13 @@ public sealed class MarkdownRoundTripTests
             page,
             all,
             null,
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"line one\nline two","marks":[]}]}"""
+        );
+        AddBlock(
+            page,
+            all,
+            null,
             BlockTypes.Image,
             """{"url":"https://example.com/cat.png","alt":"a cat","isDecorative":false,"caption":"A fuzzy one"}"""
         );
@@ -114,6 +121,13 @@ public sealed class MarkdownRoundTripTests
             """{"variant":"warning","spans":[{"text":"Watch out","marks":[]}]}"""
         );
         AddBlock(page, all, null, BlockTypes.Divider, """{}""");
+        AddBlock(
+            page,
+            all,
+            null,
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"line one\nline two","marks":[]}]}"""
+        );
         var todo = AddBlock(page, all, null, BlockTypes.Todo, """{"checked":false,"spans":[{"text":"parent task","marks":[]}]}""");
         AddBlock(page, all, todo, BlockTypes.Todo, """{"checked":true,"spans":[{"text":"child task","marks":[]}]}""");
         AddBlock(page, all, null, BlockTypes.BulletedList, """{"spans":[{"text":"first","marks":[]}]}""");

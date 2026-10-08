@@ -4,9 +4,9 @@ using Markdig.Syntax.Inlines;
 
 namespace CodeCafe.Application.Common.Markdown;
 
-// Walks a Markdig inline tree into our Spans value object. Hard line breaks split the result
-// into separate segments (Spans forbids line breaks by design — lines are separate blocks);
-// soft breaks collapse to a space, matching CommonMark's rendering semantics.
+// Walks a Markdig inline tree into our Spans value object. Hard line breaks become a soft
+// break ('\n') inside the current segment — Spans allows them — so every Parse call yields
+// exactly one segment; soft breaks collapse to a space, matching CommonMark's rendering.
 internal static class MarkdownInlineParser
 {
     public static IReadOnlyList<Spans> Parse(ContainerInline? container) => Parse(container?.FirstChild);
@@ -22,18 +22,13 @@ internal static class MarkdownInlineParser
         return segments.Select(Spans.Create).ToList();
     }
 
-    // Single-line contexts (table cells, headings-as-titles): hard breaks collapse to a space
-    // too, because there is no sibling block to split into.
+    // Single-line contexts (table cells, callout marker lines): soft breaks collapse to a
+    // space too, because these payloads render on one line.
     public static Spans ParseSingleLine(ContainerInline? container) => ParseSingleLine(container?.FirstChild);
 
     public static Spans ParseSingleLine(Inline? first)
     {
         var segments = Parse(first);
-        if (segments.Count == 1)
-        {
-            return segments[0];
-        }
-
         var joined = new List<Span>();
         foreach (var segment in segments)
         {
@@ -45,7 +40,7 @@ internal static class MarkdownInlineParser
             joined.AddRange(segment.Items);
         }
 
-        return Spans.Create(joined);
+        return Spans.Create(joined.Select(span => new Span(span.Text.Replace('\n', ' '), span.Marks)));
     }
 
     private static void Append(List<List<Span>> segments, Inline inline, IReadOnlyList<Mark> marks)
@@ -68,7 +63,7 @@ internal static class MarkdownInlineParser
                 segments[^1].Add(new Span(code.Content, [.. marks, new CodeMark()]));
                 break;
             case LineBreakInline { IsHard: true }:
-                segments.Add([]);
+                segments[^1].Add(new Span("\n", marks));
                 break;
             case LineBreakInline:
                 segments[^1].Add(new Span(" ", marks));
