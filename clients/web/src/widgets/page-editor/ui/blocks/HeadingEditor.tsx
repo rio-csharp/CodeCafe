@@ -21,6 +21,9 @@ export function HeadingEditor({ block, onChange, ...engine }: HeadingEditorProps
       spans={content.spans}
       ariaLabel={t('editor.heading')}
       placeholder={t('editor.heading')}
+      // ATX headings are single-line in markdown; a soft break would silently
+      // degrade to a space on export, so splitting is the honest behavior.
+      allowSoftBreak={false}
       className={`${HEADING_CLASS[level - 1] ?? HEADING_CLASS[0]} font-semibold text-ink`}
       onChange={(spans) => {
         onChange({ level, spans })

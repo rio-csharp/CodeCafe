@@ -32,6 +32,8 @@ export interface TextBlockEngineProps {
   onFocusPrevious: () => void
   onFocusNext: () => void
   onFocusHandled: () => void
+  /** Shift+Enter inserts a soft line break unless the block type is single-line (headings). */
+  allowSoftBreak?: boolean
   /** Tab / Shift+Tab: change depth; receives the caret offset for refocusing. */
   onIndent?: (offset: number) => void
   onOutdent?: (offset: number) => void
@@ -77,6 +79,7 @@ export function TextBlockEditor({
   onFocusPrevious,
   onFocusNext,
   onFocusHandled,
+  allowSoftBreak = true,
   onIndent,
   onOutdent,
   onMoveBlock,
@@ -314,16 +317,18 @@ export function TextBlockEditor({
       onMoveBlock?.(event.key === 'ArrowUp' ? -1 : 1, getCaretOffset(element))
       return
     }
-    // Enter splits the block; Shift+Enter inserts a soft line break (the server
-    // keeps '\n' in span text). Ctrl/Cmd+Enter is the save shortcut — untouched.
-    if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
+    // Enter splits the block; Shift+Enter inserts a soft line break where the
+    // block type supports one (headings are single-line). Ctrl/Cmd+Enter is
+    // the save shortcut — untouched.
+    if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey) {
       event.preventDefault()
-      onSplit(getCaretOffset(element))
-    } else if (event.key === 'Enter' && event.shiftKey && !event.ctrlKey && !event.metaKey) {
-      event.preventDefault()
-      const offset = getCaretOffset(element)
-      pendingSelectionRef.current = { start: offset + 1, end: offset + 1 }
-      onChange(insertTextAt(spans, offset, '\n'))
+      if (event.shiftKey && allowSoftBreak) {
+        const offset = getCaretOffset(element)
+        pendingSelectionRef.current = { start: offset + 1, end: offset + 1 }
+        onChange(insertTextAt(spans, offset, '\n'))
+      } else {
+        onSplit(getCaretOffset(element))
+      }
     } else if (event.key === 'Backspace' && getCaretOffset(element) === 0) {
       event.preventDefault()
       onMergeBackward()

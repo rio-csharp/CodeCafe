@@ -123,6 +123,19 @@ describe('TextBlockEditor', () => {
     expect(onChange).not.toHaveBeenCalled()
   })
 
+  it('Shift+Enter splits when the block type disallows soft breaks', () => {
+    const onSplit = vi.fn()
+    const onChange = vi.fn()
+    renderEditor([{ text: 'abc', marks: [] }], { onSplit, onChange, allowSoftBreak: false })
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 3, 3)
+    fireEvent.keyDown(element, { key: 'Enter', shiftKey: true })
+
+    expect(onSplit).toHaveBeenCalledOnce()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('renders a sentinel br after a trailing soft break so the caret line is visible', () => {
     renderEditor([{ text: 'abc\n', marks: [] }])
 
