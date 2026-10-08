@@ -476,9 +476,10 @@ public sealed class MarkdownDocumentParserTests
         var blocks = Parse("- parent\n  - child");
 
         var parent = Assert.Single(blocks);
-        Assert.Equal(BlockTypes.Paragraph, parent.Type);
+        Assert.Equal(BlockTypes.BulletedList, parent.Type);
         Assert.Equal("parent", parent.PlainText);
         var child = Assert.Single(parent.Children);
+        Assert.Equal(BlockTypes.BulletedList, child.Type);
         Assert.Equal("child", child.PlainText);
     }
 
@@ -496,13 +497,16 @@ public sealed class MarkdownDocumentParserTests
     }
 
     [Fact]
-    public void OrderedList_KeepsNumbersAsLiteralText()
+    public void OrderedList_BecomesNumberedListItems()
     {
         var blocks = Parse("3. three\n4. four");
 
         Assert.Equal(2, blocks.Count);
-        Assert.Equal("3. three", blocks[0].PlainText);
-        Assert.Equal("4. four", blocks[1].PlainText);
+        Assert.Equal(BlockTypes.NumberedList, blocks[0].Type);
+        Assert.Equal(BlockTypes.NumberedList, blocks[1].Type);
+        // The numbers are not text: numbering is derived from the run at render time.
+        Assert.Equal("three", blocks[0].PlainText);
+        Assert.Equal("four", blocks[1].PlainText);
     }
 
     [Fact]
@@ -511,8 +515,9 @@ public sealed class MarkdownDocumentParserTests
         var blocks = Parse("1) one\n2) two");
 
         Assert.Equal(2, blocks.Count);
-        Assert.Equal("1. one", blocks[0].PlainText);
-        Assert.Equal("2. two", blocks[1].PlainText);
+        Assert.Equal(BlockTypes.NumberedList, blocks[0].Type);
+        Assert.Equal("one", blocks[0].PlainText);
+        Assert.Equal("two", blocks[1].PlainText);
     }
 
     [Fact]
@@ -564,12 +569,12 @@ public sealed class MarkdownDocumentParserTests
     }
 
     [Fact]
-    public void OrderedTaskList_NumberPrefixIsKeptInTodoText()
+    public void OrderedTaskList_StaysPlainTodo()
     {
         var blocks = Parse("1. [ ] task");
 
         var todo = Payload<TodoPayload>(Assert.Single(blocks));
-        Assert.Equal("1. task", todo.Spans.ToPlainText());
+        Assert.Equal("task", todo.Spans.ToPlainText());
     }
 
     #endregion

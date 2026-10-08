@@ -16,14 +16,17 @@ internal static class MarkdownBlockRenderer
 {
     public static void RenderBlocks(StringBuilder output, Page page, IReadOnlyList<Block> blocks, int headingHashOffset)
     {
+        // A numbered item's number is its position in the run of consecutive
+        // numbered siblings — computed per group, never stored.
+        var numbers = new Dictionary<Guid, int>();
         var pending = new Stack<(Block Block, int Depth)>();
-        PushBlocks(pending, page, blocks, null, 0);
+        PushBlocks(pending, page, blocks, null, 0, numbers);
 
         while (pending.Count > 0)
         {
             var (block, depth) = pending.Pop();
-            RenderBlock(output, block, depth, headingHashOffset);
-            PushBlocks(pending, page, blocks, block.Id, depth + 1);
+            RenderBlock(output, block, depth, headingHashOffset, numbers);
+            PushBlocks(pending, page, blocks, block.Id, depth + 1, numbers);
         }
     }
 
@@ -32,17 +35,33 @@ internal static class MarkdownBlockRenderer
         Page page,
         IReadOnlyList<Block> blocks,
         Guid? parentId,
-        int depth
+        int depth,
+        Dictionary<Guid, int> numbers
     )
     {
         var siblings = BlockChain.OrderByChain(page, blocks, parentId);
+        var run = 0;
+        foreach (var sibling in siblings)
+        {
+            run = sibling.Type == BlockTypes.NumberedList ? run + 1 : 0;
+            if (sibling.Type == BlockTypes.NumberedList)
+            {
+                numbers[sibling.Id] = run;
+            }
+        }
         for (var index = siblings.Count - 1; index >= 0; index--)
         {
             pending.Push((siblings[index], depth));
         }
     }
 
-    private static void RenderBlock(StringBuilder output, Block block, int depth, int headingHashOffset)
+    private static void RenderBlock(
+        StringBuilder output,
+        Block block,
+        int depth,
+        int headingHashOffset,
+        IReadOnlyDictionary<Guid, int> numbers
+    )
     {
         var indent = new string(' ', depth * 2);
         switch (block.Type)
@@ -74,6 +93,13 @@ internal static class MarkdownBlockRenderer
                     .AppendLine(RenderSpans(payload.Spans));
                 break;
             }
+            case BlockTypes.BulletedList:
+                output.Append(indent).Append("- ").AppendLine(RenderSpans(GetPayload<ListItemPayload>(block).Spans));
+                break;
+            case BlockTypes.NumberedList:
+                output.Append(indent).Append(numbers.GetValueOrDefault(block.Id, 1)).Append(". ")
+                    .AppendLine(RenderSpans(GetPayload<ListItemPayload>(block).Spans));
+                break;
             case BlockTypes.Code:
             {
                 var payload = GetPayload<CodePayload>(block);

@@ -230,24 +230,19 @@ internal static class MarkdownDocumentParser
 
     private static void AppendList(List<ParsedMarkdownBlock> output, ListBlock list, int headingLevelOffset)
     {
-        var number = 1;
-        if (list.IsOrdered && int.TryParse(list.OrderedStart, out var start))
-        {
-            number = start;
-        }
-
         foreach (var item in list.Cast<ListItemBlock>())
         {
-            output.Add(ParseListItem(item, list.IsOrdered ? number++ : null, headingLevelOffset));
+            output.Add(ParseListItem(item, list.IsOrdered, headingLevelOffset));
         }
     }
 
-    private static ParsedMarkdownBlock ParseListItem(ListItemBlock item, int? orderedNumber, int headingLevelOffset)
+    private static ParsedMarkdownBlock ParseListItem(ListItemBlock item, bool ordered, int headingLevelOffset)
     {
         // The item's first paragraph becomes the item's own block; nested lists and anything
         // else become its children. Extra hard-break segments join the children.
         ParsedMarkdownBlock? first = null;
         var children = new List<ParsedMarkdownBlock>();
+        var itemType = ordered ? BlockTypes.NumberedList : BlockTypes.BulletedList;
 
         foreach (var child in item)
         {
@@ -263,16 +258,9 @@ internal static class MarkdownDocumentParser
                 for (var i = 0; i < segments.Count; i++)
                 {
                     var spans = segments[i];
-                    // Ordered lists have no list block type yet; the number survives as literal
-                    // text rather than vanishing.
-                    if (orderedNumber is { } n && first is null && i == 0)
-                    {
-                        spans = Spans.Create([new Span($"{n}. ", []), .. spans.Items]);
-                    }
-
                     var block = task is not null
                         ? SpanBlock(BlockTypes.Todo, new TodoPayload { Checked = task.Checked, Spans = spans }, spans)
-                        : SpanBlock(BlockTypes.Paragraph, new ParagraphPayload { Spans = spans }, spans);
+                        : SpanBlock(itemType, new ListItemPayload { Spans = spans }, spans);
                     if (first is null)
                     {
                         first = block;
@@ -293,10 +281,7 @@ internal static class MarkdownDocumentParser
             }
         }
 
-        first ??= SpanBlock(
-            BlockTypes.Paragraph,
-            new ParagraphPayload { Spans = Spans.Empty },
-            Spans.Empty);
+        first ??= SpanBlock(itemType, new ListItemPayload { Spans = Spans.Empty }, Spans.Empty);
         return first with { Children = children };
     }
 

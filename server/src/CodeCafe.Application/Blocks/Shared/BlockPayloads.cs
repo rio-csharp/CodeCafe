@@ -27,6 +27,8 @@ public static class BlockPayloads
         BlockTypes.Code => NormalizeCode(content),
         BlockTypes.Quote => NormalizeSpans<QuotePayload>(content, payload => payload.Spans),
         BlockTypes.Callout => NormalizeSpans<CalloutPayload>(content, payload => payload.Spans),
+        BlockTypes.BulletedList => NormalizeSpans<ListItemPayload>(content, payload => payload.Spans),
+        BlockTypes.NumberedList => NormalizeSpans<ListItemPayload>(content, payload => payload.Spans),
         BlockTypes.Divider => Normalize<DividerPayload>(
             content,
             static payload => Result.Success(payload),

@@ -16,6 +16,10 @@ public static class BlockTypes
 
     public const string Callout = "callout";
 
+    public const string BulletedList = "bulleted-list";
+
+    public const string NumberedList = "numbered-list";
+
     public const string Divider = "divider";
 
     public const string Table = "table";

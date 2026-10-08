@@ -37,6 +37,11 @@ public sealed class MarkdownRoundTripTests
         );
         var todo = AddBlock(page, all, null, BlockTypes.Todo, """{"checked":false,"spans":[{"text":"parent task","marks":[]}]}""");
         AddBlock(page, all, todo, BlockTypes.Todo, """{"checked":true,"spans":[{"text":"child task","marks":[]}]}""");
+        AddBlock(page, all, null, BlockTypes.BulletedList, """{"spans":[{"text":"first","marks":[]}]}""");
+        var second = AddBlock(page, all, null, BlockTypes.BulletedList, """{"spans":[{"text":"second","marks":[]}]}""");
+        AddBlock(page, all, second, BlockTypes.BulletedList, """{"spans":[{"text":"nested","marks":[]}]}""");
+        AddBlock(page, all, null, BlockTypes.NumberedList, """{"spans":[{"text":"one","marks":[]}]}""");
+        AddBlock(page, all, null, BlockTypes.NumberedList, """{"spans":[{"text":"two","marks":[]}]}""");
         AddBlock(page, all, null, BlockTypes.Code, """{"code":"var x = 1;","language":"csharp"}""");
         AddBlock(page, all, null, BlockTypes.Quote, """{"spans":[{"text":"Wise words","marks":[]}]}""");
         AddBlock(
@@ -111,6 +116,11 @@ public sealed class MarkdownRoundTripTests
         AddBlock(page, all, null, BlockTypes.Divider, """{}""");
         var todo = AddBlock(page, all, null, BlockTypes.Todo, """{"checked":false,"spans":[{"text":"parent task","marks":[]}]}""");
         AddBlock(page, all, todo, BlockTypes.Todo, """{"checked":true,"spans":[{"text":"child task","marks":[]}]}""");
+        AddBlock(page, all, null, BlockTypes.BulletedList, """{"spans":[{"text":"first","marks":[]}]}""");
+        var second = AddBlock(page, all, null, BlockTypes.BulletedList, """{"spans":[{"text":"second","marks":[]}]}""");
+        AddBlock(page, all, second, BlockTypes.BulletedList, """{"spans":[{"text":"nested","marks":[]}]}""");
+        AddBlock(page, all, null, BlockTypes.NumberedList, """{"spans":[{"text":"one","marks":[]}]}""");
+        AddBlock(page, all, null, BlockTypes.NumberedList, """{"spans":[{"text":"two","marks":[]}]}""");
         AddBlock(
             page,
             all,
