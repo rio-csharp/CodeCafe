@@ -114,3 +114,48 @@
     clip-path: circle(150% at var(--theme-x, 50%) var(--theme-y, 50%));
   }
 }
+
+/* Syntax highlighting: hljs token classes mapped onto the semantic palette,
+   so both themes stay in sync without shipping a highlight.js theme. */
+.hljs-comment,
+.hljs-quote {
+  color: var(--color-muted);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-meta {
+  color: var(--color-accent-strong);
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-doctag {
+  color: var(--color-success);
+}
+.hljs-number,
+.hljs-literal {
+  color: var(--color-warning);
+}
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-built_in,
+.hljs-type {
+  color: var(--color-info);
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable {
+  color: var(--color-ink);
+}
+.hljs-deletion {
+  color: var(--color-danger);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}

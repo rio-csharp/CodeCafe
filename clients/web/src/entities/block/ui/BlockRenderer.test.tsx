@@ -217,6 +217,15 @@ describe('BlockRenderer', () => {
     expect(box).toContainElement(screen.getByText('Inside'))
   })
 
+  it('renders a code block with syntax highlighting', () => {
+    renderBlock({
+      type: 'code',
+      content: { code: 'const x = 1;', language: 'javascript' },
+    })
+
+    expect(screen.getByText('const')).toHaveClass('hljs-keyword')
+  })
+
   it('renders a whole list of blocks', () => {
     const nodes: BlockNode[] = ['one', 'two'].map((value, index) => ({
       block: {
