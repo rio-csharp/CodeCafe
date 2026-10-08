@@ -34,6 +34,42 @@ export function getSelectionOffsets(root: HTMLElement): { start: number; end: nu
   return { start: Math.min(anchor, focus), end: Math.max(anchor, focus) }
 }
 
+/**
+ * Selection endpoints as plain-text offsets, clamped to this block. Unlike
+ * getSelectionOffsets, a drag that crosses the block boundary still counts —
+ * the caller acts on the in-block portion (e.g. the floating toolbar). Null
+ * when the selection does not overlap the block at all.
+ */
+export function getClampedSelectionOffsets(
+  root: HTMLElement,
+): { start: number; end: number } | null {
+  const selection = window.getSelection()
+  if (selection === null || selection.rangeCount === 0 || selection.isCollapsed) {
+    return null
+  }
+  const selected = selection.getRangeAt(0)
+  const block = document.createRange()
+  block.selectNodeContents(root)
+  // No overlap: the selection ends at or before the block starts, or starts
+  // at or after the block ends.
+  if (
+    selected.compareBoundaryPoints(Range.START_TO_END, block) <= 0 ||
+    selected.compareBoundaryPoints(Range.END_TO_START, block) >= 0
+  ) {
+    return null
+  }
+  const length = root.textContent?.length ?? 0
+  const start =
+    selected.compareBoundaryPoints(Range.START_TO_START, block) <= 0
+      ? 0
+      : offsetAtPoint(root, selected.startContainer, selected.startOffset)
+  const end =
+    selected.compareBoundaryPoints(Range.END_TO_END, block) >= 0
+      ? length
+      : offsetAtPoint(root, selected.endContainer, selected.endOffset)
+  return start === end ? null : { start, end }
+}
+
 function offsetAtPoint(root: HTMLElement, node: Node, offset: number): number {
   const range = document.createRange()
   range.selectNodeContents(root)
@@ -54,6 +90,19 @@ export function setSelectionOffsets(root: HTMLElement, start: number, end: numbe
     return
   }
   selection.setBaseAndExtent(anchor.node, anchor.offset, focus.node, focus.offset)
+}
+
+/** The DOM range between two plain-text offsets, e.g. for measuring its rect. */
+export function rangeForOffsets(root: HTMLElement, start: number, end: number): Range | null {
+  const anchor = locatePoint(root, start)
+  const focus = locatePoint(root, end)
+  if (anchor === null || focus === null) {
+    return null
+  }
+  const range = document.createRange()
+  range.setStart(anchor.node, anchor.offset)
+  range.setEnd(focus.node, focus.offset)
+  return range
 }
 
 function locatePoint(root: HTMLElement, target: number): { node: Node; offset: number } | null {

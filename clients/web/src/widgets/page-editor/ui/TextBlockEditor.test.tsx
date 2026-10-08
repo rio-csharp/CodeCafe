@@ -133,6 +133,71 @@ describe('TextBlockEditor', () => {
     )
   })
 
+  it('shows the toolbar when the drag ends outside the block', () => {
+    render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 0, 5)
+    // The mouse comes up outside the block: the div never sees the mouseup.
+    fireEvent.mouseUp(document.body)
+
+    expect(screen.getByRole('toolbar')).toBeInTheDocument()
+  })
+
+  it('shows the toolbar after a keyboard select-all', () => {
+    render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 0, 11)
+    fireEvent.keyUp(element, { key: 'a', ctrlKey: true })
+
+    expect(screen.getByRole('toolbar')).toBeInTheDocument()
+  })
+
+  it('shows the toolbar when the drag spills past the block boundary', () => {
+    render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
+
+    const element = screen.getByRole('textbox')
+    const textNode = element.firstChild?.firstChild
+    expect(textNode?.nodeType).toBe(Node.TEXT_NODE)
+    // The drag starts in the block but ends down in the page: the focus node
+    // lands outside the block entirely, so the in-block portion is clamped.
+    window
+      .getSelection()
+      ?.setBaseAndExtent(textNode as Node, 2, document.body, document.body.childNodes.length)
+    fireEvent.mouseUp(document.body)
+
+    expect(screen.getByRole('toolbar')).toBeInTheDocument()
+
+    // The toolbar acts on the in-block portion only: from the anchor to the
+    // block's end.
+    fireEvent.click(screen.getByRole('button', { name: 'editor.marks.bold' }))
+    const remounted = screen.getByRole('textbox')
+    expect(remounted.querySelector('strong')?.textContent).toBe('llo world')
+  })
+
+  it('shows a single toolbar, owned by the anchor block, when a selection spans blocks', () => {
+    render(
+      <>
+        <Harness initial={[{ text: 'first', marks: [] }]} />
+        <Harness initial={[{ text: 'second', marks: [] }]} />
+      </>,
+    )
+
+    const [first, second] = screen.getAllByRole('textbox')
+    window
+      .getSelection()
+      ?.setBaseAndExtent(
+        first.firstChild?.firstChild as Node,
+        1,
+        second.firstChild?.firstChild as Node,
+        3,
+      )
+    fireEvent.mouseUp(document.body)
+
+    expect(screen.getAllByRole('toolbar')).toHaveLength(1)
+  })
+
   it('applies marks through Ctrl+B without opening the toolbar', () => {
     render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
 

@@ -8,8 +8,10 @@ import {
 import type { SlashItem, SlashTarget } from '../lib/blockTypes'
 import {
   getCaretOffset,
+  getClampedSelectionOffsets,
   getSelectionOffsets,
   parseEditableDom,
+  rangeForOffsets,
   setSelectionOffsets,
 } from '../lib/editableDom'
 import { applyLink, linkHrefInRange, normalizeHref, rangeMarks, toggleMark } from '../lib/marks'
@@ -38,6 +40,18 @@ export interface TextBlockEditorProps extends TextBlockEngineProps {
   className?: string
   placeholder?: string
   ariaLabel: string
+}
+
+/** The contenteditable a selection endpoint sits in, if any. */
+function editableRootOf(node: Node | null): HTMLElement | null {
+  const element =
+    node === null
+      ? null
+      : node.nodeType === Node.ELEMENT_NODE
+        ? (node as HTMLElement)
+        : node.parentElement
+  const root = element?.closest('[contenteditable]') ?? null
+  return root instanceof HTMLElement ? root : null
 }
 
 /**
@@ -146,22 +160,46 @@ export function TextBlockEditor({
     if (element === null) {
       return
     }
-    const offsets = getSelectionOffsets(element)
-    const domSelection = window.getSelection()
-    if (offsets === null || offsets.start === offsets.end || domSelection === null) {
+    const offsets = ownedSelectionOffsets(element)
+    if (offsets === null) {
       setSelection(null)
       return
     }
-    // jsdom has no layout: fall back to a fixed spot above the block.
-    const range = domSelection.getRangeAt(0)
+    // Measure the in-block portion, so a selection spilling past the block
+    // boundary does not drag the toolbar's position along with it. jsdom has
+    // no layout: fall back to a fixed spot above the block.
+    const range = rangeForOffsets(element, offsets.start, offsets.end)
     const rangeRect =
-      typeof range.getBoundingClientRect === 'function' ? range.getBoundingClientRect() : null
+      range !== null && typeof range.getBoundingClientRect === 'function'
+        ? range.getBoundingClientRect()
+        : null
     const boxRect = element.getBoundingClientRect()
     setSelection({
       ...offsets,
       top: rangeRect !== null ? rangeRect.top - boxRect.top - 4 : -8,
       left: rangeRect !== null ? rangeRect.left - boxRect.left + rangeRect.width / 2 : 24,
     })
+  }
+
+  /**
+   * This block's share of the document selection, clamped to its content —
+   * or null when the selection misses the block, or another block owns it.
+   * The anchor's block wins; when the drag started outside every block, the
+   * block under the pointer takes over. Either way, ONE toolbar shows.
+   */
+  const ownedSelectionOffsets = (
+    element: HTMLElement,
+  ): { start: number; end: number } | null => {
+    const domSelection = window.getSelection()
+    if (domSelection === null) {
+      return null
+    }
+    const owner =
+      editableRootOf(domSelection.anchorNode) ?? editableRootOf(domSelection.focusNode)
+    if (owner !== element) {
+      return null
+    }
+    return getClampedSelectionOffsets(element)
   }
 
   const handleToggleMark = (kind: SimpleMarkKind) => {
@@ -319,15 +357,18 @@ export function TextBlockEditor({
       if (active !== null && active !== element && wrapper.contains(active)) {
         return
       }
-      const offsets = getSelectionOffsets(element)
-      if (offsets === null || offsets.start === offsets.end) {
+      if (ownedSelectionOffsets(element) === null) {
         setSelection(null)
         setLinkOpen(false)
       }
     }
     document.addEventListener('selectionchange', retract)
+    // A drag that starts inside the block may end anywhere on the page; the
+    // div's own onMouseUp never fires then, so capture at the document level.
+    document.addEventListener('mouseup', captureSelection)
     return () => {
       document.removeEventListener('selectionchange', retract)
+      document.removeEventListener('mouseup', captureSelection)
     }
   }, [])
 
@@ -408,7 +449,8 @@ export function TextBlockEditor({
         }}
         onMouseUp={captureSelection}
         onKeyUp={(event) => {
-          if (event.shiftKey || event.key === 'Shift') {
+          const selectAll = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a'
+          if (event.shiftKey || event.key === 'Shift' || selectAll) {
             captureSelection()
           }
         }}
