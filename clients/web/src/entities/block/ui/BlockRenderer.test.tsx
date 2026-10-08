@@ -183,6 +183,40 @@ describe('BlockRenderer', () => {
     expect(child.parentElement?.parentElement).toContainElement(screen.getByText('Parent'))
   })
 
+  it('renders a callout\'s children inside the box', () => {
+    const callout: BlockNode = {
+      block: {
+        id: 'callout-1',
+        parentBlockId: null,
+        type: 'callout',
+        content: { variant: 'info', spans: text('Heads up') },
+        sortKey: 'a',
+        version: 1,
+        updatedAtUtc: '2026-01-07T12:00:00.000Z',
+      },
+      children: [
+        {
+          block: {
+            id: 'child-1',
+            parentBlockId: 'callout-1',
+            type: 'bulleted-list',
+            content: { spans: text('Inside') },
+            sortKey: 'a',
+            version: 1,
+            updatedAtUtc: '2026-01-07T12:00:00.000Z',
+          },
+          children: [],
+        },
+      ],
+    }
+
+    render(<BlockRenderer node={callout} />)
+
+    const box = screen.getByRole('complementary')
+    expect(box).toHaveTextContent('Heads up')
+    expect(box).toContainElement(screen.getByText('Inside'))
+  })
+
   it('renders a whole list of blocks', () => {
     const nodes: BlockNode[] = ['one', 'two'].map((value, index) => ({
       block: {

@@ -268,14 +268,14 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       return
     }
     const [left, right] = splitSpansAt(spansOf(source), offset)
-    // Enter inside a heading/quote/callout exits to a paragraph; a to-do or list
-    // item continues as the same kind, Notion-style. The new block stays at the
-    // same depth.
+    // Enter inside a heading/quote exits to a paragraph; a to-do or list item
+    // continues as the same kind; a callout is a container, so Enter becomes
+    // its first child. The new block stays at the same depth otherwise.
     const freshType = ENTER_CONTINUES.has(source.type) ? source.type : 'paragraph'
     const fresh: EditorBlock = {
       id: mintTempId(),
       isNew: true,
-      parentBlockId: source.parentBlockId,
+      parentBlockId: source.type === 'callout' ? source.id : source.parentBlockId,
       type: freshType,
       content: freshType === 'todo' ? { checked: false, spans: right } : { spans: right },
       sortKey: '',
@@ -471,9 +471,15 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     }
 
     const children = groups.get(block.id) ?? []
-    const childrenBlock =
+    const childrenList =
       children.length > 0 ? (
-        <div className="ml-3 border-l border-line pl-3">{children.map(renderEditorBlock)}</div>
+        <div className="flex flex-col gap-1">{children.map(renderEditorBlock)}</div>
+      ) : null
+    // Callout children sit inside the tinted box; every other parent indents
+    // its children with a rail on the left.
+    const childrenBlock =
+      childrenList !== null ? (
+        <div className="ml-3 border-l border-line pl-3">{childrenList}</div>
       ) : null
 
     const editor = (() => {
@@ -487,7 +493,8 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
         case 'todo':
           return <TodoEditor {...shared} />
         case 'callout':
-          return <CalloutEditor {...shared} />
+          // A callout's children live inside the tinted box.
+          return <CalloutEditor {...shared}>{childrenList}</CalloutEditor>
         case 'bulleted-list':
         case 'numbered-list':
           return <ListItemEditor {...shared} listNumber={listNumbers.get(block.id)} />
@@ -522,7 +529,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
         ) : editor !== null ? (
           <>
             {editor}
-            {childrenBlock}
+            {block.type === 'callout' ? null : childrenBlock}
           </>
         ) : (
           // Unknown types render read-only from the untouched source tree,

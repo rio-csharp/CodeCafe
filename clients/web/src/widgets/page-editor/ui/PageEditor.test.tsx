@@ -251,6 +251,32 @@ describe('PageEditor', () => {
       expect(screen.getAllByRole('textbox', { name: 'editor.bulletedList' })).toHaveLength(2)
     })
 
+    it('Enter inside a callout adds a child paragraph inside the box', () => {
+      renderEditor({
+        page: {
+          ...PAGE,
+          blocks: [
+            {
+              id: 'callout-1',
+              parentBlockId: null,
+              type: 'callout',
+              content: { variant: 'info', spans: [{ text: 'Heads up', marks: [] }] },
+              sortKey: 'a',
+              version: 1,
+              updatedAtUtc: '2026-01-07T12:00:00.000Z',
+            },
+          ],
+        },
+      })
+
+      const callout = screen.getByRole('textbox', { name: 'editor.callout' })
+      fireEvent.keyDown(callout, { key: 'Enter' })
+
+      const child = screen.getByRole('textbox', { name: 'editor.paragraph' })
+      const box = screen.getByRole('textbox', { name: 'editor.callout' }).closest('div.rounded-xl')
+      expect(box).toContainElement(child)
+    })
+
     it('numbers consecutive ordered items and restarts after a paragraph', () => {
       renderEditor({
         page: {

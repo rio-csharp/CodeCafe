@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { CalloutContent, PaletteColor } from '../model/types'
 import { SpanRenderer } from './SpanRenderer'
 
@@ -11,10 +12,20 @@ const VARIANT_CLASS: Record<PaletteColor, string> = {
   muted: 'border-line bg-muted-soft text-muted',
 }
 
-export function CalloutBlock({ content }: { content: CalloutContent }) {
+export function CalloutBlock({
+  content,
+  children,
+}: {
+  content: CalloutContent
+  /** A callout is a container: its child blocks render inside the box. */
+  children?: ReactNode
+}) {
   return (
     <aside className={`whitespace-pre-wrap rounded-xl border px-4 py-3 ${VARIANT_CLASS[content.variant]}`}>
       <SpanRenderer spans={content.spans} />
+      {children !== null && children !== undefined ? (
+        <div className="mt-2 ml-2 whitespace-normal">{children}</div>
+      ) : null}
     </aside>
   )
 }

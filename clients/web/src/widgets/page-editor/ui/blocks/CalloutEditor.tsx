@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import type { ReactNode } from 'react'
 import type { CalloutContent, PaletteColor, SpanDto } from '@/entities/block'
 import type { EditorBlock } from '../../lib/draft'
 import type { TextBlockEngineProps } from '../TextBlockEditor'
@@ -17,10 +18,12 @@ const VARIANT_CLASS: Record<PaletteColor, string> = {
 export interface CalloutEditorProps extends Omit<TextBlockEngineProps, 'spans' | 'onChange'> {
   block: EditorBlock
   onChange: (content: Record<string, unknown>) => void
+  /** A callout is a container: its child blocks render inside the box. */
+  children?: ReactNode
 }
 
 /** Callout editing: the shared text engine inside the tinted aside. */
-export function CalloutEditor({ block, onChange, ...engine }: CalloutEditorProps) {
+export function CalloutEditor({ block, onChange, children, ...engine }: CalloutEditorProps) {
   const { t } = useTranslation()
   const content = block.content as unknown as CalloutContent
 
@@ -35,6 +38,9 @@ export function CalloutEditor({ block, onChange, ...engine }: CalloutEditorProps
           onChange({ ...content, spans })
         }}
       />
+      {children !== null && children !== undefined ? (
+        <div className="mt-1 ml-2 text-ink">{children}</div>
+      ) : null}
     </div>
   )
 }
