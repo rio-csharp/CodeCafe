@@ -5,6 +5,7 @@ import {
   indentBlock,
   moveBlockInGroup,
   outdentBlock,
+  relocateBlock,
   transferChildren,
 } from './moving'
 
@@ -101,5 +102,26 @@ describe('transferChildren', () => {
     const draft = [block('a'), block('x', 'a'), block('b'), block('y', 'b')]
 
     expect(shape(transferChildren(draft, 'b', 'a'))).toEqual(['a', 'a:x', 'a:y', 'b'])
+  })
+})
+
+describe('relocateBlock', () => {
+  it('moves a block before a sibling', () => {
+    const draft = [block('a'), block('b'), block('c')]
+
+    expect(shape(relocateBlock(draft, 'c', 'a', 'before')!)).toEqual(['c', 'a', 'b'])
+  })
+
+  it('reparents into another group by dropping next to its child', () => {
+    const draft = [block('a'), block('one', 'a'), block('b')]
+
+    expect(shape(relocateBlock(draft, 'b', 'one', 'after')!)).toEqual(['a', 'a:one', 'a:b'])
+  })
+
+  it('refuses to drop into the dragged block’s own subtree', () => {
+    const draft = [block('a'), block('one', 'a')]
+
+    expect(relocateBlock(draft, 'a', 'one', 'after')).toBeNull()
+    expect(relocateBlock(draft, 'a', 'a', 'before')).toBeNull()
   })
 })

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { DragEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { assembleBlockTree, BlockRenderer } from '@/entities/block'
 import type { BlockNode, BlockOpWire, SpanDto } from '@/entities/block'
@@ -20,6 +20,7 @@ import {
   moveBlockInGroup,
   outdentBlock,
   preorderBlocks,
+  relocateBlock,
   removeBlocks,
   transferChildren,
 } from '../lib/moving'
@@ -37,6 +38,7 @@ import { TableEditor } from './blocks/TableEditor'
 import { DividerBlock } from '@/entities/block'
 import type { SlashTarget } from '../lib/blockTypes'
 import { contentForTarget } from '../lib/blockTypes'
+import { BlockHandle } from './BlockHandle'
 
 export interface PageEditorProps {
   page: PageDetails
@@ -134,6 +136,14 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   const [blockSelection, setBlockSelection] = useState<{
     anchorId: string
     focusId: string
+  } | null>(null)
+
+  // Drag-and-drop: the handle's dragstart stashes the id here; dragover on a
+  // block wrapper turns it into a before/after indicator.
+  const dragIdRef = useRef<string | null>(null)
+  const [dropIndicator, setDropIndicator] = useState<{
+    id: string
+    position: 'before' | 'after'
   } | null>(null)
 
   /** Selected ids plus every descendant — deletes cascade, so the tint does too. */
@@ -425,6 +435,17 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     setFocusRequest({ id: appendOrReuseTrailingParagraph(), offset: 0 })
   }
 
+  /** Deletes one block (subtree included); leaves a paragraph if nothing editable survives. */
+  const deleteBlock = (id: string) => {
+    const remaining = removeBlocks(draft, new Set([id]))
+    setBlockSelection(null)
+    if (remaining.some((entry) => TEXT_TYPES.has(entry.type))) {
+      setDraft(remaining)
+    } else {
+      setDraft([...remaining, emptyParagraphBlock()])
+    }
+  }
+
   const renderEditorBlock = (block: EditorBlock): ReactNode => {
     const engine = {
       focusOffset: focusRequest?.id === block.id ? focusRequest.offset : null,
@@ -439,9 +460,6 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       },
       onFocusHandled: () => {
         setFocusRequest(null)
-      },
-      onSelectBlock: () => {
-        setBlockSelection({ anchorId: block.id, focusId: block.id })
       },
       onIndent: (offset: number) => {
         applyMove(block.id, offset, indentBlock)
@@ -512,13 +530,78 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     })()
 
     const selected = selectedIds?.has(block.id) ?? false
+    const canTurnInto = TEXT_TYPES.has(block.type)
+
+    const dropPosition = (event: DragEvent<HTMLDivElement>): 'before' | 'after' => {
+      const rect = event.currentTarget.getBoundingClientRect()
+      return event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+    }
 
     return (
       <div
         key={block.id}
         data-selected={selected || undefined}
-        className={selected ? 'rounded bg-accent-soft/70' : undefined}
+        onDragOver={(event) => {
+          if (dragIdRef.current === null) {
+            return
+          }
+          // The deepest block under the cursor wins; ancestors must not steal it.
+          event.stopPropagation()
+          event.preventDefault()
+          const position = dropPosition(event)
+          setDropIndicator((current) =>
+            current?.id === block.id && current.position === position
+              ? current
+              : { id: block.id, position },
+          )
+        }}
+        onDrop={(event) => {
+          event.stopPropagation()
+          event.preventDefault()
+          const dragId = dragIdRef.current
+          dragIdRef.current = null
+          setDropIndicator(null)
+          if (dragId === null) {
+            return
+          }
+          const next = relocateBlock(draft, dragId, block.id, dropPosition(event))
+          if (next !== null) {
+            setDraft(next)
+          }
+        }}
+        className={`group relative rounded ${selected ? 'bg-accent-soft/70' : ''}`}
       >
+        {dropIndicator?.id === block.id ? (
+          <div
+            aria-hidden
+            data-testid="drop-indicator"
+            className={`absolute right-0 left-0 z-10 h-0.5 rounded bg-accent ${
+              dropIndicator.position === 'before' ? '-top-0.5' : '-bottom-0.5'
+            }`}
+          />
+        ) : null}
+        <BlockHandle
+          canTurnInto={canTurnInto}
+          onTurnInto={(target) => {
+            transformBlock(block.id, target, canTurnInto ? spansOf(block) : [])
+          }}
+          onDelete={() => {
+            deleteBlock(block.id)
+          }}
+          onSelect={() => {
+            setBlockSelection({ anchorId: block.id, focusId: block.id })
+          }}
+          onDragStart={(event) => {
+            dragIdRef.current = block.id
+            event.dataTransfer.effectAllowed = 'move'
+            event.dataTransfer.setData('text/plain', block.id)
+            setBlockSelection({ anchorId: block.id, focusId: block.id })
+          }}
+          onDragEnd={() => {
+            dragIdRef.current = null
+            setDropIndicator(null)
+          }}
+        />
         {block.type === 'divider' ? (
           // Editor blocks butt up against each other (the reader's list has
           // gap-4, the editor does not), so the rule needs its own breathing

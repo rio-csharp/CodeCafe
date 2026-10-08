@@ -177,3 +177,45 @@ export function transferChildren(
   groups.set(toId, [...(groups.get(toId) ?? []), ...children])
   return flatten(groups)
 }
+
+/**
+ * Drag-and-drop placement: `dragId` becomes a sibling of `targetId`, directly
+ * before or after it. Returns null for a no-op (self-drop, or dropping into
+ * the dragged block's own subtree, which would create a cycle).
+ */
+export function relocateBlock(
+  draft: readonly EditorBlock[],
+  dragId: string,
+  targetId: string,
+  position: 'before' | 'after',
+): EditorBlock[] | null {
+  if (dragId === targetId) {
+    return null
+  }
+  const dragged = draft.find((entry) => entry.id === dragId)
+  const target = draft.find((entry) => entry.id === targetId)
+  if (dragged === undefined || target === undefined) {
+    return null
+  }
+  let ancestor = target.parentBlockId
+  while (ancestor !== null) {
+    if (ancestor === dragId) {
+      return null
+    }
+    ancestor = draft.find((entry) => entry.id === ancestor)?.parentBlockId ?? null
+  }
+  const groups = groupByParent(draft)
+  const origin = groups.get(dragged.parentBlockId) ?? []
+  groups.set(
+    dragged.parentBlockId,
+    origin.filter((entry) => entry.id !== dragId),
+  )
+  const siblings = groups.get(target.parentBlockId) ?? []
+  const at = siblings.findIndex((entry) => entry.id === targetId)
+  siblings.splice(position === 'before' ? at : at + 1, 0, {
+    ...dragged,
+    parentBlockId: target.parentBlockId,
+  })
+  groups.set(target.parentBlockId, siblings)
+  return flatten(groups)
+}

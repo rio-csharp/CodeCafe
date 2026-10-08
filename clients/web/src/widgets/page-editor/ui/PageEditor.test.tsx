@@ -695,16 +695,22 @@ describe('PageEditor', () => {
       ],
     }
 
-    it('Escape selects the block instead of cancelling; the NEXT Escape cancels', () => {
+    /** Clicking the six-dot handle selects the block (and opens its menu). */
+    const selectViaHandle = (index: number) => {
+      fireEvent.click(screen.getAllByRole('button', { name: 'editor.blockMenu' })[index]!)
+    }
+
+    it('the handle click selects the block; Escape clears, then cancels', () => {
       const onCancel = vi.fn()
       renderEditor({ page: TWO, onCancel })
 
-      const first = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!
-      first.focus()
-      fireEvent.keyDown(first, { key: 'Escape' })
+      selectViaHandle(0)
+      expect(document.querySelector('[data-selected]')).not.toBeNull()
 
+      // The first Escape closes the menu that the click opened.
+      fireEvent.keyDown(document.body, { key: 'Escape' })
+      expect(document.querySelector('[data-selected]')).not.toBeNull()
       expect(onCancel).not.toHaveBeenCalled()
-      expect(first.closest('[data-selected]')).not.toBeNull()
 
       fireEvent.keyDown(document.body, { key: 'Escape' })
       expect(document.querySelector('[data-selected]')).toBeNull()
@@ -714,13 +720,22 @@ describe('PageEditor', () => {
       expect(onCancel).toHaveBeenCalledOnce()
     })
 
-    it('extends with Shift+ArrowDown and deletes the range with Backspace', () => {
-      const onSave = vi.fn()
-      renderEditor({ page: TWO, onSave })
+    it('Escape while editing cancels the page directly', () => {
+      const onCancel = vi.fn()
+      renderEditor({ page: TWO, onCancel })
 
       fireEvent.keyDown(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!, {
         key: 'Escape',
       })
+
+      expect(onCancel).toHaveBeenCalledOnce()
+    })
+
+    it('extends with Shift+ArrowDown and deletes the range with Backspace', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: TWO, onSave })
+
+      selectViaHandle(0)
       fireEvent.keyDown(document.body, { key: 'ArrowDown', shiftKey: true })
       expect(document.querySelectorAll('[data-selected]')).toHaveLength(2)
 
@@ -757,9 +772,7 @@ describe('PageEditor', () => {
       }
       renderEditor({ page: nested, onSave })
 
-      fireEvent.keyDown(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!, {
-        key: 'Escape',
-      })
+      selectViaHandle(0)
       expect(document.querySelectorAll('[data-selected]')).toHaveLength(2)
 
       fireEvent.keyDown(document.body, { key: 'Delete' })
@@ -773,9 +786,7 @@ describe('PageEditor', () => {
     it('Enter on a selected block returns to editing it', () => {
       renderEditor({ page: TWO })
 
-      fireEvent.keyDown(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!, {
-        key: 'Escape',
-      })
+      selectViaHandle(0)
       fireEvent.keyDown(document.body, { key: 'Enter' })
 
       expect(document.querySelector('[data-selected]')).toBeNull()
@@ -786,11 +797,59 @@ describe('PageEditor', () => {
       renderEditor({ page: TWO })
 
       const second = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!
-      fireEvent.keyDown(second, { key: 'Escape' })
+      selectViaHandle(1)
       expect(document.querySelector('[data-selected]')).not.toBeNull()
 
       fireEvent.mouseDown(second)
       expect(document.querySelector('[data-selected]')).toBeNull()
+    })
+
+    it('turns a paragraph into a heading via the handle menu', () => {
+      renderEditor({ page: TWO })
+
+      selectViaHandle(0)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'editor.slash.heading2' }))
+
+      expect(screen.getByRole('textbox', { name: 'editor.heading' })).toBeInTheDocument()
+    })
+
+    it('deletes a block via the handle menu', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: TWO, onSave })
+
+      selectViaHandle(1)
+      fireEvent.click(screen.getByRole('menuitem', { name: 'editor.deleteBlock' }))
+
+      const boxes = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(boxes).toHaveLength(1)
+      expect(boxes[0]).toHaveTextContent('Start with fresh beans.')
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'block-2' }))
+    })
+
+    it('drags a block by its handle to reorder it', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: TWO, onSave })
+
+      const handles = screen.getAllByRole('button', { name: 'editor.blockMenu' })
+      fireEvent.dragStart(handles[1]!, { dataTransfer: { setData: vi.fn(), effectAllowed: '' } })
+      const first = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!
+      // jsdom's drop event drops mouse coordinates, so dispatch a real MouseEvent.
+      fireEvent(
+        first.closest('div.group')!,
+        new MouseEvent('drop', { bubbles: true, cancelable: true, clientY: -1 }),
+      )
+
+      const texts = screen
+        .getAllByRole('textbox', { name: 'editor.paragraph' })
+        .map((box) => box.textContent)
+      expect(texts).toEqual(['Second block', 'Start with fresh beans.'])
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Move', blockId: 'block-2' }))
     })
   })
 })

@@ -32,8 +32,6 @@ export interface TextBlockEngineProps {
   onFocusPrevious: () => void
   onFocusNext: () => void
   onFocusHandled: () => void
-  /** Escape: leave text editing and select the block itself. */
-  onSelectBlock?: () => void
   /** Tab / Shift+Tab: change depth; receives the caret offset for refocusing. */
   onIndent?: (offset: number) => void
   onOutdent?: (offset: number) => void
@@ -79,7 +77,6 @@ export function TextBlockEditor({
   onFocusPrevious,
   onFocusNext,
   onFocusHandled,
-  onSelectBlock,
   onIndent,
   onOutdent,
   onMoveBlock,
@@ -284,16 +281,7 @@ export function TextBlockEditor({
         return
       }
     }
-    // Escape leaves text editing for block selection; the editor-level Escape
-    // (cancel) must not fire, so the event stops here. Without a block
-    // selection handler the event bubbles up untouched.
-    if (event.key === 'Escape' && onSelectBlock !== undefined) {
-      event.preventDefault()
-      event.stopPropagation()
-      element.blur()
-      onSelectBlock()
-      return
-    }
+    // Escape bubbles up to the page: selection-mode clearing or cancel handles it.
     // Ctrl/Cmd+B/I/U apply marks without opening the toolbar.
     if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey) {
       const shortcut: Record<string, SimpleMarkKind> = { b: 'bold', i: 'italic', u: 'underline' }
