@@ -10,6 +10,7 @@ import { createPage, getPageByPath, pageKeys, updatePage } from '@/entities/page
 import type { PageDetails } from '@/entities/page'
 import { ApiError } from '@/shared/api'
 import { PageEditor } from '@/widgets/page-editor'
+import { AiChatPanel } from '@/features/ai-chat'
 import {
   ContentSkeleton,
   EmptyNotebookState,
@@ -186,6 +187,23 @@ export function NotebookReaderPage() {
         roots={roots}
         canEdit={notebook.canWrite}
         onAddPage={notebook.canWrite ? handleAddPage : undefined}
+        rightTabs={[
+          {
+            id: 'ai',
+            label: t('ai.title'),
+            icon: (
+              <path d="M8 2.5 9.3 6l3.5 1.3L9.3 8.6 8 12.1 6.7 8.6 3.2 7.3 6.7 6zM12.5 10.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
+            ),
+            content: (
+              <AiChatPanel
+                slug={notebook.slug}
+                onAiChanged={() => {
+                  void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
+                }}
+              />
+            ),
+          },
+        ]}
       >
         <EmptyNotebookState />
       </NotebookReaderLayout>
@@ -203,6 +221,22 @@ export function NotebookReaderPage() {
           label: t('reader.outline'),
           icon: <path d="M2.5 4h11M2.5 8h7M2.5 11.5h9" />,
           content: <PageOutline headings={outline} />,
+        },
+        {
+          id: 'ai',
+          label: t('ai.title'),
+          icon: (
+            <path d="M8 2.5 9.3 6l3.5 1.3L9.3 8.6 8 12.1 6.7 8.6 3.2 7.3 6.7 6zM12.5 10.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
+          ),
+          content: (
+            <AiChatPanel
+              slug={notebook.slug}
+              onAiChanged={() => {
+                void queryClient.invalidateQueries({ queryKey: pageKeys.all })
+                void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
+              }}
+            />
+          ),
         },
         // The history is page-scoped and read-only while editing (restoring
         // under an open draft would silently discard it).
