@@ -115,7 +115,7 @@ public sealed class ApplyBlockOpsCommandHandler(
             return Result.Failure<BlockOpResultDto>(normalized.Error!);
         }
 
-        var position = BlockPositions.ResolveInsertion(op.After, page, working, tempIds, moving: null);
+        var position = BlockPositions.ResolveInsertion(op.After, page, working, tempIds, moving: null, parentRef: op.Parent);
         if (!position.IsSuccess)
         {
             return Result.Failure<BlockOpResultDto>(position.Error!);
@@ -202,7 +202,7 @@ public sealed class ApplyBlockOpsCommandHandler(
             return Result.Failure<BlockOpResultDto>(BlockErrors.NotFound);
         }
 
-        var position = BlockPositions.ResolveInsertion(op.After, page, working, tempIds, block);
+        var position = BlockPositions.ResolveInsertion(op.After, page, working, tempIds, block, parentRef: op.Parent);
         if (!position.IsSuccess)
         {
             return Result.Failure<BlockOpResultDto>(position.Error!);

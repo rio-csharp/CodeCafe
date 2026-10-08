@@ -264,6 +264,138 @@ public sealed class ApplyBlockOpsCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_InsertWithParent_BecomesFirstChildOfAChildlessBlock()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var page = SeedPage(notebook);
+        var parent = NewBlock(page, "p");
+        BlockChain.Link(parent, page, parent: null, after: null);
+        var (handler, blocks, _) = CreateHandler(owner.Id, notebook, page, parent);
+
+        var result = await handler.Handle(
+            new ApplyBlockOpsCommand(
+                page.Id,
+                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: null, Content: Paragraph("child"), BaseVersion: null, Parent: parent.Id.ToString())]
+            ),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsSuccess);
+        var inserted = blocks.Single(block => block.Id != parent.Id);
+        Assert.Equal(parent.Id, inserted.ParentBlockId);
+        Assert.Equal(inserted.Id, parent.FirstChildId);
+        Assert.Equal(parent.Id, page.FirstBlockId); // the top level is untouched
+        Assert.Null(inserted.NextSiblingId);
+    }
+
+    [Fact]
+    public async Task Handle_InsertWithParentAndAfter_LandsAfterThatChild()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var page = SeedPage(notebook);
+        var parent = NewBlock(page, "p");
+        var first = NewBlock(page, "a", parent);
+        var second = NewBlock(page, "b", parent);
+        BlockChain.Link(parent, page, parent: null, after: null);
+        BlockChain.Link(first, page, parent, after: null);
+        BlockChain.Link(second, page, parent, after: first);
+        var (handler, blocks, _) = CreateHandler(owner.Id, notebook, page, parent, first, second);
+
+        var result = await handler.Handle(
+            new ApplyBlockOpsCommand(
+                page.Id,
+                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: first.Id.ToString(), Content: Paragraph("middle"), BaseVersion: null, Parent: parent.Id.ToString())]
+            ),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsSuccess);
+        var inserted = blocks.Single(block => block.Id == result.Value![0].BlockId);
+        Assert.Equal(parent.Id, inserted.ParentBlockId);
+        Assert.Equal(inserted.Id, first.NextSiblingId);
+        Assert.Equal(second.Id, inserted.NextSiblingId);
+    }
+
+    [Fact]
+    public async Task Handle_InsertWithParent_AfterOutsideTheParentGroup_Fails()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var page = SeedPage(notebook);
+        var parent = NewBlock(page, "p");
+        var outsider = NewBlock(page, "x");
+        BlockChain.Link(parent, page, parent: null, after: null);
+        BlockChain.Link(outsider, page, parent: null, after: parent);
+        var (handler, _, unitOfWork) = CreateHandler(owner.Id, notebook, page, parent, outsider);
+
+        var result = await handler.Handle(
+            new ApplyBlockOpsCommand(
+                page.Id,
+                [new BlockOp(BlockOpKind.Insert, BlockId: null, TempId: "t1", Type: BlockTypes.Paragraph, After: outsider.Id.ToString(), Content: Paragraph("nope"), BaseVersion: null, Parent: parent.Id.ToString())]
+            ),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(BlockErrors.InvalidBlockPosition, result.Error);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task Handle_MoveWithParent_IndentsIntoAChildlessBlock()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var page = SeedPage(notebook);
+        var parent = NewBlock(page, "p");
+        var child = NewBlock(page, "a");
+        BlockChain.Link(parent, page, parent: null, after: null);
+        BlockChain.Link(child, page, parent: null, after: parent);
+        var (handler, blocks, _) = CreateHandler(owner.Id, notebook, page, parent, child);
+
+        var result = await handler.Handle(
+            new ApplyBlockOpsCommand(
+                page.Id,
+                [new BlockOp(BlockOpKind.Move, BlockId: child.Id.ToString(), TempId: null, Type: null, After: null, Content: null, BaseVersion: null, Parent: parent.Id.ToString())]
+            ),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(parent.Id, blocks.Single(block => block.Id == child.Id).ParentBlockId);
+        Assert.Equal(child.Id, parent.FirstChildId);
+        Assert.Equal(parent.Id, page.FirstBlockId);
+        Assert.Null(parent.NextSiblingId); // the child left the top level
+    }
+
+    [Fact]
+    public async Task Handle_MoveWithParent_UnderOwnDescendant_Fails()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var page = SeedPage(notebook);
+        var parent = NewBlock(page, "p");
+        var child = NewBlock(page, "a", parent);
+        BlockChain.Link(parent, page, parent: null, after: null);
+        BlockChain.Link(child, page, parent, after: null);
+        var (handler, _, unitOfWork) = CreateHandler(owner.Id, notebook, page, parent, child);
+
+        var result = await handler.Handle(
+            new ApplyBlockOpsCommand(
+                page.Id,
+                [new BlockOp(BlockOpKind.Move, BlockId: parent.Id.ToString(), TempId: null, Type: null, After: null, Content: null, BaseVersion: null, Parent: child.Id.ToString())]
+            ),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(BlockErrors.InvalidBlockPosition, result.Error);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
     public async Task Handle_DeniesNonWriter()
     {
         var owner = SeedOwner();
