@@ -13,7 +13,7 @@ describe('detectSlashQuery', () => {
 
 describe('filterSlashItems', () => {
   it('returns everything for an empty query', () => {
-    expect(filterSlashItems('')).toHaveLength(8)
+    expect(filterSlashItems('')).toHaveLength(10)
   })
 
   it('matches ids and keywords case-insensitively', () => {

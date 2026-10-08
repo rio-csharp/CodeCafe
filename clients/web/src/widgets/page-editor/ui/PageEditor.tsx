@@ -27,6 +27,10 @@ import { HeadingEditor } from './blocks/HeadingEditor'
 import { QuoteEditor } from './blocks/QuoteEditor'
 import { TodoEditor } from './blocks/TodoEditor'
 import { CalloutEditor } from './blocks/CalloutEditor'
+import { AudioEditor } from './blocks/AudioEditor'
+import { CodeEditor } from './blocks/CodeEditor'
+import { ImageEditor } from './blocks/ImageEditor'
+import { TableEditor } from './blocks/TableEditor'
 import { DividerBlock } from '@/entities/block'
 import type { SlashTarget } from '../lib/blockTypes'
 import { contentForTarget } from '../lib/blockTypes'
@@ -301,20 +305,27 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       },
     }
 
+    const shared = {
+      ...engine,
+      block,
+      onChange: (content: Record<string, unknown>) => {
+        setDraft((current) => replaceBlockContent(current, block.id, content))
+      },
+      onSplit: (offset: number) => {
+        splitBlock(block.id, offset)
+      },
+      onMergeBackward: () => {
+        mergeBackward(block.id)
+      },
+    }
+
+    const children = groups.get(block.id) ?? []
+    const childrenBlock =
+      children.length > 0 ? (
+        <div className="ml-3 border-l border-line pl-3">{children.map(renderEditorBlock)}</div>
+      ) : null
+
     const editor = (() => {
-      const shared = {
-        ...engine,
-        block,
-        onChange: (content: Record<string, unknown>) => {
-          setDraft((current) => replaceBlockContent(current, block.id, content))
-        },
-        onSplit: (offset: number) => {
-          splitBlock(block.id, offset)
-        },
-        onMergeBackward: () => {
-          mergeBackward(block.id)
-        },
-      }
       switch (block.type) {
         case 'paragraph':
           return <ParagraphEditor {...shared} />
@@ -326,12 +337,18 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
           return <TodoEditor {...shared} />
         case 'callout':
           return <CalloutEditor {...shared} />
+        case 'code':
+          return <CodeEditor block={block} onChange={shared.onChange} />
+        case 'table':
+          return <TableEditor block={block} onChange={shared.onChange} />
+        case 'image':
+          return <ImageEditor block={block} onChange={shared.onChange} />
+        case 'audio':
+          return <AudioEditor block={block} onChange={shared.onChange} />
         default:
           return null
       }
     })()
-
-    const children = groups.get(block.id) ?? []
 
     return (
       <div key={block.id}>
@@ -342,17 +359,13 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
           <div className="py-2">
             <DividerBlock />
           </div>
-        ) : TEXT_TYPES.has(block.type) ? (
+        ) : editor !== null ? (
           <>
             {editor}
-            {children.length > 0 ? (
-              <div className="ml-3 border-l border-line pl-3">
-                {children.map(renderEditorBlock)}
-              </div>
-            ) : null}
+            {childrenBlock}
           </>
         ) : (
-          // Uneditable types render read-only from the untouched source tree,
+          // Unknown types render read-only from the untouched source tree,
           // children included; a fresh one (not slash-creatable yet) is skipped.
           (() => {
             const node = sourceNodes.get(block.id)

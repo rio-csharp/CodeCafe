@@ -459,4 +459,156 @@ describe('PageEditor', () => {
       expect(ops).toEqual([expect.objectContaining({ kind: 'Move', blockId: 'block-2' })])
     })
   })
+
+  describe('rich block editing', () => {
+    const RICH: PageDetails = {
+      ...PAGE,
+      blocks: [
+        {
+          id: 'code-1',
+          parentBlockId: null,
+          type: 'code',
+          content: { code: 'const x = 1', language: 'ts' },
+          sortKey: 'a',
+          version: 1,
+          updatedAtUtc: '2026-01-07T12:00:00.000Z',
+        },
+        {
+          id: 'table-1',
+          parentBlockId: null,
+          type: 'table',
+          content: {
+            alignments: ['none'],
+            header: null,
+            rows: [[[{ text: 'cell', marks: [] }]]],
+          },
+          sortKey: 'b',
+          version: 1,
+          updatedAtUtc: '2026-01-07T12:00:00.000Z',
+        },
+        {
+          id: 'img-1',
+          parentBlockId: null,
+          type: 'image',
+          content: { url: 'https://x.test/a.png', alt: 'a', isDecorative: false, caption: null },
+          sortKey: 'c',
+          version: 1,
+          updatedAtUtc: '2026-01-07T12:00:00.000Z',
+        },
+        {
+          id: 'audio-1',
+          parentBlockId: null,
+          type: 'audio',
+          content: { url: 'https://x.test/a.mp3', mimeType: 'audio/mpeg', duration: null },
+          sortKey: 'd',
+          version: 1,
+          updatedAtUtc: '2026-01-07T12:00:00.000Z',
+        },
+      ],
+    }
+
+    it('edits a code block and saves the Update', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: RICH, onSave })
+
+      const area = screen.getByRole('textbox', { name: 'editor.code' })
+      fireEvent.change(area, { target: { value: 'let y = 2' } })
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toEqual([
+        expect.objectContaining({
+          kind: 'Update',
+          blockId: 'code-1',
+          content: { code: 'let y = 2', language: 'ts' },
+        }),
+      ])
+    })
+
+    it('edits table cells and adds rows and columns', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: RICH, onSave })
+
+      fireEvent.change(screen.getByLabelText('editor.tableCell'), { target: { value: 'edited' } })
+      fireEvent.click(screen.getByRole('button', { name: 'editor.addRow' }))
+      fireEvent.click(screen.getByRole('button', { name: 'editor.addColumn' }))
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toEqual([
+        expect.objectContaining({
+          kind: 'Update',
+          blockId: 'table-1',
+          content: {
+            alignments: ['none', 'none'],
+            header: null,
+            rows: [
+              [[{ text: 'edited', marks: [] }], []],
+              [[], []],
+            ],
+          },
+        }),
+      ])
+    })
+
+    it('edits an image block', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: RICH, onSave })
+
+      fireEvent.change(screen.getByLabelText('editor.imageUrl'), {
+        target: { value: 'https://x.test/b.png' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toEqual([
+        expect.objectContaining({
+          kind: 'Update',
+          blockId: 'img-1',
+          content: expect.objectContaining({ url: 'https://x.test/b.png' }),
+        }),
+      ])
+    })
+
+    it('edits an audio block', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: RICH, onSave })
+
+      fireEvent.change(screen.getByLabelText('editor.audioUrl'), {
+        target: { value: 'https://x.test/b.mp3' },
+      })
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toEqual([
+        expect.objectContaining({
+          kind: 'Update',
+          blockId: 'audio-1',
+          content: expect.objectContaining({ url: 'https://x.test/b.mp3' }),
+        }),
+      ])
+    })
+
+    it('creates a code block through the slash menu', () => {
+      const onSave = vi.fn()
+      renderEditor({ onSave })
+
+      const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+      block.textContent = '/code'
+      fireEvent.input(block)
+      fireEvent.keyDown(block, { key: 'Enter' })
+
+      expect(screen.getByRole('textbox', { name: 'editor.code' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toContainEqual(
+        expect.objectContaining({
+          kind: 'Insert',
+          type: 'code',
+          content: { code: '', language: 'text' },
+        }),
+      )
+    })
+  })
 })

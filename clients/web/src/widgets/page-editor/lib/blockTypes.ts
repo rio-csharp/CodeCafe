@@ -1,4 +1,5 @@
 import type { SpanDto } from '@/entities/block'
+import { spansPlainText } from './spans'
 
 /** A slash-menu target: which block type to turn into, plus type-specific extras. */
 export type SlashTarget =
@@ -8,6 +9,8 @@ export type SlashTarget =
   | { type: 'todo' }
   | { type: 'callout' }
   | { type: 'divider' }
+  | { type: 'code' }
+  | { type: 'table' }
 
 export interface SlashItem {
   /** Stable id; the i18n label lives at `editor.slash.<id>`. */
@@ -26,6 +29,8 @@ export const SLASH_ITEMS: readonly SlashItem[] = [
   { id: 'todo', target: { type: 'todo' }, keywords: ['todo', 'task', 'checkbox', 'check', '待办', '任务'] },
   { id: 'callout', target: { type: 'callout' }, keywords: ['callout', 'info', 'warning', 'note', '提示', '标注'] },
   { id: 'divider', target: { type: 'divider' }, keywords: ['divider', 'hr', 'line', 'rule', '分割', '分隔'] },
+  { id: 'code', target: { type: 'code' }, keywords: ['code', 'snippet', '代码', '代码块'] },
+  { id: 'table', target: { type: 'table' }, keywords: ['table', 'grid', '表格'] },
 ]
 
 /** Case-insensitive filter over ids, keywords and (via keywords) both locales. */
@@ -63,6 +68,18 @@ export function contentForTarget(target: SlashTarget, spans: SpanDto[]): Record<
       return { variant: 'info', spans }
     case 'divider':
       return {}
+    case 'code':
+      // The stripped text becomes the snippet; the language tag starts generic.
+      return { code: spansPlainText(spans), language: 'text' }
+    case 'table':
+      return {
+        alignments: ['none', 'none'],
+        header: null,
+        rows: [
+          [[], []],
+          [[], []],
+        ],
+      }
     default:
       return { spans }
   }
