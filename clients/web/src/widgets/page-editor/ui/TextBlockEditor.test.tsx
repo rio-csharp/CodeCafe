@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { SpanDto } from '@/entities/block'
 import { TextBlockEditor } from './TextBlockEditor'
 import { setSelectionOffsets } from '../lib/editableDom'
+import type { SlashTarget } from '../lib/blockTypes'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -25,7 +26,13 @@ function renderEditor(spans: SpanDto[], overrides: Partial<Parameters<typeof Tex
   )
 }
 
-function Harness({ initial }: { initial: SpanDto[] }) {
+function Harness({
+  initial,
+  onTransform,
+}: {
+  initial: SpanDto[]
+  onTransform?: (target: SlashTarget, spans: SpanDto[]) => void
+}) {
   const [spans, setSpans] = useState(initial)
   return (
     <TextBlockEditor
@@ -37,6 +44,7 @@ function Harness({ initial }: { initial: SpanDto[] }) {
       onFocusPrevious={vi.fn()}
       onFocusNext={vi.fn()}
       onFocusHandled={vi.fn()}
+      onTransform={onTransform}
     />
   )
 }
@@ -204,8 +212,7 @@ describe('TextBlockEditor', () => {
     expect(remounted.querySelector('strong')?.textContent).toBe('hello')
   })
 
-  it('retracts the toolbar when the selection leaves the block', () => {
-    render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
+  it('retracts the toolbar when the selection leaves the block', () => {    render(<Harness initial={[{ text: 'hello world', marks: [] }]} />)
 
     const element = screen.getByRole('textbox')
     setSelectionOffsets(element, 0, 5)
@@ -218,5 +225,42 @@ describe('TextBlockEditor', () => {
     fireEvent(document, new Event('selectionchange'))
 
     expect(screen.queryByRole('toolbar')).not.toBeInTheDocument()
+  })
+
+  it('opens the slash menu on "/" and transforms through keyboard selection', () => {
+    const onTransform = vi.fn()
+    render(<Harness initial={[]} onTransform={onTransform} />)
+
+    const element = screen.getByRole('textbox')
+    element.textContent = '/tod'
+    fireEvent.input(element)
+
+    // The menu filters down to the to-do entry.
+    expect(screen.getByRole('listbox')).toBeInTheDocument()
+    expect(screen.getAllByRole('option')).toHaveLength(1)
+
+    fireEvent.keyDown(element, { key: 'Enter' })
+
+    expect(onTransform).toHaveBeenCalledWith({ type: 'todo' }, [])
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('Escape closes the slash menu without transforming or cancelling the editor', () => {
+    const onTransform = vi.fn()
+    render(<Harness initial={[]} onTransform={onTransform} />)
+
+    const element = screen.getByRole('textbox')
+    element.textContent = '/hea'
+    fireEvent.input(element)
+    expect(screen.getAllByRole('option')).toHaveLength(3)
+
+    // Arrow navigation moves the active option...
+    fireEvent.keyDown(element, { key: 'ArrowDown' })
+    expect(screen.getAllByRole('option')[1]).toHaveAttribute('aria-selected', 'true')
+
+    // ...and Escape dismisses the menu without side effects.
+    fireEvent.keyDown(element, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(onTransform).not.toHaveBeenCalled()
   })
 })

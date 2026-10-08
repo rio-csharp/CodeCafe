@@ -22,6 +22,7 @@ export type {
 export { applyBlockOps } from './api/applyBlockOps'
 export type { BlockOpResult, BlockOpWire } from './api/applyBlockOps'
 export { BlockList, BlockRenderer } from './ui/BlockRenderer'
+export { DividerBlock } from './ui/DividerBlock'
 export type { BlockListProps, BlockRendererProps } from './ui/BlockRenderer'
 export { SpanRenderer } from './ui/SpanRenderer'
 export { SPAN_COLOR_CLASS, SPAN_HIGHLIGHT_CLASS } from './ui/spanPalette'

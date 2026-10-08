@@ -7,7 +7,7 @@ import type { TextBlockEngineProps } from '../TextBlockEditor'
 
 export interface HeadingEditorProps extends Omit<TextBlockEngineProps, 'spans' | 'onChange'> {
   block: EditorBlock
-  onChange: (content: HeadingContent) => void
+  onChange: (content: Record<string, unknown>) => void
 }
 
 export function HeadingEditor({ block, onChange, ...engine }: HeadingEditorProps) {

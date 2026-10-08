@@ -110,7 +110,8 @@ describe('PageEditor', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('editor.saveFailed')
   })
 
-  it('splits a paragraph on Enter and reports the new block as an insert', async () => {    const user = userEvent.setup()
+  it('splits a paragraph on Enter and reports the new block as an insert', async () => {
+    const user = userEvent.setup()
     const onSave = vi.fn()
     renderEditor({ onSave })
 
@@ -124,5 +125,46 @@ describe('PageEditor', () => {
     expect(ops).toHaveLength(2)
     expect(ops[0]).toMatchObject({ kind: 'Update', blockId: 'block-1' })
     expect(ops[1]).toMatchObject({ kind: 'Insert', after: 'block-1' })
+  })
+
+  it('appends a focused paragraph when the empty canvas below is clicked', async () => {
+    const user = userEvent.setup()
+    renderEditor()
+
+    await user.click(screen.getByRole('button', { name: 'editor.appendBlock' }))
+
+    const paragraphs = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+    expect(paragraphs).toHaveLength(2)
+    expect(paragraphs[1]).toHaveFocus()
+
+    // A second click focuses the still-empty trailing paragraph instead of
+    // piling on another one.
+    await user.click(screen.getByRole('button', { name: 'editor.appendBlock' }))
+    expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(2)
+  })
+
+  it('converts a paragraph to a to-do via the slash menu and saves delete + insert', async () => {
+    const user = userEvent.setup()
+    const onSave = vi.fn()
+    renderEditor({ onSave })
+
+    const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+    block.textContent = '/todo'
+    fireEvent.input(block)
+    fireEvent.keyDown(block, { key: 'Enter' })
+
+    // The paragraph became a to-do: checkbox plus the text engine.
+    expect(screen.getByRole('checkbox', { name: 'editor.todoToggle' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'editor.todo' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'editor.save' }))
+    const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+    expect(ops).toHaveLength(2)
+    expect(ops[0]).toMatchObject({ kind: 'Delete', blockId: 'block-1' })
+    expect(ops[1]).toMatchObject({
+      kind: 'Insert',
+      type: 'todo',
+      content: { checked: false, spans: [] },
+    })
   })
 })

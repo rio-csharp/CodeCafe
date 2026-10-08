@@ -2,6 +2,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ClipboardEvent, KeyboardEvent, MouseEvent } from 'react'
 import type { MarkDto, SpanDto } from '@/entities/block'
 import {
+  detectSlashQuery,
+  filterSlashItems,
+} from '../lib/blockTypes'
+import type { SlashItem, SlashTarget } from '../lib/blockTypes'
+import {
   getCaretOffset,
   getSelectionOffsets,
   parseEditableDom,
@@ -9,9 +14,10 @@ import {
 } from '../lib/editableDom'
 import { applyLink, linkHrefInRange, normalizeHref, rangeMarks, toggleMark } from '../lib/marks'
 import type { SimpleMarkKind } from '../lib/marks'
-import { insertTextAt, spansEqual, spansPlainText } from '../lib/spans'
+import { insertTextAt, spansEqual, spansPlainText, splitSpansAt } from '../lib/spans'
 import { EditableSpans } from './EditableSpans'
 import { MarkToolbar } from './MarkToolbar'
+import { SlashMenu } from './SlashMenu'
 
 /** The editing behaviours every text block shares; per-type wrappers supply styling. */
 export interface TextBlockEngineProps {
@@ -24,6 +30,8 @@ export interface TextBlockEngineProps {
   onFocusPrevious: () => void
   onFocusNext: () => void
   onFocusHandled: () => void
+  /** Present when slash-conversion is enabled; receives the target and the text after the `/query` prefix. */
+  onTransform?: (target: SlashTarget, spans: SpanDto[]) => void
 }
 
 export interface TextBlockEditorProps extends TextBlockEngineProps {
@@ -50,6 +58,7 @@ export function TextBlockEditor({
   onFocusPrevious,
   onFocusNext,
   onFocusHandled,
+  onTransform,
 }: TextBlockEditorProps) {
   const ref = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -62,6 +71,8 @@ export function TextBlockEditor({
     left: number
   } | null>(null)
   const [linkOpen, setLinkOpen] = useState(false)
+  const [slashQuery, setSlashQuery] = useState<string | null>(null)
+  const [slashIndex, setSlashIndex] = useState(0)
 
   //
   // The contenteditable crash guard. The browser mutates this DOM directly as
@@ -91,7 +102,32 @@ export function TextBlockEditor({
     pendingSelectionRef.current = { start: caret, end: caret }
     const parsed = parseEditableDom(element)
     setDomSpans(parsed)
+    if (onTransform !== undefined) {
+      syncSlash(spansPlainText(parsed))
+    }
     onChange(parsed)
+  }
+
+  const syncSlash = (plainText: string) => {
+    const query = detectSlashQuery(plainText)
+    setSlashQuery((current) => {
+      if (query !== current) {
+        setSlashIndex(0)
+      }
+      return query
+    })
+  }
+
+  const slashItems = slashQuery === null ? [] : filterSlashItems(slashQuery)
+
+  const pickSlashItem = (item: SlashItem) => {
+    if (slashQuery === null || onTransform === undefined) {
+      return
+    }
+    // Strip the "/query" prefix; what remains becomes the new block's text.
+    const [, rest] = splitSpansAt(spans, 1 + slashQuery.length)
+    setSlashQuery(null)
+    onTransform(item.target, rest)
   }
 
   /**
@@ -172,6 +208,33 @@ export function TextBlockEditor({
     if (element === null || composingRef.current) {
       return
     }
+    // While the slash menu is open it owns navigation, confirmation and Escape.
+    if (slashQuery !== null) {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const count = slashItems.length
+        if (count > 0) {
+          const delta = event.key === 'ArrowDown' ? 1 : -1
+          setSlashIndex((current) => (current + delta + count) % count)
+        }
+        return
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        const item = slashItems[slashIndex]
+        if (item !== undefined) {
+          pickSlashItem(item)
+        }
+        return
+      }
+      if (event.key === 'Escape') {
+        // Close the menu, not the editor — keep the event from bubbling up.
+        event.preventDefault()
+        event.stopPropagation()
+        setSlashQuery(null)
+        return
+      }
+    }
     // Ctrl/Cmd+B/I/U apply marks without opening the toolbar.
     if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey) {
       const shortcut: Record<string, SimpleMarkKind> = { b: 'bold', i: 'italic', u: 'underline' }
@@ -222,7 +285,11 @@ export function TextBlockEditor({
     }
     const offset = getCaretOffset(element)
     pendingSelectionRef.current = { start: offset + text.length, end: offset + text.length }
-    onChange(insertTextAt(spans, offset, text))
+    const next = insertTextAt(spans, offset, text)
+    if (onTransform !== undefined) {
+      syncSlash(spansPlainText(next))
+    }
+    onChange(next)
   }
 
   // Editing must never navigate: links inside the block are inert here.
@@ -266,6 +333,14 @@ export function TextBlockEditor({
 
   return (
     <div ref={wrapperRef} className="relative">
+      {slashQuery !== null && onTransform !== undefined ? (
+        <SlashMenu
+          items={slashItems}
+          activeIndex={slashIndex}
+          onPick={pickSlashItem}
+          onHover={setSlashIndex}
+        />
+      ) : null}
       {selection !== null ? (
         <MarkToolbar
           top={selection.top}
@@ -328,6 +403,9 @@ export function TextBlockEditor({
         onKeyDown={handleKeyDown}
         onPaste={handlePaste}
         onClick={handleClick}
+        onBlur={() => {
+          setSlashQuery(null)
+        }}
         onMouseUp={captureSelection}
         onKeyUp={(event) => {
           if (event.shiftKey || event.key === 'Shift') {

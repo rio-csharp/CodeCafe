@@ -6,7 +6,7 @@ import type { TextBlockEngineProps } from '../TextBlockEditor'
 
 export interface ParagraphEditorProps extends Omit<TextBlockEngineProps, 'spans' | 'onChange'> {
   block: EditorBlock
-  onChange: (content: ParagraphContent) => void
+  onChange: (content: Record<string, unknown>) => void
 }
 
 export function ParagraphEditor({ block, onChange, ...engine }: ParagraphEditorProps) {

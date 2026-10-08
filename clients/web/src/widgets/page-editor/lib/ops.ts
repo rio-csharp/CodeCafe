@@ -2,9 +2,13 @@ import type { BlockDto, BlockOpWire, SpanDto } from '@/entities/block'
 import type { EditorBlock } from './draft'
 import { spansPlainText } from './spans'
 
-/** Spans-typed payloads with no text are dropped instead of saved empty. */
+/**
+ * Spans-typed payloads with no text are dropped instead of saved empty — but
+ * only paragraphs: an empty heading/quote/todo is a deliberate conversion
+ * result, while an empty paragraph is usually Enter-then-save junk.
+ */
 function isEmptyNewTextBlock(block: EditorBlock): boolean {
-  if (!block.isNew || (block.type !== 'paragraph' && block.type !== 'heading')) {
+  if (!block.isNew || block.type !== 'paragraph') {
     return false
   }
   const spans = (block.content as { spans?: SpanDto[] }).spans
