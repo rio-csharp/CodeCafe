@@ -6,7 +6,7 @@ export type SlashTarget =
   | { type: 'paragraph' }
   | { type: 'heading'; level: 1 | 2 | 3 }
   | { type: 'quote' }
-  | { type: 'todo' }
+  | { type: 'todo'; checked?: boolean }
   | { type: 'callout' }
   | { type: 'bulleted-list' }
   | { type: 'numbered-list' }
@@ -71,7 +71,7 @@ export function contentForTarget(target: SlashTarget, spans: SpanDto[]): Record<
     case 'heading':
       return { level: target.level, spans }
     case 'todo':
-      return { checked: false, spans }
+      return { checked: target.checked ?? false, spans }
     case 'callout':
       return { variant: 'info', spans }
     case 'divider':

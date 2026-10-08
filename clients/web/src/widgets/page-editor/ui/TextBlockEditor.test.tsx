@@ -153,6 +153,55 @@ describe('TextBlockEditor', () => {
     expect(onChange).toHaveBeenCalledWith([{ text: 'abx\ny', marks: [] }])
   })
 
+  it('routes a single markdown line pasted into an EMPTY block to the block handler', () => {
+    const onChange = vi.fn()
+    const onPasteBlocks = vi.fn()
+    renderEditor([], { onChange, onPasteBlocks })
+
+    const element = screen.getByRole('textbox')
+    fireEvent.paste(element, { clipboardData: { getData: () => '## Title' } })
+
+    expect(onChange).not.toHaveBeenCalled()
+    expect(onPasteBlocks).toHaveBeenCalledWith(0, [
+      { type: 'heading', content: { level: 2, spans: [{ text: 'Title', marks: [] }] } },
+    ])
+  })
+
+  it('inserts a single markdown line verbatim into a non-empty block', () => {
+    const onChange = vi.fn()
+    const onPasteBlocks = vi.fn()
+    renderEditor([{ text: 'ab', marks: [] }], { onChange, onPasteBlocks })
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 2, 2)
+    fireEvent.paste(element, { clipboardData: { getData: () => '## Title' } })
+
+    expect(onPasteBlocks).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledWith([{ text: 'ab## Title', marks: [] }])
+  })
+
+  it('converts a markdown marker into a block type when Space is typed after it', () => {
+    const onTransform = vi.fn()
+    renderEditor([{ text: '##', marks: [] }], { onTransform })
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 2, 2)
+    fireEvent.keyDown(element, { key: ' ' })
+
+    expect(onTransform).toHaveBeenCalledWith({ type: 'heading', level: 2 }, [])
+  })
+
+  it('opens a code block on the third backtick', () => {
+    const onTransform = vi.fn()
+    renderEditor([{ text: '``', marks: [] }], { onTransform })
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 2, 2)
+    fireEvent.keyDown(element, { key: '`' })
+
+    expect(onTransform).toHaveBeenCalledWith({ type: 'code' }, [])
+  })
+
   it('routes multi-line pastes to the block-level handler', () => {
     const onChange = vi.fn()
     const onPasteBlocks = vi.fn()

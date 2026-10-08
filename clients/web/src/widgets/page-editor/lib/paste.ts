@@ -18,6 +18,50 @@ const QUOTE = /^>\s?(.*)$/
 const DIVIDER = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/
 
 /**
+ * One line → one block, honouring Markdown line syntax. Returns null for
+ * plain text (the caller inserts it verbatim) — code fences are handled by
+ * {@link parsePastedBlocks} because they span lines.
+ */
+export function parsePastedLine(line: string): PastedBlock | null {
+  const heading = HEADING.exec(line)
+  if (heading !== null) {
+    return {
+      type: 'heading',
+      content: { level: heading[1]!.length, spans: textSpans(heading[2]!) },
+    }
+  }
+
+  const todo = TODO.exec(line)
+  if (todo !== null) {
+    return {
+      type: 'todo',
+      content: { checked: todo[1]!.toLowerCase() === 'x', spans: textSpans(todo[2]!) },
+    }
+  }
+
+  const bullet = BULLET.exec(line)
+  if (bullet !== null) {
+    return { type: 'bulleted-list', content: { spans: textSpans(bullet[1]!) } }
+  }
+
+  const numbered = NUMBERED.exec(line)
+  if (numbered !== null) {
+    return { type: 'numbered-list', content: { spans: textSpans(numbered[1]!) } }
+  }
+
+  const quote = QUOTE.exec(line)
+  if (quote !== null) {
+    return { type: 'quote', content: { spans: textSpans(quote[1]!) } }
+  }
+
+  if (DIVIDER.test(line)) {
+    return { type: 'divider', content: {} }
+  }
+
+  return null
+}
+
+/**
  * Turns pasted plain text into blocks. Single-line text returns null — the
  * caller falls back to inserting it into the current block. Multi-line text
  * becomes one block per line with Markdown line syntax honoured (headings,
@@ -56,48 +100,7 @@ export function parsePastedBlocks(text: string): PastedBlock[] | null {
       continue
     }
 
-    const heading = HEADING.exec(line)
-    if (heading !== null) {
-      blocks.push({
-        type: 'heading',
-        content: { level: heading[1]!.length, spans: textSpans(heading[2]!) },
-      })
-      continue
-    }
-
-    const todo = TODO.exec(line)
-    if (todo !== null) {
-      blocks.push({
-        type: 'todo',
-        content: { checked: todo[1]!.toLowerCase() === 'x', spans: textSpans(todo[2]!) },
-      })
-      continue
-    }
-
-    const bullet = BULLET.exec(line)
-    if (bullet !== null) {
-      blocks.push({ type: 'bulleted-list', content: { spans: textSpans(bullet[1]!) } })
-      continue
-    }
-
-    const numbered = NUMBERED.exec(line)
-    if (numbered !== null) {
-      blocks.push({ type: 'numbered-list', content: { spans: textSpans(numbered[1]!) } })
-      continue
-    }
-
-    const quote = QUOTE.exec(line)
-    if (quote !== null) {
-      blocks.push({ type: 'quote', content: { spans: textSpans(quote[1]!) } })
-      continue
-    }
-
-    if (DIVIDER.test(line)) {
-      blocks.push({ type: 'divider', content: {} })
-      continue
-    }
-
-    blocks.push({ type: 'paragraph', content: { spans: textSpans(line) } })
+    blocks.push(parsePastedLine(line) ?? { type: 'paragraph', content: { spans: textSpans(line) } })
   }
 
   return blocks.length === 0 ? null : blocks

@@ -17,8 +17,9 @@ import {
 import { applyLink, linkHrefInRange, normalizeHref, rangeMarks, toggleMark } from '../lib/marks'
 import type { SimpleMarkKind } from '../lib/marks'
 import { insertTextAt, spansEqual, spansPlainText, splitSpansAt } from '../lib/spans'
-import { parsePastedBlocks } from '../lib/paste'
+import { parsePastedBlocks, parsePastedLine } from '../lib/paste'
 import type { PastedBlock } from '../lib/paste'
+import { matchBacktickRule, matchSpaceRule } from '../lib/inputRules'
 import { EditableSpans } from './EditableSpans'
 import { MarkToolbar } from './MarkToolbar'
 import { SlashMenu } from './SlashMenu'
@@ -291,6 +292,26 @@ export function TextBlockEditor({
       }
     }
     // Escape bubbles up to the page: selection-mode clearing or cancel handles it.
+    // Markdown input rules: "- " + Space converts the block, Notion-style;
+    // the third backtick of ``` opens a code block. The marker is the whole
+    // pre-caret text, so rules never fire mid-sentence.
+    if (onTransform !== undefined && !event.metaKey && !event.ctrlKey && !event.altKey) {
+      const offset = getCaretOffset(element)
+      const beforeCaret = spansPlainText(spans).slice(0, offset)
+      const target =
+        event.key === ' '
+          ? matchSpaceRule(beforeCaret)
+          : event.key === '`'
+            ? matchBacktickRule(beforeCaret)
+            : null
+      if (target !== null) {
+        event.preventDefault()
+        const [, rest] = splitSpansAt(spans, offset)
+        setSlashQuery(null)
+        onTransform(target, rest)
+        return
+      }
+    }
     // Ctrl/Cmd+B/I/U apply marks without opening the toolbar.
     if ((event.metaKey || event.ctrlKey) && !event.shiftKey && !event.altKey) {
       const shortcut: Record<string, SimpleMarkKind> = { b: 'bold', i: 'italic', u: 'underline' }
@@ -369,7 +390,16 @@ export function TextBlockEditor({
       onPasteBlocks(offset, parsed)
       return
     }
-    // Single-line text (or no block-level handler): a plain in-block insert.
+    // A single markdown line pasted into an EMPTY block converts the block.
+    if (onPasteBlocks !== undefined && spansPlainText(spans).length === 0) {
+      const single = parsePastedLine(text)
+      if (single !== null) {
+        setSlashQuery(null)
+        onPasteBlocks(offset, [single])
+        return
+      }
+    }
+    // Otherwise: a plain in-block insert.
     pendingSelectionRef.current = { start: offset + text.length, end: offset + text.length }
     const next = insertTextAt(spans, offset, text)
     if (onTransform !== undefined) {
