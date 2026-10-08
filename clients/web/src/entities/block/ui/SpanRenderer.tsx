@@ -14,11 +14,15 @@ export interface SpanRendererProps {
 
 /** Rich text as one flat run: each span carries the marks applying to all of it. */
 export function SpanRenderer({ spans }: SpanRendererProps) {
+  // A trailing '\n' collapses to nothing in the browser — the sentinel keeps
+  // the final empty line visible.
+  const endsWithBreak = (spans[spans.length - 1]?.text ?? '').endsWith('\n')
   return (
     <>
       {spans.map((span, index) => (
         <MarkedSpan key={index} span={span} />
       ))}
+      {endsWithBreak ? <br /> : null}
     </>
   )
 }

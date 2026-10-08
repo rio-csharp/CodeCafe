@@ -314,10 +314,12 @@ export function TextBlockEditor({
       onMoveBlock?.(event.key === 'ArrowUp' ? -1 : 1, getCaretOffset(element))
       return
     }
-    if (event.key === 'Enter' && !event.shiftKey) {
+    // Enter splits the block; Shift+Enter inserts a soft line break (the server
+    // keeps '\n' in span text). Ctrl/Cmd+Enter is the save shortcut — untouched.
+    if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault()
       onSplit(getCaretOffset(element))
-    } else if (event.key === 'Enter' && event.shiftKey) {
+    } else if (event.key === 'Enter' && event.shiftKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault()
       const offset = getCaretOffset(element)
       pendingSelectionRef.current = { start: offset + 1, end: offset + 1 }
@@ -343,7 +345,9 @@ export function TextBlockEditor({
     if (element === null) {
       return
     }
-    const text = event.clipboardData.getData('text/plain')
+    // Soft line breaks paste as-is (the server keeps '\n'); normalize the
+    // line endings so Windows clipboards do not leak CR into the text.
+    const text = event.clipboardData.getData('text/plain').replace(/\r\n?/g, '\n')
     if (text.length === 0) {
       return
     }

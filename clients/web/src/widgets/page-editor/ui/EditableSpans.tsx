@@ -63,6 +63,10 @@ function EditableMark({ mark, children }: { mark: MarkDto; children: ReactNode }
 }
 
 export function EditableSpans({ spans }: { spans: readonly SpanDto[] }) {
+  // A trailing '\n' collapses to nothing in the browser, swallowing the line
+  // the caret should sit on — a sentinel <br> keeps it visible. The parser
+  // ignores BR elements, so the sentinel never leaks back into the data.
+  const endsWithBreak = (spans[spans.length - 1]?.text ?? '').endsWith('\n')
   return (
     // pre-wrap: Shift+Enter line breaks (\n in span text) must stay visible.
     <span className="whitespace-pre-wrap">
@@ -81,6 +85,7 @@ export function EditableSpans({ spans }: { spans: readonly SpanDto[] }) {
           </span>
         )
       })}
+      {endsWithBreak ? <br /> : null}
     </span>
   )
 }

@@ -99,6 +99,47 @@ describe('TextBlockEditor', () => {
     expect(onSplit).toHaveBeenCalledOnce()
   })
 
+  it('Shift+Enter inserts a soft line break instead of splitting', () => {
+    const onSplit = vi.fn()
+    const onChange = vi.fn()
+    renderEditor([{ text: 'abc', marks: [] }], { onSplit, onChange })
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 3, 3)
+    fireEvent.keyDown(element, { key: 'Enter', shiftKey: true })
+
+    expect(onSplit).not.toHaveBeenCalled()
+    expect(onChange).toHaveBeenCalledWith([{ text: 'abc\n', marks: [] }])
+  })
+
+  it('Ctrl+Enter neither splits nor inserts — it is the save shortcut', () => {
+    const onSplit = vi.fn()
+    const onChange = vi.fn()
+    renderEditor([{ text: 'abc', marks: [] }], { onSplit, onChange })
+
+    fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter', ctrlKey: true })
+
+    expect(onSplit).not.toHaveBeenCalled()
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('renders a sentinel br after a trailing soft break so the caret line is visible', () => {
+    renderEditor([{ text: 'abc\n', marks: [] }])
+
+    expect(screen.getByRole('textbox').querySelector('br')).not.toBeNull()
+  })
+
+  it('paste keeps soft breaks and normalizes Windows line endings', () => {
+    const onChange = vi.fn()
+    renderEditor([{ text: 'ab', marks: [] }], { onChange })
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 2, 2)
+    fireEvent.paste(element, { clipboardData: { getData: () => 'x\r\ny' } })
+
+    expect(onChange).toHaveBeenCalledWith([{ text: 'abx\ny', marks: [] }])
+  })
+
   it('reports Backspace at the start as a backward merge', () => {
     const onMergeBackward = vi.fn()
     renderEditor([{ text: 'hello', marks: [] }], { onMergeBackward })
