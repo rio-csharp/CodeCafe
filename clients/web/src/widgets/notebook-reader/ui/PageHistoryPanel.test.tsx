@@ -1,0 +1,109 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { listPageRevisions, restorePageRevision } from '@/entities/page'
+import type { PageRevisionGroup, RevisionSource } from '@/entities/page'
+import { PageHistoryPanel } from './PageHistoryPanel'
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }),
+}))
+
+vi.mock('@/entities/page', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/page')>()),
+  listPageRevisions: vi.fn(),
+  restorePageRevision: vi.fn(),
+}))
+
+function group(atUtc: string, source: RevisionSource = 'Human'): PageRevisionGroup {
+  return {
+    atUtc,
+    source,
+    changes: [
+      { blockId: 'b1', blockVersion: 2, changeKind: 'Updated', content: {}, source, createdAtUtc: atUtc },
+      { blockId: 'b2', blockVersion: 1, changeKind: 'Added', content: {}, source, createdAtUtc: atUtc },
+    ],
+  }
+}
+
+function renderPanel({ canWrite = true, onRestored = vi.fn() } = {}) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <PageHistoryPanel pageId="page-1" canWrite={canWrite} onRestored={onRestored} />
+    </QueryClientProvider>,
+  )
+}
+
+describe('PageHistoryPanel', () => {
+  beforeEach(() => {
+    vi.mocked(listPageRevisions).mockReset()
+    vi.mocked(restorePageRevision).mockReset()
+  })
+
+  it('lists revision groups with a change summary and an AI badge', async () => {
+    vi.mocked(listPageRevisions).mockResolvedValue({
+      items: [group('2026-01-07T12:00:00.000Z'), group('2026-01-06T12:00:00.000Z', 'Ai')],
+      nextCursor: null,
+    })
+    renderPanel()
+
+    const summaries = await screen.findAllByText('history.updated · history.added')
+    expect(summaries).toHaveLength(2)
+    expect(screen.getByText('history.aiBadge')).toBeInTheDocument()
+  })
+
+  it('shows the empty state when there is no history', async () => {
+    vi.mocked(listPageRevisions).mockResolvedValue({ items: [], nextCursor: null })
+    renderPanel()
+
+    expect(await screen.findByText('history.empty')).toBeInTheDocument()
+  })
+
+  it('hides restore from readers', async () => {
+    vi.mocked(listPageRevisions).mockResolvedValue({
+      items: [group('2026-01-07T12:00:00.000Z')],
+      nextCursor: null,
+    })
+    renderPanel({ canWrite: false })
+
+    await screen.findByText('history.updated · history.added')
+    expect(screen.queryByRole('button', { name: 'history.restore' })).not.toBeInTheDocument()
+  })
+
+  it('restores after a two-click confirm and reports the restore', async () => {
+    const user = userEvent.setup()
+    const onRestored = vi.fn()
+    vi.mocked(listPageRevisions).mockResolvedValue({
+      items: [group('2026-01-07T12:00:00.000Z')],
+      nextCursor: null,
+    })
+    vi.mocked(restorePageRevision).mockResolvedValue(undefined)
+    renderPanel({ onRestored })
+
+    await user.click(await screen.findByRole('button', { name: 'history.restore' }))
+    expect(restorePageRevision).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'history.restoreConfirm' }))
+    expect(restorePageRevision).toHaveBeenCalledWith('page-1', '2026-01-07T12:00:00.000Z')
+    await vi.waitFor(() => {
+      expect(onRestored).toHaveBeenCalledOnce()
+    })
+  })
+
+  it('pages through history with the cursor', async () => {
+    const user = userEvent.setup()
+    vi.mocked(listPageRevisions)
+      .mockResolvedValueOnce({ items: [group('2026-01-07T12:00:00.000Z')], nextCursor: 'cursor-2' })
+      .mockResolvedValueOnce({ items: [group('2026-01-01T12:00:00.000Z')], nextCursor: null })
+    renderPanel()
+
+    await user.click(await screen.findByRole('button', { name: 'history.loadMore' }))
+
+    expect(listPageRevisions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ pageId: 'page-1', cursor: 'cursor-2' }),
+    )
+    expect(await screen.findAllByText('history.updated · history.added')).toHaveLength(2)
+  })
+})

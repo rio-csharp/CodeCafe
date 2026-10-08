@@ -4,5 +4,15 @@ export { createPage } from './api/createPage'
 export type { CreatePageParams } from './api/createPage'
 export { updatePage } from './api/updatePage'
 export type { UpdatePageData } from './api/updatePage'
+export { listPageRevisions } from './api/listPageRevisions'
+export type { ListPageRevisionsParams } from './api/listPageRevisions'
+export { restorePageRevision } from './api/restorePageRevision'
 export { pageKeys } from './model/types'
-export type { PageDetails } from './model/types'
+export type {
+  BlockRevision,
+  CursorPage,
+  PageDetails,
+  PageRevisionGroup,
+  RevisionChangeKind,
+  RevisionSource,
+} from './model/types'

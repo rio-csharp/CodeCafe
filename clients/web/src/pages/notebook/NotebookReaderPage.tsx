@@ -17,6 +17,7 @@ import {
   NotebookMissingState,
   NotebookReaderLayout,
   PageErrorState,
+  PageHistoryPanel,
   PageMissingState,
   PageOutline,
   ReaderSkeletonLayout,
@@ -203,6 +204,28 @@ export function NotebookReaderPage() {
           icon: <path d="M2.5 4h11M2.5 8h7M2.5 11.5h9" />,
           content: <PageOutline headings={outline} />,
         },
+        // The history is page-scoped and read-only while editing (restoring
+        // under an open draft would silently discard it).
+        ...(page.data !== undefined && !editing
+          ? [
+              {
+                id: 'history',
+                label: t('reader.history'),
+                icon: (
+                  <path d="M8 4.2v4l2.6 1.6M13.8 8a5.8 5.8 0 1 1-1.7-4.1M13.8 2.8v2.7h-2.7" />
+                ),
+                content: (
+                  <PageHistoryPanel
+                    pageId={page.data.id}
+                    canWrite={notebook.canWrite}
+                    onRestored={() => {
+                      void queryClient.invalidateQueries({ queryKey: pageKeys.all })
+                    }}
+                  />
+                ),
+              },
+            ]
+          : []),
       ]}
       pageTitle={editing ? null : (page.data?.title ?? null)}
       canEdit={notebook.canWrite}

@@ -21,6 +21,7 @@ vi.mock('@/entities/page', async (importOriginal) => ({
   getPageByPath: vi.fn(),
   updatePage: vi.fn(),
   createPage: vi.fn(),
+  listPageRevisions: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
 }))
 
 const NOTEBOOK: NotebookDetails = {
