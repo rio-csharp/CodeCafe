@@ -17,7 +17,7 @@ const VARIANT_CLASS: Record<PaletteColor, string> = {
 
 export interface CalloutEditorProps extends Omit<TextBlockEngineProps, 'spans' | 'onChange'> {
   block: EditorBlock
-  onChange: (content: Record<string, unknown>) => void
+  onChange: (content: Record<string, unknown>, structural?: boolean) => void
   /** A callout is a container: its child blocks render inside the box. */
   children?: ReactNode
 }
@@ -34,8 +34,8 @@ export function CalloutEditor({ block, onChange, children, ...engine }: CalloutE
         spans={content.spans}
         ariaLabel={t('editor.callout')}
         placeholder={t('editor.writePlaceholder')}
-        onChange={(spans: SpanDto[]) => {
-          onChange({ ...content, spans })
+        onChange={(spans: SpanDto[], structural) => {
+          onChange({ ...content, spans }, structural)
         }}
       />
       {children !== null && children !== undefined ? (

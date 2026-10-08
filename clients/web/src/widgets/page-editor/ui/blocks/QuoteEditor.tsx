@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
-import type { QuoteContent, SpanDto } from '@/entities/block'
+import type { QuoteContent } from '@/entities/block'
 import type { EditorBlock } from '../../lib/draft'
 import type { TextBlockEngineProps } from '../TextBlockEditor'
 import { TextBlockEditor } from '../TextBlockEditor'
 
 export interface QuoteEditorProps extends Omit<TextBlockEngineProps, 'spans' | 'onChange'> {
   block: EditorBlock
-  onChange: (content: Record<string, unknown>) => void
+  onChange: (content: Record<string, unknown>, structural?: boolean) => void
 }
 
 /** Quote editing: the shared text engine inside the reader's quote styling. */
@@ -21,8 +21,8 @@ export function QuoteEditor({ block, onChange, ...engine }: QuoteEditorProps) {
         spans={content.spans}
         ariaLabel={t('editor.quote')}
         placeholder={t('editor.writePlaceholder')}
-        onChange={(spans: SpanDto[]) => {
-          onChange({ spans })
+        onChange={(spans, structural) => {
+          onChange({ spans }, structural)
         }}
       />
     </div>

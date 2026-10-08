@@ -6,7 +6,7 @@ import type { TextBlockEngineProps } from '../TextBlockEditor'
 
 export interface ParagraphEditorProps extends Omit<TextBlockEngineProps, 'spans' | 'onChange'> {
   block: EditorBlock
-  onChange: (content: Record<string, unknown>) => void
+  onChange: (content: Record<string, unknown>, structural?: boolean) => void
 }
 
 export function ParagraphEditor({ block, onChange, ...engine }: ParagraphEditorProps) {
@@ -20,8 +20,8 @@ export function ParagraphEditor({ block, onChange, ...engine }: ParagraphEditorP
       ariaLabel={t('editor.paragraph')}
       placeholder={t('editor.writePlaceholder')}
       className="text-ink"
-      onChange={(spans) => {
-        onChange({ spans })
+      onChange={(spans, structural) => {
+        onChange({ spans }, structural)
       }}
     />
   )

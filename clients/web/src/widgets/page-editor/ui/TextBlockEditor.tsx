@@ -26,7 +26,8 @@ export interface TextBlockEngineProps {
   spans: readonly SpanDto[]
   /** One-shot caret request from a split/merge/navigation; consumed via onFocusHandled. */
   focusOffset?: number | null
-  onChange: (spans: SpanDto[]) => void
+  /** `structural` marks non-typing edits (marks, links): they never coalesce in undo history. */
+  onChange: (spans: SpanDto[], structural?: boolean) => void
   onSplit: (offset: number) => void
   onMergeBackward: () => void
   onFocusPrevious: () => void
@@ -163,7 +164,7 @@ export function TextBlockEditor({
     pendingSelectionRef.current = range
     setDomSpans(next)
     setRendered((current) => ({ spans: next, epoch: current.epoch + 1 }))
-    onChange(next)
+    onChange(next, true)
   }
 
   const captureSelection = () => {

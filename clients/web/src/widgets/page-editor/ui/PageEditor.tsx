@@ -14,6 +14,8 @@ import {
 } from '../lib/draft'
 import type { EditorBlock } from '../lib/draft'
 import { diffToOps } from '../lib/ops'
+import { applyRedo, applyUndo, emptyHistory, recordChange } from '../lib/history'
+import type { DraftHistory } from '../lib/history'
 import {
   hoistChildren,
   indentBlock,
@@ -76,11 +78,25 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   const { t } = useTranslation()
   const [title, setTitle] = useState(page.title)
   // An empty page still needs somewhere to type: start from one fresh paragraph.
-  const [draft, setDraft] = useState<EditorBlock[]>(() => {
+  const [draft, setDraftState] = useState<EditorBlock[]>(() => {
     const initial = toEditorDraft(page.blocks)
     return initial.some((block) => block.parentBlockId === null) ? initial : [emptyParagraphBlock()]
   })
   const [focusRequest, setFocusRequest] = useState<{ id: string; offset: number } | null>(null)
+
+  // In-session undo/redo. The history lives in a ref: it changes on every
+  // keystroke and none of that is renderable state.
+  const historyRef = useRef<DraftHistory>(emptyHistory())
+
+  /**
+   * Every draft mutation flows through here so the pre-change state lands on
+   * the undo stack. `run` coalesces a burst of same-block edits (typing) into
+   * one undo step; structural changes pass null and always get their own.
+   */
+  const setDraft = (next: EditorBlock[], run: string | null = null) => {
+    historyRef.current = recordChange(historyRef.current, draft, run)
+    setDraftState(next)
+  }
 
   // Read-only fallback rendering needs the untouched tree, children included.
   const sourceTree = useMemo(() => assembleBlockTree(page.blocks), [page.blocks])
@@ -179,6 +195,27 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   }, [trimmed, page.blocks, draft, onSave])
 
   useEffect(() => {
+    /** Key-handler commit: records the pre-change draft, then swaps it. */
+    const commitFromKeyHandler = (next: EditorBlock[]) => {
+      historyRef.current = recordChange(historyRef.current, draft, null)
+      setDraftState(next)
+    }
+
+    /** Undo/redo straight off the stacks; focus and selection do not survive. */
+    const travel = (direction: 'undo' | 'redo') => {
+      const result =
+        direction === 'undo'
+          ? applyUndo(historyRef.current, draft)
+          : applyRedo(historyRef.current, draft)
+      if (result === null) {
+        return
+      }
+      historyRef.current = result.history
+      setBlockSelection(null)
+      setFocusRequest(null)
+      setDraftState(result.draft)
+    }
+
     const handler = (event: KeyboardEvent) => {
       // Save works from anywhere, including block-selection mode where focus
       // sits on <body> and never reaches the editor's own handlers.
@@ -186,6 +223,27 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
         event.preventDefault()
         save()
         return
+      }
+
+      // Ctrl/Cmd+Z / Ctrl/Cmd+Shift+Z / Ctrl+Y: OUR undo, not the browser's —
+      // native contenteditable undo would mutate the DOM behind the model's
+      // back. Genuine form fields (the title input, the code textarea) keep
+      // their own native undo.
+      const target = event.target
+      const nativeField =
+        target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
+      if (!nativeField && (event.metaKey || event.ctrlKey) && !event.altKey) {
+        const key = event.key.toLowerCase()
+        if (key === 'z') {
+          event.preventDefault()
+          travel(event.shiftKey ? 'redo' : 'undo')
+          return
+        }
+        if (key === 'y' && event.ctrlKey && !event.metaKey) {
+          event.preventDefault()
+          travel('redo')
+          return
+        }
       }
 
       if (event.key === 'Escape') {
@@ -256,12 +314,12 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
         const remaining = removeBlocks(draft, selectedIds)
         setBlockSelection(null)
         if (focusTarget !== undefined) {
-          setDraft(remaining)
+          commitFromKeyHandler(remaining)
           setFocusRequest({ id: focusTarget.id, offset: 0 })
         } else {
           // Nothing editable survives: leave one fresh paragraph to type into.
           const freshBlock = emptyParagraphBlock()
-          setDraft([...remaining, freshBlock])
+          commitFromKeyHandler([...remaining, freshBlock])
           setFocusRequest({ id: freshBlock.id, offset: 0 })
         }
       }
@@ -291,13 +349,11 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       sortKey: '',
       version: 0,
     }
-    setDraft((current) => {
-      const withLeft = replaceBlockContent(current, id, {
-        ...(source.content as object),
-        spans: left,
-      })
-      return insertBlockAfter(withLeft, id, fresh)
+    const withLeft = replaceBlockContent(draft, id, {
+      ...(source.content as object),
+      spans: left,
     })
+    setDraft(insertBlockAfter(withLeft, id, fresh))
     setFocusRequest({ id: fresh.id, offset: 0 })
   }
 
@@ -321,17 +377,17 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       sortKey: '',
       version: 0,
     }
-    setDraft((current) => {
-      const index = current.findIndex((entry) => entry.id === id)
-      if (index < 0) {
-        return current
-      }
-      const next = [...current]
-      next.splice(index, 1, fresh)
-      return next.map((entry) =>
+    const index = draft.findIndex((entry) => entry.id === id)
+    if (index < 0) {
+      return
+    }
+    const replaced = [...draft]
+    replaced.splice(index, 1, fresh)
+    setDraft(
+      replaced.map((entry) =>
         entry.parentBlockId === id ? { ...entry, parentBlockId: fresh.id } : entry,
-      )
-    })
+      ),
+    )
     if (target.type !== 'divider' && target.type !== 'image' && target.type !== 'audio') {
       setFocusRequest({ id: fresh.id, offset: 0 })
     }
@@ -353,9 +409,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       if (previousText !== undefined) {
         setFocusRequest({ id: previousText.id, offset: spansPlainText(spansOf(previousText)).length })
       }
-      setDraft((draftNow) =>
-        removeBlock(hasChildren ? hoistChildren(draftNow, id) : draftNow, id),
-      )
+      setDraft(removeBlock(hasChildren ? hoistChildren(draft, id) : draft, id))
       return
     }
     // Merging crosses into the immediate VISUAL neighbour only: a divider (or
@@ -368,11 +422,9 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     }
     const junction = spansPlainText(spansOf(previous)).length
     const merged = joinSpans(spansOf(previous), spansOf(current))
-    setDraft((draftNow) => {
-      const withChildren = hasChildren ? transferChildren(draftNow, id, previous.id) : draftNow
-      const content = { ...(previous.content as object), spans: merged }
-      return removeBlock(replaceBlockContent(withChildren, previous.id, content), id)
-    })
+    const withChildren = hasChildren ? transferChildren(draft, id, previous.id) : draft
+    const content = { ...(previous.content as object), spans: merged }
+    setDraft(removeBlock(replaceBlockContent(withChildren, previous.id, content), id))
     setFocusRequest({ id: previous.id, offset: junction })
   }
 
@@ -416,7 +468,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       return last.id
     }
     const fresh = emptyParagraphBlock()
-    setDraft((current) => [...current, fresh])
+    setDraft([...draft, fresh])
     return fresh.id
   }
 
@@ -477,8 +529,11 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     const shared = {
       ...engine,
       block,
-      onChange: (content: Record<string, unknown>) => {
-        setDraft((current) => replaceBlockContent(current, block.id, content))
+      onChange: (content: Record<string, unknown>, structural = false) => {
+        setDraft(
+          replaceBlockContent(draft, block.id, content),
+          structural ? null : `text:${block.id}`,
+        )
       },
       onSplit: (offset: number) => {
         splitBlock(block.id, offset)

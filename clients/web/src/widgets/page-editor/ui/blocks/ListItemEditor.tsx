@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import type { ListItemContent, SpanDto } from '@/entities/block'
+import type { ListItemContent } from '@/entities/block'
 import type { EditorBlock } from '../../lib/draft'
 import type { TextBlockEngineProps } from '../TextBlockEditor'
 import { TextBlockEditor } from '../TextBlockEditor'
@@ -8,7 +8,7 @@ export interface ListItemEditorProps extends Omit<TextBlockEngineProps, 'spans' 
   block: EditorBlock
   /** 1-based number within the run of consecutive ordered siblings; ignored for bullets. */
   listNumber?: number
-  onChange: (content: Record<string, unknown>) => void
+  onChange: (content: Record<string, unknown>, structural?: boolean) => void
 }
 
 /** List editing: a bullet or run number next to the shared text engine. */
@@ -28,8 +28,8 @@ export function ListItemEditor({ block, listNumber, onChange, ...engine }: ListI
           spans={content.spans}
           ariaLabel={t(ordered ? 'editor.numberedList' : 'editor.bulletedList')}
           placeholder={t('editor.writePlaceholder')}
-          onChange={(spans: SpanDto[]) => {
-            onChange({ spans })
+          onChange={(spans, structural) => {
+            onChange({ spans }, structural)
           }}
         />
       </div>

@@ -7,7 +7,7 @@ import type { TextBlockEngineProps } from '../TextBlockEditor'
 
 export interface HeadingEditorProps extends Omit<TextBlockEngineProps, 'spans' | 'onChange'> {
   block: EditorBlock
-  onChange: (content: Record<string, unknown>) => void
+  onChange: (content: Record<string, unknown>, structural?: boolean) => void
 }
 
 export function HeadingEditor({ block, onChange, ...engine }: HeadingEditorProps) {
@@ -25,8 +25,8 @@ export function HeadingEditor({ block, onChange, ...engine }: HeadingEditorProps
       // degrade to a space on export, so splitting is the honest behavior.
       allowSoftBreak={false}
       className={`${HEADING_CLASS[level - 1] ?? HEADING_CLASS[0]} font-semibold text-ink`}
-      onChange={(spans) => {
-        onChange({ level, spans })
+      onChange={(spans, structural) => {
+        onChange({ level, spans }, structural)
       }}
     />
   )

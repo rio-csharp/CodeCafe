@@ -852,4 +852,56 @@ describe('PageEditor', () => {
       expect(ops).toContainEqual(expect.objectContaining({ kind: 'Move', blockId: 'block-2' }))
     })
   })
+
+  describe('undo/redo', () => {
+    it('undoes a block split with Ctrl+Z and redoes it with Ctrl+Shift+Z', () => {
+      renderEditor()
+
+      const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+      fireEvent.keyDown(block, { key: 'Enter' })
+      expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(2)
+
+      fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true })
+      expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(1)
+      expect(screen.getByText('Start with fresh beans.')).toBeInTheDocument()
+
+      fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true, shiftKey: true })
+      expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(2)
+    })
+
+    it('undoes a typing run as one step', () => {
+      renderEditor()
+
+      const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+      block.textContent = 'Start with fresh beans!'
+      fireEvent.input(block)
+
+      fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true })
+      expect(screen.getByText('Start with fresh beans.')).toBeInTheDocument()
+      expect(screen.queryByText('Start with fresh beans!')).not.toBeInTheDocument()
+    })
+
+    it('does nothing when the undo stack is empty', () => {
+      renderEditor()
+
+      fireEvent.keyDown(document.body, { key: 'z', ctrlKey: true })
+      expect(screen.getByText('Start with fresh beans.')).toBeInTheDocument()
+    })
+
+    it('leaves native undo alone inside the title input', () => {
+      renderEditor()
+
+      const title = screen.getByRole('textbox', { name: 'editor.titlePlaceholder' })
+      const event = new KeyboardEvent('keydown', {
+        key: 'z',
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+      title.dispatchEvent(event)
+
+      expect(event.defaultPrevented).toBe(false)
+      expect(screen.getByText('Start with fresh beans.')).toBeInTheDocument()
+    })
+  })
 })

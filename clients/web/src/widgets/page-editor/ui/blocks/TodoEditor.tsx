@@ -6,7 +6,7 @@ import { TextBlockEditor } from '../TextBlockEditor'
 
 export interface TodoEditorProps extends Omit<TextBlockEngineProps, 'spans' | 'onChange'> {
   block: EditorBlock
-  onChange: (content: Record<string, unknown>) => void
+  onChange: (content: Record<string, unknown>, structural?: boolean) => void
 }
 
 /** To-do editing: a live checkbox next to the shared text engine. */
@@ -21,7 +21,7 @@ export function TodoEditor({ block, onChange, ...engine }: TodoEditorProps) {
         checked={content.checked}
         aria-label={t('editor.todoToggle')}
         onChange={() => {
-          onChange({ ...content, checked: !content.checked })
+          onChange({ ...content, checked: !content.checked }, true)
         }}
         className="mt-1.5 size-4 shrink-0 accent-accent"
       />
@@ -31,8 +31,8 @@ export function TodoEditor({ block, onChange, ...engine }: TodoEditorProps) {
           spans={content.spans}
           ariaLabel={t('editor.todo')}
           placeholder={t('editor.writePlaceholder')}
-          onChange={(spans: SpanDto[]) => {
-            onChange({ ...content, spans })
+          onChange={(spans: SpanDto[], structural) => {
+            onChange({ ...content, spans }, structural)
           }}
         />
       </div>
