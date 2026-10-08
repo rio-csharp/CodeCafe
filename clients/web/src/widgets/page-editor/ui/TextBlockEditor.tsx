@@ -19,7 +19,7 @@ import type { SimpleMarkKind } from '../lib/marks'
 import { insertTextAt, spansEqual, spansPlainText, splitSpansAt } from '../lib/spans'
 import { parsePastedBlocks, parsePastedLine } from '../lib/paste'
 import type { PastedBlock } from '../lib/paste'
-import { matchBacktickRule, matchSpaceRule } from '../lib/inputRules'
+import { matchBacktickRule, matchDashRule, matchSpaceRule } from '../lib/inputRules'
 import { EditableSpans } from './EditableSpans'
 import { MarkToolbar } from './MarkToolbar'
 import { SlashMenu } from './SlashMenu'
@@ -293,8 +293,8 @@ export function TextBlockEditor({
     }
     // Escape bubbles up to the page: selection-mode clearing or cancel handles it.
     // Markdown input rules: "- " + Space converts the block, Notion-style;
-    // the third backtick of ``` opens a code block. The marker is the whole
-    // pre-caret text, so rules never fire mid-sentence.
+    // the third backtick of ``` opens a code block, the third dash a divider.
+    // The marker is the whole pre-caret text, so rules never fire mid-sentence.
     if (onTransform !== undefined && !event.metaKey && !event.ctrlKey && !event.altKey) {
       const offset = getCaretOffset(element)
       const beforeCaret = spansPlainText(spans).slice(0, offset)
@@ -303,7 +303,9 @@ export function TextBlockEditor({
           ? matchSpaceRule(beforeCaret)
           : event.key === '`'
             ? matchBacktickRule(beforeCaret)
-            : null
+            : event.key === '-'
+              ? matchDashRule(beforeCaret)
+              : null
       if (target !== null) {
         event.preventDefault()
         const [, rest] = splitSpansAt(spans, offset)

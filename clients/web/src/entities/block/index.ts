@@ -1,5 +1,5 @@
 export { assembleBlockTree } from './model/assembleBlockTree'
-export { highlightCode } from './lib/highlight'
+export { highlightCode, HIGHLIGHT_LANGUAGES, isHighlightableLanguage } from './lib/highlight'
 export type { BlockNode } from './model/assembleBlockTree'
 export { blockAnchorId, extractOutline } from './model/outline'
 export type { OutlineHeading } from './model/outline'

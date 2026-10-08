@@ -1,5 +1,6 @@
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import { highlightCode } from '@/entities/block'
+import { highlightCode, HIGHLIGHT_LANGUAGES } from '@/entities/block'
 import type { CodeContent } from '@/entities/block'
 import type { EditorBlock } from '../../lib/draft'
 
@@ -22,11 +23,13 @@ const CODE_TYPOGRAPHY = 'px-3 py-2 font-mono text-[13px] leading-relaxed whitesp
 export function CodeEditor({ block, onChange }: CodeEditorProps) {
   const { t } = useTranslation()
   const content = block.content as CodeContent
+  const languageListId = useId()
 
   return (
     <div className="rounded-xl bg-muted-soft/60">
       <input
         value={content.language}
+        list={languageListId}
         aria-label={t('editor.codeLanguage')}
         placeholder={t('editor.codeLanguage')}
         onChange={(event) => {
@@ -34,6 +37,12 @@ export function CodeEditor({ block, onChange }: CodeEditorProps) {
         }}
         className={`${INPUT_CLASS} ml-2 mt-1`}
       />
+      {/* Free input stays possible; the datalist only suggests highlightable languages. */}
+      <datalist id={languageListId}>
+        {HIGHLIGHT_LANGUAGES.map((language) => (
+          <option key={language} value={language} />
+        ))}
+      </datalist>
       <div className="relative">
         <pre aria-hidden className={`hljs text-ink ${CODE_TYPOGRAPHY}`}>
           <code

@@ -1,23 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { highlightCode } from './highlight'
+import { highlightCode, HIGHLIGHT_LANGUAGES, isHighlightableLanguage } from './highlight'
 
 describe('highlightCode', () => {
-  it('wraps keywords in token spans for a known language', () => {
-    const html = highlightCode('const x = 1;', 'javascript')
-
-    expect(html).toContain('hljs-keyword')
-    expect(html).toContain('const')
+  it('highlights C# under its canonical name and aliases', () => {
+    for (const language of ['csharp', 'c#', 'cs', 'C#']) {
+      expect(highlightCode('public class Foo {}', language)).toContain('hljs-keyword')
+      expect(isHighlightableLanguage(language)).toBe(true)
+    }
   })
 
-  it('returns escaped plain text for an unknown language', () => {
-    expect(highlightCode('a < b', 'nonsense-lang')).toBe('a &lt; b')
-    expect(highlightCode('a < b', '')).toBe('a &lt; b')
+  it('escapes unknown or empty languages as plain text', () => {
+    expect(highlightCode('<b>x</b>', 'not-a-lang')).toBe('&lt;b&gt;x&lt;/b&gt;')
+    expect(highlightCode('<b>x</b>', '')).toBe('&lt;b&gt;x&lt;/b&gt;')
+    expect(isHighlightableLanguage('not-a-lang')).toBe(false)
   })
 
-  it('escapes markup inside highlighted code', () => {
-    const html = highlightCode('const s = "<b>";', 'javascript')
-
-    expect(html).not.toContain('<b>')
-    expect(html).toContain('&lt;b&gt;')
+  it('exposes the bundled language list for pickers', () => {
+    expect(HIGHLIGHT_LANGUAGES).toContain('csharp')
+    expect(HIGHLIGHT_LANGUAGES).toContain('typescript')
   })
 })

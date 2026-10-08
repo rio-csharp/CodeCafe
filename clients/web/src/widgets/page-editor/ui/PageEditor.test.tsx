@@ -277,6 +277,20 @@ describe('PageEditor', () => {
       expect(box).toContainElement(child)
     })
 
+    it('Backspace at the start of a list item turns it back into a paragraph', () => {
+      renderEditor({
+        page: { ...PAGE, blocks: [listBlock('li-1', 'bulleted-list', 'milk')] },
+      })
+
+      const item = screen.getByRole('textbox', { name: 'editor.bulletedList' })
+      item.focus()
+      fireEvent.keyDown(item, { key: 'Backspace' })
+
+      expect(screen.queryByRole('textbox', { name: 'editor.bulletedList' })).not.toBeInTheDocument()
+      const paragraph = screen.getByRole('textbox', { name: 'editor.paragraph' })
+      expect(paragraph).toHaveTextContent('milk')
+    })
+
     it('numbers consecutive ordered items and restarts after a paragraph', () => {
       renderEditor({
         page: {

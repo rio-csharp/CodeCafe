@@ -14,7 +14,8 @@ or the Save button commits, Escape cancels.
 Editing surface: inline spans with marks (floating toolbar + Ctrl/Cmd+B/I/U),
 slash-menu conversion, block selection (Escape, Shift+arrows), drag-and-drop via
 the six-dot handle, Tab/Shift+Tab indent, Ctrl/Cmd+Shift+arrows reorder, soft line
-breaks (Shift+Enter), nested blocks, callouts as containers, code (highlighted),
+breaks (Shift+Enter), nested blocks, callouts as containers, code (highlighted,
+language picked from a datalist of the bundled hljs grammars or typed freely),
 table, image, audio, bulleted/numbered lists.
 
 ## Undo/redo (session-local)
@@ -45,9 +46,12 @@ block at the caret; pasting into an empty block replaces it entirely.
 `lib/inputRules.ts` converts a block while typing, Notion-style: the whole
 pre-caret text being a marker plus the trigger key fires the conversion —
 `#`–`###` + Space for headings, `-`/`*`/`1.`/`>` + Space for lists and quotes,
-`[]` / `[x]` + Space for to-dos, `---` + Space for a divider, and the third
-backtick for a code block. (`- [ ]` is deliberately absent: the `- ` rule
-fires on the first space, before the brackets can be typed.)
+`[]` / `[x]` + Space for to-dos, `---` + Space or the third dash for a divider,
+and the third backtick for a code block. (`- [ ]` is deliberately absent: the
+`- ` rule fires on the first space, before the brackets can be typed.)
+
+Backspace at the start of a list item (bulleted / numbered / to-do) un-lists
+it into a paragraph instead of merging upward; the next Backspace merges.
 
 ## Page history panel
 

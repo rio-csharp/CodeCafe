@@ -34,3 +34,8 @@ export function matchSpaceRule(beforeCaret: string): SlashTarget | null {
 export function matchBacktickRule(beforeCaret: string): SlashTarget | null {
   return beforeCaret === '``' ? { type: 'code' } : null
 }
+
+/** Third dash pressed with nothing but `--` before the caret: a divider. */
+export function matchDashRule(beforeCaret: string): SlashTarget | null {
+  return beforeCaret === '--' ? { type: 'divider' } : null
+}

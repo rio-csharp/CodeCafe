@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchBacktickRule, matchSpaceRule } from './inputRules'
+import { matchBacktickRule, matchDashRule, matchSpaceRule } from './inputRules'
 
 describe('matchSpaceRule', () => {
   it('converts hash markers to headings of the matching level', () => {
@@ -40,5 +40,13 @@ describe('matchBacktickRule', () => {
     expect(matchBacktickRule('``')).toEqual({ type: 'code' })
     expect(matchBacktickRule('`')).toBeNull()
     expect(matchBacktickRule('a``')).toBeNull()
+  })
+})
+
+describe('matchDashRule', () => {
+  it('converts on the third dash only', () => {
+    expect(matchDashRule('--')).toEqual({ type: 'divider' })
+    expect(matchDashRule('-')).toBeNull()
+    expect(matchDashRule('a--')).toBeNull()
   })
 })

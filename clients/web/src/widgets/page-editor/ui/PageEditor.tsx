@@ -64,8 +64,8 @@ const TEXT_TYPES = new Set([
   'numbered-list',
 ])
 
-/** Enter continues the block instead of exiting to a paragraph. */
-const ENTER_CONTINUES = new Set(['todo', 'bulleted-list', 'numbered-list'])
+/** List-like blocks: Enter continues them as the same kind; Backspace at the start un-lists them. */
+const LIST_ITEM_TYPES = new Set(['todo', 'bulleted-list', 'numbered-list'])
 
 function spansOf(block: EditorBlock): SpanDto[] {
   return (block.content as { spans: SpanDto[] }).spans
@@ -342,7 +342,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     // Enter inside a heading/quote exits to a paragraph; a to-do or list item
     // continues as the same kind; a callout is a container, so Enter becomes
     // its first child. The new block stays at the same depth otherwise.
-    const freshType = ENTER_CONTINUES.has(source.type) ? source.type : 'paragraph'
+    const freshType = LIST_ITEM_TYPES.has(source.type) ? source.type : 'paragraph'
     const fresh: EditorBlock = {
       id: mintTempId(),
       isNew: true,
@@ -405,6 +405,13 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     const text = spansPlainText(spansOf(current))
     const hasChildren = (groups.get(id)?.length ?? 0) > 0
 
+    // Backspace at the start of a list item un-lists it first (a delete +
+    // insert, since the backend never retypes a block); the NEXT Backspace
+    // merges or deletes as usual.
+    if (LIST_ITEM_TYPES.has(current.type)) {
+      transformBlock(id, { type: 'paragraph' }, spansOf(current))
+      return
+    }
     // An empty block under Backspace just goes away; its children are hoisted
     // into its place first (the diff turns that into Move ops + a Delete).
     if (text.length === 0) {
