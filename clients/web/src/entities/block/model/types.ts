@@ -63,6 +63,10 @@ export interface TodoContent {
   spans: SpanDto[]
 }
 
+export interface ListItemContent {
+  spans: SpanDto[]
+}
+
 export interface CodeContent {
   code: string
   language: string

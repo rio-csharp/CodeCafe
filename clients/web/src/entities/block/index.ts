@@ -10,6 +10,7 @@ export type {
   DividerContent,
   HeadingContent,
   ImageContent,
+  ListItemContent,
   MarkDto,
   PaletteColor,
   ParagraphContent,

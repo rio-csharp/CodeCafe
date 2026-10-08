@@ -229,6 +229,46 @@ describe('PageEditor', () => {
     )
   })
 
+  describe('list items', () => {
+    const listBlock = (id: string, type: string, value: string, sortKey = id) => ({
+      id,
+      parentBlockId: null,
+      type,
+      content: { spans: [{ text: value, marks: [] }] },
+      sortKey,
+      version: 1,
+      updatedAtUtc: '2026-01-07T12:00:00.000Z',
+    })
+
+    it('Enter continues a bulleted list', () => {
+      renderEditor({
+        page: { ...PAGE, blocks: [listBlock('li-1', 'bulleted-list', 'milk')] },
+      })
+
+      const item = screen.getByRole('textbox', { name: 'editor.bulletedList' })
+      fireEvent.keyDown(item, { key: 'Enter' })
+
+      expect(screen.getAllByRole('textbox', { name: 'editor.bulletedList' })).toHaveLength(2)
+    })
+
+    it('numbers consecutive ordered items and restarts after a paragraph', () => {
+      renderEditor({
+        page: {
+          ...PAGE,
+          blocks: [
+            listBlock('n-1', 'numbered-list', 'one', 'a'),
+            listBlock('n-2', 'numbered-list', 'two', 'b'),
+            listBlock('p-1', 'paragraph', 'break', 'c'),
+            listBlock('n-3', 'numbered-list', 'three', 'd'),
+          ],
+        },
+      })
+
+      const numbers = screen.getAllByText(/^\d+\.$/).map((element) => element.textContent)
+      expect(numbers).toEqual(['1.', '2.', '1.'])
+    })
+  })
+
   describe('nested blocks', () => {
     const NESTED: PageDetails = {
       ...PAGE,

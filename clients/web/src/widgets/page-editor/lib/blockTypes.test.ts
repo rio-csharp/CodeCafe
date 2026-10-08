@@ -13,7 +13,7 @@ describe('detectSlashQuery', () => {
 
 describe('filterSlashItems', () => {
   it('returns everything for an empty query', () => {
-    expect(filterSlashItems('')).toHaveLength(10)
+    expect(filterSlashItems('')).toHaveLength(12)
   })
 
   it('matches ids and keywords case-insensitively', () => {
@@ -23,6 +23,10 @@ describe('filterSlashItems', () => {
       'heading3',
     ])
     expect(filterSlashItems('H2').map((item) => item.id)).toEqual(['heading2'])
+    expect(filterSlashItems('list').map((item) => item.id)).toEqual([
+      'bulleted-list',
+      'numbered-list',
+    ])
   })
 
   it('matches Chinese keywords too', () => {
@@ -43,5 +47,7 @@ describe('contentForTarget', () => {
     expect(contentForTarget({ type: 'todo' }, spans)).toEqual({ checked: false, spans })
     expect(contentForTarget({ type: 'callout' }, spans)).toEqual({ variant: 'info', spans })
     expect(contentForTarget({ type: 'divider' }, spans)).toEqual({})
+    expect(contentForTarget({ type: 'bulleted-list' }, spans)).toEqual({ spans })
+    expect(contentForTarget({ type: 'numbered-list' }, spans)).toEqual({ spans })
   })
 })

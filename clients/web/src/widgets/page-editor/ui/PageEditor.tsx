@@ -29,6 +29,7 @@ import { HeadingEditor } from './blocks/HeadingEditor'
 import { QuoteEditor } from './blocks/QuoteEditor'
 import { TodoEditor } from './blocks/TodoEditor'
 import { CalloutEditor } from './blocks/CalloutEditor'
+import { ListItemEditor } from './blocks/ListItemEditor'
 import { AudioEditor } from './blocks/AudioEditor'
 import { CodeEditor } from './blocks/CodeEditor'
 import { ImageEditor } from './blocks/ImageEditor'
@@ -46,7 +47,18 @@ export interface PageEditorProps {
   onCancel: () => void
 }
 
-const TEXT_TYPES = new Set(['paragraph', 'heading', 'quote', 'callout', 'todo'])
+const TEXT_TYPES = new Set([
+  'paragraph',
+  'heading',
+  'quote',
+  'callout',
+  'todo',
+  'bulleted-list',
+  'numbered-list',
+])
+
+/** Enter continues the block instead of exiting to a paragraph. */
+const ENTER_CONTINUES = new Set(['todo', 'bulleted-list', 'numbered-list'])
 
 function spansOf(block: EditorBlock): SpanDto[] {
   return (block.content as { spans: SpanDto[] }).spans
@@ -100,6 +112,22 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
 
   const rootBlocks = groups.get(null) ?? []
   const textBlocks = visibleBlocks.filter((block) => TEXT_TYPES.has(block.type))
+
+  // An ordered item's number is its position in the run of consecutive ordered
+  // siblings — derived per group, never stored.
+  const listNumbers = useMemo(() => {
+    const numbers = new Map<string, number>()
+    for (const list of groups.values()) {
+      let run = 0
+      for (const block of list) {
+        run = block.type === 'numbered-list' ? run + 1 : 0
+        if (block.type === 'numbered-list') {
+          numbers.set(block.id, run)
+        }
+      }
+    }
+    return numbers
+  }, [groups])
 
   // Block-level selection: Escape inside a text block selects it; arrows move,
   // Shift+arrows extend, Backspace/Delete removes the whole subtree set.
@@ -240,9 +268,10 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       return
     }
     const [left, right] = splitSpansAt(spansOf(source), offset)
-    // Enter inside a heading/quote/callout exits to a paragraph; a to-do
-    // continues as a to-do, Notion-style. The new block stays at the same depth.
-    const freshType = source.type === 'todo' ? 'todo' : 'paragraph'
+    // Enter inside a heading/quote/callout exits to a paragraph; a to-do or list
+    // item continues as the same kind, Notion-style. The new block stays at the
+    // same depth.
+    const freshType = ENTER_CONTINUES.has(source.type) ? source.type : 'paragraph'
     const fresh: EditorBlock = {
       id: mintTempId(),
       isNew: true,
@@ -459,6 +488,9 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
           return <TodoEditor {...shared} />
         case 'callout':
           return <CalloutEditor {...shared} />
+        case 'bulleted-list':
+        case 'numbered-list':
+          return <ListItemEditor {...shared} listNumber={listNumbers.get(block.id)} />
         case 'code':
           return <CodeEditor block={block} onChange={shared.onChange} />
         case 'table':

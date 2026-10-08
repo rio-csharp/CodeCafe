@@ -8,6 +8,8 @@ export type SlashTarget =
   | { type: 'quote' }
   | { type: 'todo' }
   | { type: 'callout' }
+  | { type: 'bulleted-list' }
+  | { type: 'numbered-list' }
   | { type: 'divider' }
   | { type: 'code' }
   | { type: 'table' }
@@ -27,6 +29,8 @@ export const SLASH_ITEMS: readonly SlashItem[] = [
   { id: 'heading3', target: { type: 'heading', level: 3 }, keywords: ['h3', 'heading', '标题'] },
   { id: 'quote', target: { type: 'quote' }, keywords: ['quote', 'blockquote', '引用'] },
   { id: 'todo', target: { type: 'todo' }, keywords: ['todo', 'task', 'checkbox', 'check', '待办', '任务'] },
+  { id: 'bulleted-list', target: { type: 'bulleted-list' }, keywords: ['bullet', 'list', 'ul', '列表', '无序'] },
+  { id: 'numbered-list', target: { type: 'numbered-list' }, keywords: ['number', 'ordered', 'ol', '列表', '有序', '编号'] },
   { id: 'callout', target: { type: 'callout' }, keywords: ['callout', 'info', 'warning', 'note', '提示', '标注'] },
   { id: 'divider', target: { type: 'divider' }, keywords: ['divider', 'hr', 'line', 'rule', '分割', '分隔'] },
   { id: 'code', target: { type: 'code' }, keywords: ['code', 'snippet', '代码', '代码块'] },

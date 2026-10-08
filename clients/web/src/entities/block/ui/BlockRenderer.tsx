@@ -8,6 +8,7 @@ import type {
   CodeContent,
   HeadingContent,
   ImageContent,
+  ListItemContent,
   ParagraphContent,
   QuoteContent,
   TableContent,
@@ -19,6 +20,7 @@ import { CodeBlock } from './CodeBlock'
 import { DividerBlock } from './DividerBlock'
 import { HeadingBlock } from './HeadingBlock'
 import { ImageBlock } from './ImageBlock'
+import { ListItemBlock } from './ListItemBlock'
 import { ParagraphBlock } from './ParagraphBlock'
 import { QuoteBlock } from './QuoteBlock'
 import { TableBlock } from './TableBlock'
@@ -26,11 +28,13 @@ import { TodoBlock } from './TodoBlock'
 
 export interface BlockRendererProps {
   node: BlockNode
+  /** 1-based number within the run of consecutive ordered-list siblings. */
+  listNumber?: number
 }
 
 /** One block plus whatever is nested under it. */
-export function BlockRenderer({ node }: BlockRendererProps) {
-  const own = renderBlock(node.block)
+export function BlockRenderer({ node, listNumber }: BlockRendererProps) {
+  const own = renderBlock(node.block, listNumber)
 
   // An unknown type is future content: say nothing about it, but keep its
   // children so a new wrapper type cannot swallow a whole subtree.
@@ -55,10 +59,11 @@ export interface BlockListProps {
 
 /** The assembled forest of a page. */
 export function BlockList({ nodes }: BlockListProps) {
+  const numbers = listItemNumbers(nodes)
   return (
     <div className="flex flex-col gap-4">
       {nodes.map((node) => (
-        <BlockRenderer key={node.block.id} node={node} />
+        <BlockRenderer key={node.block.id} node={node} listNumber={numbers.get(node.block.id)} />
       ))}
     </div>
   )
@@ -69,13 +74,27 @@ function renderChildren(children: readonly BlockNode[]): ReactNode {
     return null
   }
 
+  const numbers = listItemNumbers(children)
   return (
     <div className="mt-4 ml-4 flex flex-col gap-4 border-l border-line pl-4">
       {children.map((child) => (
-        <BlockRenderer key={child.block.id} node={child} />
+        <BlockRenderer key={child.block.id} node={child} listNumber={numbers.get(child.block.id)} />
       ))}
     </div>
   )
+}
+
+/** Numbers restart whenever anything but an ordered-list item interrupts the run. */
+function listItemNumbers(nodes: readonly BlockNode[]): ReadonlyMap<string, number> {
+  const numbers = new Map<string, number>()
+  let run = 0
+  for (const node of nodes) {
+    run = node.block.type === 'numbered-list' ? run + 1 : 0
+    if (node.block.type === 'numbered-list') {
+      numbers.set(node.block.id, run)
+    }
+  }
+  return numbers
 }
 
 /**
@@ -83,7 +102,7 @@ function renderChildren(children: readonly BlockNode[]): ReactNode {
  * casts instead of re-checking; a malformed payload renders empty rather than
  * throwing, which keeps one bad block from taking down the page.
  */
-function renderBlock(block: BlockDto): ReactNode {
+function renderBlock(block: BlockDto, listNumber?: number): ReactNode {
   switch (block.type) {
     case 'paragraph':
       return <ParagraphBlock content={block.content as ParagraphContent} />
@@ -97,6 +116,10 @@ function renderBlock(block: BlockDto): ReactNode {
       return <CalloutBlock content={block.content as CalloutContent} />
     case 'todo':
       return <TodoBlock content={block.content as TodoContent} />
+    case 'bulleted-list':
+      return <ListItemBlock content={block.content as ListItemContent} ordered={false} />
+    case 'numbered-list':
+      return <ListItemBlock content={block.content as ListItemContent} ordered number={listNumber} />
     case 'code':
       return <CodeBlock content={block.content as CodeContent} />
     case 'divider':

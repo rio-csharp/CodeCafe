@@ -202,4 +202,34 @@ describe('BlockRenderer', () => {
     expect(screen.getByText('one')).toBeInTheDocument()
     expect(screen.getByText('two')).toBeInTheDocument()
   })
+
+  it('numbers consecutive ordered items and restarts after a break', () => {
+    const make = (id: string, type: string, value: string): BlockNode => ({
+      block: {
+        id,
+        parentBlockId: null,
+        type,
+        content: { spans: text(value) },
+        sortKey: id,
+        version: 1,
+        updatedAtUtc: '2026-01-07T12:00:00.000Z',
+      },
+      children: [],
+    })
+
+    render(
+      <BlockList
+        nodes={[
+          make('a', 'numbered-list', 'first'),
+          make('b', 'numbered-list', 'second'),
+          make('c', 'paragraph', 'break'),
+          make('d', 'numbered-list', 'restarted'),
+        ]}
+      />,
+    )
+
+    expect(screen.getByText('first').closest('div')?.parentElement).toHaveTextContent('1.')
+    expect(screen.getByText('second').closest('div')?.parentElement).toHaveTextContent('2.')
+    expect(screen.getByText('restarted').closest('div')?.parentElement).toHaveTextContent('1.')
+  })
 })
