@@ -163,20 +163,37 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     })
   }
 
-  /** Clicking the empty canvas below the blocks appends (or focuses) a paragraph. */
-  const handleCanvasClick = () => {
+  /**
+   * The id of the paragraph to land in below the content: the trailing block
+   * when it already is an empty text block, otherwise a freshly appended one.
+   */
+  const appendOrReuseTrailingParagraph = (): string => {
     const last = rootBlocks[rootBlocks.length - 1]
     if (
       last !== undefined &&
       TEXT_TYPES.has(last.type) &&
       spansPlainText(spansOf(last)).length === 0
     ) {
-      setFocusRequest({ id: last.id, offset: 0 })
-      return
+      return last.id
     }
     const fresh = emptyParagraphBlock()
     setDraft((current) => [...current, fresh])
-    setFocusRequest({ id: fresh.id, offset: 0 })
+    return fresh.id
+  }
+
+  /** Clicking the empty canvas below the blocks appends (or focuses) a paragraph. */
+  const handleCanvasClick = () => {
+    setFocusRequest({ id: appendOrReuseTrailingParagraph(), offset: 0 })
+  }
+
+  /** ArrowDown with no editable block below behaves like clicking the empty canvas. */
+  const focusNextOrAppend = (id: string) => {
+    const index = editableRoots.findIndex((entry) => entry.id === id)
+    if (editableRoots[index + 1] !== undefined) {
+      focusNeighbor(id, 1)
+      return
+    }
+    setFocusRequest({ id: appendOrReuseTrailingParagraph(), offset: 0 })
   }
 
   const trimmed = title.trim()
@@ -240,7 +257,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
               focusNeighbor(block.id, -1)
             },
             onFocusNext: () => {
-              focusNeighbor(block.id, 1)
+              focusNextOrAppend(block.id)
             },
             onFocusHandled: () => {
               setFocusRequest(null)

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import type { PageDetails } from '@/entities/page'
+import { setSelectionOffsets } from '../lib/editableDom'
 import { PageEditor } from './PageEditor'
 
 vi.mock('react-i18next', () => ({
@@ -140,6 +141,41 @@ describe('PageEditor', () => {
     // A second click focuses the still-empty trailing paragraph instead of
     // piling on another one.
     await user.click(screen.getByRole('button', { name: 'editor.appendBlock' }))
+    expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(2)
+  })
+
+  it('moves focus to the next block on ArrowDown when there is one', () => {
+    const onSave = vi.fn()
+    renderEditor({ onSave })
+
+    const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+    fireEvent.keyDown(block, { key: 'Enter' })
+    const paragraphs = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+    expect(paragraphs).toHaveLength(2)
+
+    // Caret at the end of the first block, then ArrowDown: focus moves down
+    // and no extra block appears.
+    setSelectionOffsets(paragraphs[0], 'Start with fresh beans.'.length, 'Start with fresh beans.'.length)
+    fireEvent.keyDown(paragraphs[0], { key: 'ArrowDown' })
+
+    expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(2)
+    expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]).toHaveFocus()
+  })
+
+  it('appends a focused paragraph when ArrowDown has nowhere to go', () => {
+    renderEditor()
+
+    const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+    setSelectionOffsets(block, 'Start with fresh beans.'.length, 'Start with fresh beans.'.length)
+    fireEvent.keyDown(block, { key: 'ArrowDown' })
+
+    const paragraphs = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+    expect(paragraphs).toHaveLength(2)
+    expect(paragraphs[1]).toHaveFocus()
+
+    // The new trailing paragraph is empty: ArrowDown again reuses it instead
+    // of piling on a third block.
+    fireEvent.keyDown(paragraphs[1], { key: 'ArrowDown' })
     expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })).toHaveLength(2)
   })
 
