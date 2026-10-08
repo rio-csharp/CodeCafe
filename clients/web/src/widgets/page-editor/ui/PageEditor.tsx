@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { assembleBlockTree, BlockRenderer } from '@/entities/block'
@@ -19,6 +19,8 @@ import {
   indentBlock,
   moveBlockInGroup,
   outdentBlock,
+  preorderBlocks,
+  removeBlocks,
   transferChildren,
 } from '../lib/moving'
 import { joinSpans, spansPlainText, splitSpansAt } from '../lib/spans'
@@ -94,20 +96,143 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   // Display order = preorder flatten; navigation runs over this, not the
   // draft array, because a split lands next to its source in the array even
   // when the source's children render in between.
-  const visibleBlocks = useMemo(() => {
-    const ordered: EditorBlock[] = []
-    const walk = (parentId: string | null): void => {
-      for (const block of groups.get(parentId) ?? []) {
-        ordered.push(block)
-        walk(block.id)
-      }
-    }
-    walk(null)
-    return ordered
-  }, [groups])
+  const visibleBlocks = useMemo(() => preorderBlocks(draft), [draft])
 
   const rootBlocks = groups.get(null) ?? []
   const textBlocks = visibleBlocks.filter((block) => TEXT_TYPES.has(block.type))
+
+  // Block-level selection: Escape inside a text block selects it; arrows move,
+  // Shift+arrows extend, Backspace/Delete removes the whole subtree set.
+  const [blockSelection, setBlockSelection] = useState<{
+    anchorId: string
+    focusId: string
+  } | null>(null)
+
+  /** Selected ids plus every descendant — deletes cascade, so the tint does too. */
+  const selectedIds = useMemo(() => {
+    if (blockSelection === null) {
+      return null
+    }
+    const anchorIndex = visibleBlocks.findIndex((entry) => entry.id === blockSelection.anchorId)
+    const focusIndex = visibleBlocks.findIndex((entry) => entry.id === blockSelection.focusId)
+    if (anchorIndex < 0 || focusIndex < 0) {
+      return null
+    }
+    const from = Math.min(anchorIndex, focusIndex)
+    const to = Math.max(anchorIndex, focusIndex)
+    const ids = new Set(visibleBlocks.slice(from, to + 1).map((entry) => entry.id))
+    let settled = false
+    while (!settled) {
+      settled = true
+      for (const block of draft) {
+        if (block.parentBlockId !== null && ids.has(block.parentBlockId) && !ids.has(block.id)) {
+          ids.add(block.id)
+          settled = false
+        }
+      }
+    }
+    return ids
+  }, [blockSelection, visibleBlocks, draft])
+
+  const trimmed = title.trim()
+  const canSave = trimmed.length > 0 && !saving
+  const save = useCallback(() => {
+    onSave(trimmed, diffToOps(page.blocks, draft))
+  }, [trimmed, page.blocks, draft, onSave])
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      // Save works from anywhere, including block-selection mode where focus
+      // sits on <body> and never reaches the editor's own handlers.
+      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && canSave) {
+        event.preventDefault()
+        save()
+        return
+      }
+
+      if (event.key === 'Escape') {
+        // Selection mode eats the first Escape; the page-level cancel is next.
+        if (blockSelection !== null) {
+          event.preventDefault()
+          setBlockSelection(null)
+        } else {
+          onCancel()
+        }
+        return
+      }
+
+      if (blockSelection === null || selectedIds === null) {
+        return
+      }
+      const selection = blockSelection
+      const anchorIndex = visibleBlocks.findIndex((entry) => entry.id === selection.anchorId)
+      const focusIndex = visibleBlocks.findIndex((entry) => entry.id === selection.focusId)
+      if (anchorIndex < 0 || focusIndex < 0) {
+        setBlockSelection(null)
+        return
+      }
+      const from = Math.min(anchorIndex, focusIndex)
+      const to = Math.max(anchorIndex, focusIndex)
+
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const delta = event.key === 'ArrowDown' ? 1 : -1
+        if (event.shiftKey) {
+          const nextFocus = visibleBlocks[focusIndex + delta]
+          if (nextFocus !== undefined) {
+            setBlockSelection({ anchorId: selection.anchorId, focusId: nextFocus.id })
+          }
+        } else {
+          const edge = delta === 1 ? to : from
+          const next = visibleBlocks[edge + delta]
+          if (next !== undefined) {
+            setBlockSelection({ anchorId: next.id, focusId: next.id })
+          }
+        }
+        return
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        const target =
+          selection.anchorId === selection.focusId
+            ? draft.find((entry) => entry.id === selection.anchorId)
+            : undefined
+        if (target !== undefined && TEXT_TYPES.has(target.type)) {
+          setBlockSelection(null)
+          setFocusRequest({ id: target.id, offset: spansPlainText(spansOf(target)).length })
+        }
+        return
+      }
+
+      if (event.key === 'Backspace' || event.key === 'Delete') {
+        event.preventDefault()
+        const after = visibleBlocks
+          .slice(to + 1)
+          .find((entry) => TEXT_TYPES.has(entry.type) && !selectedIds.has(entry.id))
+        const before = visibleBlocks
+          .slice(0, from)
+          .reverse()
+          .find((entry) => TEXT_TYPES.has(entry.type) && !selectedIds.has(entry.id))
+        const focusTarget = after ?? before
+        const remaining = removeBlocks(draft, selectedIds)
+        setBlockSelection(null)
+        if (focusTarget !== undefined) {
+          setDraft(remaining)
+          setFocusRequest({ id: focusTarget.id, offset: 0 })
+        } else {
+          // Nothing editable survives: leave one fresh paragraph to type into.
+          const freshBlock = emptyParagraphBlock()
+          setDraft([...remaining, freshBlock])
+          setFocusRequest({ id: freshBlock.id, offset: 0 })
+        }
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => {
+      document.removeEventListener('keydown', handler)
+    }
+  }, [blockSelection, selectedIds, visibleBlocks, draft, canSave, onCancel, save])
 
   const splitBlock = (id: string, offset: number) => {
     const source = draft.find((entry) => entry.id === id)
@@ -271,12 +396,6 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     setFocusRequest({ id: appendOrReuseTrailingParagraph(), offset: 0 })
   }
 
-  const trimmed = title.trim()
-  const canSave = trimmed.length > 0 && !saving
-  const save = () => {
-    onSave(trimmed, diffToOps(page.blocks, draft))
-  }
-
   const renderEditorBlock = (block: EditorBlock): ReactNode => {
     const engine = {
       focusOffset: focusRequest?.id === block.id ? focusRequest.offset : null,
@@ -291,6 +410,9 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       },
       onFocusHandled: () => {
         setFocusRequest(null)
+      },
+      onSelectBlock: () => {
+        setBlockSelection({ anchorId: block.id, focusId: block.id })
       },
       onIndent: (offset: number) => {
         applyMove(block.id, offset, indentBlock)
@@ -350,8 +472,14 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       }
     })()
 
+    const selected = selectedIds?.has(block.id) ?? false
+
     return (
-      <div key={block.id}>
+      <div
+        key={block.id}
+        data-selected={selected || undefined}
+        className={selected ? 'rounded bg-accent-soft/70' : undefined}
+      >
         {block.type === 'divider' ? (
           // Editor blocks butt up against each other (the reader's list has
           // gap-4, the editor does not), so the rule needs its own breathing
@@ -378,11 +506,10 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
 
   return (
     <div
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') {
-          onCancel()
-        } else if (event.key === 'Enter' && (event.metaKey || event.ctrlKey) && canSave) {
-          save()
+      onMouseDown={() => {
+        // Any click is a text-editing intent; block selection does not survive it.
+        if (blockSelection !== null) {
+          setBlockSelection(null)
         }
       }}
     >

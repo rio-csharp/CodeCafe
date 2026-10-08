@@ -67,6 +67,8 @@ function LinkForm({
         }}
         onKeyDown={(event) => {
           if (event.key === 'Escape') {
+            // Just the link form — the editor-level Escape (cancel) must not fire.
+            event.stopPropagation()
             onCancel()
           }
         }}

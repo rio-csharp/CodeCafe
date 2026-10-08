@@ -611,4 +611,120 @@ describe('PageEditor', () => {
       )
     })
   })
+
+  describe('block selection', () => {
+    const TWO: PageDetails = {
+      ...PAGE,
+      blocks: [
+        PAGE.blocks[0]!,
+        {
+          id: 'block-2',
+          parentBlockId: null,
+          type: 'paragraph',
+          content: { spans: [{ text: 'Second block', marks: [] }] },
+          sortKey: 'b',
+          version: 1,
+          updatedAtUtc: '2026-01-07T12:00:00.000Z',
+        },
+      ],
+    }
+
+    it('Escape selects the block instead of cancelling; the NEXT Escape cancels', () => {
+      const onCancel = vi.fn()
+      renderEditor({ page: TWO, onCancel })
+
+      const first = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!
+      first.focus()
+      fireEvent.keyDown(first, { key: 'Escape' })
+
+      expect(onCancel).not.toHaveBeenCalled()
+      expect(first.closest('[data-selected]')).not.toBeNull()
+
+      fireEvent.keyDown(document.body, { key: 'Escape' })
+      expect(document.querySelector('[data-selected]')).toBeNull()
+      expect(onCancel).not.toHaveBeenCalled()
+
+      fireEvent.keyDown(document.body, { key: 'Escape' })
+      expect(onCancel).toHaveBeenCalledOnce()
+    })
+
+    it('extends with Shift+ArrowDown and deletes the range with Backspace', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: TWO, onSave })
+
+      fireEvent.keyDown(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!, {
+        key: 'Escape',
+      })
+      fireEvent.keyDown(document.body, { key: 'ArrowDown', shiftKey: true })
+      expect(document.querySelectorAll('[data-selected]')).toHaveLength(2)
+
+      fireEvent.keyDown(document.body, { key: 'Backspace' })
+
+      // Both blocks are gone; one fresh paragraph remains, focused and empty.
+      const boxes = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(boxes).toHaveLength(1)
+      expect(boxes[0]!.textContent).toBe('')
+      expect(boxes[0]).toHaveFocus()
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'block-1' }))
+      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'block-2' }))
+    })
+
+    it('deleting a selected parent takes its children along', () => {
+      const onSave = vi.fn()
+      const nested: PageDetails = {
+        ...PAGE,
+        blocks: [
+          PAGE.blocks[0]!,
+          {
+            id: 'child-1',
+            parentBlockId: 'block-1',
+            type: 'paragraph',
+            content: { spans: [{ text: 'child', marks: [] }] },
+            sortKey: 'a',
+            version: 1,
+            updatedAtUtc: '2026-01-07T12:00:00.000Z',
+          },
+        ],
+      }
+      renderEditor({ page: nested, onSave })
+
+      fireEvent.keyDown(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!, {
+        key: 'Escape',
+      })
+      expect(document.querySelectorAll('[data-selected]')).toHaveLength(2)
+
+      fireEvent.keyDown(document.body, { key: 'Delete' })
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'block-1' }))
+      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'child-1' }))
+    })
+
+    it('Enter on a selected block returns to editing it', () => {
+      renderEditor({ page: TWO })
+
+      fireEvent.keyDown(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]!, {
+        key: 'Escape',
+      })
+      fireEvent.keyDown(document.body, { key: 'Enter' })
+
+      expect(document.querySelector('[data-selected]')).toBeNull()
+      expect(screen.getAllByRole('textbox', { name: 'editor.paragraph' })[0]).toHaveFocus()
+    })
+
+    it('clicking anywhere clears the selection', () => {
+      renderEditor({ page: TWO })
+
+      const second = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!
+      fireEvent.keyDown(second, { key: 'Escape' })
+      expect(document.querySelector('[data-selected]')).not.toBeNull()
+
+      fireEvent.mouseDown(second)
+      expect(document.querySelector('[data-selected]')).toBeNull()
+    })
+  })
 })

@@ -43,6 +43,34 @@ function flatten(groups: Map<string | null, EditorBlock[]>): EditorBlock[] {
   return ordered
 }
 
+/** The draft in visible (preorder) order — the order navigation operates in. */
+export function preorderBlocks(draft: readonly EditorBlock[]): EditorBlock[] {
+  return flatten(groupByParent(draft))
+}
+
+/** Removes blocks together with every descendant, cascading like the server does. */
+export function removeBlocks(
+  draft: readonly EditorBlock[],
+  ids: ReadonlySet<string>,
+): EditorBlock[] {
+  const doomed = new Set(ids)
+  let settled = false
+  while (!settled) {
+    settled = true
+    for (const block of draft) {
+      if (
+        block.parentBlockId !== null &&
+        doomed.has(block.parentBlockId) &&
+        !doomed.has(block.id)
+      ) {
+        doomed.add(block.id)
+        settled = false
+      }
+    }
+  }
+  return draft.filter((block) => !doomed.has(block.id))
+}
+
 /** Tab: become the LAST child of the previous sibling, Notion-style. */
 export function indentBlock(draft: readonly EditorBlock[], id: string): EditorBlock[] | null {
   const block = draft.find((entry) => entry.id === id)
