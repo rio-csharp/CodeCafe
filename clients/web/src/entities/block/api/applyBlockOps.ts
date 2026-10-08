@@ -6,8 +6,12 @@ export interface BlockOpWire {
   blockId?: string
   tempId?: string
   type?: string
-  /** Live block id or a temp id from earlier in the batch; omitted = top-level head. */
+  /** Live block id or a temp id from earlier in the batch; omitted = group head. */
   after?: string
+  /** Pins the target group explicitly: `after` is interpreted among this block's
+   *  children, and an omitted `after` means FIRST child — the only way into a
+   *  childless parent. Omitted = the after-block's own group (or top level). */
+  parent?: string
   content?: unknown
   baseVersion?: number
 }

@@ -226,4 +226,111 @@ describe('PageEditor', () => {
       content: { checked: false, spans: [] },
     })
   })
+
+  describe('nested blocks', () => {
+    const NESTED: PageDetails = {
+      ...PAGE,
+      blocks: [
+        PAGE.blocks[0]!,
+        {
+          id: 'child-1',
+          parentBlockId: 'block-1',
+          type: 'paragraph',
+          content: { spans: [{ text: 'child', marks: [] }] },
+          sortKey: 'a',
+          version: 1,
+          updatedAtUtc: '2026-01-07T12:00:00.000Z',
+        },
+      ],
+    }
+
+    it('renders children as editable blocks, indented under their parent', () => {
+      renderEditor({ page: NESTED })
+
+      const boxes = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(boxes).toHaveLength(2)
+      expect(boxes[0]).toHaveTextContent('Start with fresh beans.')
+      expect(boxes[1]).toHaveTextContent('child')
+      // The child sits inside an indented container under its parent.
+      expect(boxes[1]!.closest('div.ml-3')).not.toBeNull()
+    })
+
+    it('moves focus between parent and child with the arrow keys', () => {
+      renderEditor({ page: NESTED })
+
+      const boxes = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      setSelectionOffsets(boxes[1]!, 0, 0)
+      fireEvent.keyDown(boxes[1]!, { key: 'ArrowUp' })
+      expect(boxes[0]).toHaveFocus()
+
+      setSelectionOffsets(boxes[0]!, 'Start with fresh beans.'.length, 'Start with fresh beans.'.length)
+      fireEvent.keyDown(boxes[0]!, { key: 'ArrowDown' })
+      expect(boxes[1]).toHaveFocus()
+    })
+
+    it('splits a child block at the same depth', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: NESTED, onSave })
+
+      const child = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!
+      setSelectionOffsets(child, 2, 2)
+      fireEvent.keyDown(child, { key: 'Enter' })
+
+      const boxes = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(boxes).toHaveLength(3)
+      expect(boxes[2]).toHaveTextContent('ild')
+      // The new block is nested too.
+      expect(boxes[2]!.closest('div.ml-3')).not.toBeNull()
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toContainEqual(
+        expect.objectContaining({ kind: 'Insert', parent: 'block-1', after: 'child-1' }),
+      )
+    })
+
+    it('merges a child into the previous visible block on Backspace', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: NESTED, onSave })
+
+      const child = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!
+      setSelectionOffsets(child, 0, 0)
+      fireEvent.keyDown(child, { key: 'Backspace' })
+
+      const boxes = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(boxes).toHaveLength(1)
+      expect(boxes[0]).toHaveTextContent('Start with fresh beans.child')
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toContainEqual(
+        expect.objectContaining({
+          kind: 'Update',
+          blockId: 'block-1',
+          content: { spans: [{ text: 'Start with fresh beans.child', marks: [] }] },
+        }),
+      )
+      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'child-1' }))
+    })
+
+    it('keeps a converted block at its depth', () => {
+      const onSave = vi.fn()
+      renderEditor({ page: NESTED, onSave })
+
+      const child = screen.getAllByRole('textbox', { name: 'editor.paragraph' })[1]!
+      child.textContent = '/quote'
+      fireEvent.input(child)
+      fireEvent.keyDown(child, { key: 'Enter' })
+
+      const quote = screen.getByRole('textbox', { name: 'editor.quote' })
+      expect(quote.closest('div.ml-3')).not.toBeNull()
+
+      fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
+      const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
+      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'child-1' }))
+      expect(ops).toContainEqual(
+        expect.objectContaining({ kind: 'Insert', type: 'quote', parent: 'block-1' }),
+      )
+    })
+  })
 })

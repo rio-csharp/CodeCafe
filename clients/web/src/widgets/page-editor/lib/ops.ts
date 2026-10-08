@@ -82,6 +82,7 @@ export function diffToOps(
       tempId: block.id,
       type: block.type,
       content: block.content,
+      ...(block.parentBlockId !== null ? { parent: block.parentBlockId } : {}),
       ...(after !== undefined ? { after } : {}),
     })
     inserted.add(block.id)

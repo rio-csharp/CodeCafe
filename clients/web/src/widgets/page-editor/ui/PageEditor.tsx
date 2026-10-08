@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { assembleBlockTree, BlockList } from '@/entities/block'
+import { assembleBlockTree, BlockRenderer } from '@/entities/block'
 import type { BlockNode, BlockOpWire, SpanDto } from '@/entities/block'
 import type { PageDetails } from '@/entities/page'
 import {
@@ -39,9 +40,10 @@ function spansOf(block: EditorBlock): SpanDto[] {
 }
 
 /**
- * The editing shell. Text blocks (paragraph/heading) are editable inline;
- * every other type and every nested child still renders read-only through the
- * reader's own components. Escape cancels, Ctrl/Cmd+Enter saves.
+ * The editing shell. Text blocks (paragraph/heading/quote/todo/callout) are
+ * editable inline at any depth — the draft is flat, so the tree is derived
+ * from parentBlockId and rendered recursively. Other types render read-only
+ * from the untouched source tree. Escape cancels, Ctrl/Cmd+Enter saves.
  */
 export function PageEditor({ page, saving, error = null, onSave, onCancel }: PageEditorProps) {
   const { t } = useTranslation()
@@ -53,13 +55,48 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   })
   const [focusRequest, setFocusRequest] = useState<{ id: string; offset: number } | null>(null)
 
-  // Children render read-only from the untouched tree; the draft drives roots.
+  // Read-only fallback rendering needs the untouched tree, children included.
   const sourceTree = useMemo(() => assembleBlockTree(page.blocks), [page.blocks])
-  const childrenOf = (id: string): BlockNode[] =>
-    sourceTree.find((node) => node.block.id === id)?.children ?? []
+  const sourceNodes = useMemo(() => {
+    const map = new Map<string, BlockNode>()
+    const walk = (nodes: BlockNode[]): void => {
+      for (const node of nodes) {
+        map.set(node.block.id, node)
+        walk(node.children)
+      }
+    }
+    walk(sourceTree)
+    return map
+  }, [sourceTree])
 
-  const rootBlocks = draft.filter((block) => block.parentBlockId === null)
-  const editableRoots = rootBlocks.filter((block) => TEXT_TYPES.has(block.type))
+  // The draft is flat; group children under their parent, keeping array order.
+  const groups = useMemo(() => {
+    const map = new Map<string | null, EditorBlock[]>()
+    for (const block of draft) {
+      const list = map.get(block.parentBlockId) ?? []
+      list.push(block)
+      map.set(block.parentBlockId, list)
+    }
+    return map
+  }, [draft])
+
+  // Display order = preorder flatten; navigation runs over this, not the
+  // draft array, because a split lands next to its source in the array even
+  // when the source's children render in between.
+  const visibleBlocks = useMemo(() => {
+    const ordered: EditorBlock[] = []
+    const walk = (parentId: string | null): void => {
+      for (const block of groups.get(parentId) ?? []) {
+        ordered.push(block)
+        walk(block.id)
+      }
+    }
+    walk(null)
+    return ordered
+  }, [groups])
+
+  const rootBlocks = groups.get(null) ?? []
+  const textBlocks = visibleBlocks.filter((block) => TEXT_TYPES.has(block.type))
 
   const splitBlock = (id: string, offset: number) => {
     const source = draft.find((entry) => entry.id === id)
@@ -68,7 +105,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     }
     const [left, right] = splitSpansAt(spansOf(source), offset)
     // Enter inside a heading/quote/callout exits to a paragraph; a to-do
-    // continues as a to-do, Notion-style.
+    // continues as a to-do, Notion-style. The new block stays at the same depth.
     const freshType = source.type === 'todo' ? 'todo' : 'paragraph'
     const fresh: EditorBlock = {
       id: mintTempId(),
@@ -92,13 +129,18 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   /**
    * Slash-menu conversion. The backend never changes a block's type on Update,
    * so conversion is delete-and-insert: the old block leaves the draft (a
-   * Delete op when it was persisted) and a fresh temp block takes its place.
+   * Delete op when it was persisted) and a fresh temp block takes its place —
+   * same depth, and the old block's children follow onto the fresh one.
    */
   const transformBlock = (id: string, target: SlashTarget, spans: SpanDto[]) => {
+    const source = draft.find((entry) => entry.id === id)
+    if (source === undefined) {
+      return
+    }
     const fresh: EditorBlock = {
       id: mintTempId(),
       isNew: true,
-      parentBlockId: null,
+      parentBlockId: source.parentBlockId,
       type: target.type,
       content: contentForTarget(target, spans),
       sortKey: '',
@@ -111,7 +153,9 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       }
       const next = [...current]
       next.splice(index, 1, fresh)
-      return next
+      return next.map((entry) =>
+        entry.parentBlockId === id ? { ...entry, parentBlockId: fresh.id } : entry,
+      )
     })
     if (target.type !== 'divider') {
       setFocusRequest({ id: fresh.id, offset: 0 })
@@ -119,27 +163,34 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   }
 
   const mergeBackward = (id: string) => {
-    const index = editableRoots.findIndex((entry) => entry.id === id)
-    const current = editableRoots[index]
+    const index = textBlocks.findIndex((entry) => entry.id === id)
+    const current = textBlocks[index]
     if (current === undefined) {
       return
     }
     const text = spansPlainText(spansOf(current))
+    const hasChildren = (groups.get(id)?.length ?? 0) > 0
 
-    // An empty block under Backspace just goes away, whatever came before it.
+    // An empty childless block under Backspace just goes away. Hoisting a
+    // deleted block's children arrives with block moving; until then a block
+    // with children stays put.
     if (text.length === 0) {
-      const previousText = editableRoots[index - 1]
+      if (hasChildren) {
+        return
+      }
+      const previousText = textBlocks[index - 1]
       if (previousText !== undefined) {
         setFocusRequest({ id: previousText.id, offset: spansPlainText(spansOf(previousText)).length })
       }
       setDraft((draftNow) => removeBlock(draftNow, id))
       return
     }
-    // Merging crosses into the IMMEDIATE neighbour only: a divider (or any
-    // uneditable block) in between means nothing happens.
-    const rootIndex = rootBlocks.findIndex((entry) => entry.id === id)
-    const previous = rootBlocks[rootIndex - 1]
-    if (previous === undefined || !TEXT_TYPES.has(previous.type)) {
+    // Merging crosses into the immediate VISUAL neighbour only: a divider (or
+    // any uneditable block) in between means nothing happens, and children of
+    // the merged-away block would be orphaned, so those blocks stay put too.
+    const visibleIndex = visibleBlocks.findIndex((entry) => entry.id === id)
+    const previous = visibleBlocks[visibleIndex - 1]
+    if (previous === undefined || !TEXT_TYPES.has(previous.type) || hasChildren) {
       return
     }
     const junction = spansPlainText(spansOf(previous)).length
@@ -152,8 +203,8 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   }
 
   const focusNeighbor = (id: string, direction: -1 | 1) => {
-    const index = editableRoots.findIndex((entry) => entry.id === id)
-    const target = editableRoots[index + direction]
+    const index = textBlocks.findIndex((entry) => entry.id === id)
+    const target = textBlocks[index + direction]
     if (target === undefined) {
       return
     }
@@ -188,8 +239,8 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
 
   /** ArrowDown with no editable block below behaves like clicking the empty canvas. */
   const focusNextOrAppend = (id: string) => {
-    const index = editableRoots.findIndex((entry) => entry.id === id)
-    if (editableRoots[index + 1] !== undefined) {
+    const index = textBlocks.findIndex((entry) => entry.id === id)
+    if (textBlocks[index + 1] !== undefined) {
       focusNeighbor(id, 1)
       return
     }
@@ -200,6 +251,85 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
   const canSave = trimmed.length > 0 && !saving
   const save = () => {
     onSave(trimmed, diffToOps(page.blocks, draft))
+  }
+
+  const renderEditorBlock = (block: EditorBlock): ReactNode => {
+    const engine = {
+      focusOffset: focusRequest?.id === block.id ? focusRequest.offset : null,
+      onTransform: (target: SlashTarget, spans: SpanDto[]) => {
+        transformBlock(block.id, target, spans)
+      },
+      onFocusPrevious: () => {
+        focusNeighbor(block.id, -1)
+      },
+      onFocusNext: () => {
+        focusNextOrAppend(block.id)
+      },
+      onFocusHandled: () => {
+        setFocusRequest(null)
+      },
+    }
+
+    const editor = (() => {
+      const shared = {
+        ...engine,
+        block,
+        onChange: (content: Record<string, unknown>) => {
+          setDraft((current) => replaceBlockContent(current, block.id, content))
+        },
+        onSplit: (offset: number) => {
+          splitBlock(block.id, offset)
+        },
+        onMergeBackward: () => {
+          mergeBackward(block.id)
+        },
+      }
+      switch (block.type) {
+        case 'paragraph':
+          return <ParagraphEditor {...shared} />
+        case 'heading':
+          return <HeadingEditor {...shared} />
+        case 'quote':
+          return <QuoteEditor {...shared} />
+        case 'todo':
+          return <TodoEditor {...shared} />
+        case 'callout':
+          return <CalloutEditor {...shared} />
+        default:
+          return null
+      }
+    })()
+
+    const children = groups.get(block.id) ?? []
+
+    return (
+      <div key={block.id}>
+        {block.type === 'divider' ? (
+          // Editor blocks butt up against each other (the reader's list has
+          // gap-4, the editor does not), so the rule needs its own breathing
+          // room to stay visible.
+          <div className="py-2">
+            <DividerBlock />
+          </div>
+        ) : TEXT_TYPES.has(block.type) ? (
+          <>
+            {editor}
+            {children.length > 0 ? (
+              <div className="ml-3 border-l border-line pl-3">
+                {children.map(renderEditorBlock)}
+              </div>
+            ) : null}
+          </>
+        ) : (
+          // Uneditable types render read-only from the untouched source tree,
+          // children included; a fresh one (not slash-creatable yet) is skipped.
+          (() => {
+            const node = sourceNodes.get(block.id)
+            return node !== undefined ? <BlockRenderer node={node} /> : null
+          })()
+        )}
+      </div>
+    )
   }
 
   return (
@@ -247,74 +377,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       />
 
       <div className="mt-4 text-sm leading-relaxed">
-        {rootBlocks.map((block) => {
-          const engine = {
-            focusOffset: focusRequest?.id === block.id ? focusRequest.offset : null,
-            onTransform: (target: SlashTarget, spans: SpanDto[]) => {
-              transformBlock(block.id, target, spans)
-            },
-            onFocusPrevious: () => {
-              focusNeighbor(block.id, -1)
-            },
-            onFocusNext: () => {
-              focusNextOrAppend(block.id)
-            },
-            onFocusHandled: () => {
-              setFocusRequest(null)
-            },
-          }
-
-          const editor = (() => {
-            const shared = {
-              ...engine,
-              block,
-              onChange: (content: Record<string, unknown>) => {
-                setDraft((current) => replaceBlockContent(current, block.id, content))
-              },
-              onSplit: (offset: number) => {
-                splitBlock(block.id, offset)
-              },
-              onMergeBackward: () => {
-                mergeBackward(block.id)
-              },
-            }
-            switch (block.type) {
-              case 'paragraph':
-                return <ParagraphEditor {...shared} />
-              case 'heading':
-                return <HeadingEditor {...shared} />
-              case 'quote':
-                return <QuoteEditor {...shared} />
-              case 'todo':
-                return <TodoEditor {...shared} />
-              case 'callout':
-                return <CalloutEditor {...shared} />
-              default:
-                return null
-            }
-          })()
-
-          return (
-            <div key={block.id}>
-              {block.type === 'divider' ? (
-                // Editor blocks butt up against each other (the reader's list
-                // has gap-4, the editor does not), so the rule needs its own
-                // breathing room to stay visible.
-                <div className="py-2">
-                  <DividerBlock />
-                </div>
-              ) : TEXT_TYPES.has(block.type) ? (
-                <>
-                  {editor}
-                  <BlockList nodes={childrenOf(block.id)} />
-                </>
-              ) : (
-                // Uneditable types render read-only, children included.
-                <BlockList nodes={sourceTree.filter((node) => node.block.id === block.id)} />
-              )}
-            </div>
-          )
-        })}
+        {rootBlocks.map(renderEditorBlock)}
         {/** Notion-style canvas: clicking below the content starts a new paragraph. */}
         <div
           role="button"
