@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_VERSION: 10.0.x
+  NODE_VERSION: 24
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore backend
+        run: dotnet restore server/CodeCafe.slnx
+
+      - name: Build backend
+        run: dotnet build server/CodeCafe.slnx --configuration Release --no-restore
+
+      # Microsoft.Testing.Platform: never pass --nologo/--logger/--blame-* — unmatched
+      # tokens are forwarded to every test assembly and kill it before the handshake.
+      # --minimum-expected-tests makes a false green fail loudly instead.
+      # CodeCafe.Infrastructure.Tests spins up PostgreSQL via Testcontainers;
+      # ubuntu-latest provides Docker out of the box.
+      - name: Test backend
+        run: dotnet test server/CodeCafe.slnx --configuration Release --no-build -- --minimum-expected-tests 1
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: clients/web/pnpm-lock.yaml
+
+      - name: Install frontend dependencies
+        working-directory: clients/web
+        run: pnpm install --frozen-lockfile
+
+      # The same gates AGENTS.md requires locally: lint, typecheck, test, build.
+      - name: Lint frontend
+        working-directory: clients/web
+        run: pnpm lint
+
+      - name: Typecheck frontend
+        working-directory: clients/web
+        run: pnpm typecheck
+
+      - name: Test frontend
+        working-directory: clients/web
+        run: pnpm test
+
+      - name: Build frontend
+        working-directory: clients/web
+        run: pnpm build
+
+  # One aggregated status so branch protection has a single check to require.
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - backend
+      - frontend
+    if: always()
+    steps:
+      - name: Check job results
+        run: |
+          failed=0
+          for result in "${{ needs.backend.result }}" "${{ needs.frontend.result }}"; do
+            if [ "$result" != "success" ]; then
+              failed=1
+            fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            echo "backend: ${{ needs.backend.result }}, frontend: ${{ needs.frontend.result }}"
+            exit 1
+          fi
