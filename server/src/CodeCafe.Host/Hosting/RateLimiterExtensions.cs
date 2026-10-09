@@ -10,6 +10,7 @@ internal static class RateLimiterExtensions
     public const string AuthPolicy = "auth";
     public const string AiPolicy = "ai";
     public const string McpPolicy = "mcp";
+    public const string AccessCodePolicy = "access-code";
 
     public static IServiceCollection AddCodeCafeRateLimiter(this IServiceCollection services)
         => services.AddRateLimiter(options =>
@@ -31,6 +32,13 @@ internal static class RateLimiterExtensions
                 RateLimitPartition.GetFixedWindowLimiter(
                     PartitionKey(context),
                     _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+
+            options.AddPolicy(AccessCodePolicy, context =>
+                context.Request.Headers.ContainsKey(AccessCodeHeader.Name)
+                    ? RateLimitPartition.GetFixedWindowLimiter(
+                        PartitionKey(context),
+                        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) })
+                    : RateLimitPartition.GetNoLimiter("access-code:absent"));
         });
 
     // Authenticated callers get their own per-user bucket; only anonymous traffic
