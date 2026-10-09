@@ -88,6 +88,29 @@ public sealed class GetNotebookTreeQueryHandlerTests
         Assert.Equal(NotebookErrors.NotFound, result.Error);
     }
 
+    [Fact]
+    public async Task Handle_AnonymousDeniedReader_DoesNotLoadTheNotebookPages()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var pages = new StubPageRepository
+        {
+            Page.Create(notebook.Id, null, "Secret", "secret", "a"),
+        };
+        var handler = new GetNotebookTreeQueryHandler(
+            new StubCurrentUserAccessor(null),
+            new StubNotebookRepository { notebook },
+            pages,
+            new StubPasswordHasher()
+        );
+
+        var result = await handler.Handle(new GetNotebookTreeQuery(notebook.Slug), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(NotebookErrors.NotFound, result.Error);
+        Assert.Equal(0, pages.ListByNotebookCallCount);
+    }
+
     private static User SeedOwner() => User.Create("owner@example.com", "owner@example.com", "Owner", "hash");
 
     private static Notebook SeedNotebook(User owner)

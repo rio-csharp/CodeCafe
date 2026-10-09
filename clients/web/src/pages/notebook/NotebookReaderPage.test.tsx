@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NotebookDetails, PageTreeNode } from '@/entities/notebook'
+import { applyBlockOps } from '@/entities/block'
 import { getNotebookDetails, getNotebookTree } from '@/entities/notebook'
-import { createPage, getPageByPath, updatePage } from '@/entities/page'
+import { createPage, getPageByPath, pageKeys, updatePage } from '@/entities/page'
 import type { PageDetails } from '@/entities/page'
 import { ApiError } from '@/shared/api'
 import { NotebookReaderPage } from './NotebookReaderPage'
@@ -14,6 +15,11 @@ vi.mock('@/entities/notebook', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/notebook')>()),
   getNotebookDetails: vi.fn(),
   getNotebookTree: vi.fn(),
+}))
+
+vi.mock('@/entities/block', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/block')>()),
+  applyBlockOps: vi.fn(),
 }))
 
 vi.mock('@/entities/page', async (importOriginal) => ({
@@ -119,15 +125,18 @@ const notFound = () =>
 function renderReader(initialPath: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
-  return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <Routes>
-          <Route path="/notebooks/:slug/*" element={<NotebookReaderPage />} />
-        </Routes>
-      </MemoryRouter>
-    </QueryClientProvider>,
-  )
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Routes>
+            <Route path="/notebooks/:slug/*" element={<NotebookReaderPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 beforeEach(() => {
@@ -136,6 +145,7 @@ beforeEach(() => {
   vi.mocked(getPageByPath).mockReset()
   vi.mocked(updatePage).mockReset()
   vi.mocked(createPage).mockReset()
+  vi.mocked(applyBlockOps).mockReset()
   vi.mocked(getNotebookDetails).mockResolvedValue(NOTEBOOK)
   vi.mocked(getNotebookTree).mockResolvedValue(TREE)
 })
@@ -270,7 +280,7 @@ describe('NotebookReaderPage', () => {
     expect(screen.getByRole('link', { name: 'Brewing' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Espresso Notes' })).toHaveAttribute(
       'href',
-      '/espresso-notes',
+      '/notebooks/espresso-notes',
     )
   })
 
@@ -304,6 +314,26 @@ describe('NotebookReaderPage', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
   })
 
+  it('keeps the edit-session baseline stable when the page cache refreshes', async () => {
+    const user = userEvent.setup()
+    const original = page('Grinding', '/grinding')
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(original)
+    vi.mocked(updatePage).mockResolvedValue(original)
+
+    const { client } = renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    client.setQueryData(pageKeys.byPath('espresso-notes', 'grinding'), {
+      ...original,
+      title: 'Changed remotely',
+      updatedAtUtc: '2026-01-08T12:00:00.000Z',
+    })
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).not.toHaveBeenCalled()
+  })
+
   it('shows the server-provided reason when saving fails', async () => {
     const user = userEvent.setup()
     vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
@@ -329,6 +359,67 @@ describe('NotebookReaderPage', () => {
     )
   })
 
+  it('does not submit block changes after a title update fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockRejectedValue(new Error('title failed'))
+    vi.mocked(applyBlockOps).mockResolvedValue([])
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.type(screen.getByRole('textbox', { name: 'Page title' }), ' revised')
+    const paragraph = screen.getByRole('textbox', { name: 'Paragraph' })
+    paragraph.textContent = 'Changed locally.'
+    fireEvent.input(paragraph)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(vi.mocked(applyBlockOps)).not.toHaveBeenCalled()
+  })
+
+  it('retries only the block batch after the title has already saved', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockResolvedValue(page('Grinding revised', '/grinding'))
+    vi.mocked(applyBlockOps)
+      .mockRejectedValueOnce(new Error('blocks failed'))
+      .mockResolvedValueOnce([])
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.type(screen.getByRole('textbox', { name: 'Page title' }), ' revised')
+    const paragraph = screen.getByRole('textbox', { name: 'Paragraph' })
+    paragraph.textContent = 'Changed locally.'
+    fireEvent.input(paragraph)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(applyBlockOps)).toHaveBeenCalledTimes(2)
+  })
+
+  it('drops an edit session after navigating away from its page', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockImplementation(async ({ path }) =>
+      path === '/brewing' ? page('Brewing', '/brewing') : page('Grinding', '/grinding'),
+    )
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    expect(screen.getByRole('textbox', { name: 'Page title' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Brewing' }))
+    await user.click(await screen.findByRole('link', { name: 'Grinding' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Page title' })).not.toBeInTheDocument()
+  })
+
   it('hides the edit pill from readers without write access', async () => {
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
@@ -351,6 +442,9 @@ describe('NotebookReaderPage', () => {
       slug: 'espresso-notes',
       title: 'Untitled',
       parentPath: null,
+    })
+    await waitFor(() => {
+      expect(vi.mocked(getNotebookDetails).mock.calls.length).toBeGreaterThan(1)
     })
     // Straight into edit mode on the new page, title ready to be named.
     expect(await screen.findByRole('textbox', { name: 'Page title' })).toHaveValue('Untitled')

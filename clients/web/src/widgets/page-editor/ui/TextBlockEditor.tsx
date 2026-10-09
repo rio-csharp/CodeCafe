@@ -16,7 +16,7 @@ import {
 } from '../lib/editableDom'
 import { applyLink, linkHrefInRange, normalizeHref, rangeMarks, toggleMark } from '../lib/marks'
 import type { SimpleMarkKind } from '../lib/marks'
-import { insertTextAt, spansEqual, spansPlainText, splitSpansAt } from '../lib/spans'
+import { insertTextAt, replaceTextRange, spansEqual, spansPlainText, splitSpansAt } from '../lib/spans'
 import { parsePastedBlocks, parsePastedLine } from '../lib/paste'
 import type { PastedBlock } from '../lib/paste'
 import { matchBacktickRule, matchDashRule, matchSpaceRule } from '../lib/inputRules'
@@ -46,7 +46,7 @@ export interface TextBlockEngineProps {
   /** Present when slash-conversion is enabled; receives the target and the text after the `/query` prefix. */
   onTransform?: (target: SlashTarget, spans: SpanDto[]) => void
   /** Multi-line paste becomes whole blocks; without it, text lands in this block as-is. */
-  onPasteBlocks?: (offset: number, blocks: PastedBlock[]) => void
+  onPasteBlocks?: (start: number, end: number, blocks: PastedBlock[]) => void
 }
 
 export interface TextBlockEditorProps extends TextBlockEngineProps {
@@ -384,12 +384,15 @@ export function TextBlockEditor({
     if (text.length === 0) {
       return
     }
-    const offset = getCaretOffset(element)
+    const range = getSelectionOffsets(element) ?? {
+      start: getCaretOffset(element),
+      end: getCaretOffset(element),
+    }
     const parsed = parsePastedBlocks(text)
     if (parsed !== null && onPasteBlocks !== undefined) {
       // A multi-line paste supersedes any open slash menu along with the text.
       setSlashQuery(null)
-      onPasteBlocks(offset, parsed)
+      onPasteBlocks(range.start, range.end, parsed)
       return
     }
     // A single markdown line pasted into an EMPTY block converts the block.
@@ -397,13 +400,14 @@ export function TextBlockEditor({
       const single = parsePastedLine(text)
       if (single !== null) {
         setSlashQuery(null)
-        onPasteBlocks(offset, [single])
+        onPasteBlocks(range.start, range.end, [single])
         return
       }
     }
     // Otherwise: a plain in-block insert.
-    pendingSelectionRef.current = { start: offset + text.length, end: offset + text.length }
-    const next = insertTextAt(spans, offset, text)
+    const caret = range.start + text.length
+    pendingSelectionRef.current = { start: caret, end: caret }
+    const next = replaceTextRange(spans, range.start, range.end, text)
     if (onTransform !== undefined) {
       syncSlash(spansPlainText(next))
     }

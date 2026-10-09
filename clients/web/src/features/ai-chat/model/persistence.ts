@@ -1,3 +1,4 @@
+import { randomId } from '@/shared/lib'
 import type { ChatMessage } from './store'
 
 /**
@@ -118,7 +119,7 @@ export function sanitizeStoredMessages(value: unknown): ChatMessage[] {
       continue
     }
     messages.push({
-      id: typeof candidate.id === 'string' ? candidate.id : crypto.randomUUID(),
+      id: typeof candidate.id === 'string' ? candidate.id : randomId(),
       role: candidate.role,
       text: candidate.text,
       activities: (Array.isArray(candidate.activities) ? candidate.activities : [])

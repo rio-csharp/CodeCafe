@@ -7,6 +7,7 @@ using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;
 using CodeCafe.Domain.Primitives;
 using CodeCafe.Domain.Revisions;
+using CodeCafe.Domain.Sharing;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -33,6 +34,21 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     public DbSet<Block> Blocks => Set<Block>();
 
     public DbSet<BlockRevision> BlockRevisions => Set<BlockRevision>();
+
+    // AI tool calls share one scoped context. After acquiring the page-structure lock, discard
+    // only saved snapshots so the following queries cannot reuse stale chain pointers or shares.
+    // Pending writes are deliberately preserved.
+    internal void DetachUnchangedPageStructureEntities()
+    {
+        var stale = ChangeTracker.Entries()
+            .Where(entry => entry.State == EntityState.Unchanged
+                && entry.Entity is Notebook or Page or NotebookShare or PageShare)
+            .ToList();
+        foreach (var entry in stale)
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
 
     async Task IUnitOfWork.SaveChangesAsync(CancellationToken cancellationToken)
         => await SaveChangesAsync(cancellationToken);

@@ -950,5 +950,28 @@ describe('PageEditor', () => {
       expect(paragraphs[0]).toHaveTextContent('oneStart with fresh beans.')
       expect(paragraphs[1]).toHaveTextContent('two')
     })
+
+    it('replaces the selected text before inserting multiple pasted blocks', () => {
+      renderEditor({
+        page: {
+          ...PAGE,
+          blocks: [
+            {
+              ...PAGE.blocks[0]!,
+              content: { spans: [{ text: 'abcdef', marks: [] }] },
+            },
+          ],
+        },
+      })
+
+      const block = screen.getByRole('textbox', { name: 'editor.paragraph' })
+      setSelectionOffsets(block, 2, 4)
+      fireEvent.paste(block, { clipboardData: { getData: () => 'one\ntwo' } })
+
+      const paragraphs = screen.getAllByRole('textbox', { name: 'editor.paragraph' })
+      expect(paragraphs).toHaveLength(2)
+      expect(paragraphs[0]).toHaveTextContent('aboneef')
+      expect(paragraphs[1]).toHaveTextContent('two')
+    })
   })
 })

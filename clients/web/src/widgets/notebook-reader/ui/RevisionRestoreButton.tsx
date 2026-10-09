@@ -17,7 +17,7 @@ export function RevisionRestoreButton({ pending, onRestore }: RevisionRestoreBut
       type="button"
       disabled={pending}
       onClick={onRestore}
-      className="self-start rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+      className="self-start rounded-md bg-accent px-3 py-1.5 text-xs font-medium text-on-accent transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
     >
       {pending ? t('history.restoring') : t('history.restore')}
     </button>

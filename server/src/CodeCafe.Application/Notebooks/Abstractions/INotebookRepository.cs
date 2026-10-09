@@ -12,6 +12,13 @@ public interface INotebookRepository
 
     Task<Notebook?> FindByIdOrSlugAsync(string idOrSlug, CancellationToken cancellationToken);
 
+    // Serializes every page-tree structural write for one live notebook. Call inside a transaction,
+    // before loading the notebook or any pages into the current unit of work.
+    Task LockPageStructureAsync(string idOrSlug, CancellationToken cancellationToken);
+
+    // Serializes restore and purge for a notebook even while the soft-delete filter hides it.
+    Task LockLifecycleAsync(Guid notebookId, CancellationToken cancellationToken);
+
     // A null userId means anonymous: only public notebooks are visible.
     Task<int> CountVisibleAsync(Guid? userId, NotebookFilter filter, CancellationToken cancellationToken);
 

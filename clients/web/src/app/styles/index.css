@@ -7,12 +7,16 @@
  * carrying the light values. Nothing below may reference the raw cafe palette.
  */
 @theme {
+  --font-display: Georgia, "Noto Serif CJK SC", "Songti SC", serif;
+  --color-on-accent: #fffdf9;
+  --color-cover: #465347;
+  --color-cover-ink: #f8f4e9;
   --color-canvas: #faf6f0; /* page background */
   --color-card: #fffdf9; /* elevated surface */
   --color-ink: #2b2118; /* primary text */
   --color-muted: #7a6a5a; /* secondary text */
-  --color-accent: #c07a3e; /* actions, focus rings */
-  --color-accent-strong: #9c5f2c; /* accent hover/active */
+  --color-accent: #99603a; /* actions, focus rings */
+  --color-accent-strong: #794625; /* accent hover/active */
   --color-line: #e5d9c8; /* borders, dividers */
   --color-band: #4a382a; /* footer block */
   --color-band-ink: #faf6f0; /* text on band */
@@ -38,6 +42,9 @@
  */
 @layer theme {
   .dark {
+    --color-on-accent: #21170f;
+    --color-cover: #a7b39b;
+    --color-cover-ink: #202b21;
     --color-canvas: #14120f;
     --color-card: #1e1b17;
     --color-ink: #eeeae4;
@@ -66,6 +73,7 @@
 @layer base {
   html {
     color-scheme: light;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -158,4 +166,60 @@
 }
 .hljs-strong {
   font-weight: 700;
+}
+
+/* Editorial surfaces use the same semantic palette in both themes. */
+.shelf-intro {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: center;
+  gap: 3rem;
+  padding: 1.5rem 0 4rem;
+}
+.shelf-illustration {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 1rem 2rem;
+}
+.notebook-cover {
+  position: relative;
+  z-index: 1;
+  width: 238px;
+  padding: 1.75rem 1.5rem 1.5rem 2rem;
+  border-radius: 4px 15px 15px 4px;
+  border-left: 8px solid color-mix(in srgb, var(--color-cover) 80%, black);
+  background: var(--color-cover);
+  color: var(--color-cover-ink);
+  box-shadow: 5px 5px 0 var(--color-line), 12px 18px 28px -16px #21170f55;
+  transform: rotate(7deg);
+}
+.notebook-bookmark {
+  position: absolute;
+  z-index: 2;
+  bottom: .5rem;
+  right: 5rem;
+  height: 3rem;
+  width: 1.15rem;
+  background: var(--color-accent);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+  transform: rotate(7deg);
+}
+.shelf-intro-compact { grid-template-columns: 1fr; padding-bottom: 2.5rem; }
+.shelf-intro-compact .shelf-illustration { display: none; }
+.skip-link { position: fixed; top: .5rem; left: 1rem; z-index: 100; transform: translateY(-200%); border-radius: .5rem; padding: .75rem 1rem; background: var(--color-ink); color: var(--color-canvas); }
+.skip-link:focus { transform: translateY(0); }
+::selection { background: var(--color-accent-soft); color: var(--color-ink); }
+@media (max-width: 899px) {
+  .shelf-intro { grid-template-columns: minmax(0, 1fr); padding: 1rem 0 2.5rem; }
+  .shelf-illustration { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

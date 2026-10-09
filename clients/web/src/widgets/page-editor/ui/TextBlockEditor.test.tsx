@@ -153,6 +153,27 @@ describe('TextBlockEditor', () => {
     expect(onChange).toHaveBeenCalledWith([{ text: 'abx\ny', marks: [] }])
   })
 
+  it('replaces a selection spanning differently marked spans when pasting text', () => {
+    const onChange = vi.fn()
+    renderEditor(
+      [
+        { text: 'ab', marks: [{ kind: 'bold' }] },
+        { text: 'cd', marks: [{ kind: 'italic' }] },
+        { text: 'ef', marks: [] },
+      ],
+      { onChange },
+    )
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 1, 5)
+    fireEvent.paste(element, { clipboardData: { getData: () => 'X' } })
+
+    expect(onChange).toHaveBeenCalledWith([
+      { text: 'aX', marks: [{ kind: 'bold' }] },
+      { text: 'f', marks: [] },
+    ])
+  })
+
   it('routes a single markdown line pasted into an EMPTY block to the block handler', () => {
     const onChange = vi.fn()
     const onPasteBlocks = vi.fn()
@@ -162,7 +183,7 @@ describe('TextBlockEditor', () => {
     fireEvent.paste(element, { clipboardData: { getData: () => '## Title' } })
 
     expect(onChange).not.toHaveBeenCalled()
-    expect(onPasteBlocks).toHaveBeenCalledWith(0, [
+    expect(onPasteBlocks).toHaveBeenCalledWith(0, 0, [
       { type: 'heading', content: { level: 2, spans: [{ text: 'Title', marks: [] }] } },
     ])
   })
@@ -212,9 +233,23 @@ describe('TextBlockEditor', () => {
     fireEvent.paste(element, { clipboardData: { getData: () => '# Title\nbody' } })
 
     expect(onChange).not.toHaveBeenCalled()
-    expect(onPasteBlocks).toHaveBeenCalledWith(2, [
+    expect(onPasteBlocks).toHaveBeenCalledWith(2, 2, [
       { type: 'heading', content: { level: 1, spans: [{ text: 'Title', marks: [] }] } },
       { type: 'paragraph', content: { spans: [{ text: 'body', marks: [] }] } },
+    ])
+  })
+
+  it('passes the full selected range to multi-line paste handling', () => {
+    const onPasteBlocks = vi.fn()
+    renderEditor([{ text: 'abcdef', marks: [] }], { onPasteBlocks })
+
+    const element = screen.getByRole('textbox')
+    setSelectionOffsets(element, 2, 4)
+    fireEvent.paste(element, { clipboardData: { getData: () => 'one\ntwo' } })
+
+    expect(onPasteBlocks).toHaveBeenCalledWith(2, 4, [
+      { type: 'paragraph', content: { spans: [{ text: 'one', marks: [] }] } },
+      { type: 'paragraph', content: { spans: [{ text: 'two', marks: [] }] } },
     ])
   })
 

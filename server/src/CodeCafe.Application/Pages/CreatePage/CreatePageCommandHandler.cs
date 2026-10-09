@@ -19,6 +19,9 @@ public sealed class CreatePageCommandHandler(
 {
     public async Task<Result<PageDetailsDto>> Handle(CreatePageCommand command, CancellationToken cancellationToken)
     {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await notebooks.LockPageStructureAsync(command.NotebookIdOrSlug, cancellationToken);
+
         var context = await NotebookAccess.RequireWriterAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
         if (context.Error is { } error)
         {
@@ -61,6 +64,8 @@ public sealed class CreatePageCommandHandler(
         {
             return Result.Failure<PageDetailsDto>(conflict);
         }
+
+        await transaction.CommitAsync(cancellationToken);
 
         // Assemble the DTO once the save has stuck, not on every attempt.
         var ancestors = parent is null

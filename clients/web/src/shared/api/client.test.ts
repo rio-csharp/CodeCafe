@@ -180,6 +180,37 @@ describe('apiFetch with a session', () => {
     expect(bearerOf(fetchMock.mock.calls[2]?.[1])).toBe('Bearer access-2')
   })
 
+  it('does not refresh or replay an old request after the signed-in user changes', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const fetchMock = stubFetch(async () => {
+      await gate
+      return failure('invalid_access_token', 'Unauthorized', 401)
+    })
+    setSession(authSession())
+
+    const pending = apiFetch('/api/notebooks/old-user', {
+      method: 'POST',
+      body: JSON.stringify({ title: 'Must not be replayed' }),
+    })
+    setSession(
+      authSession({
+        user: { id: 'u2', email: 'grace@example.com', displayName: 'Grace' },
+        accessToken: 'access-b',
+        refreshToken: 'refresh-b',
+      }),
+    )
+    release()
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/notebooks/old-user')
+    expect(getAccessToken()).toBe('access-b')
+    expect(getRefreshToken()).toBe('refresh-b')
+  })
+
   it('clears the session and throws when the retry is refused too', async () => {
     stubFetch(async (url) =>
       url === '/api/auth/refresh'
@@ -217,6 +248,35 @@ describe('apiFetch with a session', () => {
 
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/auth/refresh')
     expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not send with a new user after an old proactive refresh finishes', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const fetchMock = stubFetch(async (url) => {
+      expect(url).toBe('/api/auth/refresh')
+      await gate
+      return success(authSession({ accessToken: 'late-access', refreshToken: 'late-refresh' }))
+    })
+    setSession(authSession({ accessTokenExpiresAtUtc: '2026-01-01T00:01:00.000Z' }))
+    setSessionClock({ now: () => Date.parse('2026-01-01T00:00:15.000Z') })
+
+    const pending = apiFetch('/api/notebooks/old-user')
+    setSession(
+      authSession({
+        user: { id: 'u2', email: 'grace@example.com', displayName: 'Grace' },
+        accessToken: 'access-b',
+        refreshToken: 'refresh-b',
+      }),
+    )
+    release()
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(getAccessToken()).toBe('access-b')
+    expect(getRefreshToken()).toBe('refresh-b')
   })
 
   it('skips the refresh while the token still has time', async () => {

@@ -13,3 +13,5 @@ export {
   THEME_SWITCHING_CLASS,
 } from './theme'
 export type { ThemeMode, ThemeTransitionOrigin } from './theme'
+
+export { randomId } from './randomId'

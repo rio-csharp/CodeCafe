@@ -12,6 +12,8 @@ internal sealed class StubPageRepository(StubNotebookRepository? notebooks = nul
 {
     public HashSet<(Guid PageId, Guid UserId)> Favorites { get; } = [];
 
+    public int ListByNotebookCallCount { get; private set; }
+
     // Blocks the search matches against; populated directly, mirroring StubBlockRepository data.
     public List<Block> Blocks { get; } = [];
 
@@ -20,13 +22,19 @@ internal sealed class StubPageRepository(StubNotebookRepository? notebooks = nul
     public Task<Page?> FindByIdAsync(Guid pageId, CancellationToken cancellationToken)
         => Task.FromResult(Live.FirstOrDefault(page => page.Id == pageId));
 
+    public Task LockNotebookForPageStructureAsync(Guid pageId, bool includeTrashed, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
     public Task<Page?> FindBySlugAsync(Guid notebookId, string slug, CancellationToken cancellationToken)
         => Task.FromResult(Live.FirstOrDefault(page => page.NotebookId == notebookId && page.Slug == slug));
 
     public Task<IReadOnlyList<Page>> ListByNotebookAsync(Guid notebookId, CancellationToken cancellationToken)
-        => Task.FromResult<IReadOnlyList<Page>>(
+    {
+        ListByNotebookCallCount++;
+        return Task.FromResult<IReadOnlyList<Page>>(
             Live.Where(page => page.NotebookId == notebookId).OrderBy(page => page.SortKey, StringComparer.Ordinal).ToList()
         );
+    }
 
     public Task<IReadOnlyList<Page>> ListChildrenAsync(Guid notebookId, Guid? parentId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<Page>>(

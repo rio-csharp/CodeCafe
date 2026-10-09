@@ -18,11 +18,10 @@ import { CreateNotebookDialog } from '@/features/create-notebook'
 import { NotebookSettingsDialog } from '@/features/manage-notebook'
 import { ShareNotebookDialog } from '@/features/share-notebook'
 import { SearchInput } from '@/features/search-notebooks'
-import { LanguageToggle } from '@/features/switch-language'
-import { ThemeToggle } from '@/features/switch-theme'
 import { Button, buttonClass, Container } from '@/shared/ui'
 import { EmptyShelf, NotebookGrid } from '@/widgets/notebook-list'
-import { UserMenu } from '@/widgets/site-header'
+import { SiteHeader } from '@/widgets/site-header'
+import { SiteFooter } from '@/widgets/site-footer'
 
 type ShelfTab = 'favorites' | 'mine' | 'public'
 
@@ -41,9 +40,8 @@ const VISIBILITY_OPTIONS = [
 ] as const satisfies readonly NotebookVisibility[]
 
 /**
- * The shelf: one centered search box, three tabs under it, cards below. The
- * search and sort always act on the tab being looked at. Anonymous visitors
- * get the public tab without the strip.
+ * Public discovery and a signed-in bookshelf share one search/sort surface.
+ * Filters always apply to the selected shelf; anonymous readers browse public notebooks.
  */
 export function HomePage() {
   const { t } = useTranslation()
@@ -69,55 +67,63 @@ export function HomePage() {
   }
 
   return (
-    <div className="relative min-h-dvh bg-canvas">
-      {/* One warm wash, strongest at the top and gone by the first shelf. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[22rem] bg-[radial-gradient(65%_100%_at_35%_0%,var(--color-accent-soft),transparent_75%)]"
-      />
-
-      {/* Chrome-free homepage: the controls float over the content corner. */}
-      <div className="absolute top-3 right-3 z-10 flex items-center gap-1 sm:top-4 sm:right-4">
-        <ThemeToggle />
-        <LanguageToggle />
-        {status === 'anonymous' ? (
-          <Link to="/login" state={{ from: '/' }} className={buttonClass('ghost')}>
-            {t('header.login')}
-          </Link>
-        ) : null}
-        {signedIn && user !== null ? <UserMenu displayName={user.displayName} /> : null}
-      </div>
-
-      <Container width="standard" className="relative py-16 sm:py-20">
-        {status === 'anonymous' ? (
-          <header className="pb-12 text-center">
-            <p className="text-xs font-semibold tracking-[0.2em] text-accent-strong uppercase">
-              {t('home.overline')}
+    <div className="flex min-h-dvh flex-col bg-canvas">
+      <a href="#notebook-shelf" className="skip-link">{t('home.skipToShelf')}</a>
+      <SiteHeader />
+      <main className="flex-1">
+      <Container width="standard" className="pb-16 pt-8 sm:pt-12">
+        <header className={`shelf-intro ${signedIn ? 'shelf-intro-compact' : ''}`}>
+          <div className="relative z-10 max-w-xl">
+            <p className="mb-4 flex items-center gap-2 text-xs font-semibold tracking-[0.18em] text-accent-strong uppercase">
+              <span aria-hidden="true" className="h-px w-8 bg-accent" />
+              {t(signedIn ? 'home.workspace' : 'home.overline')}
             </p>
-            <h1 className="mt-3 text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
-              {t('brand.name')}
+            <h1 className="font-display text-4xl leading-tight tracking-tight text-ink sm:text-6xl">
+              {signedIn && user !== null ? greeting(t, user.displayName) : t('brand.name')}
             </h1>
-            <p className="mx-auto mt-4 max-w-md text-lg leading-relaxed text-muted">
-              {t('home.pitch')}
+            <p className="mt-5 max-w-md text-base leading-relaxed text-muted sm:text-lg">
+              {t(signedIn ? 'home.workspaceHint' : 'home.pitch')}
             </p>
-          </header>
-        ) : null}
+            {status === 'anonymous' ? (
+              <div className="mt-7 flex flex-wrap items-center gap-4">
+                <Link to="/register" className={buttonClass('primary')}>
+                  {t('home.createAccount')} <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M4 12 12 4M4 4h8v8" /></svg>
+                </Link>
+                <a href="#notebook-shelf" className="text-sm font-medium text-accent-strong underline-offset-4 hover:underline">
+                  {t('home.explore')} <span aria-hidden="true">↓</span>
+                </a>
+              </div>
+            ) : null}
+          </div>
+          <div aria-hidden="true" className="shelf-illustration">
+            <div className="notebook-cover">
+              <span className="text-[10px] font-semibold tracking-[0.22em] uppercase">CodeCafe / Notes</span>
+              <svg viewBox="0 0 80 64" className="my-7 h-16 w-20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 25h39v17a15 15 0 0 1-15 15h-9a15 15 0 0 1-15-15V25ZM54 28h7a9 9 0 0 1 0 18h-7M10 61h51M27 16c-8-8 8-8 0-16M40 16c-8-8 8-8 0-16" />
+              </svg>
+              <span className="font-display text-3xl leading-tight">{t('home.coverTitle')}</span>
+              <span className="mt-6 block border-t border-current/30 pt-3 text-[10px] tracking-widest uppercase">{t('home.coverCaption')}</span>
+            </div>
+            <span className="notebook-bookmark" />
+          </div>
+        </header>
 
-        {signedIn && user !== null ? (
-          <p className="pb-6 text-center text-sm text-muted">
-            {greeting(t, user.displayName)}
-          </p>
-        ) : null}
-
-        {/* The one search box; it filters whichever tab is showing. */}
-        <div className="mx-auto max-w-2xl">
-          <SearchInput value={search} onChange={setSearch} />
+        <section id="notebook-shelf" aria-label={t('home.shelfLabel')} className="scroll-mt-24 border-t border-line pt-8" tabIndex={-1}>
+        <div className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-medium tracking-widest text-muted uppercase">{t('home.collection')}</p>
+            <h2 className="mt-1 font-display text-2xl text-ink sm:text-3xl">{t(signedIn ? 'home.yourShelf' : 'home.publicNotebooks')}</h2>
+          </div>
+          <div className="w-full sm:max-w-sm">
+            <SearchInput value={search} onChange={setSearch} />
+          </div>
         </div>
 
         {signedIn ? (
-          <div className="relative mt-6 flex items-center justify-center">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div
               role="tablist"
+              aria-label={t('home.shelfLabel')}
               className="inline-flex gap-1 rounded-full border border-line bg-card p-1"
             >
               {(['favorites', 'mine', 'public'] as const).map((option) => (
@@ -125,7 +131,21 @@ export function HomePage() {
                   key={option}
                   type="button"
                   role="tab"
+                  id={`shelf-tab-${option}`}
+                  aria-controls="shelf-panel"
                   aria-selected={activeTab === option}
+                  tabIndex={activeTab === option ? 0 : -1}
+                  onKeyDown={(event) => {
+                    const tabs = ['favorites', 'mine', 'public'] as const
+                    const current = tabs.indexOf(option)
+                    const next = event.key === 'ArrowRight' ? (current + 1) % tabs.length
+                      : event.key === 'ArrowLeft' ? (current + tabs.length - 1) % tabs.length
+                        : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : -1
+                    if (next < 0) return
+                    event.preventDefault()
+                    setTab(tabs[next])
+                    document.getElementById(`shelf-tab-${tabs[next]}`)?.focus()
+                  }}
                   onClick={() => {
                     setTab(option)
                   }}
@@ -142,7 +162,7 @@ export function HomePage() {
               ))}
             </div>
 
-            <div className="absolute right-0 hidden items-center gap-1 sm:flex">
+            <div className="hidden items-center gap-2 sm:flex">
               <Link
                 to="/trash"
                 aria-label={t('trash.entry')}
@@ -187,7 +207,7 @@ export function HomePage() {
           </div>
         ) : null}
 
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:justify-end">
+        <div className="my-5 flex flex-wrap items-center justify-start gap-2">
           <SortGroup sort={sort} onChange={setSort} />
           {activeTab === 'mine' ? (
             <select
@@ -209,7 +229,7 @@ export function HomePage() {
           ) : null}
         </div>
 
-        <div className="mt-5">
+        <div id="shelf-panel" role={signedIn ? 'tabpanel' : undefined} aria-labelledby={signedIn ? `shelf-tab-${activeTab}` : undefined}>
           {activeTab === 'public' ? (
             <PublicShelf search={search} sort={sort} />
           ) : (
@@ -231,6 +251,8 @@ export function HomePage() {
           )}
         </div>
 
+        </section>
+
         {/* On phones the corner cluster hides; create becomes a floating button
             and trash moves into the account menu. */}
         {signedIn ? (
@@ -241,7 +263,7 @@ export function HomePage() {
             onClick={() => {
               setCreateOpen(true)
             }}
-            className="fixed right-5 bottom-6 z-40 grid size-12 place-items-center rounded-full bg-accent text-card shadow-lg transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong sm:hidden"
+            className="fixed right-5 bottom-6 z-40 grid size-12 place-items-center rounded-full bg-accent text-on-accent shadow-lg transition-transform hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-strong sm:hidden"
           >
             <svg viewBox="0 0 16 16" className="size-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
               <path d="M8 3v10M3 8h10" />
@@ -249,6 +271,8 @@ export function HomePage() {
           </button>
         ) : null}
       </Container>
+      </main>
+      <SiteFooter />
 
       <NotebookSettingsDialog
         slug={settingsSlug}
@@ -398,7 +422,7 @@ function PublicShelf({ search, sort }: { search: string; sort: NotebookSort }) {
 function SortGroup({ sort, onChange }: { sort: NotebookSort; onChange: (sort: NotebookSort) => void }) {
   const { t } = useTranslation()
   return (
-    <div role="group" className="flex gap-1 rounded-full border border-line bg-card p-1">
+    <div role="group" aria-label={t('home.sortLabel')} className="flex gap-1 rounded-full border border-line bg-card p-1">
       {SORT_OPTIONS.map((option) => (
         <button
           key={option}

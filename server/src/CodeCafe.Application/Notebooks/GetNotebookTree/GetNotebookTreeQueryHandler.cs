@@ -28,6 +28,11 @@ public sealed class GetNotebookTreeQueryHandler(
         }
 
         var notebookError = NotebookAccess.CheckRead(notebook, userId, query.AccessCode, passwordHasher);
+        if (notebookError is not null && userId is null)
+        {
+            return Result.Failure<NotebookTreeDto>(notebookError);
+        }
+
         var all = await pages.ListByNotebookAsync(notebook.Id, cancellationToken);
 
         IReadOnlyCollection<Page> visible;

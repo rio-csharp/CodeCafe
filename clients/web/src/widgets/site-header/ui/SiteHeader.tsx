@@ -13,9 +13,9 @@ export function SiteHeader() {
   const user = useSessionStore((state) => state.user)
 
   return (
-    <header className="sticky top-0 z-10 border-b border-line bg-card">
-      <Container className="flex flex-wrap items-center justify-between gap-3 py-2">
-        <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-30 border-b border-line/70 bg-canvas/95 backdrop-blur-md">
+      <Container className="flex flex-wrap items-center justify-between gap-3 py-4">
+        <Link to="/" className="flex items-center gap-2.5 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent">
           <svg className="h-6 w-6 text-accent" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M4 8h11v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V8Z"
@@ -37,7 +37,7 @@ export function SiteHeader() {
             />
           </svg>
           <span className="text-base font-semibold tracking-tight text-ink">{t('brand.name')}</span>
-        </div>
+        </Link>
 
         <div className="flex items-center gap-2">
           <ThemeToggle />

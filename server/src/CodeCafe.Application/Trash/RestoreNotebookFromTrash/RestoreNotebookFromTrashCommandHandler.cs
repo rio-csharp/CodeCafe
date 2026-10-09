@@ -17,6 +17,9 @@ public sealed class RestoreNotebookFromTrashCommandHandler(
 {
     public async Task<Result> Handle(RestoreNotebookFromTrashCommand command, CancellationToken cancellationToken)
     {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await notebooks.LockLifecycleAsync(command.NotebookId, cancellationToken);
+
         var context = await NotebookAccess.RequireTrashedOwnerAsync(command.NotebookId, currentUserAccessor, notebooks, cancellationToken);
         if (context.Error is { } error)
         {
@@ -37,12 +40,19 @@ public sealed class RestoreNotebookFromTrashCommandHandler(
 
         // A writer can take the slug between the check and the save; the notebook never picked it,
         // so re-key and retry rather than fail the restore.
-        return await SlugConflict.SaveAsync(
+        var save = await SlugConflict.SaveAsync(
             unitOfWork,
             ct => TryReKeyAsync(notebook, trashedSlug, ct),
             NotebookErrors.SlugAlreadyTaken,
             cancellationToken
         );
+        if (!save.IsSuccess)
+        {
+            return save;
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return Result.Success();
     }
 
     // Keeps the notebook on its own slug when it is still free, otherwise moves it to the best

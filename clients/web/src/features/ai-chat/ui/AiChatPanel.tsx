@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSessionStore } from '@/entities/session'
 import { getChatStore } from '../model/store'
 import type { ChatMessage } from '../model/store'
 
@@ -17,7 +18,8 @@ export interface AiChatPanelProps {
  */
 export function AiChatPanel({ slug, onAiChanged }: AiChatPanelProps) {
   const { t } = useTranslation()
-  const store = getChatStore(slug)
+  const userId = useSessionStore((state) => state.user?.id ?? null)
+  const store = getChatStore(slug, userId)
   const state = useSyncExternalStore(store.subscribe, store.getState)
   const [input, setInput] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -102,7 +104,7 @@ export function AiChatPanel({ slug, onAiChanged }: AiChatPanelProps) {
             type="button"
             disabled={input.trim() === ''}
             onClick={send}
-            className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+            className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-on-accent transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
           >
             {t('ai.send')}
           </button>
@@ -169,7 +171,7 @@ function ClearChatButton({ onClear }: { onClear: () => void }) {
 function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === 'user') {
     return (
-      <p className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-accent px-3 py-2 text-sm whitespace-pre-wrap text-white">
+      <p className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-accent px-3 py-2 text-sm whitespace-pre-wrap text-on-accent">
         {message.text}
       </p>
     )

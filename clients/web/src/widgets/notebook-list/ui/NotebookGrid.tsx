@@ -52,6 +52,8 @@ export function NotebookGrid({
 
   if (isPending) {
     return (
+      <div role="status">
+      <span className="sr-only">{t('list.loading')}</span>
       <ul aria-hidden="true" className={GRID_CLASS}>
         {SKELETON_KEYS.map((key) => (
           <li key={key} className="rounded-xl border border-line bg-card p-5">
@@ -67,12 +69,13 @@ export function NotebookGrid({
           </li>
         ))}
       </ul>
+      </div>
     )
   }
 
-  if (isError) {
+  if (isError && items.length === 0) {
     return (
-      <div className="rounded-xl border border-line bg-card py-12 text-center">
+      <div role="alert" className="rounded-xl border border-line bg-card py-12 text-center">
         <p className="text-sm text-muted">{t('list.loadError')}</p>
         {onRetry !== undefined ? (
           <Button variant="ghost" className="mt-3" onClick={onRetry}>
@@ -123,7 +126,14 @@ export function NotebookGrid({
         ))}
       </ul>
 
-      {hasNextPage && onLoadMore !== undefined ? (
+      {isError ? (
+        <div role="alert" className="mt-5 flex flex-wrap items-center justify-center gap-3 rounded-xl border border-line bg-card p-4">
+          <p className="text-sm text-muted">{t('list.loadError')}</p>
+          {onRetry !== undefined ? <Button variant="ghost" size="sm" onClick={onRetry}>{t('list.retry')}</Button> : null}
+        </div>
+      ) : null}
+
+      {hasNextPage && onLoadMore !== undefined && !isError ? (
         <div className="pt-6 text-center">
           <Button
             variant="ghost"

@@ -15,6 +15,7 @@ using CodeCafe.Host.Hosting;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CodeCafe.Host.Controllers;
 
@@ -25,6 +26,7 @@ public sealed class PagesController(ISender sender) : ControllerBase
 {
     [AllowAnonymous]
     [HttpGet("pages/{pageId:guid}")]
+    [EnableRateLimiting(RateLimiterExtensions.AccessCodePolicy)]
     public Task<Result<PageDetailsDto>> Details(Guid pageId, CancellationToken cancellationToken)
         => sender.Send(new GetPageQuery(pageId, AccessCodeHeader.Read(Request)), cancellationToken);
 
@@ -43,6 +45,7 @@ public sealed class PagesController(ISender sender) : ControllerBase
     // A real file download (text/markdown + Content-Disposition), not the JSON envelope.
     [AllowAnonymous]
     [HttpGet("pages/{pageId:guid}/export")]
+    [EnableRateLimiting(RateLimiterExtensions.AccessCodePolicy)]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/markdown")]
     [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
     public async Task<IResult> Export(Guid pageId, CancellationToken cancellationToken)

@@ -28,6 +28,32 @@ describe('RightPanel', () => {
     expect(screen.getByRole('tab', { name: 'Chat' })).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('associates tabs with the active panel and supports standard keyboard navigation', async () => {
+    const user = userEvent.setup()
+    render(<RightPanel tabs={tabs} />)
+
+    const outline = screen.getByRole('tab', { name: 'Outline' })
+    const chat = screen.getByRole('tab', { name: 'Chat' })
+    const panel = screen.getByRole('tabpanel')
+    expect(outline).toHaveAttribute('aria-controls', panel.id)
+    expect(panel).toHaveAttribute('aria-labelledby', outline.id)
+    expect(outline).toHaveAttribute('tabindex', '0')
+    expect(chat).toHaveAttribute('tabindex', '-1')
+
+    outline.focus()
+    await user.keyboard('{ArrowLeft}')
+    expect(chat).toHaveFocus()
+    expect(chat).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', chat.id)
+
+    await user.keyboard('{Home}')
+    expect(outline).toHaveFocus()
+    await user.keyboard('{End}')
+    expect(chat).toHaveFocus()
+    await user.keyboard('{ArrowRight}')
+    expect(outline).toHaveFocus()
+  })
+
   it('renders nothing without tabs', () => {
     const { container } = render(<RightPanel tabs={[]} />)
     expect(container).toBeEmptyDOMElement()
@@ -69,6 +95,30 @@ describe('ReaderChrome', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'reader.linkCopied' })).toBeInTheDocument()
     })
+  })
+
+  it('shows a retryable failure when clipboard access is rejected', async () => {
+    const user = userEvent.setup()
+    const writeText = vi.fn().mockRejectedValue(new DOMException('denied', 'NotAllowedError'))
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    renderChrome()
+
+    await user.click(screen.getByRole('button', { name: 'reader.copyLink' }))
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(window.location.href)
+    })
+    expect(screen.getByRole('button', { name: 'reader.copyFailed' })).toBeInTheDocument()
+  })
+
+  it('shows a retryable failure when the Clipboard API is unavailable', async () => {
+    const user = userEvent.setup()
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+    renderChrome()
+
+    await user.click(screen.getByRole('button', { name: 'reader.copyLink' }))
+
+    expect(await screen.findByRole('button', { name: 'reader.copyFailed' })).toBeInTheDocument()
   })
 
   it('hides the edit pill from readers and offers it to writers', async () => {

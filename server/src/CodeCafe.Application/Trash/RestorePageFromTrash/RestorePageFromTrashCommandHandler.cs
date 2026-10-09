@@ -19,6 +19,9 @@ public sealed class RestorePageFromTrashCommandHandler(
 {
     public async Task<Result> Handle(RestorePageFromTrashCommand command, CancellationToken cancellationToken)
     {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await pages.LockNotebookForPageStructureAsync(command.PageId, includeTrashed: true, cancellationToken);
+
         var page = await pages.FindTrashedByIdAsync(command.PageId, cancellationToken);
         if (page is null)
         {
@@ -127,6 +130,8 @@ public sealed class RestorePageFromTrashCommandHandler(
         {
             return Result.Failure(conflict);
         }
+
+        await transaction.CommitAsync(cancellationToken);
 
         return Result.Success();
     }
