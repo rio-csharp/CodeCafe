@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { streamChat } from '../api/streamChat'
 import type { StreamChatParams } from '../api/streamChat'
-import { ChatStore, resetChatStores } from './store'
+import { ChatStore, chatStorageKey, getChatStore, resetChatStores } from './store'
 import type { ChatMessage } from './store'
 import type { ChatPersistence } from './persistence'
+import { clearSession } from '@/shared/api'
 
 vi.mock('../api/streamChat', () => {
   class AiChatHttpError extends Error {
@@ -170,9 +171,39 @@ describe('ChatStore', () => {
 
     expect(store.getState().messages).toEqual([])
   })
+
+  it('keeps stores for different signed-in users isolated', () => {
+    expect(getChatStore('s', 'user-1')).not.toBe(getChatStore('s', 'user-2'))
+    expect(getChatStore('s', 'user-1')).toBe(getChatStore('s', 'user-1'))
+  })
+
+  it('stops and detaches user stores when the session is cleared', async () => {
+    let emit!: StreamChatParams['onEvent']
+    let reject!: (error: unknown) => void
+    vi.mocked(streamChat).mockImplementation(
+      ({ signal, onEvent }: StreamChatParams) =>
+        new Promise((_, rejectPromise) => {
+          emit = onEvent
+          reject = rejectPromise
+          signal.addEventListener('abort', () => undefined)
+        }),
+    )
+    const store = getChatStore('s', 'user-1')
+    const pending = store.send('private', vi.fn())
+
+    clearSession()
+    emit({ kind: 'text', text: 'late' })
+    reject(new DOMException('aborted', 'AbortError'))
+    await pending
+
+    expect(store.getState()).toMatchObject({ streaming: false, error: null })
+    expect(store.getState().messages[1]).toMatchObject({ text: '', state: 'done' })
+    expect(getChatStore('s', 'user-1')).toBe(store)
+  })
 })
 
 describe('ChatStore persistence', () => {
+  const storageKey = chatStorageKey(null, 's')
   class MemoryPersistence implements ChatPersistence {
     readonly saved = new Map<string, ChatMessage[]>()
     loadResult: ChatMessage[] | null = null
@@ -230,6 +261,51 @@ describe('ChatStore persistence', () => {
     })
   })
 
+  it('does not restore a pending hydration after the user clears the chat', async () => {
+    let resolveLoad!: (messages: ChatMessage[] | null) => void
+    const persistence: ChatPersistence = {
+      load: () =>
+        new Promise((resolve) => {
+          resolveLoad = resolve
+        }),
+      save: async () => {},
+      clear: async () => {},
+    }
+    const store = new ChatStore('s', persistence)
+
+    store.clear()
+    resolveLoad(storedTurn)
+
+    await vi.waitFor(() => {
+      expect(store.getState().messages).toEqual([])
+    })
+  })
+
+  it('does not let a cleared turn finish over a newer conversation', async () => {
+    let rejectOld!: (error: unknown) => void
+    let emitOld!: StreamChatParams['onEvent']
+    vi.mocked(streamChat)
+      .mockImplementationOnce(({ signal, onEvent }: StreamChatParams) =>
+        new Promise((_, reject) => {
+          rejectOld = reject
+          emitOld = onEvent
+          signal.addEventListener('abort', () => undefined)
+        }),
+      )
+      .mockResolvedValueOnce(undefined)
+    const store = new ChatStore('s', new MemoryPersistence())
+
+    const oldTurn = store.send('old', vi.fn())
+    store.clear()
+    await store.send('new', vi.fn())
+    emitOld({ kind: 'error', code: 'late_error', message: 'late' })
+    rejectOld(new DOMException('aborted', 'AbortError'))
+    await oldTurn
+
+    expect(store.getState()).toMatchObject({ streaming: false, error: null })
+    expect(store.getState().messages.map((message) => message.text)).toEqual(['new', ''])
+  })
+
   it('saves the conversation after a turn, debounced', async () => {
     vi.useFakeTimers()
     try {
@@ -238,10 +314,10 @@ describe('ChatStore persistence', () => {
       const store = new ChatStore('s', persistence)
 
       await store.send('hi', vi.fn())
-      expect(persistence.saved.has('s')).toBe(false)
+      expect(persistence.saved.has(storageKey)).toBe(false)
 
       await vi.advanceTimersByTimeAsync(500)
-      expect(persistence.saved.get('s')).toHaveLength(2)
+      expect(persistence.saved.get(storageKey)).toHaveLength(2)
     } finally {
       vi.useRealTimers()
     }
@@ -252,14 +328,14 @@ describe('ChatStore persistence', () => {
     try {
       replyWith([{ kind: 'done' }])
       const persistence = new MemoryPersistence()
-      persistence.saved.set('s', storedTurn)
+      persistence.saved.set(storageKey, storedTurn)
       const store = new ChatStore('s', persistence)
 
       await store.send('hi', vi.fn())
       store.clear()
       await vi.advanceTimersByTimeAsync(1000)
 
-      expect(persistence.saved.has('s')).toBe(false)
+      expect(persistence.saved.has(storageKey)).toBe(false)
       expect(store.getState().messages).toEqual([])
     } finally {
       vi.useRealTimers()

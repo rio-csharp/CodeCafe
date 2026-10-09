@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useSessionStore } from '@/entities/session'
 import { streamChat } from '../api/streamChat'
 import type { StreamChatParams } from '../api/streamChat'
 import { resetChatStores } from '../model/store'
@@ -36,6 +37,7 @@ describe('AiChatPanel', () => {
   beforeEach(() => {
     resetChatStores()
     vi.mocked(streamChat).mockReset()
+    useSessionStore.setState({ status: 'anonymous', user: null })
   })
 
   it('shows the empty state before any message', () => {
@@ -107,6 +109,28 @@ describe('AiChatPanel', () => {
 
     await user.click(screen.getByRole('button', { name: 'ai.clearConfirm' }))
     expect(screen.queryByText('answer')).not.toBeInTheDocument()
+    expect(screen.getByText('ai.empty')).toBeInTheDocument()
+  })
+
+  it('does not show one account the previous account conversation', async () => {
+    const user = userEvent.setup()
+    replyWith([{ kind: 'text', text: 'private answer' }, { kind: 'done' }])
+    useSessionStore.setState({
+      status: 'authenticated',
+      user: { id: 'user-1', email: 'one@example.com', displayName: 'One' },
+    })
+    const view = render(<AiChatPanel slug="s" onAiChanged={vi.fn()} />)
+    await user.type(screen.getByRole('textbox', { name: 'ai.placeholder' }), 'private question')
+    await user.keyboard('{Enter}')
+    expect(await screen.findByText('private answer')).toBeInTheDocument()
+
+    useSessionStore.setState({
+      status: 'authenticated',
+      user: { id: 'user-2', email: 'two@example.com', displayName: 'Two' },
+    })
+    view.rerender(<AiChatPanel slug="s" onAiChanged={vi.fn()} />)
+
+    expect(screen.queryByText('private answer')).not.toBeInTheDocument()
     expect(screen.getByText('ai.empty')).toBeInTheDocument()
   })
 })
