@@ -27,7 +27,7 @@ import {
   removeBlocks,
   transferChildren,
 } from '../lib/moving'
-import { insertTextAt, joinSpans, spansPlainText, splitSpansAt } from '../lib/spans'
+import { joinSpans, replaceTextRange, spansPlainText, splitSpansAt } from '../lib/spans'
 import { pastedPlainText } from '../lib/paste'
 import type { PastedBlock } from '../lib/paste'
 import { ParagraphEditor } from './blocks/ParagraphEditor'
@@ -457,7 +457,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
    * at the caret (an EMPTY current block gives way to the paste entirely);
    * the rest land as fresh siblings right after it.
    */
-  const pasteBlocks = (id: string, offset: number, pasted: PastedBlock[]) => {
+  const pasteBlocks = (id: string, start: number, end: number, pasted: PastedBlock[]) => {
     const source = draft.find((entry) => entry.id === id)
     if (source === undefined || !TEXT_TYPES.has(source.type) || pasted.length === 0) {
       return
@@ -478,8 +478,9 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     })
     const lastTextualOf = (blocks: EditorBlock[]) =>
       [...blocks].reverse().find((entry) => TEXT_TYPES.has(entry.type))
+    const baseSpans = replaceTextRange(spansOf(source), start, end, '')
 
-    if (spansPlainText(spansOf(source)).length === 0) {
+    if (spansPlainText(baseSpans).length === 0) {
       // The empty block is replaced; its children follow onto the last pasted
       // block so the tree stays intact.
       const anchor = fresh[fresh.length - 1]!.id
@@ -498,7 +499,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
 
     const headText = pastedPlainText(pasted[0]!)
     if (headText !== null) {
-      const merged = insertTextAt(spansOf(source), offset, headText)
+      const merged = replaceTextRange(spansOf(source), start, end, headText)
       const withHead = replaceBlockContent(draft, id, {
         ...(source.content as object),
         spans: merged,
@@ -506,13 +507,17 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
       setDraft(tail.length > 0 ? insertBlocksAfter(withHead, id, tail) : withHead)
       const tailTextual = lastTextualOf(tail)
       setFocusRequest(
-        tailTextual !== undefined ? focusEnd(tailTextual) : { id, offset: offset + headText.length },
+        tailTextual !== undefined ? focusEnd(tailTextual) : { id, offset: start + headText.length },
       )
       return
     }
 
     // The head carries no text (code, divider): everything lands after.
-    setDraft(insertBlocksAfter(draft, id, fresh))
+    const withoutSelection = replaceBlockContent(draft, id, {
+      ...(source.content as object),
+      spans: baseSpans,
+    })
+    setDraft(insertBlocksAfter(withoutSelection, id, fresh))
     const target = lastTextualOf(fresh)
     if (target !== undefined) {
       setFocusRequest(focusEnd(target))
@@ -601,8 +606,8 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
           moveBlockInGroup(draftNow, blockId, direction),
         )
       },
-      onPasteBlocks: (offset: number, blocks: PastedBlock[]) => {
-        pasteBlocks(block.id, offset, blocks)
+      onPasteBlocks: (start: number, end: number, blocks: PastedBlock[]) => {
+        pasteBlocks(block.id, start, end, blocks)
       },
     }
 
