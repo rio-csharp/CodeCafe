@@ -73,6 +73,7 @@ export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide,
 function CopyLinkPill() {
   const { t } = useTranslation()
   const [copied, setCopied] = useState(false)
+  const [copyFailed, setCopyFailed] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -83,23 +84,46 @@ function CopyLinkPill() {
     }
   }, [])
 
-  const copy = () => {
-    void navigator.clipboard.writeText(window.location.href).then(() => {
-      setCopied(true)
-      if (timerRef.current !== null) {
-        clearTimeout(timerRef.current)
+  const resetTimer = (reset: () => void) => {
+    if (timerRef.current !== null) {
+      clearTimeout(timerRef.current)
+    }
+    timerRef.current = setTimeout(reset, 1500)
+  }
+
+  const copy = async () => {
+    setCopyFailed(false)
+    try {
+      if (navigator.clipboard === undefined) {
+        throw new Error('Clipboard API unavailable')
       }
-      timerRef.current = setTimeout(() => {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      resetTimer(() => {
         setCopied(false)
-      }, 1500)
-    })
+      })
+    } catch {
+      setCopied(false)
+      setCopyFailed(true)
+      resetTimer(() => {
+        setCopyFailed(false)
+      })
+    }
   }
 
   return (
     <ChromePill
-      label={copied ? t('reader.linkCopied') : t('reader.copyLink')}
-      onClick={copy}
-      className={copied ? 'border-success/40 text-success' : undefined}
+      label={copied ? t('reader.linkCopied') : copyFailed ? t('reader.copyFailed') : t('reader.copyLink')}
+      onClick={() => {
+        void copy()
+      }}
+      className={
+        copied
+          ? 'border-success/40 text-success'
+          : copyFailed
+            ? 'border-danger/40 text-danger'
+            : undefined
+      }
     >
       {copied ? (
         <path d="m3.5 8.5 3 3 6-7" />
