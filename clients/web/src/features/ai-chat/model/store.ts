@@ -1,4 +1,6 @@
 import { AiChatHttpError, streamChat } from '../api/streamChat'
+import { createIndexedDbPersistence } from './persistence'
+import type { ChatPersistence } from './persistence'
 
 /** A tool call as the user sees it: a friendly activity, not a technical detail. */
 export interface ToolActivity {
@@ -41,16 +43,21 @@ class HistoryTooLong extends Error {}
 /**
  * One conversation per notebook, living OUTSIDE React: the right panel
  * unmounts inactive tabs, and the chat must survive tab switches and page
- * navigation. Session-only — nothing is persisted.
+ * navigation. Messages are also persisted per notebook (IndexedDB, debounced)
+ * so the conversation survives a reload — on this browser only.
  */
 export class ChatStore {
   private state: ChatState = EMPTY
   private readonly listeners = new Set<() => void>()
   private abort: AbortController | null = null
+  private saveTimer: ReturnType<typeof setTimeout> | null = null
   private readonly slug: string
+  private readonly persistence: ChatPersistence
 
-  constructor(slug: string) {
+  constructor(slug: string, persistence: ChatPersistence = createIndexedDbPersistence()) {
     this.slug = slug
+    this.persistence = persistence
+    void this.hydrate()
   }
 
   getState = (): ChatState => this.state
@@ -62,11 +69,36 @@ export class ChatStore {
     }
   }
 
-  private setState(next: ChatState) {
+  private setState(next: ChatState, options?: { persist?: boolean }) {
     this.state = next
     for (const listener of this.listeners) {
       listener()
     }
+    if (options?.persist !== false) {
+      this.scheduleSave()
+    }
+  }
+
+  /** Restores the persisted conversation, unless the user already started a new one. */
+  private async hydrate() {
+    const messages = await this.persistence.load(this.slug)
+    if (messages !== null && this.state.messages.length === 0 && !this.state.streaming) {
+      this.setState({ ...this.state, messages }, { persist: false })
+    }
+  }
+
+  /**
+   * Writes are debounced: streaming patches state many times per second, and
+   * only the settled conversation is worth storing.
+   */
+  private scheduleSave() {
+    if (this.saveTimer !== null) {
+      clearTimeout(this.saveTimer)
+    }
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null
+      void this.persistence.save(this.slug, this.state.messages)
+    }, 500)
   }
 
   private patchAssistant(id: string, patch: (message: ChatMessage) => ChatMessage) {
@@ -242,7 +274,12 @@ export class ChatStore {
 
   clear() {
     this.abort?.abort()
-    this.setState(EMPTY)
+    if (this.saveTimer !== null) {
+      clearTimeout(this.saveTimer)
+      this.saveTimer = null
+    }
+    this.setState(EMPTY, { persist: false })
+    void this.persistence.clear(this.slug)
   }
 }
 

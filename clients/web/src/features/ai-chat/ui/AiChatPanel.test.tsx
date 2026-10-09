@@ -91,4 +91,22 @@ describe('AiChatPanel', () => {
     expect(await screen.findByText('ai.error.history_too_long')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'ai.clear' })).toBeInTheDocument()
   })
+
+  it('clears the conversation with a two-click button', async () => {
+    const user = userEvent.setup()
+    replyWith([{ kind: 'text', text: 'answer' }, { kind: 'done' }])
+    render(<AiChatPanel slug="s" onAiChanged={vi.fn()} />)
+
+    await user.type(screen.getByRole('textbox', { name: 'ai.placeholder' }), 'hi')
+    await user.keyboard('{Enter}')
+    expect(await screen.findByText('answer')).toBeInTheDocument()
+
+    // The first click only arms the button; the conversation is still there.
+    await user.click(screen.getByRole('button', { name: 'ai.clear' }))
+    expect(screen.getByText('answer')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'ai.clearConfirm' }))
+    expect(screen.queryByText('answer')).not.toBeInTheDocument()
+    expect(screen.getByText('ai.empty')).toBeInTheDocument()
+  })
 })

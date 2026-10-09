@@ -235,6 +235,7 @@ export const en = {
     send: 'Send',
     stop: 'Stop',
     clear: 'Clear chat',
+    clearConfirm: 'Really clear?',
     toolRunning: {
       get_notebook_tree: 'Reading the contents…',
       search_pages: 'Searching pages…',

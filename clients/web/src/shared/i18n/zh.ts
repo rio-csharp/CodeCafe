@@ -231,6 +231,7 @@ export const zh = {
     send: '发送',
     stop: '停止',
     clear: '清空对话',
+    clearConfirm: '确认清空？',
     toolRunning: {
       get_notebook_tree: '正在查看目录…',
       search_pages: '正在搜索页面…',

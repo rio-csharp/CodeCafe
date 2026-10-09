@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { streamChat } from '../api/streamChat'
 import type { StreamChatParams } from '../api/streamChat'
 import { ChatStore, resetChatStores } from './store'
+import type { ChatMessage } from './store'
+import type { ChatPersistence } from './persistence'
 
 vi.mock('../api/streamChat', () => {
   class AiChatHttpError extends Error {
@@ -167,5 +169,100 @@ describe('ChatStore', () => {
     store.clear()
 
     expect(store.getState().messages).toEqual([])
+  })
+})
+
+describe('ChatStore persistence', () => {
+  class MemoryPersistence implements ChatPersistence {
+    readonly saved = new Map<string, ChatMessage[]>()
+    loadResult: ChatMessage[] | null = null
+
+    async load() {
+      return this.loadResult
+    }
+
+    async save(slug: string, messages: ChatMessage[]) {
+      this.saved.set(slug, messages)
+    }
+
+    async clear(slug: string) {
+      this.saved.delete(slug)
+    }
+  }
+
+  const storedTurn: ChatMessage[] = [
+    { id: 'm1', role: 'user', text: 'earlier', activities: [], state: 'done' },
+    { id: 'm2', role: 'assistant', text: 'answer', activities: [], state: 'done' },
+  ]
+
+  beforeEach(() => {
+    resetChatStores()
+    vi.mocked(streamChat).mockReset()
+  })
+
+  it('restores the stored conversation on creation', async () => {
+    const persistence = new MemoryPersistence()
+    persistence.loadResult = storedTurn
+    const store = new ChatStore('s', persistence)
+
+    await vi.waitFor(() => {
+      expect(store.getState().messages).toEqual(storedTurn)
+    })
+  })
+
+  it('ignores the stored conversation when the user already started a new one', async () => {
+    let resolveLoad!: (messages: ChatMessage[] | null) => void
+    const persistence: ChatPersistence = {
+      load: () =>
+        new Promise((resolve) => {
+          resolveLoad = resolve
+        }),
+      save: async () => {},
+      clear: async () => {},
+    }
+    replyWith([{ kind: 'done' }])
+    const store = new ChatStore('s', persistence)
+
+    await store.send('hi', vi.fn())
+    resolveLoad(storedTurn)
+    await vi.waitFor(() => {
+      expect(store.getState().messages.map((message) => message.text)).toEqual(['hi', ''])
+    })
+  })
+
+  it('saves the conversation after a turn, debounced', async () => {
+    vi.useFakeTimers()
+    try {
+      replyWith([{ kind: 'text', text: 'hello' }, { kind: 'done' }])
+      const persistence = new MemoryPersistence()
+      const store = new ChatStore('s', persistence)
+
+      await store.send('hi', vi.fn())
+      expect(persistence.saved.has('s')).toBe(false)
+
+      await vi.advanceTimersByTimeAsync(500)
+      expect(persistence.saved.get('s')).toHaveLength(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('clear() deletes the stored record and cancels the pending save', async () => {
+    vi.useFakeTimers()
+    try {
+      replyWith([{ kind: 'done' }])
+      const persistence = new MemoryPersistence()
+      persistence.saved.set('s', storedTurn)
+      const store = new ChatStore('s', persistence)
+
+      await store.send('hi', vi.fn())
+      store.clear()
+      await vi.advanceTimersByTimeAsync(1000)
+
+      expect(persistence.saved.has('s')).toBe(false)
+      expect(store.getState().messages).toEqual([])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
