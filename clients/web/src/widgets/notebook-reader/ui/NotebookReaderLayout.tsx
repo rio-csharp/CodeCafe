@@ -127,7 +127,7 @@ export function NotebookReaderLayout({
           </Link>
           <div className="min-w-0 flex-1">
             <Link
-              to={`/${notebook.slug}`}
+              to={`/notebooks/${encodeURIComponent(notebook.slug)}`}
               className="block truncate text-sm font-semibold text-ink transition-colors hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
               {notebook.title}
