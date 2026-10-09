@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { Navigate, useNavigate, useParams } from 'react-router'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { applyBlockOps, BlockList, assembleBlockTree, extractOutline } from '@/entities/block'
 import type { BlockNode, BlockOpWire } from '@/entities/block'
 import { flattenPages, getNotebookDetails, getNotebookTree, notebookKeys } from '@/entities/notebook'
@@ -29,12 +29,12 @@ import {
 } from '@/widgets/notebook-reader'
 
 /**
- * Route glue for `/notebooks/:slug` and `/notebooks/:slug/*`. Everything it
- * does is read-only: the notebook, its tree, and the requested page.
+ * Route glue for the notebook, page tree, reader and snapshot-based edit session.
  */
 export function NotebookReaderPage() {
   const { t } = useTranslation()
   const params = useParams()
+  const location = useLocation()
   const slug = params.slug ?? ''
 
   /** The splat is the page path, already decoded by the router. */
@@ -71,10 +71,28 @@ export function NotebookReaderPage() {
   const brand = t('brand.name')
 
   const queryClient = useQueryClient()
-  // The path of the page being edited; any other pagePath means "not editing".
-  // Deriving it this way keeps navigation from needing a reset effect.
-  const [editingPath, setEditingPath] = useState<string | null>(null)
-  const editing = editingPath !== null && editingPath === pagePath
+  // Freeze the page snapshot that started the edit. Background refetches (or
+  // AI edits) must not silently replace the diff baseline under a local draft.
+  const [editingSession, setEditingSession] = useState<{
+    slug: string
+    page: PageDetails
+    locationKey: string | null
+  } | null>(null)
+  if (
+    editingSession !== null &&
+    editingSession.locationKey === null &&
+    editingSession.slug === slug &&
+    normalizePagePath(editingSession.page.path) === pagePath
+  ) {
+    // A newly created page starts editing before navigation supplies its new
+    // location key. Latch that key on the first render at the target route.
+    setEditingSession({ ...editingSession, locationKey: location.key })
+  }
+  const editing =
+    editingSession !== null &&
+    editingSession.slug === slug &&
+    normalizePagePath(editingSession.page.path) === pagePath &&
+    (editingSession.locationKey === null || editingSession.locationKey === location.key)
 
   const savePage = useMutation({
     mutationFn: async ({
@@ -88,19 +106,24 @@ export function NotebookReaderPage() {
       previousTitle: string
       ops: BlockOpWire[]
     }) => {
-      const writes: Promise<unknown>[] = []
       if (title !== previousTitle) {
-        writes.push(updatePage(pageId, { title }))
+        await updatePage(pageId, { title })
+        // If the block batch fails next, a retry must not repeat the title half
+        // that already committed successfully.
+        setEditingSession((current) =>
+          current?.page.id === pageId
+            ? { ...current, page: { ...current.page, title } }
+            : current,
+        )
       }
       if (ops.length > 0) {
-        writes.push(applyBlockOps(pageId, ops))
+        await applyBlockOps(pageId, ops)
       }
-      await Promise.all(writes)
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: pageKeys.all })
       void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
-      setEditingPath(null)
+      setEditingSession(null)
     },
   })
 
@@ -110,8 +133,10 @@ export function NotebookReaderPage() {
     mutationFn: (parentPath: string | null) =>
       createPage({ slug, title: t('editor.untitled'), parentPath }),
     onSuccess: (created) => {
-      void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
-      setEditingPath(normalizePagePath(created.path))
+      // Page count lives in notebook details and list summaries; the new page
+      // also changes the tree, so invalidate the complete notebook namespace.
+      void queryClient.invalidateQueries({ queryKey: notebookKeys.all })
+      setEditingSession({ slug, page: created, locationKey: null })
       void navigate(toPageHref(slug, created.path))
     },
   })
@@ -265,7 +290,9 @@ export function NotebookReaderPage() {
       pageTitle={editing ? null : (page.data?.title ?? null)}
       canEdit={notebook.canWrite}
       onEdit={() => {
-        setEditingPath(pagePath)
+        if (page.data !== undefined) {
+          setEditingSession({ slug, page: page.data, locationKey: location.key })
+        }
       }}
       onAddPage={notebook.canWrite ? handleAddPage : undefined}
       prevPage={prevPage}
@@ -275,9 +302,9 @@ export function NotebookReaderPage() {
         void page.refetch()
       }}
     >
-      {editing && page.data !== undefined ? (
+      {editing && editingSession !== null ? (
         <PageEditor
-          page={page.data}
+          page={editingSession.page}
           saving={savePage.isPending}
           error={
             savePage.isError
@@ -287,11 +314,16 @@ export function NotebookReaderPage() {
               : null
           }
           onSave={(title, ops) => {
-            savePage.mutate({ pageId: page.data.id, title, previousTitle: page.data.title, ops })
+            savePage.mutate({
+              pageId: editingSession.page.id,
+              title,
+              previousTitle: editingSession.page.title,
+              ops,
+            })
           }}
           onCancel={() => {
             savePage.reset()
-            setEditingPath(null)
+            setEditingSession(null)
           }}
         />
       ) : (
