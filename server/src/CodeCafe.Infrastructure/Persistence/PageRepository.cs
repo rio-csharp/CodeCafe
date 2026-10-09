@@ -12,6 +12,26 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
             .Include(page => page.Shares)
             .FirstOrDefaultAsync(page => page.Id == pageId, cancellationToken);
 
+    public async Task LockNotebookForPageStructureAsync(
+        Guid pageId,
+        bool includeTrashed,
+        CancellationToken cancellationToken)
+    {
+        if (includeTrashed)
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"""SELECT 1 FROM notebooks WHERE "Id" = (SELECT "NotebookId" FROM pages WHERE "Id" = {pageId}) AND "DeletedAtUtc" IS NULL FOR UPDATE""",
+                cancellationToken);
+            dbContext.DetachUnchangedPageStructureEntities();
+            return;
+        }
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""SELECT 1 FROM notebooks WHERE "Id" = (SELECT "NotebookId" FROM pages WHERE "Id" = {pageId} AND "DeletedAtUtc" IS NULL) AND "DeletedAtUtc" IS NULL FOR UPDATE""",
+            cancellationToken);
+        dbContext.DetachUnchangedPageStructureEntities();
+    }
+
     public async Task<Page?> FindBySlugAsync(Guid notebookId, string slug, CancellationToken cancellationToken)
         => await dbContext.Pages
             .Include(page => page.Shares)

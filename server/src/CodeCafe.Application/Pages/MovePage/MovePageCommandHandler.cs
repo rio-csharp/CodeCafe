@@ -20,6 +20,9 @@ public sealed class MovePageCommandHandler(
 {
     public async Task<Result<PageDetailsDto>> Handle(MovePageCommand command, CancellationToken cancellationToken)
     {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await pages.LockNotebookForPageStructureAsync(command.PageId, includeTrashed: false, cancellationToken);
+
         var context = await PageAccess.RequireWriteAsync(command.PageId, currentUserAccessor, notebooks, pages, cancellationToken);
         if (context.Error is { } error)
         {
@@ -63,6 +66,7 @@ public sealed class MovePageCommandHandler(
         PageChain.Move(page, notebook, newParent, ancestors, oldSiblings, newSiblings, insertIndex);
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         var newAncestors = newParent is null
             ? (IReadOnlyList<Page>)[]

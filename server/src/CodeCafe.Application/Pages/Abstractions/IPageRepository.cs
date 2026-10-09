@@ -7,6 +7,10 @@ public interface IPageRepository
 {
     Task<Page?> FindByIdAsync(Guid pageId, CancellationToken cancellationToken);
 
+    // Resolves the page's notebook and locks that notebook row. Call inside a transaction before
+    // loading the page; includeTrashed is reserved for restore operations.
+    Task LockNotebookForPageStructureAsync(Guid pageId, bool includeTrashed, CancellationToken cancellationToken);
+
     Task<Page?> FindBySlugAsync(Guid notebookId, string slug, CancellationToken cancellationToken);
 
     // Non-trashed pages of the notebook, ordered by SortKey; tree assembly happens in memory.

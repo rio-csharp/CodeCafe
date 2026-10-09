@@ -30,6 +30,32 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
                     cancellationToken
                 );
 
+    public async Task LockPageStructureAsync(string idOrSlug, CancellationToken cancellationToken)
+    {
+        if (Guid.TryParse(idOrSlug, out var id))
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"""SELECT 1 FROM notebooks WHERE "Id" = {id} AND "DeletedAtUtc" IS NULL FOR UPDATE""",
+                cancellationToken);
+            dbContext.DetachUnchangedPageStructureEntities();
+            return;
+        }
+
+        var slug = idOrSlug.Trim().ToLowerInvariant();
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""SELECT 1 FROM notebooks WHERE "Slug" = {slug} AND "DeletedAtUtc" IS NULL FOR UPDATE""",
+            cancellationToken);
+        dbContext.DetachUnchangedPageStructureEntities();
+    }
+
+    public async Task LockLifecycleAsync(Guid notebookId, CancellationToken cancellationToken)
+    {
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"""SELECT 1 FROM notebooks WHERE "Id" = {notebookId} FOR UPDATE""",
+            cancellationToken);
+        dbContext.DetachUnchangedPageStructureEntities();
+    }
+
     public Task<int> CountVisibleAsync(Guid? userId, NotebookFilter filter, CancellationToken cancellationToken)
         => VisibleTo(userId, filter).CountAsync(cancellationToken);
 
