@@ -86,13 +86,48 @@ public sealed class ListFavoritePagesQueryHandlerTests
         var handler = new ListFavoritePagesQueryHandler(
             new StubCurrentUserAccessor(null),
             new StubNotebookRepository(),
-            new StubPageRepository()
+            new StubPageRepository(),
+            new StubPasswordHasher()
         );
 
         var result = await handler.Handle(new ListFavoritePagesQuery(), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
         Assert.Equal(AuthErrors.UserNotFound, result.Error);
+    }
+
+    [Fact]
+    public async Task Handle_ExcludesFavoriteAfterTheCallerLosesReadAccess()
+    {
+        var owner = SeedOwner();
+        var formerReader = User.Create("reader@example.com", "reader@example.com", "Reader", "hash");
+        var notebook = SeedNotebook(owner, "Private", "private");
+        var page = Page.Create(notebook.Id, null, "Formerly shared", "formerly-shared", "a");
+        var (handler, pages) = CreateHandler(formerReader.Id, [notebook], [page]);
+        await pages.SetFavoriteAsync(page.Id, formerReader.Id, true, CancellationToken.None);
+
+        var result = await handler.Handle(new ListFavoritePagesQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value!);
+    }
+
+    [Fact]
+    public async Task Handle_KeepsFavoriteWhenAnAncestorIsSharedWithTheCaller()
+    {
+        var owner = SeedOwner();
+        var reader = User.Create("reader@example.com", "reader@example.com", "Reader", "hash");
+        var notebook = SeedNotebook(owner, "Private", "private");
+        var parent = Page.Create(notebook.Id, null, "Shared", "shared", "a");
+        var child = Page.Create(notebook.Id, parent.Id, "Favorite", "favorite", "a");
+        parent.Share(reader.Id, Domain.Sharing.CollaboratorRole.Viewer);
+        var (handler, pages) = CreateHandler(reader.Id, [notebook], [parent, child]);
+        await pages.SetFavoriteAsync(child.Id, reader.Id, true, CancellationToken.None);
+
+        var result = await handler.Handle(new ListFavoritePagesQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(child.Id, Assert.Single(result.Value!).PageId);
     }
 
     private static User SeedOwner() => User.Create("owner@example.com", "owner@example.com", "Owner", "hash");
@@ -113,7 +148,8 @@ public sealed class ListFavoritePagesQueryHandlerTests
         var handler = new ListFavoritePagesQueryHandler(
             new StubCurrentUserAccessor(new CurrentUser(currentUserId)),
             notebookRepository,
-            pages
+            pages,
+            new StubPasswordHasher()
         );
         return (handler, pages);
     }

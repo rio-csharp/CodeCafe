@@ -16,6 +16,7 @@ public sealed class NotebookRepository(AppDbContext dbContext) : INotebookReposi
 
     public async Task<IReadOnlyList<Notebook>> FindByIdsAsync(IReadOnlyCollection<Guid> notebookIds, CancellationToken cancellationToken)
         => await dbContext.Notebooks
+            .Include(notebook => notebook.Shares)
             .Where(notebook => notebookIds.Contains(notebook.Id))
             .ToListAsync(cancellationToken);
 
