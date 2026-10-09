@@ -193,6 +193,7 @@ export const en = {
     refresh: 'Refresh',
     copyLink: 'Copy link',
     linkCopied: 'Copied',
+    copyFailed: 'Could not copy. Copy the address from your browser.',
     outline: 'Outline',
     edit: 'Edit',
     addPage: 'New page',

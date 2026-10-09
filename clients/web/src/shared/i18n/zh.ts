@@ -189,6 +189,7 @@ export const zh = {
     refresh: '刷新',
     copyLink: '复制链接',
     linkCopied: '已复制',
+    copyFailed: '复制失败，请从浏览器地址栏复制链接。',
     outline: '大纲',
     edit: '编辑',
     addPage: '新建页面',
