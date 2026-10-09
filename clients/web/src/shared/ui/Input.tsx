@@ -9,7 +9,7 @@ const BASE_CLASS =
 
 const STATE_CLASS: Record<'valid' | 'invalid', string> = {
   valid: 'border-line focus:border-accent',
-  invalid: 'border-accent-strong focus:ring-accent-strong',
+  invalid: 'border-danger focus:border-danger focus:ring-danger',
 }
 
 export function Input({ invalid = false, className, ...rest }: InputProps) {
@@ -17,5 +17,5 @@ export function Input({ invalid = false, className, ...rest }: InputProps) {
     .filter((value): value is string => Boolean(value))
     .join(' ')
 
-  return <input className={classes} {...rest} />
+  return <input className={classes} aria-invalid={invalid || undefined} {...rest} />
 }

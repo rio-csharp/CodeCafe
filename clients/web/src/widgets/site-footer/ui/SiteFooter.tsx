@@ -5,8 +5,8 @@ export function SiteFooter() {
   const { t } = useTranslation()
 
   return (
-    <footer className="border-t border-line bg-band">
-      <Container className="py-1.5 text-center text-xs text-band-ink">
+    <footer className="border-t border-line bg-canvas">
+      <Container className="py-6 text-center text-xs text-muted">
         {t('footer.line')}
       </Container>
     </footer>

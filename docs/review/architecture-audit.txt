@@ -1,0 +1,104 @@
+CodeCafe 4.0 架构审查与改进记录
+审查日期：2026-10-09
+基线：release/4.0，11d4a28
+开发分支：feature/4.0-quality-and-experience
+
+一、结论与阅读范围
+
+这是一个有清晰分层和较强测试基础的笔记产品，不能客观地评价为“整体设计差”。真正的薄弱点集中在：会话与缓存隔离、编辑时的并发数据边界、页面结构写事务、权限撤销后的派生查询，以及交付验证缺口。大规模换框架或重写不会自动解决这些问题。
+
+审查覆盖了全仓文件清单、全部架构/里程碑文档、项目配置和启动链路；深入读取了前端路由、会话、API、编辑器、阅读器、AI聊天及首页组件，后端身份认证、访问控制、笔记本/页面/块/历史/搜索/回收站/MCP/AI关键调用链、数据仓储与相关测试。生成的迁移快照、DTO及全部测试断言并非逐行语义审计。此记录不声称已发现所有缺陷，也不把测试通过等同于项目“完美”。
+
+二、当前架构
+
+浏览器：React 19 / TypeScript / Vite / Tailwind
+  app → pages → widgets → features → entities → shared
+  TanStack Query 管服务器数据，Zustand 管会话，编辑器草稿在组件本地，AI会话在独立store及IndexedDB。
+  shared/api 负责Result envelope解包、JWT、刷新重放；AI SSE为独立流式传输。
+
+服务端：ASP.NET Core 10
+  Host：REST controllers、MCP入口、错误映射、认证/限流/健康检查、依赖组装。
+  Application：MediatR用例、FluentValidation、Result错误、权限规则、仓储接口。
+  Domain：Notebook/Page/Block聚合、链指针、排序键、领域事件。
+  Infrastructure：EF Core/Npgsql、PostgreSQL仓储、密码/JWT/refresh、AI供应商适配。
+
+数据：PostgreSQL。笔记本/页面支持分享、访问码、软删除与恢复；页面和块同时维护层级、排序与兄弟链。
+协议：普通REST采用Result envelope；导出采用Markdown；AI采用SSE；MCP复用Application用例。
+
+已有优点：依赖方向较明确；默认拒绝匿名认证；领域不变量有测试；块操作已有事务/版本检查；SQL使用参数化调用；搜索已有专门索引；前端按路由分包并支持中英/深浅主题。继续保留这些基础。
+
+三、本分支针对已证实问题的改进
+
+1. 会话竞态与身份隔离（高）
+   旧refresh可能在logout或新登录后回写令牌，旧401也可能清掉新会话。加入generation检查及跨generation的single-flight隔离；bootstrap只提交仍属于启动中的结果。
+   apiFetch在请求/刷新/重试的异步边界检查会话版本，旧账号的401请求不会使用新账号凭据重放写操作。
+   文件：clients/web/src/shared/api/{session,client}.ts、entities/session/model/session.ts及测试。
+   QueryClient按身份隔离，身份改变时重新挂载观察者并取消/清空旧缓存，防止私有页面、历史记录与迟到响应进入另一用户会话。SessionBootstrap位于身份边界外，不因身份改变再次刷新。
+   文件：app/providers.tsx、providers.test.tsx。
+   AI聊天原先仅以slug为键，换账号能碰到上一账号的聊天。现以内存及持久化双重[userId,slug]键隔离，旧slug-only历史因无法确认所有者而不自动读取或迁移。底层旧数据未被主动删除。
+   文件：features/ai-chat/model/store.ts、ui/AiChatPanel.tsx及测试。
+   清空聊天还加入generation及持久化写队列，避免迟到hydrate/stream/save把已清空内容带回来。
+
+2. 编辑数据保护（高）
+   原先draft只初始化一次，但diff基线随React Query后台更新变化，可能将远端新内容误判为本地删除。现冻结编辑起点快照并绑定notebook、page、路由访问实例。
+   标题与blocks从并发改为有序提交；标题成功而blocks失败时更新已提交标题基线，重试不会重发标题。
+   这仍不是跨HTTP请求的数据库原子保存；网络在服务端已提交后断开仍需幂等协议解决，不夸大为完全消除部分提交。
+   文件：pages/notebook/NotebookReaderPage.tsx及测试。
+   修复粘贴只插入而未替换选区的问题，覆盖单行、多行、跨marks选区；RightPanel补齐键盘tabs与ARIA关联。
+
+3. 页面结构并发（高）
+   原先create/move/delete/restore等先读兄弟链再裸写，两个请求可能覆盖tail/head指针。
+   统一结构写入事务与notebook行锁，在加载结构实体前获取锁，覆盖创建、导入、移动、删除、恢复、彻底删除页面。
+   真实PostgreSQL测试覆盖create/create、move/delete、restore/create，并检查完整链与唯一slug/sort key。
+   锁后清除已跟踪的未修改结构实体，使AI连续工具调用也重新读取最新结构；增加旧scoped context及实际锁等待回归。
+   笔记本恢复、单项彻底删除、清空回收站统一生命周期行锁并锁后复核状态，避免迟到purge删掉已经恢复的内容；批量锁按稳定ID排序。
+   文件：Application/Pages、Application/Trash相关handlers，Infrastructure/Persistence/{NotebookRepository,PageRepository}.cs，PageStructureConcurrencyTests.cs。
+
+4. 授权与HTTP边界（高/中）
+   收藏读取原先只检查notebook存在，权限撤销后仍可能返回私有标题/ID；现在复核当前notebook/page/ancestor share权限。
+   匿名无权读树时提前返回，不先加载整本pages/shares。
+   null/畸形JSON不再落到controller空引用，统一400 Result验证错误。
+   携带访问码的匿名读取端点增加用户/IP限流，真实第11次请求验证429；普通无访问码公开读取不消耗该额度。
+   文件：ListFavoritePagesQueryHandler、GetNotebookTreeQueryHandler、ServiceCollectionExtensions、RateLimiterExtensions及端点测试。
+
+5. 产品体验与视觉
+   首页采用一致品牌导航、咖啡色系与衬线标题、书本插画、明确的书架/搜索/排序层级；卡片增加可读性与已有标签呈现；登录注册沿用同一视觉语言。
+   共享按钮增加on-accent前景token，实测主按钮light对比5.06:1、dark对比6.37:1；不宣称所有页面全部满足WCAG。
+   添加跳过导航、首页键盘tabs、加载提示、减少动效偏好；DialogShell管理初始焦点、Tab环绕、Escape及关闭恢复焦点，创建笔记本复用共享DialogShell。
+   分页/刷新失败时保留已有卡片，并显示错误和重试。
+   修复阅读器标题错误路由、复制失败处理、创建页面后pageCount缓存不刷新，以及首页缺失翻译。
+
+6. 交付与维护
+   新增CI：前端frozen install/lint/typecheck/test/build，后端restore/build/test；是否设置为required check仍取决于GitHub仓库设置，本地没有修改远端权限。
+   补根README与当前架构文档；固定Node/.NET工具链；compose仅绑定loopback并增加healthcheck。
+   修复Host测试夹具依赖未提交的本地JWT配置。基线后端744项中64项因此失败，修复后可在干净环境运行。
+   无新增产品依赖，无数据库schema迁移，无提交或推送。
+
+四、客观优化建议与剩余边界（未伪装成本次已完成）
+
+优先级高：
+- 页面标题与blocks的跨请求原子提交、幂等键及明确冲突恢复UI，应设计为一个Application用例/事务。当前有序提交与基线保护不能替代这个产品契约。
+- 生产部署定义仍不在本仓库。建议将前端静态服务/SPA fallback、后端镜像、迁移任务、配置schema和回滚策略版本化；上线前必须在目标部署环境验证，不能凭本机测试宣布生产可用。
+- 将浏览器全栈烟测接入持续集成。scripts/browser-smoke.js已在外部Playwright浏览器运行时实测，但本次未新增Playwright依赖，未虚构npm e2e命令，也未自动集成浏览器CI。
+
+优先级中：
+- 不同浏览器标签页的refresh single-flight不共享；跨标签同时轮换需Web Locks/BroadcastChannel或服务端并发轮换策略，当前只验证同标签页会话隔离。
+- 搜索结果逐页加载祖先，深层目录下会有N+1；先量化SQL数/延迟，再选批量加载或recursive CTE，避免凭感觉上缓存。
+- 页面分享路径包含不可见祖先slug。这是现有路径契约，可能暴露由标题派生的信息；应先明确“分享是否允许暴露祖先路径”的产品边界再调整链接模型。
+- 生产CORS默认localhost、自动启动迁移与单实例假设、反向代理信任配置仍需部署环境验证。
+- refresh/PAT过期数据清理、历史保留政策、AI请求预算与重试策略需结合真实用量设计，未做无依据性能承诺。
+- PageEditor/TextBlockEditor体积大；下一步在现有回归保护下按selection/paste/history/drag边界拆分，保持操作模型唯一，不新增多层包装。
+- NotebookCardMenu/BlockHandle的完整menu方向键体验，以及移动阅读器drawer的焦点范围还需进一步完善。
+- 部分历史milestone文档仍作为历史参考，不应当成当前源码说明。
+
+五、验证与复现说明
+
+前端：从clients/web运行 npm run lint、npm run typecheck、npm run test、npm run build（安装统一使用锁定pnpm，未生成package-lock）。
+后端：dotnet build server/CodeCafe.slnx；dotnet test --solution server/CodeCafe.slnx，含真实Testcontainers PostgreSQL。
+浏览器：启动一次性数据库和本地Host/Vite，以browser_run_code_unsafe的filename运行scripts/browser-smoke.js。脚本会在本地测试数据库创建唯一账号及笔记本，请勿用于生产。
+烟测覆盖：注册→公开笔记本→页面编辑→保存→刷新持久化→标题导航→键盘书架→深色主题→1440/768/390/320宽度→退出→匿名阅读且无编辑按钮。
+实际空库启动已执行仓库两条EF migrations并跑通CRUD，但这不等同于所有历史生产版本升级都已验证。
+AI未配置外部模型密钥，未调用付费供应商；相关修改通过受控流与持久化回归测试验证，真实供应商端到端是明确验证缺口。
+
+截图：home-before.png与home-after-light.png采用相同单条测试fixture，非生产数据；另有home-after-dark.png、home-mobile.png、login-after.png。
+最终测试统计见同目录verification.txt。

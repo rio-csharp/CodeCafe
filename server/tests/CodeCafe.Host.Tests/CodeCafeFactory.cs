@@ -14,6 +14,8 @@ public sealed class CodeCafeFactory : WebApplicationFactory<Program>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Database:MigrateOnStartup"] = "false",
+                // Deterministic test-only key; production receives its key from secret configuration.
+                ["Auth:Jwt:SigningKey"] = "codecafe-host-tests-only-signing-key",
             }));
     }
 }

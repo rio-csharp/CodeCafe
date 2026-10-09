@@ -117,6 +117,75 @@ describe('refreshSession', () => {
     expect(window.localStorage.getItem(REFRESH_STORAGE_KEY)).toBe('refresh-2')
   })
 
+  it('does not restore a session when it is cleared during an in-flight refresh', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    stubFetch(async () => {
+      await gate
+      return success(authSession({ accessToken: 'late-access', refreshToken: 'late-refresh' }))
+    })
+    setSession(authSession())
+
+    const pending = refreshSession()
+    clearSession()
+    release()
+
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    expect(getAccessToken()).toBeNull()
+    expect(getRefreshToken()).toBeNull()
+  })
+
+  it('does not let an old refresh failure clear a newer login', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    stubFetch(async () => {
+      await gate
+      return failure('invalid_refresh_token', 'Unauthorized', 401)
+    })
+    setSession(authSession())
+
+    const pending = refreshSession()
+    setSession(authSession({ accessToken: 'new-access', refreshToken: 'new-refresh' }))
+    release()
+
+    await expect(pending).rejects.toBeInstanceOf(ApiError)
+    expect(getAccessToken()).toBe('new-access')
+    expect(getRefreshToken()).toBe('new-refresh')
+  })
+
+  it('starts a new refresh instead of reusing an in-flight request from an older session', async () => {
+    let releaseFirst: () => void = () => undefined
+    const firstGate = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    let calls = 0
+    const fetchMock = stubFetch(async () => {
+      calls += 1
+      if (calls === 1) {
+        await firstGate
+        return success(authSession({ accessToken: 'old-access', refreshToken: 'old-refresh' }))
+      }
+      return success(authSession({ accessToken: 'new-access', refreshToken: 'new-refresh' }))
+    })
+    setSession(authSession())
+
+    const oldRefresh = refreshSession()
+    clearSession()
+    window.localStorage.setItem(REFRESH_STORAGE_KEY, 'replacement-refresh')
+    const newRefresh = refreshSession()
+
+    await expect(newRefresh).resolves.toMatchObject({ accessToken: 'new-access' })
+    releaseFirst()
+    await expect(oldRefresh).rejects.toMatchObject({ name: 'AbortError' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(getAccessToken()).toBe('new-access')
+    expect(getRefreshToken()).toBe('new-refresh')
+  })
+
   it('posts the stored refresh token as the credential', async () => {
     const fetchMock = stubFetch(async () => success(authSession()))
     window.localStorage.setItem(REFRESH_STORAGE_KEY, 'refresh-1')

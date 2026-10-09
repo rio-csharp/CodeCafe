@@ -24,16 +24,30 @@ public sealed class PurgeTrashedNotebooksCommandHandler(
             return Result.Failure(AuthErrors.UserNotFound);
         }
 
-        while (await notebooks.ListTrashedAsync(userId.Value, skip: 0, BatchSize, cancellationToken) is { Count: > 0 } batch)
+        while (true)
         {
-            foreach (var notebook in batch)
+            await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+            var ids = (await notebooks.ListTrashedAsync(userId.Value, skip: 0, BatchSize, cancellationToken))
+                .Select(notebook => notebook.Id)
+                .Order()
+                .ToList();
+            if (ids.Count == 0)
             {
-                notebooks.Remove(notebook);
+                return Result.Success();
+            }
+
+            foreach (var notebookId in ids)
+            {
+                await notebooks.LockLifecycleAsync(notebookId, cancellationToken);
+                var notebook = await notebooks.FindTrashedByIdAsync(notebookId, cancellationToken);
+                if (notebook is not null && notebook.OwnerId == userId.Value)
+                {
+                    notebooks.Remove(notebook);
+                }
             }
 
             await unitOfWork.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
         }
-
-        return Result.Success();
     }
 }

@@ -3,6 +3,19 @@ export const zh = {
     name: 'CodeCafe',
   },
   home: {
+    workspace: '你的创作空间',
+    workspaceHint: '让想法有处安放，从上次停下的地方继续。',
+    explore: '逛逛书架',
+    coverTitle: '好想法，慢慢酝酿。',
+    coverCaption: '记录 · 思考 · 分享',
+    collection: '笔记收藏馆',
+    yourShelf: '你的书架',
+    shelfLabel: '笔记本书架',
+    sortLabel: '笔记本排序',
+    skipToShelf: '跳转到笔记本',
+    emptySearch: '没有找到与「{{query}}」匹配的笔记本。',
+    emptyMineHint: '记录灵感，私藏心得，也可以在准备好后分享出去。',
+    emptyFavoritesHint: '为喜欢的笔记本点亮星标，下次就能在这里找到。',
     overline: '共享笔记',
     greeting: {
       morning: '早上好，{{name}}。',
@@ -173,6 +186,7 @@ export const zh = {
     reload: '重新加载',
   },
   reader: {
+    copyFailed: '复制失败，请从浏览器地址栏复制链接。',
     contents: '目录',
     searchPages: '搜索页面',
     noMatchingPages: '没有匹配的页面',

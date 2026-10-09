@@ -1,3 +1,4 @@
+import { randomId } from '@/shared/lib'
 import { assembleBlockTree } from '@/entities/block'
 import type { BlockDto, BlockNode } from '@/entities/block'
 
@@ -36,7 +37,7 @@ export function toEditorDraft(blocks: readonly BlockDto[]): EditorBlock[] {
 }
 
 export function mintTempId(): string {
-  return `temp-${crypto.randomUUID()}`
+  return `temp-${randomId()}`
 }
 
 /** A fresh paragraph, unsaved until the batch lands. */

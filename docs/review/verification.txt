@@ -1,0 +1,58 @@
+CodeCafe final verification — 2026-10-09
+Branch: feature/4.0-quality-and-experience
+Base: release/4.0 at 11d4a28
+
+Frontend (clients/web)
+  npm run lint: PASS
+  npm run typecheck: PASS
+  npm run test: 52 files / 399 tests PASS (rerun before submission)
+  npm run build: PASS (TypeScript + Vite production build)
+  Dependencies installed with corepack pnpm install --frozen-lockfile.
+  No dependencies or lockfile changes were introduced.
+
+Backend
+  .NET SDK 10.0.401 installed for this session at /tmp/codecafe-dotnet.
+  Debug build: PASS, 0 warnings, 0 errors.
+  Release build: PASS, 0 warnings, 0 errors.
+  dotnet test --solution server/CodeCafe.slnx: 767 passed, 0 failed, 0 skipped.
+  Domain: 93; Application: 546; Infrastructure: 49; Host: 79.
+  Infrastructure runs against real disposable PostgreSQL via Testcontainers.
+  Includes stale tracked context, explicit row-lock waiting, create/move/restore
+  races, late notebook purge/purge-all after restore, and savepoint recovery.
+  Host verifies malformed/null JSON = 400 and access-code request 11 = 429.
+
+Browser
+  scripts/browser-smoke.js: PASS against the final Release Host and Vite.
+  Real local API + isolated PostgreSQL; no API mocking in the smoke run.
+  Registration, notebook creation, editing, persistence after reload,
+  notebook-root navigation, keyboard tabs, dark mode, 320/390/768/1440px,
+  logout, anonymous public reading, no anonymous editing control.
+  Additional 640/768/900px homepage layout checks: no horizontal overflow.
+  Primary button contrast: light 5.06:1; dark 6.37:1.
+  Screenshots under docs/review use a labelled fixture, not production data.
+
+Other
+  docker compose config --quiet: PASS.
+  git diff --check: PASS.
+  Independent read-only review confirmed both backend concurrency blockers closed.
+  Temporary API, Vite process and codecafe-quality-review-db container stopped.
+
+Explicit limits
+  GitHub CI configuration added; no remote CI run or branch-protection change.
+  Browser smoke uses the external Playwright runtime, not an npm e2e script or CI job.
+  AI provider not configured or contacted; AI behavior tested with controlled streams.
+  No production deploy, production upgrade or load benchmark performed.
+  Architecture report lists remaining cross-tab refresh, atomic page-save,
+  deployment, N+1, menu/drawer accessibility and retention-policy considerations.
+
+LAN preview and submission verification
+  Secure UUID fallback added for HTTP LAN browsers without crypto.randomUUID.
+  Frontend lint, typecheck, all 399 tests and production build rerun before submission.
+  Backend all 767 tests rerun before submission, including real PostgreSQL tests.
+  Public showcase notebook has 5 pages; anonymous reading and table rendering verified.
+  Preview services remain running; showcase data and account credentials are outside Git.
+
+Known issue found while creating the showcase
+  Markdown import returned HTTP 500 with an EF circular insert dependency between
+  Page.FirstBlockId and Block.PageId / NextSiblingId. This is not fixed by this change.
+  Showcase content was created successfully using the page and block APIs instead.

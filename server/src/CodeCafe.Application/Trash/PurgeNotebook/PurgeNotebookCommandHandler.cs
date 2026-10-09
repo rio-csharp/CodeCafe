@@ -15,6 +15,9 @@ public sealed class PurgeNotebookCommandHandler(
 {
     public async Task<Result> Handle(PurgeNotebookCommand command, CancellationToken cancellationToken)
     {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await notebooks.LockLifecycleAsync(command.NotebookId, cancellationToken);
+
         var context = await NotebookAccess.RequireTrashedOwnerAsync(command.NotebookId, currentUserAccessor, notebooks, cancellationToken);
         if (context.Error is { } error)
         {
@@ -26,6 +29,7 @@ public sealed class PurgeNotebookCommandHandler(
         // Shares, favorites and pages cascade with the notebook row.
         notebooks.Remove(notebook);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return Result.Success();
     }

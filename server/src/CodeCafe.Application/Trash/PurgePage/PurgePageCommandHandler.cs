@@ -19,6 +19,9 @@ public sealed class PurgePageCommandHandler(
 {
     public async Task<Result> Handle(PurgePageCommand command, CancellationToken cancellationToken)
     {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await pages.LockNotebookForPageStructureAsync(command.PageId, includeTrashed: true, cancellationToken);
+
         var page = await pages.FindTrashedByIdAsync(command.PageId, cancellationToken);
         if (page is null)
         {
@@ -49,6 +52,7 @@ public sealed class PurgePageCommandHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return Result.Success();
     }

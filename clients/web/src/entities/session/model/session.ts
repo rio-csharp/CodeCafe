@@ -26,10 +26,16 @@ export function bootstrapSession(): () => void {
 
   refreshSession()
     .then((session) => {
-      useSessionStore.getState().setAuthenticated(session.user)
+      const state = useSessionStore.getState()
+      if (state.status === 'unknown') {
+        state.setAuthenticated(session.user)
+      }
     })
     .catch(() => {
-      useSessionStore.getState().setAnonymous()
+      const state = useSessionStore.getState()
+      if (state.status === 'unknown') {
+        state.setAnonymous()
+      }
     })
 
   return unsubscribe

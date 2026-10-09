@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -18,17 +18,49 @@ export interface DialogShellProps {
 export function DialogShell({ title, onClose, wide = false, children }: DialogShellProps) {
   const { t } = useTranslation()
 
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose }, [onClose])
+
   useEffect(() => {
+    const dialog = dialogRef.current
+    if (dialog === null) return
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusable = () => Array.from(dialog.querySelectorAll<HTMLElement>(
+      'button, a[href], input:not([type="hidden"]), select, textarea, audio[controls], video[controls], [contenteditable="true"], [tabindex]',
+    )).filter((element) => !element.matches('[disabled], [tabindex="-1"]') && !element.closest('[hidden], [inert]') && getComputedStyle(element).display !== 'none' && getComputedStyle(element).visibility !== 'hidden')
+    ;(focusable()[0] ?? dialog).focus()
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose()
+        event.preventDefault()
+        closeRef.current()
+      }
+      if (event.key === 'Tab') {
+        const elements = focusable()
+        const first = elements[0]
+        const last = elements.at(-1)
+        if (first === undefined || last === undefined) {
+          event.preventDefault()
+          dialog.focus()
+        } else if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+          event.preventDefault()
+          last.focus()
+        } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+          event.preventDefault()
+          first.focus()
+        }
       }
     }
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      if (opener?.isConnected) opener.focus()
     }
-  }, [onClose])
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
@@ -39,6 +71,8 @@ export function DialogShell({ title, onClose, wide = false, children }: DialogSh
       />
 
       <div
+        ref={dialogRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={title}

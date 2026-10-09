@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using CodeCafe.Application;
+using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Host.Mcp;
 using CodeCafe.Infrastructure;
@@ -19,8 +20,6 @@ internal static class ServiceCollectionExtensions
             options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
             options.AddOperationTransformer<BearerSecurityRequirementTransformer>();
         });
-        // Suppressing the invalid-model-state filter keeps the 501 contract tests (empty JSON
-        // bodies) reachable; validation will live in a MediatR pipeline behavior instead.
         services.AddControllers(options =>
             {
                 options.Filters.Add(new ResultStatusCodeFilter());
@@ -30,7 +29,21 @@ internal static class ServiceCollectionExtensions
             .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         services.ConfigureHttpJsonOptions(options =>
             options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-        services.Configure<ApiBehaviorOptions>(options => options.SuppressModelStateInvalidFilter = true);
+        services.Configure<ApiBehaviorOptions>(options =>
+            options.InvalidModelStateResponseFactory = context =>
+            {
+                var details = context.ModelState
+                    .SelectMany(entry => entry.Value?.Errors.Select(error =>
+                        string.IsNullOrWhiteSpace(error.ErrorMessage)
+                            ? entry.Key
+                            : $"{entry.Key}: {error.ErrorMessage}") ?? [])
+                    .ToList();
+                var message = details.Count == 0
+                    ? "The request body is invalid."
+                    : string.Join("; ", details);
+                return new BadRequestObjectResult(Result.Failure(
+                    new Error("validation_error", message, ErrorKind.Validation)));
+            });
         services.AddCodeCafeApplication();
         services.AddCodeCafeInfrastructure(configuration);
         services.AddProblemDetails();

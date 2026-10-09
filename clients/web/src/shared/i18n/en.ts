@@ -3,6 +3,19 @@ export const en = {
     name: 'CodeCafe',
   },
   home: {
+    workspace: 'Your writing space',
+    workspaceHint: 'A little room for your next big idea. Pick up where you left off.',
+    explore: 'Explore the shelves',
+    coverTitle: 'Good ideas, freshly brewed.',
+    coverCaption: 'A space to think & share',
+    collection: 'The collection',
+    yourShelf: 'Your bookshelf',
+    shelfLabel: 'Notebook collection',
+    sortLabel: 'Sort notebooks',
+    skipToShelf: 'Skip to notebooks',
+    emptySearch: 'No notebooks match “{{query}}”.',
+    emptyMineHint: 'Collect your ideas, keep them private, or share them when you’re ready.',
+    emptyFavoritesHint: 'Star a notebook to keep it close at hand.',
     overline: 'SHARED NOTEBOOKS',
     greeting: {
       morning: 'Good morning, {{name}}.',
@@ -177,6 +190,7 @@ export const en = {
     reload: 'Reload',
   },
   reader: {
+    copyFailed: 'Could not copy. Copy the address from your browser.',
     contents: 'Contents',
     searchPages: 'Search pages',
     noMatchingPages: 'No pages match your search',

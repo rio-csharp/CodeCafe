@@ -66,6 +66,21 @@ export function insertTextAt(
   return mergeAdjacentSpans([...left, { text, marks }, ...right])
 }
 
+/** Replaces a plain-text range and inherits the nearest surrounding marks. */
+export function replaceTextRange(
+  spans: readonly SpanDto[],
+  start: number,
+  end: number,
+  text: string,
+): SpanDto[] {
+  const from = Math.max(0, Math.min(start, end))
+  const to = Math.max(from, Math.max(start, end))
+  const [left, rest] = splitSpansAt(spans, from)
+  const [, right] = splitSpansAt(rest, to - from)
+  const marks = [...(left[left.length - 1]?.marks ?? right[0]?.marks ?? [])]
+  return mergeAdjacentSpans([...left, { text, marks }, ...right])
+}
+
 /** Value equality, marks included; used to tell external edits from local ones. */
 export function spansEqual(a: readonly SpanDto[], b: readonly SpanDto[]): boolean {
   return (

@@ -50,7 +50,7 @@ API with a crossfade fallback. See also `frontend-m2-foundations.md`.
 - Enums travel as strings (`"Public"`, `"Validation"`).
 - Escape hatches (not the envelope): `GET .../export` returns `text/markdown`; `POST .../ai/chat` returns SSE.
 
-## Session (when auth lands — M3)
+## Session
 
 - Bearer JWT (15 min) + refresh token (30 days, rotates every refresh), both in the response body.
 - Access token: memory only. Refresh token: `localStorage` (accepted trade-off — XSS-readable, no cookie option under current CORS).
@@ -71,12 +71,15 @@ Everything must pass before a change is considered done:
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
-## Milestones
+## Current product surface
 
-- **M1 — homepage shell** ✅: scaffold, `shared/api` client, anonymous homepage on the public catalog.
-- **M2 — foundations** (see `frontend-m2-foundations.md`): semantic theme tokens, dark mode with a
-  two-way toggle (OS preference as the initial default), responsive consolidation.
-- **M3 — auth** ✅: login/register, token plumbing, logged-in homepage (own + shared alongside the public catalog).
-- **M4 — notebook reader** ✅ (see `frontend-m4-reader.md`): read-only notebook browsing —
-  routing, page tree, block rendering.
-- **M5+** — editor, creation, trash, search, AI. Planned later.
+The client currently includes the public catalog, authentication, notebook management, the reader,
+page editing and revisions, trash, and AI chat. The `frontend-m1-*` through `frontend-m5-*` files
+record the scope and decisions of earlier milestones; they are historical specifications rather
+than the current feature inventory. This document and the code are the sources for current
+architecture.
+
+There is no browser-driven full-stack test suite yet. Vitest and Testing Library cover client
+logic and components in jsdom; the backend has separate domain, application, infrastructure, and
+HTTP host test projects. Adding end-to-end coverage remains useful for deployment routing, session
+refresh, and complete browser-to-database workflows.

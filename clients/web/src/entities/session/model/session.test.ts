@@ -86,6 +86,42 @@ describe('bootstrapSession', () => {
     unsubscribe()
   })
 
+  it('does not let a stale bootstrap failure overwrite a newer login', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    window.localStorage.setItem(REFRESH_STORAGE_KEY, 'refresh-1')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        await gate
+        return jsonResponse(
+          {
+            value: null,
+            error: {
+              code: 'invalid_refresh_token',
+              message: 'expired',
+              kind: 'Unauthorized',
+            },
+            isSuccess: false,
+          },
+          401,
+        )
+      }),
+    )
+
+    const unsubscribe = bootstrapSession()
+    setSession(SESSION)
+    useSessionStore.getState().setAuthenticated(USER)
+    release()
+
+    await waitFor(() => {
+      expect(useSessionStore.getState()).toMatchObject({ status: 'authenticated', user: USER })
+    })
+    unsubscribe()
+  })
+
   it('follows the session down whenever it is cleared', () => {
     const unsubscribe = bootstrapSession()
     setSession(SESSION)

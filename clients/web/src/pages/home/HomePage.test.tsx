@@ -80,6 +80,19 @@ beforeEach(() => {
 })
 
 describe('HomePage', () => {
+  it('supports keyboard navigation between the labelled shelf tabs', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({ status: 'authenticated', user: USER })
+    renderHomePage()
+    const mine = await screen.findByRole('tab', { name: 'My notebooks' })
+    mine.focus()
+    await user.keyboard('{ArrowRight}')
+    expect(screen.getByRole('tab', { name: 'Public notebooks' })).toHaveFocus()
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('Public notebooks')
+    await user.keyboard('{Home}')
+    expect(screen.getByRole('tab', { name: 'Favorites' })).toHaveFocus()
+  })
+
   it('greets anonymous visitors with a masthead and the public shelf only', async () => {
     vi.mocked(listNotebooks).mockResolvedValue(pageOf(PUBLIC))
     renderHomePage()
@@ -100,8 +113,8 @@ describe('HomePage', () => {
     const shelf = screen.getAllByRole('list')[0]
     expect(within(shelf).getByText('Unlisted')).toBeInTheDocument()
     expect(within(shelf).getByRole('button', { name: 'Unfavorite' })).toBeInTheDocument()
-    // The masthead is for visitors.
-    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+    // Both authenticated and public shelves have a clear page heading.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Ada')
   })
 
   it('searches within the signed-in reader\'s own shelf', async () => {

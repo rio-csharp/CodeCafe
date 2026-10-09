@@ -4,6 +4,7 @@ import type { JsonRequestInit } from './request'
 import {
   clearSession,
   getAccessToken,
+  getSessionVersion,
   refreshSession,
   shouldRefreshProactively,
 } from './session'
@@ -16,6 +17,7 @@ export type ApiFetchInit = JsonRequestInit
  * to `undefined`.
  */
 export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promise<T> {
+  const sessionVersion = getSessionVersion()
   let authorized = withBearer(init)
 
   // Lazy-proactive: refresh before the server can 401 us. A refresh that failed
@@ -23,13 +25,18 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
   // report the real outcome.
   if (authorized.usedToken && shouldRefreshProactively()) {
     await refreshSession().catch(() => undefined)
+    assertSessionUnchanged(sessionVersion)
     // Re-read the token: the refresh just replaced it.
     authorized = withBearer(init)
   }
 
   try {
-    return await requestJson<T>(path, authorized.init)
+    const value = await requestJson<T>(path, authorized.init)
+    assertSessionUnchanged(sessionVersion)
+    return value
   } catch (error) {
+    assertSessionUnchanged(sessionVersion)
+
     // Anonymous requests get no second chance — there is nothing to refresh.
     if (!authorized.usedToken || !isUnauthorized(error)) {
       throw error
@@ -37,10 +44,15 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
 
     // The token may simply have expired: one refresh, then one retry.
     await refreshSession()
+    assertSessionUnchanged(sessionVersion)
 
     try {
-      return await requestJson<T>(path, withBearer(init).init)
+      const value = await requestJson<T>(path, withBearer(init).init)
+      assertSessionUnchanged(sessionVersion)
+      return value
     } catch (retryError) {
+      assertSessionUnchanged(sessionVersion)
+
       // A second 401 is a real logout, not an expired token.
       if (isUnauthorized(retryError)) {
         clearSession()
@@ -69,6 +81,12 @@ function withBearer(init: JsonRequestInit): AuthorizedRequest {
 
 function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
+}
+
+function assertSessionUnchanged(expectedVersion: number): void {
+  if (getSessionVersion() !== expectedVersion) {
+    throw new DOMException('The session changed while the request was in flight.', 'AbortError')
+  }
 }
 
 export { ApiError }

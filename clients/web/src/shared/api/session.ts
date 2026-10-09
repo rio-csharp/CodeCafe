@@ -28,12 +28,20 @@ export function setSessionClock(next: SessionClock | null): void {
 
 let accessToken: string | null = null
 let accessTokenExpiresAtMs: number | null = null
-let refreshInFlight: Promise<AuthSessionDto> | null = null
+// Invalidates an in-flight refresh when logout (or a newer login) changes the
+// local session before the refresh response arrives.
+let sessionVersion = 0
+let refreshInFlight: { version: number; promise: Promise<AuthSessionDto> } | null = null
 
 const clearedListeners = new Set<() => void>()
 
 export function getAccessToken(): string | null {
   return accessToken
+}
+
+/** Opaque identity snapshot for rejecting work that outlives its session. */
+export function getSessionVersion(): number {
+  return sessionVersion
 }
 
 /** The refresh token lives in localStorage only — never in memory, never in a cookie. */
@@ -48,6 +56,11 @@ export function getRefreshToken(): string | null {
 
 /** Stores both tokens of a freshly issued session; refresh tokens always rotate. */
 export function setSession(dto: AuthSessionDto): void {
+  sessionVersion += 1
+  commitSession(dto)
+}
+
+function commitSession(dto: AuthSessionDto): void {
   accessToken = dto.accessToken
   const expiresAtMs = Date.parse(dto.accessTokenExpiresAtUtc)
   accessTokenExpiresAtMs = Number.isNaN(expiresAtMs) ? null : expiresAtMs
@@ -55,6 +68,7 @@ export function setSession(dto: AuthSessionDto): void {
 }
 
 export function clearSession(): void {
+  sessionVersion += 1
   accessToken = null
   accessTokenExpiresAtMs = null
   removeRefreshToken()
@@ -89,8 +103,8 @@ export function shouldRefreshProactively(): boolean {
  * request; a 401 clears the session and rejects every waiter.
  */
 export function refreshSession(): Promise<AuthSessionDto> {
-  if (refreshInFlight !== null) {
-    return refreshInFlight
+  if (refreshInFlight?.version === sessionVersion) {
+    return refreshInFlight.promise
   }
 
   const refreshToken = getRefreshToken()
@@ -105,26 +119,33 @@ export function refreshSession(): Promise<AuthSessionDto> {
     )
   }
 
+  const versionAtStart = sessionVersion
+
   const attempt = requestJson<AuthSessionDto>(REFRESH_PATH, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ refreshToken }),
   })
     .then((dto) => {
-      setSession(dto)
+      if (sessionVersion !== versionAtStart) {
+        throw new DOMException('The session changed while it was refreshing.', 'AbortError')
+      }
+      commitSession(dto)
       return dto
     })
     .catch((error: unknown) => {
-      if (isInvalidRefreshToken(error)) {
+      if (sessionVersion === versionAtStart && isInvalidRefreshToken(error)) {
         clearSession()
       }
       throw error
     })
     .finally(() => {
-      refreshInFlight = null
+      if (refreshInFlight?.promise === attempt) {
+        refreshInFlight = null
+      }
     })
 
-  refreshInFlight = attempt
+  refreshInFlight = { version: versionAtStart, promise: attempt }
   return attempt
 }
 

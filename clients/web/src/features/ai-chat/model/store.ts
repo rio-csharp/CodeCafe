@@ -1,4 +1,6 @@
+import { randomId } from '@/shared/lib'
 import { AiChatHttpError, streamChat } from '../api/streamChat'
+import { onSessionCleared } from '@/shared/api'
 import { createIndexedDbPersistence } from './persistence'
 import type { ChatPersistence } from './persistence'
 
@@ -51,11 +53,19 @@ export class ChatStore {
   private readonly listeners = new Set<() => void>()
   private abort: AbortController | null = null
   private saveTimer: ReturnType<typeof setTimeout> | null = null
+  private generation = 0
+  private persistenceQueue: Promise<void> = Promise.resolve()
   private readonly slug: string
+  private readonly storageKey: string
   private readonly persistence: ChatPersistence
 
-  constructor(slug: string, persistence: ChatPersistence = createIndexedDbPersistence()) {
+  constructor(
+    slug: string,
+    persistence: ChatPersistence = createIndexedDbPersistence(),
+    userId: string | null = null,
+  ) {
     this.slug = slug
+    this.storageKey = chatStorageKey(userId, slug)
     this.persistence = persistence
     void this.hydrate()
   }
@@ -81,10 +91,20 @@ export class ChatStore {
 
   /** Restores the persisted conversation, unless the user already started a new one. */
   private async hydrate() {
-    const messages = await this.persistence.load(this.slug)
-    if (messages !== null && this.state.messages.length === 0 && !this.state.streaming) {
+    const generation = this.generation
+    const messages = await this.persistence.load(this.storageKey)
+    if (
+      generation === this.generation &&
+      messages !== null &&
+      this.state.messages.length === 0 &&
+      !this.state.streaming
+    ) {
       this.setState({ ...this.state, messages }, { persist: false })
     }
+  }
+
+  private enqueuePersistence(action: () => Promise<void>) {
+    this.persistenceQueue = this.persistenceQueue.then(action).catch(() => undefined)
   }
 
   /**
@@ -97,7 +117,8 @@ export class ChatStore {
     }
     this.saveTimer = setTimeout(() => {
       this.saveTimer = null
-      void this.persistence.save(this.slug, this.state.messages)
+      const messages = this.state.messages
+      this.enqueuePersistence(() => this.persistence.save(this.storageKey, messages))
     }, 500)
   }
 
@@ -115,13 +136,13 @@ export class ChatStore {
       return
     }
     const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: randomId(),
       role: 'user',
       text: text.trim(),
       activities: [],
       state: 'done',
     }
-    const assistantId = crypto.randomUUID()
+    const assistantId = randomId()
     const assistantMessage: ChatMessage = {
       id: assistantId,
       role: 'assistant',
@@ -138,18 +159,25 @@ export class ChatStore {
 
     const abort = new AbortController()
     this.abort = abort
+    const generation = this.generation
     let aiChanged = false
 
     try {
-      await this.streamTurn(assistantId, abort.signal, () => {
+      await this.streamTurn(assistantId, abort.signal, generation, () => {
         aiChanged = true
       })
+      if (generation !== this.generation) {
+        return
+      }
       // Stream ended without an error frame: the turn is complete.
       this.patchAssistant(assistantId, (message) => ({
         ...message,
         state: message.state === 'streaming' ? 'done' : message.state,
       }))
     } catch (error) {
+      if (generation !== this.generation) {
+        return
+      }
       if (abort.signal.aborted) {
         // The user stopped the reply: keep whatever text arrived.
         this.patchAssistant(assistantId, (message) => ({ ...message, state: 'done' }))
@@ -164,10 +192,12 @@ export class ChatStore {
         })
       }
     } finally {
-      this.abort = null
-      this.setState({ ...this.state, streaming: false })
-      if (aiChanged) {
-        onAiChanged()
+      if (generation === this.generation) {
+        this.abort = null
+        this.setState({ ...this.state, streaming: false })
+        if (aiChanged) {
+          onAiChanged()
+        }
       }
     }
   }
@@ -180,6 +210,7 @@ export class ChatStore {
   private async streamTurn(
     assistantId: string,
     signal: AbortSignal,
+    generation: number,
     markAiChanged: () => void,
   ): Promise<void> {
     for (let attempt = 0; ; attempt += 1) {
@@ -195,6 +226,9 @@ export class ChatStore {
           messages: history,
           signal,
           onEvent: (event) => {
+            if (generation !== this.generation) {
+              return
+            }
             switch (event.kind) {
               case 'text':
                 this.patchAssistant(assistantId, (message) => ({
@@ -272,25 +306,54 @@ export class ChatStore {
     this.abort?.abort()
   }
 
-  clear() {
+  /** Stops background work at an auth boundary while keeping this user's settled history. */
+  deactivate() {
+    this.generation += 1
     this.abort?.abort()
+    this.abort = null
+    if (this.saveTimer !== null) {
+      clearTimeout(this.saveTimer)
+      this.saveTimer = null
+    }
+    const messages = this.state.messages.map((message) =>
+      message.state === 'streaming' ? { ...message, state: 'done' as const } : message,
+    )
+    this.setState({ messages, streaming: false, error: null }, { persist: false })
+    this.enqueuePersistence(() => this.persistence.save(this.storageKey, messages))
+  }
+
+  clear() {
+    this.generation += 1
+    this.abort?.abort()
+    this.abort = null
     if (this.saveTimer !== null) {
       clearTimeout(this.saveTimer)
       this.saveTimer = null
     }
     this.setState(EMPTY, { persist: false })
-    void this.persistence.clear(this.slug)
+    this.enqueuePersistence(() => this.persistence.clear(this.storageKey))
   }
 }
 
 const stores = new Map<string, ChatStore>()
 
+onSessionCleared(() => {
+  for (const store of stores.values()) {
+    store.deactivate()
+  }
+})
+
 /** The conversation for one notebook slug; created on first use. */
-export function getChatStore(slug: string): ChatStore {
-  let store = stores.get(slug)
+export function chatStorageKey(userId: string | null, slug: string): string {
+  return JSON.stringify([userId, slug])
+}
+
+export function getChatStore(slug: string, userId: string | null): ChatStore {
+  const key = chatStorageKey(userId, slug)
+  let store = stores.get(key)
   if (store === undefined) {
-    store = new ChatStore(slug)
-    stores.set(slug, store)
+    store = new ChatStore(slug, undefined, userId)
+    stores.set(key, store)
   }
   return store
 }

@@ -28,6 +28,7 @@ using CodeCafe.Host.Hosting;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CodeCafe.Host.Controllers;
 
@@ -71,6 +72,7 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}")]
+    [EnableRateLimiting(RateLimiterExtensions.AccessCodePolicy)]
     public Task<Result<NotebookDetailsDto>> Details(string idOrSlug, CancellationToken cancellationToken)
         => sender.Send(new GetNotebookDetailsQuery(idOrSlug, AccessCodeHeader.Read(Request)), cancellationToken);
 
@@ -114,6 +116,7 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/tree")]
+    [EnableRateLimiting(RateLimiterExtensions.AccessCodePolicy)]
     public Task<Result<NotebookTreeDto>> Tree(string idOrSlug, CancellationToken cancellationToken)
         => sender.Send(new GetNotebookTreeQuery(idOrSlug, AccessCodeHeader.Read(Request)), cancellationToken);
 
@@ -124,6 +127,7 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
     // A real file download (text/markdown + Content-Disposition), not the JSON envelope.
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/export")]
+    [EnableRateLimiting(RateLimiterExtensions.AccessCodePolicy)]
     [ProducesResponseType(typeof(string), StatusCodes.Status200OK, "text/markdown")]
     [ProducesResponseType(typeof(Result), StatusCodes.Status404NotFound)]
     public async Task<IResult> Export(string idOrSlug, CancellationToken cancellationToken)
@@ -151,6 +155,7 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/pages/by-path")]
+    [EnableRateLimiting(RateLimiterExtensions.AccessCodePolicy)]
     public Task<Result<PageDetailsDto>> PageByPath(string idOrSlug, string path, CancellationToken cancellationToken)
         => sender.Send(new GetPageByPathQuery(idOrSlug, path, AccessCodeHeader.Read(Request)), cancellationToken);
 }

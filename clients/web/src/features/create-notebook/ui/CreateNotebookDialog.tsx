@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createNotebook, getNotebookSlugAvailability } from '@/entities/notebook'
 import type { NotebookDetails, NotebookVisibility } from '@/entities/notebook'
 import { ApiError } from '@/shared/api'
-import { Button, Input } from '@/shared/ui'
+import { Button, DialogShell, Input } from '@/shared/ui'
 
 const VISIBILITIES = ['Private', 'Unlisted', 'Public'] as const satisfies readonly NotebookVisibility[]
 
@@ -46,7 +46,6 @@ function DialogForm({ onClose, onCreated }: Omit<CreateNotebookDialogProps, 'ope
   const [slugState, setSlugState] = useState<SlugState>({ status: 'idle' })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const titleRef = useRef<HTMLInputElement>(null)
 
   const normalizedSlug = slug.trim().toLowerCase()
   const slugWellFormed = normalizedSlug.length > 0 && SLUG_PATTERN.test(normalizedSlug)
@@ -80,20 +79,6 @@ function DialogForm({ onClose, onCreated }: Omit<CreateNotebookDialogProps, 'ope
     }
   }, [slugWellFormed, normalizedSlug])
 
-  useEffect(() => {
-    titleRef.current?.focus()
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [onClose])
-
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (title.trim().length === 0 || submitting || slugTaken) {
@@ -116,26 +101,11 @@ function DialogForm({ onClose, onCreated }: Omit<CreateNotebookDialogProps, 'ope
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-canvas/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('createNotebook.title')}
-        className="relative w-full max-w-md rounded-lg border border-line bg-card p-6 shadow-xl"
-      >
-        <h2 className="text-lg font-semibold text-ink">{t('createNotebook.title')}</h2>
-
-        <form className="mt-5 flex flex-col gap-4" onSubmit={submit}>
+    <DialogShell title={t('createNotebook.title')} onClose={onClose}>
+        <form className="flex flex-col gap-4" onSubmit={submit}>
           <label className="flex flex-col gap-1.5 text-sm text-ink">
             {t('createNotebook.name')}
             <Input
-              ref={titleRef}
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value)
@@ -210,8 +180,7 @@ function DialogForm({ onClose, onCreated }: Omit<CreateNotebookDialogProps, 'ope
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </DialogShell>
   )
 }
 

@@ -18,6 +18,9 @@ public sealed class DeletePageCommandHandler(
 {
     public async Task<Result> Handle(DeletePageCommand command, CancellationToken cancellationToken)
     {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await pages.LockNotebookForPageStructureAsync(command.PageId, includeTrashed: false, cancellationToken);
+
         var context = await PageAccess.RequireWriteAsync(command.PageId, currentUserAccessor, notebooks, pages, cancellationToken);
         if (context.Error is { } error)
         {
@@ -46,6 +49,7 @@ public sealed class DeletePageCommandHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
 
         return Result.Success();
     }

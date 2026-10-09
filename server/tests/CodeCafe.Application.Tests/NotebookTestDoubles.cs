@@ -56,6 +56,12 @@ internal sealed class StubNotebookRepository : List<Notebook>, INotebookReposito
             ? FindByIdAsync(id, cancellationToken)
             : Task.FromResult(Live.FirstOrDefault(notebook => notebook.Slug == idOrSlug.Trim().ToLowerInvariant()));
 
+    public Task LockPageStructureAsync(string idOrSlug, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
+    public Task LockLifecycleAsync(Guid notebookId, CancellationToken cancellationToken)
+        => Task.CompletedTask;
+
     public Task<int> CountVisibleAsync(Guid? userId, NotebookFilter filter, CancellationToken cancellationToken)
         => Task.FromResult(VisibleTo(userId, filter).Count());
 

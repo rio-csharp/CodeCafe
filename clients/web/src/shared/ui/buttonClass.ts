@@ -1,7 +1,7 @@
 import type { ButtonSize, ButtonVariant } from './Button'
 
 const BASE_CLASS =
-  'inline-flex items-center justify-center gap-2 rounded-full font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60'
+  'inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60'
 
 const SIZE_CLASS: Record<ButtonSize, string> = {
   md: 'px-5 py-2.5 text-sm',
@@ -9,7 +9,7 @@ const SIZE_CLASS: Record<ButtonSize, string> = {
 }
 
 const VARIANT_CLASS: Record<ButtonVariant, string> = {
-  primary: 'bg-accent text-card hover:bg-accent-strong focus-visible:outline-accent-strong',
+  primary: 'bg-accent text-on-accent hover:bg-accent-strong focus-visible:outline-accent-strong',
   ghost: 'border border-line text-ink hover:border-accent hover:text-accent-strong focus-visible:outline-accent',
 }
 
