@@ -108,6 +108,7 @@ internal sealed class StubPageRepository(StubNotebookRepository? notebooks = nul
             )
             .Select(page => new PageSearchMatch(
                 page,
+                notebookById[page.NotebookId].Slug,
                 notebookById[page.NotebookId].Title,
                 Blocks.Where(block => Matches(block, page))
                     .OrderBy(block => block.SortKey, StringComparer.Ordinal)

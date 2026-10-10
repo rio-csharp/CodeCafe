@@ -26,6 +26,7 @@ public sealed class SearchAllPagesQueryHandlerTests
         var hit = Assert.Single(result.Value!.Items);
         Assert.Equal(page.Id, hit.PageId);
         Assert.Equal(notebook.Id, hit.NotebookId);
+        Assert.Equal(notebook.Slug, hit.NotebookSlug);
         Assert.Equal(notebook.Title, hit.NotebookTitle);
         Assert.Equal("/rust-ownership", hit.Path);
         Assert.Null(result.Value.NextCursor);

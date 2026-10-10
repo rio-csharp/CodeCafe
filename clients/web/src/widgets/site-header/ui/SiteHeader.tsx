@@ -55,7 +55,20 @@ export function SiteHeader() {
           ) : null}
 
           {status === 'authenticated' && user !== null ? (
-            <UserMenu displayName={user.displayName} />
+            <>
+              <Link
+                to="/search"
+                aria-label={t('header.search')}
+                title={t('header.search')}
+                className="grid size-9 place-items-center rounded-full border border-line text-ink transition-colors hover:border-accent hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                <svg viewBox="0 0 24 24" className="h-4.5 w-4.5" fill="none" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="m16 16 4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </Link>
+              <UserMenu displayName={user.displayName} />
+            </>
           ) : null}
         </div>
       </Container>

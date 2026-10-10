@@ -96,6 +96,7 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
             .Take(pageSize)
             .Select(match => new PageSearchMatch(
                 match.page,
+                match.notebook.Slug,
                 match.notebook.Title,
                 dbContext.Blocks
                     .Where(block => block.PageId == match.page.Id && EF.Functions.ILike(block.PlainText, pattern, LikePatterns.EscapeCharacter))

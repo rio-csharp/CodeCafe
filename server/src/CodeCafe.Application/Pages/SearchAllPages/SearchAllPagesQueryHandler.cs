@@ -77,6 +77,7 @@ public sealed class SearchAllPagesQueryHandler(
         return new PageSearchHitDto(
             match.Page.Id,
             match.Page.NotebookId,
+            match.NotebookSlug,
             match.NotebookTitle,
             match.Page.Title,
             PageHierarchy.PathOf(match.Page, ancestors),

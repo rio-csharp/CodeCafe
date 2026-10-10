@@ -1,5 +1,11 @@
 import type { BlockDto } from '@/entities/block'
 
+export interface PageShare {
+  userId: string
+  userName: string
+  role: 'Viewer' | 'Editor'
+}
+
 export interface PageDetails {
   id: string
   notebookId: string
@@ -8,6 +14,8 @@ export interface PageDetails {
   path: string
   isArchived: boolean
   isFavorite: boolean
+  /** Page-level collaborators; only populated meaningfully for writers. */
+  shares: PageShare[]
   /** A flat list — `assembleBlockTree` turns it into the render tree. */
   blocks: BlockDto[]
   createdAtUtc: string
@@ -18,6 +26,14 @@ export const pageKeys = {
   all: ['pages'],
   byPath: (slug: string, path: string) => ['pages', 'by-path', slug, path],
   revisions: (pageId: string) => ['pages', 'revisions', pageId],
+  /** Nested under the page's revisions key so invalidating it covers both logs. */
+  blockRevisions: (pageId: string, blockId: string) => ['pages', 'revisions', pageId, 'blocks', blockId],
+  trash: (slug: string) => ['pages', 'trash', slug],
+  /** The notebook-less key prefix-matches every per-notebook favorites list. */
+  favorites: (notebookId?: string) =>
+    notebookId === undefined ? ['pages', 'favorites'] : ['pages', 'favorites', notebookId],
+  /** Full-text page search; the top-level namespace matches the page slice's scope. */
+  search: (query: string) => ['search', query],
 }
 
 export type RevisionChangeKind = 'Added' | 'Updated' | 'Deleted' | 'Moved'

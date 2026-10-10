@@ -10,3 +10,9 @@ export const NotebookReaderPage = lazy(async () => ({
   default: (await import('@/pages/notebook')).NotebookReaderPage,
 }))
 export const TrashPage = lazy(async () => ({ default: (await import('@/pages/trash')).TrashPage }))
+export const SearchPage = lazy(async () => ({
+  default: (await import('@/pages/search')).SearchPage,
+}))
+export const AccountPage = lazy(async () => ({
+  default: (await import('@/pages/account')).AccountPage,
+}))

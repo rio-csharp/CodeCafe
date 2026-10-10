@@ -8,9 +8,12 @@ export interface SearchInputProps {
   /** The committed (debounced) value owned by the parent. */
   value: string
   onChange: (value: string) => void
+  /** Overrides for the default notebook-search copy (e.g. the page search). */
+  label?: string
+  placeholder?: string
 }
 
-export function SearchInput({ value, onChange }: SearchInputProps) {
+export function SearchInput({ value, onChange, label, placeholder }: SearchInputProps) {
   const { t } = useTranslation()
   const [text, setText] = useState(value)
   const [syncedValue, setSyncedValue] = useState(value)
@@ -73,8 +76,8 @@ export function SearchInput({ value, onChange }: SearchInputProps) {
         type="search"
         value={text}
         onChange={handleChange}
-        aria-label={t('search.label')}
-        placeholder={t('search.placeholder')}
+        aria-label={label ?? t('search.label')}
+        placeholder={placeholder ?? t('search.placeholder')}
         className="h-13 w-full rounded-full border border-line bg-card pl-12 pr-24 text-ink placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent"
       />
 
