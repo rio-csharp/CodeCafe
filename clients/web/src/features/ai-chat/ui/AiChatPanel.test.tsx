@@ -94,6 +94,37 @@ describe('AiChatPanel', () => {
     expect(screen.getByRole('button', { name: 'ai.clear' })).toBeInTheDocument()
   })
 
+  it('shows the provider message for a relay-specific failure instead of a generic one', async () => {
+    const user = userEvent.setup()
+    replyWith([
+      {
+        kind: 'error',
+        code: 'server_is_overloaded',
+        message: 'Our servers are currently overloaded. Please try again later.',
+      },
+    ])
+    render(<AiChatPanel slug="s" onAiChanged={vi.fn()} />)
+
+    await user.type(screen.getByRole('textbox', { name: 'ai.placeholder' }), 'hi')
+    await user.keyboard('{Enter}')
+
+    expect(
+      await screen.findByText('Our servers are currently overloaded. Please try again later.'),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('ai.error.unknown')).not.toBeInTheDocument()
+  })
+
+  it('falls back to the generic message when an unknown failure carries no message', async () => {
+    const user = userEvent.setup()
+    replyWith([{ kind: 'error', code: 'mystery_failure', message: '   ' }])
+    render(<AiChatPanel slug="s" onAiChanged={vi.fn()} />)
+
+    await user.type(screen.getByRole('textbox', { name: 'ai.placeholder' }), 'hi')
+    await user.keyboard('{Enter}')
+
+    expect(await screen.findByText('ai.error.unknown')).toBeInTheDocument()
+  })
+
   it('clears the conversation with a two-click button', async () => {
     const user = userEvent.setup()
     replyWith([{ kind: 'text', text: 'answer' }, { kind: 'done' }])

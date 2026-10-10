@@ -68,7 +68,7 @@ export function AiChatPanel({ slug, onAiChanged }: AiChatPanelProps) {
 
       {state.error !== null ? (
         <div className="mx-4 mb-2 rounded-lg bg-danger-soft px-3 py-2">
-          <p className="text-xs text-danger">{t(errorKeyOf(state.error))}</p>
+          <p className="text-xs text-danger">{errorTextOf(state.error, t)}</p>
         </div>
       ) : null}
 
@@ -226,17 +226,25 @@ const KNOWN_ERROR_CODES = new Set([
   'notebook_not_found',
 ])
 
-function errorKeyOf(error: { code: string; status?: number }): string {
+/**
+ * Recognised failures read from the catalogue. Anything else shows the provider's own message:
+ * a relay-specific code (an overloaded upstream, say) has no catalogue entry, and a generic
+ * "something went wrong" would hide the only text that explains the failure.
+ */
+function errorTextOf(
+  error: { code: string; message: string; status?: number },
+  translate: (key: string) => string,
+): string {
   if (KNOWN_ERROR_CODES.has(error.code)) {
-    return `ai.error.${error.code}`
+    return translate(`ai.error.${error.code}`)
   }
   if (error.status === 401) {
-    return 'ai.error.unauthorized'
+    return translate('ai.error.unauthorized')
   }
   if (error.status === 429) {
-    return 'ai.error.rate_limited'
+    return translate('ai.error.rate_limited')
   }
-  return 'ai.error.unknown'
+  return error.message.trim() === '' ? translate('ai.error.unknown') : error.message
 }
 
 function uniqueTools(tools: string[]): string[] {
