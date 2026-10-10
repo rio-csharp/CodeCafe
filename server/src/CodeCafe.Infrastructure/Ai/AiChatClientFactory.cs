@@ -4,12 +4,13 @@ using Anthropic;
 using Anthropic.Core;
 using CodeCafe.Application.Ai;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using OpenAI;
 
 namespace CodeCafe.Infrastructure.Ai;
 
 // Three wire formats, one IChatClient: relays just need to be compatible with the chosen format.
-public sealed class AiChatClientFactory(AiOptions options) : IAiChatClientFactory
+public sealed class AiChatClientFactory(AiOptions options, ILogger<RetryChatClient> logger) : IAiChatClientFactory
 {
     public IChatClient Create()
     {
@@ -31,7 +32,7 @@ public sealed class AiChatClientFactory(AiOptions options) : IAiChatClientFactor
 
         // Retry outermost: a rate-limited attempt never reached the compat rewrite's concern.
         return options.MaxProviderRetries > 0
-            ? new RetryChatClient(client, options.MaxProviderRetries, TimeSpan.FromMilliseconds(options.ProviderRetryBaseDelayMs))
+            ? new RetryChatClient(client, options.MaxProviderRetries, TimeSpan.FromMilliseconds(options.ProviderRetryBaseDelayMs), logger)
             : client;
     }
 
