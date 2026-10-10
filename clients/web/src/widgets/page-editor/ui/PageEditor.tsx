@@ -44,6 +44,7 @@ import { DividerBlock } from '@/entities/block'
 import type { SlashTarget } from '../lib/blockTypes'
 import { contentForTarget } from '../lib/blockTypes'
 import { BlockHandle } from './BlockHandle'
+import { BlockHistoryDialog } from './BlockHistoryDialog'
 
 export interface PageEditorProps {
   page: PageDetails
@@ -52,6 +53,12 @@ export interface PageEditorProps {
   error?: string | null
   onSave: (title: string, ops: BlockOpWire[]) => void
   onCancel: () => void
+  /**
+   * Called after a block-level restore succeeded. The restore changed the
+   * server copy under the open draft, so the editor exits to the reader
+   * (which refetches) — this lets the page show a notice about it.
+   */
+  onBlockRestored?: () => void
 }
 
 const TEXT_TYPES = new Set([
@@ -77,7 +84,7 @@ function spansOf(block: EditorBlock): SpanDto[] {
  * from parentBlockId and rendered recursively. Other types render read-only
  * from the untouched source tree. Escape cancels, Ctrl/Cmd+Enter saves.
  */
-export function PageEditor({ page, saving, error = null, onSave, onCancel }: PageEditorProps) {
+export function PageEditor({ page, saving, error = null, onSave, onCancel, onBlockRestored }: PageEditorProps) {
   const { t } = useTranslation()
   const [title, setTitle] = useState(page.title)
   // An empty page still needs somewhere to type: start from one fresh paragraph.
@@ -86,6 +93,8 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
     return initial.some((block) => block.parentBlockId === null) ? initial : [emptyParagraphBlock()]
   })
   const [focusRequest, setFocusRequest] = useState<{ id: string; offset: number } | null>(null)
+  // The block whose revision log is open in the history dialog, if any.
+  const [historyBlockId, setHistoryBlockId] = useState<string | null>(null)
 
   // In-session undo/redo. The history lives in a ref: it changes on every
   // keystroke and none of that is renderable state.
@@ -731,6 +740,14 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
           onSelect={() => {
             setBlockSelection({ anchorId: block.id, focusId: block.id })
           }}
+          onShowHistory={
+            // A freshly minted block has no server-side history yet.
+            block.isNew
+              ? undefined
+              : () => {
+                  setHistoryBlockId(block.id)
+                }
+          }
           onDragStart={(event) => {
             dragIdRef.current = block.id
             event.dataTransfer.effectAllowed = 'move'
@@ -820,6 +837,23 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel }: Pag
           className="min-h-40 cursor-text"
         />
       </div>
+
+      {historyBlockId !== null ? (
+        <BlockHistoryDialog
+          pageId={page.id}
+          blockId={historyBlockId}
+          onClose={() => {
+            setHistoryBlockId(null)
+          }}
+          onRestored={() => {
+            // The draft is stale now: leave edit mode so the reader refetches
+            // the restored content; the page announces it with a notice.
+            setHistoryBlockId(null)
+            onCancel()
+            onBlockRestored?.()
+          }}
+        />
+      ) : null}
     </div>
   )
 }

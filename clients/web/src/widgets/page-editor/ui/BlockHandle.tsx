@@ -10,6 +10,8 @@ export interface BlockHandleProps {
   onTurnInto: (target: SlashTarget) => void
   onDelete: () => void
   onSelect: () => void
+  /** Opens the block's revision log; only persisted blocks have one. */
+  onShowHistory?: () => void
   onDragStart: (event: DragEvent) => void
   onDragEnd: () => void
 }
@@ -23,6 +25,7 @@ export function BlockHandle({
   onTurnInto,
   onDelete,
   onSelect,
+  onShowHistory,
   onDragStart,
   onDragEnd,
 }: BlockHandleProps) {
@@ -109,6 +112,19 @@ export function BlockHandle({
               ))}
               <div className="my-1 border-t border-line" />
             </>
+          ) : null}
+          {onShowHistory !== undefined ? (
+            <button
+              type="button"
+              role="menuitem"
+              className="block w-full rounded px-2 py-1 text-left text-sm text-ink hover:bg-muted-soft"
+              onClick={() => {
+                setOpen(false)
+                onShowHistory()
+              }}
+            >
+              {t('editor.blockHistory')}
+            </button>
           ) : null}
           <button
             type="button"

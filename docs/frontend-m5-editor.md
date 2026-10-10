@@ -68,6 +68,17 @@ no confirm step: the log is append-only, so a restore is itself undoable by
 restoring again, and that is the safety net. The tab hides while editing —
 restoring under an open draft would silently discard it.
 
+## Block-level history (in the editor)
+
+Each block's handle menu has a History entry (`BlockHistoryDialog`, backed by
+`GET /api/pages/{id}/blocks/{blockId}/revisions`, cursor-paginated): one row
+per revision — relative time, change-kind label, an AI badge for `Ai`-sourced
+rows — with a per-row restore (`POST .../revisions/restore`, `blockVersion`).
+Freshly minted (unsaved) blocks have no entry. Because a restore changes the
+server copy under the open draft, a successful restore exits edit mode back to
+the reader (which refetches) and the page shows a short notice — the draft
+never silently wins over the restore.
+
 ## Deliberately out of scope (still)
 
 Auto-save, real-time collaboration, cross-block copy/cut, inline-mark parsing

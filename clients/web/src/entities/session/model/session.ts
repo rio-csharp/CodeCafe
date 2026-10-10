@@ -61,3 +61,12 @@ export function logout(): void {
     }).catch(() => undefined)
   }
 }
+
+/**
+ * Local-only sign-out for sessions the server has already killed: a password
+ * change revokes every refresh token, so the logout round trip would 401.
+ */
+export function dropSession(): void {
+  clearSession()
+  useSessionStore.getState().setAnonymous()
+}

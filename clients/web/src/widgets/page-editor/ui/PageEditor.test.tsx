@@ -16,6 +16,7 @@ const PAGE: PageDetails = {
   path: '/grinding',
   isArchived: false,
   isFavorite: false,
+  shares: [],
   blocks: [
     {
       id: 'block-1',

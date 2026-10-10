@@ -10,8 +10,7 @@ export interface UserMenuProps {
 
 /**
  * The account menu behind the display name. Closes on outside click, Escape, or
- * after picking an item — there is deliberately no routing here yet (profile
- * pages are a later milestone), so the menu holds only the way out.
+ * after picking an item.
  */
 export function UserMenu({ displayName }: UserMenuProps) {
   const { t } = useTranslation()
@@ -76,6 +75,16 @@ export function UserMenu({ displayName }: UserMenuProps) {
           aria-label={t('header.accountMenu')}
           className="absolute right-0 z-20 mt-2 min-w-40 rounded-xl border border-line bg-card p-1 shadow-lg"
         >
+          <Link
+            role="menuitem"
+            to="/account"
+            onClick={() => {
+              setOpen(false)
+            }}
+            className="block rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {t('header.account')}
+          </Link>
           <Link
             role="menuitem"
             to="/trash"

@@ -14,6 +14,13 @@ export function LoginPage() {
     return <Navigate to="/" replace />
   }
 
+  // A password change lands here signed out; the notice explains why.
+  const notice =
+    typeof location.state === 'object' &&
+    location.state !== null &&
+    'notice' in location.state &&
+    (location.state as { notice?: unknown }).notice === 'passwordChanged'
+
   return (
     <AuthLayout
       title={t('auth.loginTitle')}
@@ -27,6 +34,14 @@ export function LoginPage() {
         </Link>
       }
     >
+      {notice ? (
+        <p
+          role="status"
+          className="mb-4 rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-muted"
+        >
+          {t('account.passwordChangedNotice')}
+        </p>
+      ) : null}
       <LoginForm />
     </AuthLayout>
   )
