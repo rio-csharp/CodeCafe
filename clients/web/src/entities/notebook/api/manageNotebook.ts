@@ -51,3 +51,11 @@ export function setNotebookTags(idOrSlug: string, tags: string[]): Promise<null>
     body: JSON.stringify({ tags }),
   })
 }
+
+/** Moves the notebook to a new URL slug; owners only. Returns the fresh details. */
+export function changeNotebookSlug(idOrSlug: string, slug: string): Promise<NotebookDetails> {
+  return apiFetch<NotebookDetails>(`/api/notebooks/${encodeURIComponent(idOrSlug)}/slug`, {
+    method: 'POST',
+    body: JSON.stringify({ slug }),
+  })
+}

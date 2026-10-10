@@ -1,3 +1,4 @@
+import { ACCESS_CODE_HEADER, accessCodeForPath } from './accessCodes'
 import { ApiError } from './errors'
 import { mergeHeader, requestJson } from './request'
 import type { JsonRequestInit } from './request'
@@ -18,7 +19,7 @@ export type ApiFetchInit = JsonRequestInit
  */
 export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promise<T> {
   const sessionVersion = getSessionVersion()
-  let authorized = withBearer(init)
+  let authorized = withBearer(withAccessCode(path, init))
 
   // Lazy-proactive: refresh before the server can 401 us. A refresh that failed
   // has already cleared the session, so swallow it and let the request below
@@ -27,7 +28,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     await refreshSession().catch(() => undefined)
     assertSessionUnchanged(sessionVersion)
     // Re-read the token: the refresh just replaced it.
-    authorized = withBearer(init)
+    authorized = withBearer(withAccessCode(path, init))
   }
 
   try {
@@ -47,7 +48,7 @@ export async function apiFetch<T>(path: string, init: ApiFetchInit = {}): Promis
     assertSessionUnchanged(sessionVersion)
 
     try {
-      const value = await requestJson<T>(path, withBearer(init).init)
+      const value = await requestJson<T>(path, withBearer(withAccessCode(path, init)).init)
       assertSessionUnchanged(sessionVersion)
       return value
     } catch (retryError) {
@@ -81,6 +82,15 @@ function withBearer(init: JsonRequestInit): AuthorizedRequest {
 
 function isUnauthorized(error: unknown): boolean {
   return error instanceof ApiError && error.status === 401
+}
+
+/** A remembered access code rides along on every call into its notebook. */
+function withAccessCode(path: string, init: JsonRequestInit): JsonRequestInit {
+  const access = accessCodeForPath(path)
+  if (access === null) {
+    return init
+  }
+  return { ...init, headers: mergeHeader(init.headers, ACCESS_CODE_HEADER, access.code) }
 }
 
 function assertSessionUnchanged(expectedVersion: number): void {

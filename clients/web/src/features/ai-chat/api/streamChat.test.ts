@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { setAccessCode } from '@/shared/api'
 import { AiChatHttpError, streamChat } from './streamChat'
 
 function sseStream(chunks: string[]): ReadableStream<Uint8Array> {
@@ -17,6 +18,10 @@ function stubFetch(response: Response) {
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
+
+afterEach(() => {
+  window.sessionStorage.clear()
+})
 
 describe('streamChat', () => {
   it('posts the conversation and parses SSE frames, even split across chunks', async () => {
@@ -50,6 +55,21 @@ describe('streamChat', () => {
       '/api/notebooks/my-notebook/ai/chat',
       expect.objectContaining({ method: 'POST' }),
     )
+  })
+
+  it('attaches the stored access code, since chat sits behind the same lock', async () => {
+    setAccessCode('locked-nb', 'let-me-in')
+    stubFetch(new Response(sseStream(['event: done\ndata: {"kind":"done"}\n\n']), { status: 200 }))
+
+    await streamChat({
+      slug: 'locked-nb',
+      messages: [],
+      signal: new AbortController().signal,
+      onEvent: () => {},
+    })
+
+    const [, init] = vi.mocked(fetch).mock.calls[0]
+    expect(new Headers(init?.headers).get('X-CodeCafe-Access-Code')).toBe('let-me-in')
   })
 
   it('parses error frames like any other event', async () => {

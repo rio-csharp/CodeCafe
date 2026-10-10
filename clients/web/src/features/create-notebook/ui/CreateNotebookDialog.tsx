@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createNotebook, getNotebookSlugAvailability } from '@/entities/notebook'
+import { createNotebook, getNotebookSlugAvailability, normalizeNotebookSlug, NOTEBOOK_SLUG_PATTERN } from '@/entities/notebook'
 import type { NotebookDetails, NotebookVisibility } from '@/entities/notebook'
 import { ApiError } from '@/shared/api'
 import { Button, Input } from '@/shared/ui'
@@ -9,9 +9,6 @@ import { Button, Input } from '@/shared/ui'
 const VISIBILITIES = ['Private', 'Unlisted', 'Public'] as const satisfies readonly NotebookVisibility[]
 
 const SLUG_CHECK_DEBOUNCE_MS = 300
-
-/** Mirrors the server's Slug.IsValid: letters (CJK too), digits, hyphens, no edge or double dashes. */
-const SLUG_PATTERN = /^[\p{L}\p{N}](?:[\p{L}\p{N}]|-(?!-))*[\p{L}\p{N}]$|^[\p{L}\p{N}]$/u
 
 type SlugState =
   | { status: 'idle' }
@@ -48,8 +45,8 @@ function DialogForm({ onClose, onCreated }: Omit<CreateNotebookDialogProps, 'ope
   const [error, setError] = useState<string | null>(null)
   const titleRef = useRef<HTMLInputElement>(null)
 
-  const normalizedSlug = slug.trim().toLowerCase()
-  const slugWellFormed = normalizedSlug.length > 0 && SLUG_PATTERN.test(normalizedSlug)
+  const normalizedSlug = normalizeNotebookSlug(slug)
+  const slugWellFormed = normalizedSlug.length > 0 && NOTEBOOK_SLUG_PATTERN.test(normalizedSlug)
   // Only a verdict about the current, well-formed slug may block creation.
   const slugTaken = slugWellFormed && slugState.status === 'taken'
 

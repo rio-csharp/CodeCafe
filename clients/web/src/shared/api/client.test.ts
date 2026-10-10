@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { setAccessCode } from './accessCodes'
 import { ApiError, apiFetch } from './client'
 import {
   clearSession,
@@ -287,5 +288,47 @@ describe('apiFetch with a session', () => {
     await apiFetch('/api/auth/me')
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('apiFetch with a stored access code', () => {
+  beforeEach(() => {
+    window.sessionStorage.clear()
+  })
+
+  function accessCodeOf(init: RequestInit | undefined): string | null {
+    return new Headers(init?.headers).get('X-CodeCafe-Access-Code')
+  }
+
+  it('attaches the remembered code to every call into its notebook', async () => {
+    const fetchMock = stubFetch(async () => success({ ok: true }))
+    setAccessCode('espresso-notes', 'let-me-in')
+
+    await apiFetch('/api/notebooks/espresso-notes')
+    await apiFetch('/api/notebooks/espresso-notes/tree')
+
+    expect(accessCodeOf(fetchMock.mock.calls[0]?.[1])).toBe('let-me-in')
+    expect(accessCodeOf(fetchMock.mock.calls[1]?.[1])).toBe('let-me-in')
+  })
+
+  it('leaves other paths and other notebooks alone', async () => {
+    const fetchMock = stubFetch(async () => success({ ok: true }))
+    setAccessCode('espresso-notes', 'let-me-in')
+
+    await apiFetch('/api/notebooks/other-notes/tree')
+    await apiFetch('/api/notebooks')
+    await apiFetch('/api/auth/me')
+
+    for (const call of fetchMock.mock.calls) {
+      expect(accessCodeOf(call[1])).toBeNull()
+    }
+  })
+
+  it('sends no access-code header when nothing is stored', async () => {
+    const fetchMock = stubFetch(async () => success({ ok: true }))
+
+    await apiFetch('/api/notebooks/espresso-notes/tree')
+
+    expect(accessCodeOf(fetchMock.mock.calls[0]?.[1])).toBeNull()
   })
 })
