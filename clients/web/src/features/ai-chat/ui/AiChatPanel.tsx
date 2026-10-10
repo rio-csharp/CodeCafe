@@ -104,7 +104,7 @@ export function AiChatPanel({ slug, onAiChanged }: AiChatPanelProps) {
             type="button"
             disabled={input.trim() === ''}
             onClick={send}
-            className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-on-accent transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
+            className="shrink-0 rounded-lg bg-accent px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50"
           >
             {t('ai.send')}
           </button>
@@ -171,7 +171,7 @@ function ClearChatButton({ onClear }: { onClear: () => void }) {
 function MessageBubble({ message }: { message: ChatMessage }) {
   if (message.role === 'user') {
     return (
-      <p className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-accent px-3 py-2 text-sm whitespace-pre-wrap text-on-accent">
+      <p className="max-w-[85%] self-end rounded-2xl rounded-br-sm bg-accent px-3 py-2 text-sm whitespace-pre-wrap text-white">
         {message.text}
       </p>
     )
