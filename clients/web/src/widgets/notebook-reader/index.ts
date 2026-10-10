@@ -15,9 +15,11 @@ export {
   EmptyNotebookState,
   NotebookErrorState,
   NotebookMissingState,
+  NotebookUnlockState,
   PageErrorState,
   PageMissingState,
 } from './ui/ReaderStates'
+export type { NotebookUnlockStateProps } from './ui/ReaderStates'
 export {
   ancestorPathsOf,
   findFirstPagePath,

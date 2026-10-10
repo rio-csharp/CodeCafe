@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { UseQueryResult } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
@@ -6,17 +6,22 @@ import { Navigate, useLocation, useNavigate, useParams } from 'react-router'
 import { applyBlockOps, BlockList, assembleBlockTree, extractOutline } from '@/entities/block'
 import type { BlockNode, BlockOpWire } from '@/entities/block'
 import { flattenPages, getNotebookDetails, getNotebookTree, notebookKeys } from '@/entities/notebook'
-import { createPage, getPageByPath, pageKeys, updatePage } from '@/entities/page'
-import type { PageDetails } from '@/entities/page'
-import { ApiError } from '@/shared/api'
+import type { PageTreeNode } from '@/entities/notebook'
+import { createPage, deletePage, exportPage, getPageByPath, importPage, movePage, pageKeys, updatePage } from '@/entities/page'
+import type { MovePageData, PageDetails } from '@/entities/page'
+import { ApiError, clearAccessCode, setAccessCode } from '@/shared/api'
+import { MARKDOWN_FILE_ACCEPT, readMarkdownFile } from '@/shared/lib'
 import { PageEditor } from '@/widgets/page-editor'
 import { AiChatPanel } from '@/features/ai-chat'
+import { SharePageDialog } from '@/features/share-page'
+import { FavoritePageButton } from '@/features/toggle-page-favorite'
 import {
   ContentSkeleton,
   EmptyNotebookState,
   NotebookErrorState,
   NotebookMissingState,
   NotebookReaderLayout,
+  NotebookUnlockState,
   PageErrorState,
   PageHistoryPanel,
   PageMissingState,
@@ -65,6 +70,32 @@ export function NotebookReaderPage() {
     enabled: details.isSuccess && pagePath !== null,
     retry: false,
   })
+
+  // Access-code unlock: a 403 `access_code_required` renders the prompt instead
+  // of the vague 404 state, and a successful code simply re-runs the details query.
+  // The status is tagged with its slug so navigating between locked notebooks
+  // cannot leak one prompt's state into the other.
+  const [unlock, setUnlock] = useState<{ slug: string; status: 'pending' | 'wrongCode' } | null>(
+    null,
+  )
+  const unlockStatus = unlock?.slug === slug ? unlock.status : 'idle'
+
+  const handleUnlock = async (code: string) => {
+    setUnlock({ slug, status: 'pending' })
+    setAccessCode(slug, code)
+    const retried = await details.refetch()
+    if (retried.isSuccess) {
+      return
+    }
+    if (isAccessCodeRequired(retried.error)) {
+      // A refused code must not linger: every later call would carry it.
+      clearAccessCode(slug)
+      setUnlock({ slug, status: 'wrongCode' })
+      return
+    }
+    // A different failure (network, 500) belongs to the generic error state.
+    setUnlock(null)
+  }
 
   const notebookTitle = details.data?.title
   const pageTitle = page.data?.title
@@ -147,6 +178,159 @@ export function NotebookReaderPage() {
     }
   }
 
+  // Tree housekeeping for writers: move (drag-and-drop), archive, delete.
+  const invalidateTree = () => {
+    void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
+    void queryClient.invalidateQueries({ queryKey: notebookKeys.details(slug) })
+    void queryClient.invalidateQueries({ queryKey: pageKeys.all })
+  }
+
+  const movePageMutation = useMutation({
+    mutationFn: ({ pageId, data }: { pageId: string; data: MovePageData }) =>
+      movePage(pageId, data),
+    onSuccess: (moved, { pageId }) => {
+      // The open page may have been the one dragged: follow it to its new
+      // address before refetches can 404 the old one.
+      if (page.data?.id === pageId && normalizePagePath(moved.path) !== pagePath) {
+        void navigate(toPageHref(slug, moved.path))
+      }
+      invalidateTree()
+    },
+  })
+
+  const archivePageMutation = useMutation({
+    mutationFn: (node: PageTreeNode) => updatePage(node.id, { isArchived: !node.isArchived }),
+    onSuccess: invalidateTree,
+  })
+
+  const deletePageMutation = useMutation({
+    mutationFn: (node: PageTreeNode) => deletePage(node.id),
+    onSuccess: (_value, node) => {
+      // The open page just left the menu: fall back to the notebook root,
+      // which redirects to the first remaining page (or the empty state).
+      if (page.data?.id === node.id) {
+        void navigate(`/notebooks/${encodeURIComponent(slug)}`)
+      }
+      invalidateTree()
+    },
+  })
+
+  // Import/export plumbing. Chrome actions (export, import) report failures in
+  // one floating alert rather than a dialog, so a misclick never traps focus.
+  const [actionError, setActionError] = useState<string | null>(null)
+  // A neutral counterpart to actionError for good news (block restored).
+  const [notice, setNotice] = useState<string | null>(null)
+  // Page sharing is a dialog over the already-loaded page details; writers only.
+  const [shareOpen, setShareOpen] = useState(false)
+  useEffect(() => {
+    if (actionError === null) {
+      return
+    }
+    const timeout = setTimeout(() => {
+      setActionError(null)
+    }, 4000)
+    return () => clearTimeout(timeout)
+  }, [actionError])
+
+  useEffect(() => {
+    if (notice === null) {
+      return
+    }
+    const timeout = setTimeout(() => {
+      setNotice(null)
+    }, 4000)
+    return () => clearTimeout(timeout)
+  }, [notice])
+
+  const importInputRef = useRef<HTMLInputElement>(null)
+  // Set before the picker opens: the import target survives the file dialog.
+  const importParentPathRef = useRef<string | null>(null)
+
+  const importPageMutation = useMutation({
+    mutationFn: ({ fileName, markdown, parentPath }: { fileName: string; markdown: string; parentPath: string | null }) =>
+      importPage(slug, { fileName, markdown, parentPath }),
+    onSuccess: (imported) => {
+      invalidateTree()
+      void navigate(toPageHref(slug, imported.path))
+    },
+    onError: () => {
+      setActionError(t('import.failed'))
+    },
+  })
+
+  const handleImportPage = (parentPath?: string) => {
+    importParentPathRef.current = parentPath ?? null
+    importInputRef.current?.click()
+  }
+
+  const handleImportFile = async (file: File | undefined) => {
+    if (file === undefined) {
+      return
+    }
+    const read = await readMarkdownFile(file)
+    if (!read.ok) {
+      setActionError(read.reason === 'tooLarge' ? t('import.tooLarge') : t('import.failed'))
+      return
+    }
+    importPageMutation.mutate({
+      fileName: read.fileName,
+      markdown: read.markdown,
+      parentPath: importParentPathRef.current,
+    })
+  }
+
+  const handleExportPage = () => {
+    if (page.data === undefined) {
+      return
+    }
+    exportPage(page.data.id).catch(() => {
+      setActionError(t('reader.exportFailed'))
+    })
+  }
+
+  // The hidden picker and the floating alert travel with both layout branches.
+  const importUi = (
+    <>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept={MARKDOWN_FILE_ACCEPT}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={(event) => {
+          void handleImportFile(event.target.files?.[0])
+          // Re-picking the same file must fire again.
+          event.target.value = ''
+        }}
+      />
+      {actionError !== null ? (
+        <button
+          type="button"
+          role="alert"
+          onClick={() => {
+            setActionError(null)
+          }}
+          className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-line bg-card px-3 py-2 text-xs text-danger shadow-lg"
+        >
+          {actionError}
+        </button>
+      ) : null}
+      {notice !== null ? (
+        <button
+          type="button"
+          role="status"
+          onClick={() => {
+            setNotice(null)
+          }}
+          className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-md border border-line bg-card px-3 py-2 text-xs text-ink shadow-lg"
+        >
+          {notice}
+        </button>
+      ) : null}
+    </>
+  )
+
   // One assembly feeds both the article and the outline, so they cannot drift.
   const nodes = useMemo(
     () => (page.data === undefined ? [] : assembleBlockTree(page.data.blocks)),
@@ -163,6 +347,17 @@ export function NotebookReaderPage() {
   }
 
   if (details.isError) {
+    if (isAccessCodeRequired(details.error)) {
+      return (
+        <NotebookUnlockState
+          pending={unlockStatus === 'pending'}
+          wrongCode={unlockStatus === 'wrongCode'}
+          onUnlock={(code) => {
+            void handleUnlock(code)
+          }}
+        />
+      )
+    }
     if (isNotFound(details.error)) {
       return <NotebookMissingState />
     }
@@ -212,6 +407,28 @@ export function NotebookReaderPage() {
         roots={roots}
         canEdit={notebook.canWrite}
         onAddPage={notebook.canWrite ? handleAddPage : undefined}
+        onImportPage={notebook.canWrite ? handleImportPage : undefined}
+        onMovePage={
+          notebook.canWrite
+            ? (pageId, data) => {
+                movePageMutation.mutate({ pageId, data })
+              }
+            : undefined
+        }
+        onToggleArchive={
+          notebook.canWrite
+            ? (node) => {
+                archivePageMutation.mutate(node)
+              }
+            : undefined
+        }
+        onDeletePage={
+          notebook.canWrite
+            ? (node) => {
+                deletePageMutation.mutate(node)
+              }
+            : undefined
+        }
         rightTabs={[
           {
             id: 'ai',
@@ -230,13 +447,15 @@ export function NotebookReaderPage() {
           },
         ]}
       >
+        {importUi}
         <EmptyNotebookState />
       </NotebookReaderLayout>
     )
   }
 
   return (
-    <NotebookReaderLayout
+    <>
+      <NotebookReaderLayout
       notebook={notebook}
       roots={roots}
       activePath={pagePath}
@@ -294,7 +513,46 @@ export function NotebookReaderPage() {
           setEditingSession({ slug, page: page.data, locationKey: location.key })
         }
       }}
+      favoriteAction={
+        page.data !== undefined && !editing ? (
+          <FavoritePageButton
+            pageId={page.data.id}
+            slug={slug}
+            isFavorite={page.data.isFavorite}
+          />
+        ) : undefined
+      }
+      onExportPage={page.data !== undefined && !editing ? handleExportPage : undefined}
+      onSharePage={
+        page.data !== undefined && !editing && notebook.canWrite
+          ? () => {
+              setShareOpen(true)
+            }
+          : undefined
+      }
       onAddPage={notebook.canWrite ? handleAddPage : undefined}
+      onImportPage={notebook.canWrite ? handleImportPage : undefined}
+      onMovePage={
+        notebook.canWrite
+          ? (pageId, data) => {
+              movePageMutation.mutate({ pageId, data })
+            }
+          : undefined
+      }
+      onToggleArchive={
+        notebook.canWrite
+          ? (node) => {
+              archivePageMutation.mutate(node)
+            }
+          : undefined
+      }
+      onDeletePage={
+        notebook.canWrite
+          ? (node) => {
+              deletePageMutation.mutate(node)
+            }
+          : undefined
+      }
       prevPage={prevPage}
       nextPage={nextPage}
       refreshing={page.isRefetching}
@@ -303,7 +561,9 @@ export function NotebookReaderPage() {
       }}
     >
       {editing && editingSession !== null ? (
-        <PageEditor
+        <>
+          {importUi}
+          <PageEditor
           page={editingSession.page}
           saving={savePage.isPending}
           error={
@@ -325,11 +585,28 @@ export function NotebookReaderPage() {
             savePage.reset()
             setEditingSession(null)
           }}
+          onBlockRestored={() => {
+            setNotice(t('editor.blockRestored'))
+          }}
         />
+        </>
       ) : (
-        <PageBody page={page} nodes={nodes} />
+        <>
+          {importUi}
+          <PageBody page={page} nodes={nodes} />
+        </>
       )}
-    </NotebookReaderLayout>
+      </NotebookReaderLayout>
+
+      {/* Live page details, not a snapshot: a share mutation invalidates the
+          page namespace and the dialog's list refreshes in place. */}
+      <SharePageDialog
+        page={shareOpen && page.data !== undefined ? page.data : null}
+        onClose={() => {
+          setShareOpen(false)
+        }}
+      />
+    </>
   )
 }
 
@@ -366,4 +643,8 @@ function PageArticle({ nodes }: { nodes: BlockNode[] }) {
 
 function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404
+}
+
+function isAccessCodeRequired(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'access_code_required'
 }

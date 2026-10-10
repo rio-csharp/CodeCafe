@@ -1,34 +1,23 @@
 import type { PageTreeNode } from '@/entities/notebook'
+import { normalizePagePath } from '@/entities/page'
+
+// The href helpers live with the page entity (the homepage needs them too);
+// re-exported here so the reader's public API is unchanged.
+export { normalizePagePath, toPageHref } from '@/entities/page'
 
 /**
- * `/setup/rust-notes` → `setup/rust-notes`. Lets a decoded route splat be
- * compared against a node path without caring who wrote the leading slash.
+ * The tree as the reader shows it. Archived pages (and everything under them)
+ * are hidden unless `includeArchived` — writers get them back, dimmed and
+ * badged, so they can still be un-archived or reorganized.
  */
-export function normalizePagePath(path: string): string {
-  return path
-    .split('/')
-    .filter((segment) => segment.length > 0)
-    .join('/')
-}
-
-/** The reader's link for a page: each path segment encoded, CJK included. */
-export function toPageHref(slug: string, path: string): string {
-  const prefix = `/notebooks/${encodeURIComponent(slug)}`
-  const segments = normalizePagePath(path)
-
-  if (segments.length === 0) {
-    return prefix
-  }
-
-  const encoded = segments.split('/').map(encodeURIComponent).join('/')
-  return `${prefix}/${encoded}`
-}
-
-/** Archived pages are hidden from the reader; so is everything under them. */
-export function visibleTree(roots: readonly PageTreeNode[]): PageTreeNode[] {
+export function visibleTree(
+  roots: readonly PageTreeNode[],
+  options?: { includeArchived?: boolean },
+): PageTreeNode[] {
+  const includeArchived = options?.includeArchived ?? false
   return roots
-    .filter((node) => !node.isArchived)
-    .map((node) => ({ ...node, children: visibleTree(node.children) }))
+    .filter((node) => includeArchived || !node.isArchived)
+    .map((node) => ({ ...node, children: visibleTree(node.children, options) }))
 }
 
 /**

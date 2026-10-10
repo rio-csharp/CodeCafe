@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { describe, expect, it, vi } from 'vitest'
@@ -168,5 +168,137 @@ describe('PageTree', () => {
 
     expect(screen.getByText('No pages match your search')).toBeInTheDocument()
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+  })
+
+  it('shows archived pages dimmed and badged to writers', async () => {
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter>
+        <PageTree slug="book" roots={ROOTS} canWrite />
+      </MemoryRouter>,
+    )
+
+    const stash = screen.getByRole('link', { name: /Hidden stash/ })
+    expect(stash).toHaveClass('opacity-60')
+    expect(within(stash).getByText('Archived')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Toggle the subsections of Guide' }))
+    expect(screen.getByRole('link', { name: /Retired pour/ })).toHaveClass('opacity-60')
+  })
+
+  it('offers drag handles and node menus to writers only', () => {
+    render(
+      <MemoryRouter>
+        <PageTree
+          slug="book"
+          roots={ROOTS}
+          canWrite
+          onMovePage={vi.fn()}
+          onToggleArchive={vi.fn()}
+          onDeletePage={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('button', { name: 'Drag to move Guide' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Actions for "Guide"' })).toBeInTheDocument()
+  })
+
+  it('keeps rows plain for readers', () => {
+    renderTree()
+
+    expect(screen.queryByRole('button', { name: /Drag to move/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Actions for/ })).not.toBeInTheDocument()
+  })
+
+  it('archives and unarchives from the node menu', async () => {
+    const user = userEvent.setup()
+    const onToggleArchive = vi.fn()
+    render(
+      <MemoryRouter>
+        <PageTree
+          slug="book"
+          roots={ROOTS}
+          canWrite
+          onToggleArchive={onToggleArchive}
+          onDeletePage={vi.fn()}
+        />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Actions for "Guide"' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Archive' }))
+    expect(onToggleArchive).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }))
+
+    // The archived root offers the reverse action.
+    await user.click(screen.getByRole('button', { name: 'Actions for "Hidden stash"' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Unarchive' }))
+    expect(onToggleArchive).toHaveBeenCalledWith(expect.objectContaining({ id: '5' }))
+  })
+
+  it('hands delete intents to the caller from the node menu', async () => {
+    const user = userEvent.setup()
+    const onDeletePage = vi.fn()
+    render(
+      <MemoryRouter>
+        <PageTree
+          slug="book"
+          roots={ROOTS}
+          canWrite
+          onToggleArchive={vi.fn()}
+          onDeletePage={onDeletePage}
+        />
+      </MemoryRouter>,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Actions for "Guide"' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
+
+    expect(onDeletePage).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }))
+  })
+
+  it('drops a dragged page onto another as its child', () => {
+    const onMovePage = vi.fn()
+    render(
+      <MemoryRouter>
+        <PageTree slug="book" roots={ROOTS} canWrite onMovePage={onMovePage} />
+      </MemoryRouter>,
+    )
+
+    const dataTransfer = { setData: vi.fn(), effectAllowed: '', dropEffect: '' }
+    fireEvent.dragStart(screen.getByRole('button', { name: 'Drag to move Hidden stash' }), {
+      dataTransfer,
+    })
+    // jsdom reports zero rects, which dropPositionAt reads as the row middle.
+    const guideRow = screen.getByRole('link', { name: 'Guide' }).parentElement
+    expect(guideRow).not.toBeNull()
+    fireEvent.dragOver(guideRow as Element, { dataTransfer })
+    fireEvent.drop(guideRow as Element, { dataTransfer })
+
+    expect(onMovePage).toHaveBeenCalledWith('5', {
+      parentPath: '/guide',
+      afterPageId: '4',
+    })
+  })
+
+  it('refuses to drop a page into its own subtree', async () => {
+    const user = userEvent.setup()
+    const onMovePage = vi.fn()
+    render(
+      <MemoryRouter>
+        <PageTree slug="book" roots={ROOTS} canWrite onMovePage={onMovePage} />
+      </MemoryRouter>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Toggle the subsections of Guide' }))
+
+    const dataTransfer = { setData: vi.fn(), effectAllowed: '', dropEffect: '' }
+    fireEvent.dragStart(screen.getByRole('button', { name: 'Drag to move Guide' }), {
+      dataTransfer,
+    })
+    const setupRow = screen.getByRole('link', { name: 'Setup' }).parentElement
+    fireEvent.dragOver(setupRow as Element, { dataTransfer })
+    fireEvent.drop(setupRow as Element, { dataTransfer })
+
+    expect(onMovePage).not.toHaveBeenCalled()
   })
 })

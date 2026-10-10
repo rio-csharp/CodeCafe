@@ -3,7 +3,11 @@ import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import type { NotebookDetails, PageTreeNode } from '@/entities/notebook'
+import type { MovePageData } from '@/entities/page'
 import { ContentSkeleton, TreeSkeleton } from './ReaderSkeletons'
+import { FavoritePagesSection } from './FavoritePagesSection'
+import { PageDeleteDialog } from './PageDeleteDialog'
+import { PageTrashDialog } from './PageTrashDialog'
 import { PageTree } from './PageTree'
 import { ReaderChrome } from './ReaderChrome'
 import { RightPanel } from './RightPanel'
@@ -28,8 +32,22 @@ export interface NotebookReaderLayoutProps {
   /** Edit affordance in the chrome; hidden while null. */
   canEdit?: boolean
   onEdit?: () => void
+  /** Page-favorite toggle rendered in the chrome; hidden while undefined. */
+  favoriteAction?: ReactNode
+  /** Markdown export of the open page; anonymous readers may use it too. */
+  onExportPage?: () => void
   /** Page creation from the tree header (root) or a node (subpage); writers only. */
   onAddPage?: (parentPath?: string) => void
+  /** Markdown import from the tree header (root) or a node menu (subpage); writers only. */
+  onImportPage?: (parentPath?: string) => void
+  /** Move/reorder from tree drag-and-drop; writers only. */
+  onMovePage?: (pageId: string, data: MovePageData) => void
+  /** Archive/unarchive from the node menu; writers only. */
+  onToggleArchive?: (node: PageTreeNode) => void
+  /** Soft-delete after the confirm dialog; writers only. */
+  onDeletePage?: (node: PageTreeNode) => void
+  /** Page-level sharing dialog; writers only, so undefined hides the pill. */
+  onSharePage?: () => void
   refreshing?: boolean
   onRefresh?: () => void
   /** Linear reading order neighbours; the mobile toolbar shows them. */
@@ -54,7 +72,14 @@ export function NotebookReaderLayout({
   pageTitle = null,
   canEdit = false,
   onEdit,
+  favoriteAction,
+  onExportPage,
   onAddPage,
+  onImportPage,
+  onMovePage,
+  onToggleArchive,
+  onDeletePage,
+  onSharePage,
   refreshing = false,
   onRefresh,
   prevPage = null,
@@ -68,6 +93,8 @@ export function NotebookReaderLayout({
   const [contentWide, setContentWide] = useState(false)
   // Tree title filter, client-side: the whole tree is already here.
   const [treeQuery, setTreeQuery] = useState('')
+  const [trashOpen, setTrashOpen] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<PageTreeNode | null>(null)
   const mainRef = useRef<HTMLElement>(null)
   const drawerCloseRef = useRef<HTMLButtonElement>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
@@ -134,6 +161,36 @@ export function NotebookReaderLayout({
             </Link>
             <p className="text-[11px] text-muted">{t('reader.pageCount', { count: notebook.pageCount })}</p>
           </div>
+          {canEdit ? (
+            <button
+              type="button"
+              aria-label={t('reader.pageTrash')}
+              title={t('reader.pageTrash')}
+              onClick={() => {
+                setTrashOpen(true)
+              }}
+              className="grid size-8 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-muted-soft hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M2.5 4h11M6 4V2.8A.8.8 0 0 1 6.8 2h2.4a.8.8 0 0 1 .8.8V4M4 4l.6 8.6A1.4 1.4 0 0 0 6 14h4a1.4 1.4 0 0 0 1.4-1.4L12 4M6.6 6.8v4.2M9.4 6.8v4.2" />
+              </svg>
+            </button>
+          ) : null}
+          {canEdit && onImportPage !== undefined ? (
+            <button
+              type="button"
+              aria-label={t('reader.importPage')}
+              title={t('reader.importPage')}
+              onClick={() => {
+                onImportPage()
+              }}
+              className="grid size-8 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-muted-soft hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M8 10V2.5M5.5 5 8 2.5 10.5 5M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />
+              </svg>
+            </button>
+          ) : null}
           {canEdit && onAddPage !== undefined ? (
             <button
               type="button"
@@ -178,11 +235,33 @@ export function NotebookReaderLayout({
           </label>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
+          <FavoritePagesSection
+            notebookId={notebook.id}
+            activePath={activePath}
+            onNavigate={closeDrawer}
+          />
           <PageTree
             slug={notebook.slug}
             roots={roots}
             activePath={activePath}
             filter={treeQuery}
+            canWrite={canEdit}
+            onMovePage={canEdit ? onMovePage : undefined}
+            onToggleArchive={canEdit ? onToggleArchive : undefined}
+            onImportSubpage={
+              canEdit && onImportPage !== undefined
+                ? (node) => {
+                    onImportPage(node.path)
+                  }
+                : undefined
+            }
+            onDeletePage={
+              canEdit && onDeletePage !== undefined
+                ? (node) => {
+                    setPendingDelete(node)
+                  }
+                : undefined
+            }
             onAddChild={
               canEdit && onAddPage !== undefined
                 ? (parentPath) => {
@@ -215,6 +294,9 @@ export function NotebookReaderLayout({
               }}
               canEdit={canEdit}
               onEdit={onEdit}
+              favoriteAction={favoriteAction}
+              onExportPage={onExportPage}
+              onSharePage={onSharePage}
             />
           ) : null}
           {children}
@@ -283,6 +365,28 @@ export function NotebookReaderLayout({
           />
         </div>
       </div>
+
+      {canEdit && trashOpen ? (
+        <PageTrashDialog
+          slug={notebook.slug}
+          onClose={() => {
+            setTrashOpen(false)
+          }}
+        />
+      ) : null}
+
+      {canEdit && pendingDelete !== null ? (
+        <PageDeleteDialog
+          node={pendingDelete}
+          onCancel={() => {
+            setPendingDelete(null)
+          }}
+          onConfirm={() => {
+            onDeletePage?.(pendingDelete)
+            setPendingDelete(null)
+          }}
+        />
+      ) : null}
 
       {/* Backdrop behind an open drawer; the close button and Escape are the
           accessible paths, this is the convenient one. */}

@@ -1,5 +1,7 @@
 export { Button } from './Button'
 export type { ButtonProps, ButtonVariant } from './Button'
+export { ConfirmButton } from './ConfirmButton'
+export type { ConfirmButtonProps } from './ConfirmButton'
 export { buttonClass } from './buttonClass'
 export { Container } from './Container'
 export { DialogField, DialogShell } from './DialogShell'

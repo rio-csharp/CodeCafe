@@ -6,9 +6,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NotebookDetails, PageTreeNode } from '@/entities/notebook'
 import { applyBlockOps } from '@/entities/block'
 import { getNotebookDetails, getNotebookTree } from '@/entities/notebook'
-import { createPage, getPageByPath, pageKeys, updatePage } from '@/entities/page'
+import { createPage, exportPage, getPageByPath, importPage, pageKeys, updatePage } from '@/entities/page'
 import type { PageDetails } from '@/entities/page'
-import { ApiError } from '@/shared/api'
+import { ApiError, getAccessCode } from '@/shared/api'
 import { NotebookReaderPage } from './NotebookReaderPage'
 
 vi.mock('@/entities/notebook', async (importOriginal) => ({
@@ -27,6 +27,9 @@ vi.mock('@/entities/page', async (importOriginal) => ({
   getPageByPath: vi.fn(),
   updatePage: vi.fn(),
   createPage: vi.fn(),
+  exportPage: vi.fn(),
+  importPage: vi.fn(),
+  listFavoritePages: vi.fn().mockResolvedValue([]),
   listPageRevisions: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
 }))
 
@@ -77,6 +80,7 @@ function page(title: string, path: string): PageDetails {
     path,
     isArchived: false,
     isFavorite: false,
+    shares: [],
     blocks: [
       {
         id: 'block-1',
@@ -122,6 +126,14 @@ function pageWithHeadings(): PageDetails {
 const notFound = () =>
   new ApiError({ status: 404, code: 'notebooks.not_found', kind: 'NotFound', message: 'nope' })
 
+const accessRequired = () =>
+  new ApiError({
+    status: 403,
+    code: 'access_code_required',
+    kind: 'Forbidden',
+    message: 'This notebook requires an access code.',
+  })
+
 function renderReader(initialPath: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
@@ -140,11 +152,15 @@ function renderReader(initialPath: string) {
 }
 
 beforeEach(() => {
+  window.sessionStorage.clear()
   vi.mocked(getNotebookDetails).mockReset()
   vi.mocked(getNotebookTree).mockReset()
   vi.mocked(getPageByPath).mockReset()
   vi.mocked(updatePage).mockReset()
   vi.mocked(createPage).mockReset()
+  vi.mocked(exportPage).mockReset()
+  vi.mocked(importPage).mockReset()
+  vi.mocked(exportPage).mockResolvedValue(undefined)
   vi.mocked(applyBlockOps).mockReset()
   vi.mocked(getNotebookDetails).mockResolvedValue(NOTEBOOK)
   vi.mocked(getNotebookTree).mockResolvedValue(TREE)
@@ -257,6 +273,50 @@ describe('NotebookReaderPage', () => {
 
     expect(await screen.findByRole('button', { name: 'Contents' })).toBeInTheDocument()
     expect(await screen.findByRole('navigation', { name: 'Contents' })).toBeInTheDocument()
+  })
+
+  it('asks for the access code instead of claiming the notebook is missing', async () => {
+    vi.mocked(getNotebookDetails).mockRejectedValue(accessRequired())
+
+    renderReader('/notebooks/locked-menu')
+
+    expect(await screen.findByText('This menu is under lock')).toBeInTheDocument()
+    expect(screen.getByLabelText('Access code')).toBeInTheDocument()
+    expect(
+      screen.queryByText("This notebook doesn't exist, or it isn't public yet."),
+    ).not.toBeInTheDocument()
+    // No automatic probing: the rate-limited endpoint is hit only on submit.
+    expect(vi.mocked(getNotebookDetails)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(getNotebookTree)).not.toHaveBeenCalled()
+  })
+
+  it('unlocks the notebook when the code fits and remembers it for later calls', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails)
+      .mockRejectedValueOnce(accessRequired())
+      .mockResolvedValue(NOTEBOOK)
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.type(await screen.findByLabelText('Access code'), 'let-me-in')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
+    expect(getAccessCode('espresso-notes')).toBe('let-me-in')
+    expect(vi.mocked(getNotebookTree)).toHaveBeenCalled()
+  })
+
+  it('reports a wrong code inline and clears it, keeping the prompt', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockRejectedValue(accessRequired())
+
+    renderReader('/notebooks/espresso-notes')
+    await user.type(await screen.findByLabelText('Access code'), 'nope')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("That key doesn't fit")
+    expect(screen.getByText('This menu is under lock')).toBeInTheDocument()
+    expect(getAccessCode('espresso-notes')).toBeNull()
   })
 
   it('serves the non-committal state when the notebook itself is missing', async () => {
@@ -492,5 +552,94 @@ describe('NotebookReaderPage', () => {
     expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/brewing' }),
     )
+  })
+
+  it('exports the open page as markdown from the chrome', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Export page' }))
+
+    expect(vi.mocked(exportPage)).toHaveBeenCalledWith('page-1')
+  })
+
+  it('surfaces a themed error when the export fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(exportPage).mockRejectedValue(new Error('nope'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Export page' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Export failed. Please try again.')
+  })
+
+  it('lets a writer import a markdown file as a root page and lands on it', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockImplementation(({ path }) =>
+      Promise.resolve(path === '/imported' ? page('Imported', '/imported') : page('Grinding', '/grinding')),
+    )
+    vi.mocked(importPage).mockResolvedValue(page('Imported', '/imported'))
+
+    const { container } = renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Import page' }))
+
+    const input = container.querySelector('input[type="file"]')
+    expect(input).not.toBeNull()
+    fireEvent.change(input as HTMLInputElement, {
+      target: { files: [new File(['# Imported\n'], 'imported.md')] },
+    })
+
+    await waitFor(() => {
+      expect(vi.mocked(importPage)).toHaveBeenCalledWith('espresso-notes', {
+        fileName: 'imported.md',
+        markdown: '# Imported\n',
+        parentPath: null,
+      })
+    })
+    expect(await screen.findByRole('heading', { level: 1, name: 'Imported' })).toBeInTheDocument()
+  })
+
+  it('imports under a node from its menu', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(importPage).mockResolvedValue(page('Imported', '/grinding/imported'))
+
+    const { container } = renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Actions for "Grinding"' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Import a subpage under Grinding' }))
+
+    const input = container.querySelector('input[type="file"]')
+    fireEvent.change(input as HTMLInputElement, {
+      target: { files: [new File(['# Child\n'], 'child.md')] },
+    })
+
+    await waitFor(() => {
+      expect(vi.mocked(importPage)).toHaveBeenCalledWith('espresso-notes', {
+        fileName: 'child.md',
+        markdown: '# Child\n',
+        parentPath: '/grinding',
+      })
+    })
+  })
+
+  it('rejects oversized import files before any request is made', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    const { container } = renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Import page' }))
+
+    const big = new File(['x'], 'huge.md')
+    Object.defineProperty(big, 'size', { value: 4 * 1024 * 1024 + 1 })
+    const input = container.querySelector('input[type="file"]')
+    fireEvent.change(input as HTMLInputElement, { target: { files: [big] } })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('That file is over 4 MB')
+    expect(vi.mocked(importPage)).not.toHaveBeenCalled()
   })
 })

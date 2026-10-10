@@ -1,5 +1,47 @@
 import { describe, expect, it } from 'vitest'
-import { pageNeighbours } from './tree'
+import type { PageTreeNode } from '@/entities/notebook'
+import { pageNeighbours, visibleTree } from './tree'
+
+function node(
+  id: string,
+  path: string,
+  isArchived = false,
+  children: PageTreeNode[] = [],
+): PageTreeNode {
+  return {
+    id,
+    title: id,
+    path,
+    sortOrder: 0,
+    isArchived,
+    isFavorite: false,
+    children,
+  }
+}
+
+describe('visibleTree', () => {
+  const roots: PageTreeNode[] = [
+    node('guide', '/guide', false, [
+      node('setup', '/guide/setup'),
+      node('retired', '/guide/retired', true),
+    ]),
+    node('stash', '/stash', true),
+  ]
+
+  it('hides archived pages and everything under them by default', () => {
+    const visible = visibleTree(roots)
+
+    expect(visible.map((entry) => entry.id)).toEqual(['guide'])
+    expect(visible[0]?.children.map((entry) => entry.id)).toEqual(['setup'])
+  })
+
+  it('keeps archived pages when includeArchived is set', () => {
+    const visible = visibleTree(roots, { includeArchived: true })
+
+    expect(visible.map((entry) => entry.id)).toEqual(['guide', 'stash'])
+    expect(visible[0]?.children.map((entry) => entry.id)).toEqual(['setup', 'retired'])
+  })
+})
 
 const PAGES = [
   { path: '/guide', title: 'Guide' },

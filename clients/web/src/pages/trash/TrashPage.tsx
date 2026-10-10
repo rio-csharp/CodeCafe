@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate } from 'react-router'
 import {
@@ -11,7 +10,7 @@ import {
   restoreTrashedNotebook,
 } from '@/entities/notebook'
 import { useSessionStore } from '@/entities/session'
-import { Button, Container, Spinner } from '@/shared/ui'
+import { Button, ConfirmButton, Container, Spinner } from '@/shared/ui'
 
 /**
  * The trash can: soft-deleted notebooks wait here for a restore or a purge.
@@ -146,58 +145,5 @@ export function TrashPage() {
         )}
       </Container>
     </div>
-  )
-}
-
-/**
- * Destructive actions ask twice: the first click arms the button for a few
- * seconds, the second executes. Lighter than a modal, safer than one click.
- */
-function ConfirmButton({
-  label,
-  confirmLabel,
-  onConfirm,
-  busy,
-}: {
-  label: string
-  confirmLabel: string
-  onConfirm: () => void
-  busy: boolean
-}) {
-  const [armed, setArmed] = useState(false)
-
-  useEffect(() => {
-    if (!armed) {
-      return
-    }
-    const timer = setTimeout(() => {
-      setArmed(false)
-    }, 3000)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [armed])
-
-  return (
-    <button
-      type="button"
-      disabled={busy}
-      onClick={() => {
-        if (armed) {
-          setArmed(false)
-          onConfirm()
-        } else {
-          setArmed(true)
-        }
-      }}
-      className={[
-        'rounded-full px-4 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-50',
-        armed
-          ? 'bg-danger text-card hover:opacity-90'
-          : 'border border-line text-danger hover:bg-danger-soft',
-      ].join(' ')}
-    >
-      {armed ? confirmLabel : label}
-    </button>
   )
 }
