@@ -145,6 +145,32 @@ public sealed class StartAiChatCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ProviderReportsAnErrorUpdate_EmitsErrorEventNotAnEmptyReply()
+    {
+        var owner = User.Create("owner@example.com", "owner@example.com", "Owner", "hash");
+        var notebook = SeedNotebook(owner);
+        var (handler, chatClient, _, _) = CreateHandler(EnabledOptions, notebook, owner.Id);
+        chatClient.Enqueue(
+            new ChatResponseUpdate
+            {
+                Contents =
+                {
+                    new ErrorContent("Our servers are currently overloaded. Please try again later.")
+                    {
+                        ErrorCode = "server_is_overloaded",
+                    },
+                },
+            }
+        );
+
+        var events = await Collect(handler, Chat());
+
+        var error = Assert.IsType<AiChatErrorEvent>(Assert.Single(events));
+        Assert.Equal("server_is_overloaded", error.Code);
+        Assert.Equal("Our servers are currently overloaded. Please try again later.", error.Message);
+    }
+
+    [Fact]
     public async Task Handle_ProviderThrowsMidStream_EmitsErrorEvent()
     {
         var owner = User.Create("owner@example.com", "owner@example.com", "Owner", "hash");

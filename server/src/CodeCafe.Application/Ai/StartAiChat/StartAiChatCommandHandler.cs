@@ -172,6 +172,19 @@ public sealed class StartAiChatCommandHandler(
                             JsonSerializer.SerializeToElement(result.Result)
                         );
                         break;
+                    // A provider-side failure (an overloaded upstream, a rate limit) arrives as an
+                    // ErrorContent update and the SDK then ends the stream NORMALLY. Without this
+                    // the turn would look like a successful, empty reply.
+                    case ErrorContent error:
+                        yield return new AiChatErrorEvent(
+                            string.IsNullOrWhiteSpace(error.ErrorCode)
+                                ? AiErrors.ProviderFailed.Code
+                                : error.ErrorCode,
+                            string.IsNullOrWhiteSpace(error.Message)
+                                ? AiErrors.ProviderFailed.Message
+                                : error.Message
+                        );
+                        yield break;
                 }
             }
         }
