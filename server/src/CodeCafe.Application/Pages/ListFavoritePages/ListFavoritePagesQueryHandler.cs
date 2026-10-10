@@ -68,13 +68,35 @@ public sealed class ListFavoritePagesQueryHandler(
             }
         }
 
-        var dtos = visible
-            .Select(page => new FavoritePageDto(page.Id, page.Title, page.NotebookId, notebooksById[page.NotebookId].Title))
+        // Paths need the ancestor chain even when the notebook-level check already granted
+        // access, so the per-notebook page map doubles as the cache for both.
+        var dtos = new List<FavoritePageDto>(visible.Count);
+        foreach (var page in visible)
+        {
+            if (!pagesByNotebook.TryGetValue(page.NotebookId, out var notebookPages))
+            {
+                notebookPages = (await pages.ListByNotebookAsync(page.NotebookId, cancellationToken))
+                    .ToDictionary(candidate => candidate.Id);
+                pagesByNotebook.Add(page.NotebookId, notebookPages);
+            }
+
+            var notebook = notebooksById[page.NotebookId];
+            dtos.Add(new FavoritePageDto(
+                page.Id,
+                page.Title,
+                PageHierarchy.PathOf(page, notebookPages),
+                page.NotebookId,
+                notebook.Title,
+                notebook.Slug
+            ));
+        }
+
+        var ordered = dtos
             .OrderBy(dto => dto.NotebookTitle, StringComparer.OrdinalIgnoreCase)
             .ThenBy(dto => dto.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return Result.Success<IReadOnlyList<FavoritePageDto>>(dtos);
+        return Result.Success<IReadOnlyList<FavoritePageDto>>(ordered);
     }
 
     private static IReadOnlyList<Domain.Pages.Page> AncestorsOf(

@@ -134,4 +134,21 @@ describe('ReaderChrome', () => {
 
     expect(onEdit).toHaveBeenCalledOnce()
   })
+
+  it('renders the favorite action slot and forwards the export request', async () => {
+    const user = userEvent.setup()
+    const onExportPage = vi.fn()
+    renderChrome({ favoriteAction: <span data-testid="star" />, onExportPage })
+
+    expect(screen.getByTestId('star')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'reader.exportPage' }))
+    expect(onExportPage).toHaveBeenCalledOnce()
+  })
+
+  it('omits the export pill without an export handler', () => {
+    renderChrome()
+
+    expect(screen.queryByRole('button', { name: 'reader.exportPage' })).not.toBeInTheDocument()
+  })
 })

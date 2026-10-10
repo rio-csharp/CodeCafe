@@ -1,10 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useNavigate } from 'react-router'
 import {
+  changeNotebookSlug,
+  exportNotebook,
   getNotebookDetails,
+  getNotebookSlugAvailability,
   notebookKeys,
+  normalizeNotebookSlug,
+  NOTEBOOK_SLUG_PATTERN,
   setNotebookTags,
   updateNotebook,
 } from '@/entities/notebook'
@@ -46,7 +52,51 @@ function SettingsBody({ slug }: { slug: string }) {
     return <p className="py-10 text-center text-sm text-danger">{t('list.loadError')}</p>
   }
 
-  return <SettingsForm slug={slug} notebook={details.data} />
+  return (
+    <div className="flex flex-col gap-4">
+      <SettingsForm slug={slug} notebook={details.data} />
+      <NotebookExportSection slug={slug} />
+    </div>
+  )
+}
+
+/** The whole notebook as one markdown file, straight from the save dialog. */
+function NotebookExportSection({ slug }: { slug: string }) {
+  const { t } = useTranslation()
+  const [failed, setFailed] = useState(false)
+
+  const exportMutation = useMutation({
+    mutationFn: () => exportNotebook(slug),
+    onSuccess: () => {
+      setFailed(false)
+    },
+    onError: () => {
+      setFailed(true)
+    },
+  })
+
+  return (
+    <section aria-label={t('settings.export')} className="border-t border-line pt-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-ink">{t('settings.export')}</h3>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={exportMutation.isPending}
+          onClick={() => {
+            exportMutation.mutate()
+          }}
+        >
+          {t('settings.exportMarkdown')}
+        </Button>
+      </div>
+      {failed ? (
+        <p role="alert" className="mt-2 text-xs text-danger">
+          {t('settings.exportFailed')}
+        </p>
+      ) : null}
+    </section>
+  )
 }
 
 function useInvalidator(slug: string) {
@@ -57,8 +107,7 @@ function useInvalidator(slug: string) {
   }
 }
 
-export function SettingsError({ code }: { code: string }) {
-  const { t } = useTranslation()
+export function SettingsError({ code }: { code: string }) {  const { t } = useTranslation()
   const key =
     code === 'share_target_not_found'
       ? 'settings.error.shareTargetNotFound'
@@ -74,16 +123,65 @@ export function SettingsError({ code }: { code: string }) {
   )
 }
 
+const SLUG_CHECK_DEBOUNCE_MS = 300
+
+type SlugState =
+  | { status: 'idle' }
+  | { status: 'checking' }
+  | { status: 'available' }
+  | { status: 'taken'; suggestions: string[] }
+
 /** One form, one save button — the two endpoints behind it are plumbing. */
 function SettingsForm({ slug, notebook }: { slug: string; notebook: NotebookDetails }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [title, setTitle] = useState(notebook.title)
   const [description, setDescription] = useState(notebook.description ?? '')
   const [visibility, setVisibility] = useState(notebook.visibility)
   const [tags, setTags] = useState<string[]>(notebook.tags)
   const [tagDraft, setTagDraft] = useState('')
+  const [slugDraft, setSlugDraft] = useState(notebook.slug)
+  // Tagged with the slug it describes, so a stale verdict never leaks onto a
+  // fresh draft after the user keeps typing.
+  const [slugProbe, setSlugProbe] = useState<{ slug: string; state: SlugState } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const invalidate = useInvalidator(slug)
+
+  const normalizedSlug = normalizeNotebookSlug(slugDraft)
+  const slugChanged = normalizedSlug !== notebook.slug
+  const slugWellFormed = normalizedSlug.length > 0 && NOTEBOOK_SLUG_PATTERN.test(normalizedSlug)
+  const slugDirty = slugChanged && slugWellFormed
+  const slugState: SlugState =
+    slugDirty && slugProbe?.slug === normalizedSlug ? slugProbe.state : { status: 'idle' }
+
+  // Live availability probe for a changed slug. The current slug is the
+  // notebook's own, so probing it would always report "taken".
+  useEffect(() => {
+    if (!slugDirty) {
+      return
+    }
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      setSlugProbe({ slug: normalizedSlug, state: { status: 'checking' } })
+      getNotebookSlugAvailability(normalizedSlug, controller.signal)
+        .then((result) => {
+          setSlugProbe({
+            slug: normalizedSlug,
+            state: result.isAvailable
+              ? { status: 'available' }
+              : { status: 'taken', suggestions: result.suggestions },
+          })
+        })
+        .catch(() => {
+          // A failed probe must not block saving; the server decides anyway.
+          setSlugProbe({ slug: normalizedSlug, state: { status: 'idle' } })
+        })
+    }, SLUG_CHECK_DEBOUNCE_MS)
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [slugDirty, normalizedSlug])
 
   const basicsDirty =
     title !== notebook.title ||
@@ -91,25 +189,40 @@ function SettingsForm({ slug, notebook }: { slug: string; notebook: NotebookDeta
     visibility !== notebook.visibility
   const tagsDirty =
     tags.length !== notebook.tags.length || tags.some((tag, index) => tag !== notebook.tags[index])
-  const dirty = basicsDirty || tagsDirty
+  const dirty = basicsDirty || tagsDirty || slugDirty
+  const slugBlocked =
+    slugChanged &&
+    (!slugWellFormed || slugState.status === 'checking' || slugState.status === 'taken')
 
   const save = useMutation({
     mutationFn: async () => {
+      let activeSlug = slug
+      if (slugDirty) {
+        // The rename moves the address; every other patch must follow it,
+        // or they would 404 on the old slug.
+        const renamed = await changeNotebookSlug(slug, normalizedSlug)
+        activeSlug = renamed.slug
+      }
       // Only the touched halves ride out; unchanged halves stay put.
       await Promise.all([
         basicsDirty
-          ? updateNotebook(slug, {
+          ? updateNotebook(activeSlug, {
               title: title.trim(),
               description: description.trim() || null,
               visibility,
             })
           : Promise.resolve(null),
-        tagsDirty ? setNotebookTags(slug, tags) : Promise.resolve(null),
+        tagsDirty ? setNotebookTags(activeSlug, tags) : Promise.resolve(null),
       ])
+      return activeSlug
     },
-    onSuccess: () => {
+    onSuccess: (activeSlug) => {
       setError(null)
       invalidate()
+      if (activeSlug !== slug) {
+        // Every link to this notebook just moved; land the reader on the new one.
+        navigate(`/notebooks/${encodeURIComponent(activeSlug)}`, { replace: true })
+      }
     },
     onError: (cause) => {
       setError(cause instanceof ApiError ? cause.code : 'unknown')
@@ -127,7 +240,7 @@ function SettingsForm({ slug, notebook }: { slug: string; notebook: NotebookDeta
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    if (!dirty || title.trim().length === 0 || save.isPending) {
+    if (!dirty || title.trim().length === 0 || save.isPending || slugBlocked) {
       return
     }
     save.mutate()
@@ -156,6 +269,22 @@ function SettingsForm({ slug, notebook }: { slug: string; notebook: NotebookDeta
           placeholder={t('createNotebook.descriptionPlaceholder')}
         />
       </DialogField>
+
+      {notebook.isOwner ? (
+        <>
+          <DialogField label={t('settings.slug')}>
+            <Input
+              value={slugDraft}
+              onChange={(event) => {
+                setSlugDraft(event.target.value)
+              }}
+              maxLength={80}
+              className="font-mono"
+            />
+          </DialogField>
+          <SlugHint changed={slugChanged} wellFormed={slugWellFormed} state={slugState} />
+        </>
+      ) : null}
 
       <DialogField label={t('createNotebook.visibility')}>
         <select
@@ -215,10 +344,55 @@ function SettingsForm({ slug, notebook }: { slug: string; notebook: NotebookDeta
       {error !== null ? <SettingsError code={error} /> : null}
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={!dirty || title.trim().length === 0 || save.isPending}>
+        <Button
+          type="submit"
+          disabled={!dirty || title.trim().length === 0 || save.isPending || slugBlocked}
+        >
           {save.isPending ? t('settings.saving') : t('settings.save')}
         </Button>
       </div>
     </form>
+  )
+}
+
+/** The one line under the slug field: nothing while unchanged, then format or availability. */
+function SlugHint({
+  changed,
+  wellFormed,
+  state,
+}: {
+  changed: boolean
+  wellFormed: boolean
+  state: SlugState
+}) {
+  const { t } = useTranslation()
+
+  if (!changed) {
+    return null
+  }
+
+  if (!wellFormed) {
+    return (
+      <p role="alert" className="-mt-2 text-xs text-danger">
+        {t('createNotebook.slugHint')}
+      </p>
+    )
+  }
+
+  if (state.status === 'taken') {
+    return (
+      <p role="alert" className="-mt-2 text-xs text-danger">
+        {t('createNotebook.slugTaken')}
+      </p>
+    )
+  }
+
+  return (
+    <p
+      aria-live="polite"
+      className={`-mt-2 text-xs ${state.status === 'available' ? 'text-success' : 'text-muted'}`}
+    >
+      {t(state.status === 'available' ? 'createNotebook.slugAvailable' : 'createNotebook.slugChecking')}
+    </p>
   )
 }

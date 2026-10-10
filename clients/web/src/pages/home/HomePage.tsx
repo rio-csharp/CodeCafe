@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
@@ -13,8 +13,10 @@ import type {
   NotebookSort,
   NotebookVisibility,
 } from '@/entities/notebook'
+import { listFavoritePages, pageKeys, toPageHref } from '@/entities/page'
 import { useSessionStore } from '@/entities/session'
 import { CreateNotebookDialog } from '@/features/create-notebook'
+import { ImportNotebookButton } from '@/features/import-notebook'
 import { NotebookSettingsDialog } from '@/features/manage-notebook'
 import { ShareNotebookDialog } from '@/features/share-notebook'
 import { SearchInput } from '@/features/search-notebooks'
@@ -109,6 +111,8 @@ export function HomePage() {
           </p>
         ) : null}
 
+        {signedIn ? <FavoritePagesRow /> : null}
+
         {/* The one search box; it filters whichever tab is showing. */}
         <div className="mx-auto max-w-2xl">
           <SearchInput value={search} onChange={setSearch} />
@@ -162,6 +166,7 @@ export function HomePage() {
                   <path d="M2.5 4h11M6.5 4V2.5h3V4M3.5 4l.7 9a1 1 0 0 0 1 .9h5.6a1 1 0 0 0 1-.9l.7-9M6.5 7v4M9.5 7v4" />
                 </svg>
               </Link>
+              <ImportNotebookButton />
               <Button
                 variant="primary"
                 size="sm"
@@ -280,6 +285,51 @@ function greeting(t: (key: string, options?: Record<string, unknown>) => string,
   const hour = new Date().getHours()
   const key = hour < 6 ? 'night' : hour < 12 ? 'morning' : hour < 18 ? 'afternoon' : 'evening'
   return t(`home.greeting.${key}`, { name })
+}
+
+/** One row of starred pages across every notebook; hidden while there are none. */
+const FAVORITE_PAGES_LIMIT = 10
+
+function FavoritePagesRow() {
+  const { t } = useTranslation()
+  const favorites = useQuery({
+    queryKey: pageKeys.favorites(),
+    queryFn: ({ signal }) => listFavoritePages({ signal }),
+  })
+
+  const entries = favorites.data
+  if (entries === undefined || entries.length === 0) {
+    return null
+  }
+
+  return (
+    <section aria-label={t('home.favoritePages')} className="mb-6">
+      <h2 className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
+        <svg
+          viewBox="0 0 16 16"
+          className="size-3"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <path d="M8 1.6 9.9 5.5l4.3.6-3.1 3 .7 4.3L8 11.5l-3.8 2 .7-4.3-3.1-3 4.3-.6Z" />
+        </svg>
+        {t('home.favoritePages')}
+      </h2>
+      <ul className="flex gap-2 overflow-x-auto pb-1">
+        {entries.slice(0, FAVORITE_PAGES_LIMIT).map((entry) => (
+          <li key={entry.pageId} className="shrink-0">
+            <Link
+              to={toPageHref(entry.notebookSlug, entry.path)}
+              className="flex flex-col rounded-xl border border-line bg-card px-3 py-2 transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              <span className="max-w-40 truncate text-sm font-medium text-ink">{entry.title}</span>
+              <span className="max-w-40 truncate text-xs text-muted">{entry.notebookTitle}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
 }
 
 /** The favorites filter also includes starred public notebooks. */

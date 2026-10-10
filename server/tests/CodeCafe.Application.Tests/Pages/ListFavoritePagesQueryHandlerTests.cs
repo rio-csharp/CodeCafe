@@ -25,8 +25,30 @@ public sealed class ListFavoritePagesQueryHandlerTests
         var dto = Assert.Single(result.Value!);
         Assert.Equal(starred.Id, dto.PageId);
         Assert.Equal("Starred", dto.Title);
+        Assert.Equal("/starred", dto.Path);
         Assert.Equal(notebook.Id, dto.NotebookId);
         Assert.Equal("Recipes", dto.NotebookTitle);
+        Assert.Equal("recipes", dto.NotebookSlug);
+    }
+
+    [Fact]
+    public async Task Handle_BuildsTheFullPath_FromTheAncestorChain()
+    {
+        var owner = SeedOwner();
+        // Public, so the fast path grants read access and the ancestor map is loaded
+        // only for path building, not for the page-level access check.
+        var notebook = Notebook.Create(owner.Id, "Guides", null, "guides", NotebookVisibility.Public);
+        var parent = Page.Create(notebook.Id, null, "Brewing", "brewing", "a");
+        var child = Page.Create(notebook.Id, parent.Id, "V60", "v60", "a");
+        var (handler, pages) = CreateHandler(owner.Id, [notebook], [parent, child]);
+        await pages.SetFavoriteAsync(child.Id, owner.Id, true, CancellationToken.None);
+
+        var result = await handler.Handle(new ListFavoritePagesQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var dto = Assert.Single(result.Value!);
+        Assert.Equal(child.Id, dto.PageId);
+        Assert.Equal("/brewing/v60", dto.Path);
     }
 
     [Fact]
@@ -127,7 +149,9 @@ public sealed class ListFavoritePagesQueryHandlerTests
         var result = await handler.Handle(new ListFavoritePagesQuery(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(child.Id, Assert.Single(result.Value!).PageId);
+        var dto = Assert.Single(result.Value!);
+        Assert.Equal(child.Id, dto.PageId);
+        Assert.Equal("/shared/favorite", dto.Path);
     }
 
     private static User SeedOwner() => User.Create("owner@example.com", "owner@example.com", "Owner", "hash");

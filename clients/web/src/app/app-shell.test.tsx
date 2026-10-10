@@ -20,10 +20,16 @@ beforeEach(() => {
   )
 })
 
+// The full app mounts here, lazily transformed; the 1s default is too tight
+// under whole-suite load.
+const FIND_TIMEOUT = { timeout: 5000 }
+
 it('mounts the homepage shell with real copy', async () => {
   render(<Providers />)
 
-  expect(await screen.findByText('Write notebooks here, then share them.')).toBeInTheDocument()
+  expect(
+    await screen.findByText('Write notebooks here, then share them.', undefined, FIND_TIMEOUT),
+  ).toBeInTheDocument()
   expect(await screen.findByText('No public notebooks yet.')).toBeInTheDocument()
 })
 
@@ -31,7 +37,7 @@ it('switches every visible string to Chinese without a reload', async () => {
   const user = userEvent.setup()
   render(<Providers />)
 
-  await screen.findByText('Write notebooks here, then share them.')
+  await screen.findByText('Write notebooks here, then share them.', undefined, FIND_TIMEOUT)
   await user.click(screen.getByRole('button', { name: 'Switch language' }))
 
   expect(await screen.findByText('在这里写笔记，再把它们分享出去。')).toBeInTheDocument()

@@ -15,3 +15,6 @@ export {
 export type { ThemeMode, ThemeTransitionOrigin } from './theme'
 
 export { randomId } from './randomId'
+
+export { MARKDOWN_FILE_ACCEPT, MARKDOWN_FILE_MAX_BYTES, readMarkdownFile } from './markdownFile'
+export type { MarkdownFileRead } from './markdownFile'

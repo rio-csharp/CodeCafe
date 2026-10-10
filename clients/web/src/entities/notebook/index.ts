@@ -1,4 +1,7 @@
 export { createNotebook } from './api/createNotebook'
+export { importNotebook } from './api/importNotebook'
+export type { ImportNotebookData } from './api/importNotebook'
+export { exportNotebook } from './api/exportNotebook'
 export { getNotebookSlugAvailability } from './api/getNotebookSlugAvailability'
 export type { NotebookSlugAvailability } from './api/getNotebookSlugAvailability'
 export type { CreateNotebookInput } from './api/createNotebook'
@@ -6,6 +9,7 @@ export { deleteNotebook } from './api/trash'
 export { emptyTrash, listTrash, purgeTrashedNotebook, restoreTrashedNotebook } from './api/trash'
 export type { TrashEntry } from './api/trash'
 export {
+  changeNotebookSlug,
   revokeNotebookShare,
   setNotebookAccessCode,
   setNotebookTags,
@@ -22,6 +26,7 @@ export type { ListNotebooksParams } from './api/listNotebooks'
 export { listMyNotebooks } from './api/listMyNotebooks'
 export type { ListMyNotebooksParams } from './api/listMyNotebooks'
 export { flattenPages } from './lib/flattenPages'
+export { NOTEBOOK_SLUG_PATTERN, normalizeNotebookSlug } from './lib/slug'
 export { formatRelativeTime } from './lib/formatRelativeTime'
 export { notebookKeys } from './model/types'
 export type {

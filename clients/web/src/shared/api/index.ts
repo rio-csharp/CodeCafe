@@ -1,5 +1,14 @@
+export {
+  ACCESS_CODE_HEADER,
+  accessCodeForPath,
+  clearAccessCode,
+  getAccessCode,
+  setAccessCode,
+} from './accessCodes'
 export { ApiError, apiFetch } from './client'
 export type { ApiFetchInit } from './client'
+export { downloadFile } from './download'
+export type { DownloadFileOptions } from './download'
 export {
   clearSession,
   getAccessToken,

@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNotebook, listMyNotebooks, listNotebooks } from '@/entities/notebook'
 import type { NotebookSummary } from '@/entities/notebook'
+import { listFavoritePages } from '@/entities/page'
+import type { FavoritePageEntry } from '@/entities/page'
 import { useSessionStore } from '@/entities/session'
 import type { AuthUser } from '@/entities/session'
 import { HomePage } from './HomePage'
@@ -14,6 +16,11 @@ vi.mock('@/entities/notebook', async (importOriginal) => ({
   listNotebooks: vi.fn(),
   listMyNotebooks: vi.fn(),
   createNotebook: vi.fn(),
+}))
+
+vi.mock('@/entities/page', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/page')>()),
+  listFavoritePages: vi.fn(),
 }))
 
 const USER: AuthUser = { id: 'u1', email: 'ada@example.com', displayName: 'Ada' }
@@ -74,8 +81,10 @@ beforeEach(() => {
   vi.mocked(listNotebooks).mockReset()
   vi.mocked(listMyNotebooks).mockReset()
   vi.mocked(createNotebook).mockReset()
+  vi.mocked(listFavoritePages).mockReset()
   vi.mocked(listNotebooks).mockResolvedValue(EMPTY_PAGE)
   vi.mocked(listMyNotebooks).mockResolvedValue(EMPTY_PAGE)
+  vi.mocked(listFavoritePages).mockResolvedValue([])
   useSessionStore.setState({ status: 'anonymous', user: null })
 })
 
@@ -102,6 +111,45 @@ describe('HomePage', () => {
     expect(within(shelf).getByRole('button', { name: 'Unfavorite' })).toBeInTheDocument()
     // The masthead is for visitors.
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
+  })
+
+  it('shows signed-in readers their favorite pages above the shelf', async () => {
+    useSessionStore.setState({ status: 'authenticated', user: USER })
+    const favorite: FavoritePageEntry = {
+      pageId: 'page-1',
+      title: 'V60',
+      path: '/brewing/v60',
+      notebookId: 'nb-1',
+      notebookTitle: 'Guides',
+      notebookSlug: 'guides',
+    }
+    vi.mocked(listFavoritePages).mockResolvedValue([favorite])
+    renderHomePage()
+
+    const section = await screen.findByRole('region', { name: 'Favorite pages' })
+    const link = within(section).getByRole('link', { name: /V60/ })
+    expect(link).toHaveAttribute('href', '/notebooks/guides/brewing/v60')
+    expect(within(section).getByText('Guides')).toBeInTheDocument()
+  })
+
+  it('hides the favorite pages row when there are none', async () => {
+    useSessionStore.setState({ status: 'authenticated', user: USER })
+    renderHomePage()
+
+    await screen.findByText('My notebooks')
+    expect(screen.queryByRole('region', { name: 'Favorite pages' })).not.toBeInTheDocument()
+  })
+
+  it('offers notebook import to signed-in users only', async () => {
+    const { unmount } = renderHomePage()
+    await screen.findByRole('heading', { level: 1, name: 'CodeCafe' })
+    expect(screen.queryByRole('button', { name: 'Import' })).not.toBeInTheDocument()
+
+    unmount()
+    useSessionStore.setState({ status: 'authenticated', user: USER })
+    renderHomePage()
+
+    expect(await screen.findByRole('button', { name: 'Import' })).toBeInTheDocument()
   })
 
   it('searches within the signed-in reader\'s own shelf', async () => {

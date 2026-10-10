@@ -11,6 +11,12 @@ export interface ReaderChromeProps {
   /** Shown only when the caller also passes onEdit. */
   canEdit?: boolean
   onEdit?: () => void
+  /** The page-favorite toggle, supplied by the page; hidden while undefined. */
+  favoriteAction?: ReactNode
+  /** Markdown export of the open page; anonymous readers may use it too. */
+  onExportPage?: () => void
+  /** Page-level sharing dialog; writers only, so undefined hides the pill. */
+  onSharePage?: () => void
 }
 
 /**
@@ -18,7 +24,7 @@ export interface ReaderChromeProps {
  * title being read plus small labelled pills (refresh, copy link, width).
  * Labels hide on phones, where icons alone carry the meaning.
  */
-export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide, canEdit = false, onEdit }: ReaderChromeProps) {
+export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide, canEdit = false, onEdit, favoriteAction, onExportPage, onSharePage }: ReaderChromeProps) {
   const { t } = useTranslation()
 
   return (
@@ -26,6 +32,8 @@ export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide,
       <h1 className="min-w-0 truncate text-lg font-semibold text-ink">{title}</h1>
 
       <div className="flex shrink-0 items-center gap-2">
+        {favoriteAction}
+
         {canEdit && onEdit !== undefined ? (
           <ChromePill label={t('reader.edit')} onClick={onEdit}>
             <path d="M11.7 2.9a1.4 1.4 0 0 1 2 2L6 12.6l-2.8.8.8-2.8Z" />
@@ -40,6 +48,18 @@ export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide,
         >
           <path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89M13.5 2.5v2.6h-2.6" />
         </ChromePill>
+
+        {onExportPage !== undefined ? (
+          <ChromePill label={t('reader.exportPage')} onClick={onExportPage}>
+            <path d="M8 2.5v7M5.5 7 8 9.5 10.5 7M3 12.5h10" />
+          </ChromePill>
+        ) : null}
+
+        {onSharePage !== undefined ? (
+          <ChromePill label={t('reader.sharePage')} onClick={onSharePage}>
+            <path d="M10.5 13.5v-1a2.5 2.5 0 0 0-2.5-2.5H5a2.5 2.5 0 0 0-2.5 2.5v1M6.5 7.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM13.5 13.5v-1a2.5 2.5 0 0 0-1.25-2.16M10.75 3.6a2 2 0 1 1 0 3.8" />
+          </ChromePill>
+        ) : null}
 
         <CopyLinkPill />
 
