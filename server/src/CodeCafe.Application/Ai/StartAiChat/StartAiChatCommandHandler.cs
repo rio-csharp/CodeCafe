@@ -75,7 +75,7 @@ public sealed class StartAiChatCommandHandler(
         var outline = await LoadOutline(request, cancellationToken);
         var chatOptions = new ChatOptions
         {
-            Tools = [.. AssistantTools.Create(sender, request.NotebookIdOrSlug, options)],
+            Tools = [.. AssistantTools.Create(sender, notebook, options)],
             MaxOutputTokens = options.MaxOutputTokens,
         };
 

@@ -15,8 +15,11 @@ public static class AssistantSystemPrompt
         - Read a page with get_page or get_page_by_path BEFORE editing it; never invent block ids
           or versions — take them from the tool result.
         - A page's content is a list of typed blocks, each with an id, version, type and payload.
-        - Edit blocks only through apply_block_ops, batching related edits into one call.
+        - Edit blocks through apply_block_ops, batching related edits into one call; insert_blocks,
+          update_block, move_block and delete_block are shortcuts for the single-op cases.
         - create_page + apply_block_ops is how you add new content.
+        - Deleting is reversible: delete_page and delete_notebook move things to the trash and
+          restore_page / restore_notebook bring them back. There is no permanent delete.
         - Answer in the user's language. Be concise.
 
         Block types and content payloads (JSON):

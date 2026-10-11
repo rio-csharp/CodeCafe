@@ -6,6 +6,7 @@ using CodeCafe.Application.Common;
 using CodeCafe.Application.Pages;
 using CodeCafe.Application.Pages.GetPage;
 using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Domain.Notebooks;
 using Microsoft.Extensions.AI;
 
 namespace CodeCafe.Application.Tests.Ai;
@@ -19,7 +20,7 @@ public sealed class AssistantToolsTests
     {
         var details = DetailsDto(title: new string('x', 500));
         var sender = new StubSender().Respond<GetPageQuery>(Result.Success(details));
-        var tool = Find(AssistantTools.Create(sender, "nb", Options), "get_page");
+        var tool = Find(AssistantTools.Create(sender, NewNotebook(), Options), "get_page");
 
         var result = await Invoke(tool, new { pageId = Guid.NewGuid() });
 
@@ -31,7 +32,7 @@ public sealed class AssistantToolsTests
     public async Task Tool_HandlerFailure_ReturnsErrorJson()
     {
         var sender = new StubSender().Respond<GetPageQuery>(Result.Failure<PageDetailsDto>(PageErrors.NotFound));
-        var tool = Find(AssistantTools.Create(sender, "nb", Options), "get_page");
+        var tool = Find(AssistantTools.Create(sender, NewNotebook(), Options), "get_page");
 
         var result = await Invoke(tool, new { pageId = Guid.NewGuid() });
 
@@ -46,7 +47,7 @@ public sealed class AssistantToolsTests
         var sender = new StubSender().Respond<ApplyBlockOpsCommand>(
             Result.Success<IReadOnlyList<BlockOpResultDto>>([])
         );
-        var tool = Find(AssistantTools.Create(sender, "nb", Options), "apply_block_ops");
+        var tool = Find(AssistantTools.Create(sender, NewNotebook(), Options), "apply_block_ops");
         var pageId = Guid.NewGuid();
         var ops = JsonSerializer.SerializeToElement(
             new object[]
@@ -72,8 +73,44 @@ public sealed class AssistantToolsTests
         Assert.Equal("a1", op.TempId);
     }
 
+    [Fact]
+    public void Create_ExcludesUnrecoverableSharingAndRecursiveTools()
+    {
+        var tools = AssistantTools.Create(new StubSender(), NewNotebook(), Options);
+
+        Assert.DoesNotContain(
+            tools,
+            tool => tool.Name is "purge_notebook" or "purge_trashed_notebooks" or "purge_page"
+                or "share_notebook" or "share_page" or "revoke_notebook_share" or "revoke_page_share"
+                or "set_notebook_access_code" or "ai_chat"
+        );
+    }
+
+    [Fact]
+    public void Create_KeepsTheRecoverableCounterparts()
+    {
+        var tools = AssistantTools.Create(new StubSender(), NewNotebook(), Options);
+
+        Assert.Contains(tools, tool => tool.Name == "delete_notebook");
+        Assert.Contains(tools, tool => tool.Name == "restore_notebook");
+        Assert.Contains(tools, tool => tool.Name == "delete_page");
+        Assert.Contains(tools, tool => tool.Name == "restore_page");
+    }
+
+    [Fact]
+    public void Create_ToolNamesAreUniqueAndDescribed()
+    {
+        var tools = AssistantTools.Create(new StubSender(), NewNotebook(), Options);
+
+        Assert.Equal(tools.Count, tools.Select(tool => tool.Name).Distinct().Count());
+        Assert.All(tools, tool => Assert.False(string.IsNullOrWhiteSpace(tool.Description)));
+    }
+
     private static AIFunction Find(IReadOnlyList<AIFunction> tools, string name)
         => tools.Single(tool => tool.Name == name);
+
+    private static Notebook NewNotebook()
+        => Notebook.Create(Guid.NewGuid(), "My Notes", null, "nb", NotebookVisibility.Private);
 
     private static PageDetailsDto DetailsDto(string title) =>
         new(
