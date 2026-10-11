@@ -1,10 +1,9 @@
-using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Exceptions;
-using CodeCafe.Domain.Common;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks;
 using CodeCafe.Application.Pages;
 using CodeCafe.Application.Pages.CreatePage;
+using CodeCafe.Domain.Common;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;

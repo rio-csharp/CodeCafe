@@ -1,5 +1,5 @@
-using CodeCafe.Application.Notebooks.ListPublicNotebooks;
 using CodeCafe.Application.Common.Security;
+using CodeCafe.Application.Notebooks.ListPublicNotebooks;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 

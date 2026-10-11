@@ -7,7 +7,6 @@ using CodeCafe.Application.Blocks.MoveBlock;
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Blocks.UpdateBlock;
 using CodeCafe.Application.Common.Security;
-using CodeCafe.Application.Pages;
 using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;

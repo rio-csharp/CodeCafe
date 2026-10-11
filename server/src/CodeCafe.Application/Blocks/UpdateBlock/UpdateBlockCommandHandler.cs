@@ -1,10 +1,9 @@
 using CodeCafe.Application.Blocks.Abstractions;
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Common;
-using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Messaging;
-using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Pages.Abstractions;

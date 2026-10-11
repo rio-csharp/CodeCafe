@@ -1,8 +1,8 @@
 using CodeCafe.Application.Common;
-using CodeCafe.Application.Trash.PurgeTrashedNotebooks;
 using CodeCafe.Application.Trash.ListTrash;
 using CodeCafe.Application.Trash.PurgeNotebook;
 using CodeCafe.Application.Trash.PurgePage;
+using CodeCafe.Application.Trash.PurgeTrashedNotebooks;
 using CodeCafe.Application.Trash.RestoreNotebookFromTrash;
 using CodeCafe.Application.Trash.RestorePageFromTrash;
 using MediatR;

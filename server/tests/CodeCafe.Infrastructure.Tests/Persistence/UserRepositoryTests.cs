@@ -1,4 +1,3 @@
-using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Infrastructure.Persistence;

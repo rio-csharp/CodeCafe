@@ -1,6 +1,4 @@
 using CodeCafe.Application.Blocks.Abstractions;
-using CodeCafe.Application.Blocks.Shared;
-using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Revisions.Abstractions;
 using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;

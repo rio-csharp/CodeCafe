@@ -1,13 +1,11 @@
-using CodeCafe.Application.Common;
-using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;
 using CodeCafe.Domain.Primitives;
 using CodeCafe.Domain.Revisions;
-using CodeCafe.Domain.Sharing;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;

@@ -1,7 +1,6 @@
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Pages;
 using CodeCafe.Application.Revisions.ListBlockRevisions;
-using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;

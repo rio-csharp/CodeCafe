@@ -1,4 +1,3 @@
-using CodeCafe.Application;
 using CodeCafe.Application.Auth.ChangePassword;
 using CodeCafe.Domain.Identity;
 using MediatR;

@@ -1,6 +1,4 @@
 using System.Text.Json;
-
-using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Blocks.Abstractions;
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Common;

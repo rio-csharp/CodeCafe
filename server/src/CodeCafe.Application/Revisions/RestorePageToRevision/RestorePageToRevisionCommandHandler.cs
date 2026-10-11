@@ -1,4 +1,3 @@
-using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Blocks.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
@@ -10,7 +9,6 @@ using CodeCafe.Application.Pages.Shared;
 using CodeCafe.Application.Revisions.Abstractions;
 using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;
-using CodeCafe.Domain.Pages;
 using CodeCafe.Domain.Revisions;
 
 namespace CodeCafe.Application.Revisions.RestorePageToRevision;

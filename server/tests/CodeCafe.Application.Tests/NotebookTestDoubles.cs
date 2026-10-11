@@ -2,7 +2,6 @@ using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common.Abstractions;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
-using CodeCafe.Application.Notebooks.ListNotebooks;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 

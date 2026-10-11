@@ -1,4 +1,3 @@
-using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks;

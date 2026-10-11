@@ -1,5 +1,4 @@
 using CodeCafe.Domain.Blocks;
-using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
 
 namespace CodeCafe.Application.Common.Markdown;

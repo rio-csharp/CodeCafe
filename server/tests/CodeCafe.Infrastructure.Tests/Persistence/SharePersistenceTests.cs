@@ -2,7 +2,6 @@ using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;
 using CodeCafe.Domain.Sharing;
-using CodeCafe.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CodeCafe.Infrastructure.Tests.Persistence;

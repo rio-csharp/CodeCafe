@@ -5,7 +5,6 @@ using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Pages.Abstractions;
-using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Notebooks.ListNotebooks;
 

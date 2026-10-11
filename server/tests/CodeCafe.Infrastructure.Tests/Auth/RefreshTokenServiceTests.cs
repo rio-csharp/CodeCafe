@@ -1,6 +1,5 @@
 using CodeCafe.Domain.Identity;
 using CodeCafe.Infrastructure.Auth;
-using CodeCafe.Infrastructure.Persistence;
 using CodeCafe.Infrastructure.Tests.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;

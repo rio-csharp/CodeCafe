@@ -1,21 +1,17 @@
 using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Auth.Shared;
-using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Blocks.Abstractions;
-using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Common;
-using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Markdown;
 using CodeCafe.Application.Common.Messaging;
+using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.GetNotebookDetails;
-using CodeCafe.Application.Notebooks.Shared;
 using CodeCafe.Application.Pages;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Revisions.Abstractions;
-using CodeCafe.Application.Revisions.Shared;
-using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Pages;
 

@@ -1,7 +1,6 @@
 using System.Text.Json;
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Blocks.UpdateBlock;
-using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Exceptions;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Pages;

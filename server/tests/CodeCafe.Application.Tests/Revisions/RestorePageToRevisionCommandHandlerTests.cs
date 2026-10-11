@@ -1,7 +1,6 @@
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Pages;
 using CodeCafe.Application.Revisions.RestorePageToRevision;
-using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;

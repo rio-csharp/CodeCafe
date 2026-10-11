@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Blocks.Shared.Payloads;
@@ -67,33 +66,33 @@ internal static class MarkdownBlockRenderer
         switch (block.Type)
         {
             case BlockTypes.Paragraph:
-            {
-                var line = RenderMultiline(GetPayload<ParagraphPayload>(block).Spans);
-                // A line starting with '#' would re-import as a heading — splitting a notebook
-                // file into pages — so escape it to keep the paragraph intact on round trips.
-                if (line.StartsWith('#'))
                 {
-                    line = "\\" + line;
-                }
+                    var line = RenderMultiline(GetPayload<ParagraphPayload>(block).Spans);
+                    // A line starting with '#' would re-import as a heading — splitting a notebook
+                    // file into pages — so escape it to keep the paragraph intact on round trips.
+                    if (line.StartsWith('#'))
+                    {
+                        line = "\\" + line;
+                    }
 
-                output.Append(indent).AppendLine(line);
-                break;
-            }
+                    output.Append(indent).AppendLine(line);
+                    break;
+                }
             case BlockTypes.Heading:
-            {
-                var payload = GetPayload<HeadingPayload>(block);
-                // ATX headings are single-line; soft breaks degrade to spaces.
-                output.Append(indent).Append(new string('#', Math.Min(payload.Level + headingHashOffset, 6))).Append(' ')
-                    .AppendLine(RenderSpans(payload.Spans).Replace("\n", " "));
-                break;
-            }
+                {
+                    var payload = GetPayload<HeadingPayload>(block);
+                    // ATX headings are single-line; soft breaks degrade to spaces.
+                    output.Append(indent).Append(new string('#', Math.Min(payload.Level + headingHashOffset, 6))).Append(' ')
+                        .AppendLine(RenderSpans(payload.Spans).Replace("\n", " "));
+                    break;
+                }
             case BlockTypes.Todo:
-            {
-                var payload = GetPayload<TodoPayload>(block);
-                output.Append(indent).Append(payload.Checked ? "- [x] " : "- [ ] ")
-                    .AppendLine(RenderMultiline(payload.Spans));
-                break;
-            }
+                {
+                    var payload = GetPayload<TodoPayload>(block);
+                    output.Append(indent).Append(payload.Checked ? "- [x] " : "- [ ] ")
+                        .AppendLine(RenderMultiline(payload.Spans));
+                    break;
+                }
             case BlockTypes.BulletedList:
                 output.Append(indent).Append("- ").AppendLine(RenderMultiline(GetPayload<ListItemPayload>(block).Spans));
                 break;
@@ -102,22 +101,22 @@ internal static class MarkdownBlockRenderer
                     .AppendLine(RenderMultiline(GetPayload<ListItemPayload>(block).Spans));
                 break;
             case BlockTypes.Code:
-            {
-                var payload = GetPayload<CodePayload>(block);
-                output.Append(indent).Append("```").AppendLine(payload.Language);
-                output.AppendLine(payload.Code);
-                output.Append(indent).AppendLine("```");
-                break;
-            }
+                {
+                    var payload = GetPayload<CodePayload>(block);
+                    output.Append(indent).Append("```").AppendLine(payload.Language);
+                    output.AppendLine(payload.Code);
+                    output.Append(indent).AppendLine("```");
+                    break;
+                }
             case BlockTypes.Quote:
                 RenderQuote(output, indent, RenderMultiline(GetPayload<QuotePayload>(block).Spans));
                 break;
             case BlockTypes.Callout:
-            {
-                var payload = GetPayload<CalloutPayload>(block);
-                RenderQuote(output, indent, $"[!{payload.Variant.ToString().ToUpperInvariant()}]\n{RenderMultiline(payload.Spans)}");
-                break;
-            }
+                {
+                    var payload = GetPayload<CalloutPayload>(block);
+                    RenderQuote(output, indent, $"[!{payload.Variant.ToString().ToUpperInvariant()}]\n{RenderMultiline(payload.Spans)}");
+                    break;
+                }
             case BlockTypes.Divider:
                 output.Append(indent).AppendLine("---");
                 break;
@@ -125,23 +124,23 @@ internal static class MarkdownBlockRenderer
                 RenderTable(output, indent, GetPayload<TablePayload>(block));
                 break;
             case BlockTypes.Image:
-            {
-                var payload = GetPayload<ImagePayload>(block);
-                output.Append(indent).Append("![").Append(EscapeText(payload.Alt ?? string.Empty)).Append("](")
-                    .Append(EscapeUrl(payload.Url)).AppendLine(")");
-                if (!string.IsNullOrWhiteSpace(payload.Caption))
                 {
-                    output.Append(indent).Append("_").Append(EscapeText(payload.Caption)).AppendLine("_");
-                }
+                    var payload = GetPayload<ImagePayload>(block);
+                    output.Append(indent).Append("![").Append(EscapeText(payload.Alt ?? string.Empty)).Append("](")
+                        .Append(EscapeUrl(payload.Url)).AppendLine(")");
+                    if (!string.IsNullOrWhiteSpace(payload.Caption))
+                    {
+                        output.Append(indent).Append("_").Append(EscapeText(payload.Caption)).AppendLine("_");
+                    }
 
-                break;
-            }
+                    break;
+                }
             case BlockTypes.Audio:
-            {
-                var payload = GetPayload<AudioPayload>(block);
-                output.Append(indent).Append("[audio](").Append(EscapeUrl(payload.Url)).AppendLine(")");
-                break;
-            }
+                {
+                    var payload = GetPayload<AudioPayload>(block);
+                    output.Append(indent).Append("[audio](").Append(EscapeUrl(payload.Url)).AppendLine(")");
+                    break;
+                }
             default:
                 output.Append(indent).Append("<!-- unsupported block: ").Append(EscapeText(block.Type)).AppendLine(" -->");
                 break;

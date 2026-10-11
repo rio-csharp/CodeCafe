@@ -1,5 +1,4 @@
 using CodeCafe.Infrastructure.Persistence;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CodeCafe.Host.Hosting;

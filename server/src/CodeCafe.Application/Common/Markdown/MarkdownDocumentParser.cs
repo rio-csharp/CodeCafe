@@ -107,7 +107,7 @@ internal static class MarkdownDocumentParser
                 }
 
                 break;
-            // LinkReferenceDefinitionGroup, EmptyBlock and friends carry no content.
+                // LinkReferenceDefinitionGroup, EmptyBlock and friends carry no content.
         }
     }
 

@@ -1,4 +1,3 @@
-using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Blocks.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Abstractions;
