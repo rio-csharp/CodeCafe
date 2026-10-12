@@ -440,12 +440,45 @@ public sealed class MarkdownDocumentParserTests
     }
 
     [Fact]
-    public void Callout_BodyWithHardBreak_CollapsesToSingleLine()
+    public void Callout_BodyWithHardBreak_KeepsTheLineBreak()
     {
+        // Two trailing spaces is markdown's other hard-break spelling; the backslash form the
+        // exporter writes is covered by the test below.
         var blocks = Parse("> [!info]\n> a  \n> b");
 
         var callout = Payload<CalloutPayload>(Assert.Single(blocks));
-        Assert.Equal("a b", callout.Spans.ToPlainText());
+        Assert.Equal("a\nb", callout.Spans.ToPlainText());
+    }
+
+    [Fact]
+    public void Callout_ExportedSoftBreak_ParsesBackIntoTheSameBody()
+    {
+        // Exactly what MarkdownBlockRenderer emits for a callout body holding a soft break.
+        var blocks = Parse("> [!warning]\n> first\\\n> second");
+
+        var callout = Payload<CalloutPayload>(Assert.Single(blocks));
+        Assert.Equal(BlockTypes.Callout, blocks[0].Type);
+        Assert.Equal("first\nsecond", callout.Spans.ToPlainText());
+    }
+
+    [Fact]
+    public void Callout_BlankLineInsideBody_KeepsTheEmptyLine()
+    {
+        // The exporter writes an empty body line as a lone backslash so it cannot split the block.
+        var blocks = Parse("> [!info]\n> first\\\n> \\\n> second");
+
+        var callout = Payload<CalloutPayload>(Assert.Single(blocks));
+        Assert.Equal("first\n\nsecond", callout.Spans.ToPlainText());
+    }
+
+    [Fact]
+    public void Callout_BodyLineOpeningWithBlockMarker_StaysInTheBody()
+    {
+        // Without the exporter's escape this line would open a list and leave the callout behind.
+        var blocks = Parse("> [!info]\n> first\\\n> \\- item");
+
+        var callout = Payload<CalloutPayload>(Assert.Single(blocks));
+        Assert.Equal("first\n- item", callout.Spans.ToPlainText());
     }
 
     [Fact]

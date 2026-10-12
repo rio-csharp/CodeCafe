@@ -162,7 +162,7 @@ internal static class MarkdownDocumentParser
         {
             output.Add(callout);
             // The callout consumed the marker paragraph only; later quote content still lands
-            // as sibling blocks rather than vanishing into the callout's single-line payload.
+            // as sibling blocks rather than vanishing into the callout's own paragraph.
             children = children.Skip(1);
         }
 
@@ -219,8 +219,10 @@ internal static class MarkdownDocumentParser
             return false;
         }
 
+        // The body may hold soft line breaks: the editor allows them and the exporter writes each
+        // one as a markdown hard break, so they have to survive as '\n' rather than collapse.
         var spans = cursor is LineBreakInline lineBreak
-            ? MarkdownInlineParser.ParseSingleLine(lineBreak.NextSibling)
+            ? MarkdownInlineParser.ParseMultiline(lineBreak.NextSibling)
             : Spans.Empty;
         callout = SpanBlock(BlockTypes.Callout, new CalloutPayload { Variant = variant, Spans = spans }, spans);
         return true;

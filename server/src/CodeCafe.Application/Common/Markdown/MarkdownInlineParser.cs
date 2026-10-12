@@ -21,8 +21,8 @@ internal static class MarkdownInlineParser
         return segments.Select(Spans.Create).ToList();
     }
 
-    // Single-line contexts (table cells, callout marker lines): soft breaks collapse to a
-    // space too, because these payloads render on one line.
+    // Single-line payloads (table cells, page titles): hard breaks collapse to a space as well,
+    // because these values never render on more than one line.
     public static Spans ParseSingleLine(ContainerInline? container) => ParseSingleLine(container?.FirstChild);
 
     public static Spans ParseSingleLine(Inline? first)
@@ -41,6 +41,13 @@ internal static class MarkdownInlineParser
 
         return Spans.Create(joined.Select(span => new Span(span.Text.Replace('\n', ' '), span.Marks)));
     }
+
+    // Body payloads that may hold soft breaks (quote and callout bodies): Parse always yields
+    // exactly one segment, and this is that segment with hard breaks kept as '\n' inside the span
+    // text -- the same shape a paragraph receives. ParseSingleLine would flatten them to spaces.
+    public static Spans ParseMultiline(ContainerInline? container) => ParseMultiline(container?.FirstChild);
+
+    public static Spans ParseMultiline(Inline? first) => Parse(first).Single();
 
     private static void Append(List<List<Span>> segments, Inline inline, IReadOnlyList<Mark> marks)
     {
