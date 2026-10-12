@@ -1,5 +1,4 @@
 using System.Text;
-
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Blocks.Shared.Payloads;
 using CodeCafe.Domain.Blocks;

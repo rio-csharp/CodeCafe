@@ -1,5 +1,4 @@
 using System.Text.Json;
-
 using CodeCafe.Application.Revisions.ListBlockRevisions;
 using CodeCafe.Domain.Revisions;
 

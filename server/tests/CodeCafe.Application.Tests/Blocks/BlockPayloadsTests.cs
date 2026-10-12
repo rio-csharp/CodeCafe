@@ -1,5 +1,4 @@
 using System.Text.Json;
-
 using CodeCafe.Application.Blocks.Shared;
 
 namespace CodeCafe.Application.Tests.Blocks;

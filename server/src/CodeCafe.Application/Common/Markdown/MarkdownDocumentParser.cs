@@ -1,5 +1,4 @@
 using System.Text;
-
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Blocks.Shared.Payloads;
 using CodeCafe.Domain.Blocks;
@@ -7,7 +6,6 @@ using Markdig;
 using Markdig.Extensions.Tables;
 using Markdig.Syntax;
 using Markdig.Syntax.Inlines;
-
 using MdBlock = Markdig.Syntax.Block;
 
 namespace CodeCafe.Application.Common.Markdown;

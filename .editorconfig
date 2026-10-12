@@ -10,3 +10,5 @@ indent_size = 4
 [*.cs]
 csharp_style_namespace_declarations = file_scoped:warning
 dotnet_sort_system_directives_first = true
+; One contiguous block: no blank line between the System directives and the rest.
+dotnet_separate_import_directive_groups = false

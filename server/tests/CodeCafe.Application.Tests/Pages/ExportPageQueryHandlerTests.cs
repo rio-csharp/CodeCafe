@@ -1,5 +1,4 @@
 using System.Text.Json;
-
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks;

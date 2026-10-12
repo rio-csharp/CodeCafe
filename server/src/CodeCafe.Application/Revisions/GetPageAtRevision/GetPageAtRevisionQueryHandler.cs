@@ -1,5 +1,4 @@
 using System.Text.Json;
-
 using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Messaging;

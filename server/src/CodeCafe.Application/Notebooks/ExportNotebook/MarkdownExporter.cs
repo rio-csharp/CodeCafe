@@ -1,5 +1,4 @@
 using System.Text;
-
 using CodeCafe.Application.Common.Markdown;
 using CodeCafe.Domain.Blocks;
 using CodeCafe.Domain.Notebooks;
