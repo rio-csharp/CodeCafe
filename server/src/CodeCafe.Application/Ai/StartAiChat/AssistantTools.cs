@@ -281,7 +281,7 @@ public static class AssistantTools
                         options
                     ),
                 "insert_blocks",
-                "Insert new blocks (each {tempId?, type, content}) into a page after the given block; "
+                "Insert new blocks (each {type, content}) into a page after the given block; "
                     + "afterBlockId=null inserts at the start of the page. Use apply_block_ops when the insert "
                     + "has to land relative to other edits in the same call."
             ),

@@ -106,6 +106,17 @@ public sealed class AssistantToolsTests
         Assert.All(tools, tool => Assert.False(string.IsNullOrWhiteSpace(tool.Description)));
     }
 
+    [Fact]
+    public void Create_AdvertisesTempIdOnlyWhereItWorks()
+    {
+        var tools = AssistantTools.Create(new StubSender(), NewNotebook(), Options);
+
+        // insert_blocks takes a flat run at one position, so BlockInput carries no tempId and the
+        // model must not be told otherwise. Batch-relative references are apply_block_ops' job.
+        Assert.DoesNotContain("tempId", Find(tools, "insert_blocks").Description);
+        Assert.Contains("tempId", Find(tools, "apply_block_ops").Description);
+    }
+
     private static AIFunction Find(IReadOnlyList<AIFunction> tools, string name)
         => tools.Single(tool => tool.Name == name);
 

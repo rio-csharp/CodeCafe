@@ -240,7 +240,7 @@ public sealed class BlockWriteRecordingTests
     private static Block NewBlock(Page page, Block? parent = null)
         => Block.Create(page.Id, parent?.Id, BlockTypes.Paragraph, """{"spans":[]}""", string.Empty, "a");
 
-    private static BlockInput Input(string text) => new(null, BlockTypes.Paragraph, Paragraph(text));
+    private static BlockInput Input(string text) => new(BlockTypes.Paragraph, Paragraph(text));
 
     private static JsonElement Paragraph(string text)
         => JsonSerializer.Deserialize<JsonElement>($$"""{"spans":[{"text":"{{text}}","marks":[]}]}""");

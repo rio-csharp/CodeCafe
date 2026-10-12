@@ -225,7 +225,7 @@ public sealed class InsertBlocksCommandHandlerTests
     private static JsonElement Paragraph(string text)
         => Json($$"""{"spans":[{"text":"{{text}}","marks":[]}]}""");
 
-    private static BlockInput Input(JsonElement content, string type = BlockTypes.Paragraph) => new(null, type, content);
+    private static BlockInput Input(JsonElement content, string type = BlockTypes.Paragraph) => new(type, content);
 
     private static (InsertBlocksCommandHandler Handler, StubBlockRepository Blocks, StubUnitOfWork UnitOfWork) CreateHandler(
         Guid? currentUserId,
