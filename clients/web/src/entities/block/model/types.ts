@@ -90,5 +90,7 @@ export interface ImageContent {
 export interface AudioContent {
   url: string
   mimeType: string
+  // Whole seconds, null when unknown. Mirrors AudioPayload.Duration on the server; see the
+  // comment there for why the field exists when the native player already reports the length.
   duration: number | null
 }
