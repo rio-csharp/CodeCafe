@@ -1,0 +1,157 @@
+name: Deploy PR Preview
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - 'feature/**'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number to deploy.
+        required: true
+      ci_run_id:
+        description: CI workflow run id that produced artifacts.
+        required: true
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: deploy-pr-preview-${{ github.event.workflow_run.pull_requests[0].number || inputs.pr_number || github.event.workflow_run.head_branch || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
+  NAMESPACE_PREFIX: codecafe-pr
+  TLS_SECRET: codecafe-test-wildcard-tls
+
+jobs:
+  deploy:
+    name: Deploy PR preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: test
+    outputs:
+      skip: ${{ steps.pr.outputs.skip }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Resolve PR
+        id: pr
+        uses: actions/github-script@v9
+        env:
+          PREVIEW_PR_NUMBER: ${{ inputs.pr_number }}
+          PREVIEW_CI_RUN_ID: ${{ inputs.ci_run_id }}
+          PREVIEW_REQUIRED_WORKFLOW_NAME: CI
+        with:
+          script: |
+            const resolvePrPreview = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/resolve-pr-preview.js`);
+            await resolvePrPreview({ github, context, core });
+
+      - name: Download CI artifacts
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Artifacts carry data only (Helm chart, deployment metadata). CD
+          # scripts are never executed from the PR-built artifact; they are
+          # checked out from the trusted PR base branch in the next step.
+          mkdir -p .artifacts/helm .artifacts/deployment
+          gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-helm-chart --dir .artifacts/helm
+          gh run download "${{ steps.pr.outputs.ci_run_id }}" --repo "${{ github.repository }}" --name codecafe-deployment --dir .artifacts/deployment
+
+      - name: Checkout trusted CD scripts
+        if: steps.pr.outputs.skip != 'true'
+        uses: actions/checkout@v6
+        with:
+          # workflow_run head_sha and artifacts are attacker-influenced; the
+          # PR base branch (release/*) is protected, so deploy scripts run
+          # from a checkout of that ref instead of the CI artifact.
+          ref: ${{ steps.pr.outputs.base_ref }}
+          path: .trusted
+
+      - name: Set deployment variables
+        if: steps.pr.outputs.skip != 'true'
+        env:
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          PREVIEW_BASE_DOMAIN: ${{ vars.PREVIEW_BASE_DOMAIN }}
+        run: bash scripts/github/set-pr-preview-env.sh
+
+      - name: Configure SSH
+        if: steps.pr.outputs.skip != 'true'
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0 (digest-pinned)
+        with:
+          ssh-private-key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+
+      - name: Configure SSH known hosts
+        if: steps.pr.outputs.skip != 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' "${{ secrets.TEST_SSH_KNOWN_HOSTS }}" > "$RUNNER_TEMP/ssh/known_hosts"
+          echo "SSH_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
+
+      - name: Verify preview is still needed
+        id: predeploy
+        if: steps.pr.outputs.skip != 'true'
+        uses: actions/github-script@v9
+        env:
+          PREVIEW_PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          PREVIEW_EXPECTED_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        with:
+          script: |
+            const verifyPrPreviewCurrent = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/verify-pr-preview-current.js`);
+            await verifyPrPreviewCurrent({ github, context, core });
+
+      - name: Deploy preview
+        if: steps.predeploy.outputs.current == 'true'
+        env:
+          DEPLOY_SSH_PORT: ${{ vars.TEST_SSH_PORT }}
+          DEPLOY_SSH_USER: ${{ vars.TEST_SSH_USER }}
+          DEPLOY_SSH_HOST: ${{ secrets.TEST_SSH_HOST }}
+          DB_SECRET_NAMESPACE: codecafe-test
+          FRONTEND_REPLICA_COUNT: '1'
+          API_REPLICA_COUNT: '1'
+          # The preview shares the test database, so it must not migrate it.
+          API_MIGRATION_ENABLED: 'false'
+          CD_SCRIPTS_DIR: .trusted/scripts/cd
+        run: bash .trusted/scripts/cd/deploy-environment.sh
+
+      - name: Verify deployed preview is still current
+        id: postdeploy
+        if: steps.predeploy.outputs.current == 'true'
+        uses: actions/github-script@v9
+        env:
+          PREVIEW_PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+          PREVIEW_EXPECTED_HEAD_SHA: ${{ steps.pr.outputs.head_sha }}
+        with:
+          script: |
+            const verifyPrPreviewCurrent = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/verify-pr-preview-current.js`);
+            await verifyPrPreviewCurrent({ github, context, core });
+
+      - name: Delete stale deployed preview
+        if: steps.predeploy.outputs.current == 'true' && steps.postdeploy.outputs.current != 'true'
+        env:
+          TEST_SSH_PORT: ${{ vars.TEST_SSH_PORT }}
+          TEST_SSH_USER: ${{ vars.TEST_SSH_USER }}
+          TEST_SSH_HOST: ${{ secrets.TEST_SSH_HOST }}
+        run: bash .trusted/scripts/cd/delete-stale-pr-preview.sh
+
+      - name: Comment preview
+        if: steps.postdeploy.outputs.current == 'true'
+        uses: actions/github-script@v9
+        env:
+          PREVIEW_PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+        with:
+          script: |
+            const commentPrPreview = require(`${process.env.GITHUB_WORKSPACE}/scripts/github/comment-pr-preview.js`);
+            await commentPrPreview({ github, context, core });

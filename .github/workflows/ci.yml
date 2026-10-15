@@ -4,24 +4,57 @@ on:
   push:
     branches:
       - main
+      - 'release/**'
       - 'feature/**'
   pull_request:
     branches:
       - main
+      - 'release/**'
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 env:
   DOTNET_VERSION: 10.0.x
   NODE_VERSION: 24
 
 jobs:
+  artifact-policy:
+    name: Decide artifact policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      upload_artifacts: ${{ steps.artifacts.outputs.upload_artifacts }}
+      image_tag: ${{ steps.artifacts.outputs.image_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Decide artifact policy
+        id: artifacts
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GH_TOKEN: ${{ github.token }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
+        run: bash scripts/ci/decide-artifact-policy.sh
+
   backend:
     name: Backend
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Image push rights live only on the jobs that build and push images;
+    # workflow-level permissions stay read-only.
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - artifact-policy
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -45,10 +78,47 @@ jobs:
       - name: Test backend
         run: dotnet test server/CodeCafe.slnx --configuration Release --no-build -- --minimum-expected-tests 1
 
+      - name: Publish API image input
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        run: >
+          dotnet publish server/src/CodeCafe.Host/CodeCafe.Host.csproj
+          --configuration Release
+          --output .artifacts/api
+          --no-build
+          /p:UseAppHost=false
+
+      - name: Login to GHCR
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Docker Buildx
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push API image
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: server/src/CodeCafe.Host/Dockerfile
+          push: true
+          tags: ghcr.io/${{ vars.IMAGE_NAMESPACE }}/api:${{ needs.artifact-policy.outputs.image_tag }}
+          cache-from: type=gha,scope=codecafe-api
+          cache-to: type=gha,mode=max,scope=codecafe-api
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    needs:
+      - artifact-policy
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -84,25 +154,141 @@ jobs:
         working-directory: clients/web
         run: pnpm build
 
+      - name: Prepare frontend image input
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        working-directory: clients/web
+        run: |
+          mkdir -p ../../.artifacts/frontend
+          cp -R dist/. ../../.artifacts/frontend/
+
+      - name: Login to GHCR
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Docker Buildx
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push frontend image
+        if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: clients/web/Dockerfile
+          push: true
+          tags: ghcr.io/${{ vars.IMAGE_NAMESPACE }}/frontend:${{ needs.artifact-policy.outputs.image_tag }}
+          cache-from: type=gha,scope=codecafe-frontend
+          cache-to: type=gha,mode=max,scope=codecafe-frontend
+
+  helm-chart:
+    name: Helm chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - artifact-policy
+    if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4 (digest-pinned)
+
+      - name: Validate Helm chart
+        run: bash scripts/ci/validate-helm-chart.sh
+
+      - name: Upload Helm chart artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: codecafe-helm-chart
+          path: deploy/helm/codecafe
+          if-no-files-found: error
+
+  # Unconditional and publishes nothing. scripts/cd holds the only scripts that
+  # execute on the deploy host, where a syntax error surfaces halfway through a
+  # deployment instead of in a step of its own — so this check must also cover
+  # runs that publish no artifacts at all. The artifact this job used to upload
+  # had no consumer (the deploy workflows check out a protected branch into
+  # .trusted/ instead), and leaving it in place invited someone to wire the
+  # untrusted CI output back into the deploy path.
+  cd-scripts:
+    name: CD scripts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate CD scripts
+        run: |
+          shopt -s nullglob
+          scripts=(scripts/cd/*.sh)
+
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "No CD scripts found under scripts/cd." >&2
+            exit 1
+          fi
+
+          status=0
+          for script in "${scripts[@]}"; do
+            echo "bash -n $script"
+            bash -n "$script" || status=1
+          done
+
+          exit "$status"
+
+  deployment-metadata:
+    name: Deployment metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - artifact-policy
+      - backend
+      - frontend
+    if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Write deployment metadata
+        env:
+          IMAGE_TAG: ${{ needs.artifact-policy.outputs.image_tag }}
+          GIT_SHA: ${{ github.sha }}
+          GIT_REF: ${{ github.ref_name }}
+        run: bash scripts/ci/write-deployment-metadata.sh
+
+      - name: Upload deployment metadata
+        uses: actions/upload-artifact@v7
+        with:
+          name: codecafe-deployment
+          path: .artifacts/deployment/deployment.env
+          if-no-files-found: error
+
   # One aggregated status so branch protection has a single check to require.
   ci:
     name: CI
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
+      - artifact-policy
       - backend
       - frontend
+      - helm-chart
+      - cd-scripts
+      - deployment-metadata
     if: always()
     steps:
       - name: Check job results
-        run: |
-          failed=0
-          for result in "${{ needs.backend.result }}" "${{ needs.frontend.result }}"; do
-            if [ "$result" != "success" ]; then
-              failed=1
-            fi
-          done
-          if [ "$failed" -ne 0 ]; then
-            echo "backend: ${{ needs.backend.result }}, frontend: ${{ needs.frontend.result }}"
-            exit 1
-          fi
+        env:
+          UPLOAD_ARTIFACTS: ${{ needs.artifact-policy.outputs.upload_artifacts }}
+          ARTIFACT_POLICY: ${{ needs.artifact-policy.result }}
+          BACKEND: ${{ needs.backend.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          CD_SCRIPTS: ${{ needs.cd-scripts.result }}
+          HELM_CHART: ${{ needs.helm-chart.result }}
+          DEPLOYMENT_METADATA: ${{ needs.deployment-metadata.result }}
+        run: bash scripts/ci/assert-ci-jobs.sh

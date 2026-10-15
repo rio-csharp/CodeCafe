@@ -1,4 +1,4 @@
-# Development database only; production deploys use the helm chart in the 3.4 repo.
+# Development database only; deployments run the Helm chart in deploy/helm/codecafe.
 services:
   postgres:
     image: postgres:17-alpine

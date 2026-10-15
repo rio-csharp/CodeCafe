@@ -65,6 +65,9 @@ project.lock.json
 project.fragment.lock.json
 artifacts/
 
+# CI image build inputs (dotnet publish output, frontend dist copy)
+.artifacts/
+
 # Tye
 .tye/
 
