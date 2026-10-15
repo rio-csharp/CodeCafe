@@ -72,19 +72,10 @@ public sealed class ImportPageCommandHandler(
         PageChain.Link(page, notebook, parent, last);
         await pages.AddAsync(page, cancellationToken);
 
-        // The whole import is one batch in the page history. One SaveChanges persists the page
-        // and its blocks atomically, so no explicit transaction is needed.
-        MarkdownBlockImporter.CreateBlocks(
-            page,
-            parsed.Blocks,
-            parent: null,
-            Guid.CreateVersion7(),
-            blocks,
-            revisions,
-            changeSource.Source
-        );
-
-        // The caller never picked the slug, so losing the race is worth re-keying rather than failing.
+        // The page goes in first, on its own: Page.FirstBlockId (page -> block) and Block.PageId
+        // (block -> page) are a two-way foreign key, and EF cannot order two rows that reference
+        // each other inside one SaveChanges. That makes this the save the slug race lives on, so
+        // SlugConflict still guards it — a page is inserted with a null first-block pointer.
         var save = await SlugConflict.SaveAsync(
             unitOfWork,
             ct => ReKeyAsync(page, notebook.Id, title, ct),
@@ -95,6 +86,24 @@ public sealed class ImportPageCommandHandler(
         {
             return Result.Failure<PageDetailsDto>(conflict);
         }
+
+        // The whole import is one batch in the page history: the block rows land, then their
+        // sibling and child chains are linked — Block.FirstChildId against Block.ParentBlockId is
+        // the second two-way foreign key, so the chains have to wait for the rows. All the saves
+        // share the transaction, so the page is never visible without the content it imported.
+        var imported = MarkdownBlockImporter.CreateBlocks(
+            page,
+            parsed.Blocks,
+            parent: null,
+            Guid.CreateVersion7(),
+            blocks,
+            revisions,
+            changeSource.Source
+        );
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        MarkdownBlockImporter.LinkChains(page, imported, parent: null);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
 

@@ -185,6 +185,9 @@ public sealed class NotebookBlockTransferTests
         Assert.Equal(2, blocks.Count);
         Assert.Contains(blocks, block => block.Type == "paragraph" && block.PlainText == "Hello world");
         Assert.Contains(blocks, block => block.Type == "todo" && block.PlainText == "Done");
-        Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+        // Three saves, not one: the model's two two-way foreign keys (Page.FirstBlockId against
+        // Block.PageId, Block.FirstChildId against Block.ParentBlockId) mean EF cannot order the
+        // notebook/pages, the block rows and the chain pointers inside a single SaveChanges.
+        Assert.Equal(3, unitOfWork.SaveChangesCallCount);
     }
 }

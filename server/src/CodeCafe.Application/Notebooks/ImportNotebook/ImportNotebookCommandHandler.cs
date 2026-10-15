@@ -91,12 +91,48 @@ public sealed class ImportNotebookCommandHandler(
             await pages.AddAsync(page, cancellationToken);
             importedPages.Add(page);
             usedPageSlugs.Add(pageSlug);
-
-            MarkdownBlockImporter.CreateBlocks(page, parsedPage.Blocks, parent: null, batchId, blocks, revisions, changeSource.Source);
         }
 
         try
         {
+            // Three saves, because the model has two pairs of two-way foreign keys and EF cannot
+            // order rows that reference each other inside one SaveChanges.
+            //
+            // (1) the notebook and its pages — inserted with null first-block pointers. Each page
+            //     references the notebook, and a notebook's page chain is plain ids, so this is
+            //     acyclic; it is also the save the slug races surface on.
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            var trees = new List<(Page Page, IReadOnlyList<ImportedBlock> Blocks)>(importedPages.Count);
+            foreach (var (page, parsedPage) in importedPages.Zip(parsed.Pages))
+            {
+                trees.Add(
+                    (
+                        page,
+                        MarkdownBlockImporter.CreateBlocks(
+                            page,
+                            parsedPage.Blocks,
+                            parent: null,
+                            batchId,
+                            blocks,
+                            revisions,
+                            changeSource.Source
+                        )
+                    )
+                );
+            }
+
+            // (2) the block rows, each with its page and parent — Block.FirstChildId (parent ->
+            //     first child) against Block.ParentBlockId (child -> parent) is the second
+            //     two-way foreign key, so the chains cannot arrive with the rows.
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            foreach (var (page, tree) in trees)
+            {
+                MarkdownBlockImporter.LinkChains(page, tree, parent: null);
+            }
+
+            // (3) the chain pointers, all updates on rows that now exist.
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
