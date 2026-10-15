@@ -1,4 +1,4 @@
-import { ACCESS_CODE_HEADER, getAccessCode, getAccessToken } from '@/shared/api'
+import { ACCESS_CODE_HEADER, apiUrl, getAccessCode, getAccessToken } from '@/shared/api'
 
 /** One frame of the AI chat stream, discriminated by `kind`. */
 export type AiChatEvent =
@@ -50,7 +50,7 @@ export async function streamChat({
   const token = getAccessToken()
   // The chat endpoint sits behind the same access-code gate as the other reads.
   const accessCode = getAccessCode(slug)
-  const response = await fetch(`/api/notebooks/${encodeURIComponent(slug)}/ai/chat`, {
+  const response = await fetch(apiUrl(`/api/notebooks/${encodeURIComponent(slug)}/ai/chat`), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

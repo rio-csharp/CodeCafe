@@ -1,4 +1,5 @@
 import { ACCESS_CODE_HEADER, accessCodeForPath } from './accessCodes'
+import { apiUrl } from './baseUrl'
 import { ApiError, kindFromStatus } from './errors'
 import { getAccessToken } from './session'
 
@@ -27,7 +28,7 @@ export async function downloadFile(path: string, options: DownloadFileOptions = 
     headers.set(ACCESS_CODE_HEADER, access.code)
   }
 
-  const response = await fetch(path, { headers })
+  const response = await fetch(apiUrl(path), { headers })
   if (!response.ok) {
     throw await envelopeError(response)
   }

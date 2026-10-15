@@ -1,3 +1,4 @@
+import { apiUrl } from './baseUrl'
 import { ApiError, kindFromStatus } from './errors'
 import type { ResultEnvelope } from './types'
 
@@ -20,7 +21,7 @@ export async function requestJson<T>(path: string, init: JsonRequestInit = {}): 
   const withContentType =
     rest.body !== undefined ? mergeHeader(headers, 'Content-Type', 'application/json') : headers
 
-  const response = await fetch(path, {
+  const response = await fetch(apiUrl(path), {
     ...rest,
     signal: withTimeout(signal),
     headers: mergeHeader(withContentType, 'Accept', 'application/json'),

@@ -7,6 +7,7 @@ export {
 } from './accessCodes'
 export { ApiError, apiFetch } from './client'
 export type { ApiFetchInit } from './client'
+export { apiUrl, getApiBaseUrl } from './baseUrl'
 export { downloadFile } from './download'
 export type { DownloadFileOptions } from './download'
 export {

@@ -40,7 +40,10 @@ internal static class CorsExtensions
                 corsOptions.AddDefaultPolicy(policy => policy
                     .WithOrigins(settingsAccessor.Value.AllowedOrigins)
                     .AllowAnyHeader()
-                    .AllowAnyMethod()));
+                    .AllowAnyMethod()
+                    // Notebook/page exports are downloaded cross-origin; without this
+                    // the browser hides the header and the file loses its name.
+                    .WithExposedHeaders("Content-Disposition")));
 
         return services;
     }
