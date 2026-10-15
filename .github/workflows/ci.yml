@@ -125,6 +125,11 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
+        with:
+          # The frontend is not at the repository root, and its package.json is
+          # where the pnpm version is pinned (packageManager) — the action reads
+          # the root package.json by default and finds none.
+          package_json_file: clients/web/package.json
 
       - name: Setup Node
         uses: actions/setup-node@v6
@@ -282,6 +287,11 @@ jobs:
       - deployment-metadata
     if: always()
     steps:
+      # The gate is a script, so this job needs the checkout the inline version
+      # used to do without.
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Check job results
         env:
           UPLOAD_ARTIFACTS: ${{ needs.artifact-policy.outputs.upload_artifacts }}
