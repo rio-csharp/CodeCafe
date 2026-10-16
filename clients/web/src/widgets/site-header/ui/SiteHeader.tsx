@@ -67,7 +67,7 @@ export function SiteHeader() {
                   <path d="m16 16 4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
               </Link>
-              <UserMenu displayName={user.displayName} />
+              <UserMenu displayName={user.displayName} email={user.email} />
             </>
           ) : null}
         </div>

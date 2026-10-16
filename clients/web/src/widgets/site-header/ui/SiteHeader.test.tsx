@@ -63,6 +63,8 @@ describe('SiteHeader', () => {
     await user.click(screen.getByRole('button', { name: 'Ada' }))
     expect(screen.getByRole('menuitem', { name: 'Log out' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ada' })).toHaveAttribute('aria-expanded', 'true')
+    // The address the account belongs to, so the menu says who it acts on.
+    expect(screen.getByText('ada@example.com')).toBeInTheDocument()
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('menuitem', { name: 'Log out' })).not.toBeInTheDocument()

@@ -87,7 +87,9 @@ export function HomePage() {
             {t('header.login')}
           </Link>
         ) : null}
-        {signedIn && user !== null ? <UserMenu displayName={user.displayName} /> : null}
+        {signedIn && user !== null ? (
+          <UserMenu displayName={user.displayName} email={user.email} />
+        ) : null}
       </div>
 
       <Container width="standard" className="relative py-16 sm:py-20">

@@ -48,6 +48,14 @@ export function ProfileForm() {
         void onSubmit(event)
       }}
     >
+      {/* Read-only context for the name below: the address is the account's identity, and
+          nothing in this form can change it. */}
+      <div className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-muted">{t('auth.email')}</span>
+        <p className="truncate text-sm text-ink">{user?.email}</p>
+        <p className="text-xs text-muted">{t('account.emailHint')}</p>
+      </div>
+
       <Field id="profile-display-name" label={t('auth.displayName')} errorKey={errors.displayName?.message}>
         <Input
           id="profile-display-name"

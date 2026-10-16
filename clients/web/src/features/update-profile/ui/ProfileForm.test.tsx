@@ -24,6 +24,14 @@ describe('ProfileForm', () => {
     expect(screen.getByLabelText('Display name')).toHaveValue('Ada')
   })
 
+  it('shows the sign-in address as read-only context', () => {
+    render(<ProfileForm />)
+
+    expect(screen.getByText('ada@example.com')).toBeInTheDocument()
+    // Nothing in this form can edit it, so it is text, not a field.
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+  })
+
   it('saves and updates the session store so the header follows without a reload', async () => {
     const user = userEvent.setup()
     vi.mocked(updateProfile).mockResolvedValue({ ...USER, displayName: 'Ada L.' })

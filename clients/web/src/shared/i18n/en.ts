@@ -199,6 +199,7 @@ export const en = {
     passwordWrong: "The current password doesn't match.",
     passwordFailed: 'Could not change the password. Please try again.',
     passwordChangedNotice: 'Password changed — sign in again with the new one.',
+    emailHint: 'The address you sign in with. It cannot be changed.',
     tokensTitle: 'Personal access tokens',
     tokensIntro: 'Tokens let scripts and tools sign in as you.',
     tokensEmpty: 'No tokens yet.',

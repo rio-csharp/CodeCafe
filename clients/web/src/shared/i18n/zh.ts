@@ -199,6 +199,7 @@ export const zh = {
     passwordWrong: '当前密码不对。',
     passwordFailed: '修改失败，请重试。',
     passwordChangedNotice: '密码已修改——请用新密码重新登录。',
+    emailHint: '你用来登录的邮箱，暂不支持修改。',
     tokensTitle: '个人访问令牌',
     tokensIntro: '令牌可以让脚本和工具以你的身份登录。',
     tokensEmpty: '还没有令牌。',

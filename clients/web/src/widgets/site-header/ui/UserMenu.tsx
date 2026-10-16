@@ -6,13 +6,14 @@ import { buttonClass } from '@/shared/ui'
 
 export interface UserMenuProps {
   displayName: string
+  email: string
 }
 
 /**
  * The account menu behind the display name. Closes on outside click, Escape, or
  * after picking an item.
  */
-export function UserMenu({ displayName }: UserMenuProps) {
+export function UserMenu({ displayName, email }: UserMenuProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -70,42 +71,46 @@ export function UserMenu({ displayName }: UserMenuProps) {
       </button>
 
       {open ? (
-        <div
-          role="menu"
-          aria-label={t('header.accountMenu')}
-          className="absolute right-0 z-20 mt-2 min-w-40 rounded-xl border border-line bg-card p-1 shadow-lg"
-        >
-          <Link
-            role="menuitem"
-            to="/account"
-            onClick={() => {
-              setOpen(false)
-            }}
-            className="block rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            {t('header.account')}
-          </Link>
-          <Link
-            role="menuitem"
-            to="/trash"
-            onClick={() => {
-              setOpen(false)
-            }}
-            className="block rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            {t('trash.entry')}
-          </Link>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false)
-              logout()
-            }}
-            className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-          >
-            {t('header.logout')}
-          </button>
+        <div className="absolute right-0 z-20 mt-2 min-w-48 rounded-xl border border-line bg-card p-1 shadow-lg">
+          {/* The identity the menu acts on, outside `menu`: a menu may only hold items. */}
+          <div className="border-b border-line px-3 py-2">
+            <p className="truncate text-sm font-medium text-ink">{displayName}</p>
+            <p className="truncate text-xs text-muted">{email}</p>
+          </div>
+
+          <div role="menu" aria-label={t('header.accountMenu')} className="pt-1">
+            <Link
+              role="menuitem"
+              to="/account"
+              onClick={() => {
+                setOpen(false)
+              }}
+              className="block rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              {t('header.account')}
+            </Link>
+            <Link
+              role="menuitem"
+              to="/trash"
+              onClick={() => {
+                setOpen(false)
+              }}
+              className="block rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              {t('trash.entry')}
+            </Link>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false)
+                logout()
+              }}
+              className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            >
+              {t('header.logout')}
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
