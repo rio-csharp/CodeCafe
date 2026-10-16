@@ -65,6 +65,8 @@ spec:
             {{- end }}
             - name: Shutdown__TimeoutSeconds
               value: {{ max 1 (sub .Values.api.terminationGracePeriodSeconds .Values.api.preStopSleepSeconds) | quote }}
+            - name: Auth__RegistrationEnabled
+              value: {{ .Values.api.auth.registrationEnabled | quote }}
             {{- if .Values.api.ai.apiKeySecretName }}
             - name: Ai__ApiKey
               valueFrom:

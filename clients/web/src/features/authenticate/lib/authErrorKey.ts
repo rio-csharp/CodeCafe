@@ -4,6 +4,7 @@ import { ApiError } from '@/shared/api'
 const ERROR_KEY_BY_CODE: Readonly<Record<string, string>> = {
   invalid_credentials: 'auth.error.invalidCredentials',
   email_already_registered: 'auth.error.emailTaken',
+  registration_disabled: 'auth.error.registrationDisabled',
 }
 
 export const GENERIC_AUTH_ERROR_KEY = 'auth.error.generic'

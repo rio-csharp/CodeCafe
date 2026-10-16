@@ -179,6 +179,7 @@ export const en = {
     error: {
       invalidCredentials: "That email and password aren't on our list.",
       emailTaken: 'That email already has a regular table here.',
+      registrationDisabled: 'This instance is not taking new accounts.',
       generic: 'We spilled that one — try again in a moment.',
     },
   },

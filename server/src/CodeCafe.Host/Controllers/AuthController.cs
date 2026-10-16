@@ -12,23 +12,33 @@ using CodeCafe.Application.Auth.Shared;
 using CodeCafe.Application.Auth.UpdateProfile;
 using CodeCafe.Application.Common;
 using CodeCafe.Host.Hosting;
+using CodeCafe.Infrastructure.Auth;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Host.Controllers;
 
 [ApiController]
 [Route("api")]
 [Tags("Auth")]
-public sealed class AuthController(ISender sender) : ControllerBase
+public sealed class AuthController(ISender sender, IOptions<AuthOptions> authOptions) : ControllerBase
 {
     [HttpPost("auth/register")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimiterExtensions.AuthPolicy)]
     public Task<Result<AuthSessionDto>> Register(RegisterRequest request, CancellationToken cancellationToken)
-        => sender.Send(new RegisterCommand(request.Email, request.Password, request.DisplayName), cancellationToken);
+        => sender.Send(
+            new RegisterCommand(
+                request.Email,
+                request.Password,
+                request.DisplayName,
+                RegistrationEnabled: authOptions.Value.RegistrationEnabled
+            ),
+            cancellationToken
+        );
 
     [HttpPost("auth/login")]
     [AllowAnonymous]

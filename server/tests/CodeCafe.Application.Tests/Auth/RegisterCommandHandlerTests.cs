@@ -8,7 +8,12 @@ namespace CodeCafe.Application.Tests.Auth;
 
 public sealed class RegisterCommandHandlerTests
 {
-    private static readonly RegisterCommand Command = new("  Yao@Example.COM ", "Password123!", "  Yao  ");
+    private static readonly RegisterCommand Command = new(
+        "  Yao@Example.COM ",
+        "Password123!",
+        "  Yao  ",
+        RegistrationEnabled: true
+    );
 
     [Fact]
     public async Task Handle_PersistsNormalizedUserAndReturnsSession()
@@ -47,13 +52,50 @@ public sealed class RegisterCommandHandlerTests
         var handler = CreateHandler(users, out _, out _, out var unitOfWork);
 
         var result = await handler.Handle(
-            new RegisterCommand("FIRST@example.com", "Password123!", "Second"),
+            new RegisterCommand("FIRST@example.com", "Password123!", "Second", RegistrationEnabled: true),
             CancellationToken.None
         );
 
         Assert.False(result.IsSuccess);
         Assert.Equal(AuthErrors.EmailAlreadyRegistered, result.Error);
         Assert.Single(users);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task Handle_RejectsRegistration_WhenTheDeploymentHasItDisabled()
+    {
+        var users = new StubUserRepository();
+        var handler = CreateHandler(users, out var accessTokens, out var refreshTokens, out var unitOfWork);
+
+        var result = await handler.Handle(
+            new RegisterCommand("yao@example.com", "Password123!", "Yao", RegistrationEnabled: false),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(AuthErrors.RegistrationDisabled, result.Error);
+        Assert.Empty(users);
+        Assert.Equal(Guid.Empty, accessTokens.IssuedFor);
+        Assert.Null(refreshTokens.IssuedFor);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task Handle_RejectsRegistrationBeforeLookingUpTheEmail()
+    {
+        // With sign-up off, a duplicate email must not be distinguishable from a fresh one:
+        // both answers are the same refusal.
+        var existing = User.Create("taken@example.com", "taken@example.com", "Taken", "hash");
+        var users = new StubUserRepository { existing };
+        var handler = CreateHandler(users, out _, out _, out var unitOfWork);
+
+        var result = await handler.Handle(
+            new RegisterCommand("taken@example.com", "Password123!", "Someone", RegistrationEnabled: false),
+            CancellationToken.None
+        );
+
+        Assert.Equal(AuthErrors.RegistrationDisabled, result.Error);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 

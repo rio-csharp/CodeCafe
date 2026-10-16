@@ -70,6 +70,11 @@ frontend:
 
 api:
   replicaCount: 2
+  auth:
+    # Self-service sign-up. Off in the chart so that a bare `helm install` matches the
+    # application default; deploy-helm.sh maps the REGISTRATION_ENABLED repository
+    # variable onto it, which is how an environment opts in.
+    registrationEnabled: false
   pdb:
     enabled: true
     minAvailable: 1

@@ -17,6 +17,13 @@ public sealed class RegisterCommandHandler(
 {
     public async Task<Result<AuthSessionDto>> Handle(RegisterCommand command, CancellationToken cancellationToken)
     {
+        // Checked before the email lookup: with sign-up off the endpoint must not become an
+        // oracle for which emails are already registered.
+        if (!command.RegistrationEnabled)
+        {
+            return Result.Failure<AuthSessionDto>(AuthErrors.RegistrationDisabled);
+        }
+
         var normalizedEmail = AuthInput.NormalizeEmail(command.Email);
         if (await users.FindByEmailAsync(normalizedEmail, cancellationToken) is not null)
         {

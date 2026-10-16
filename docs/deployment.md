@@ -78,6 +78,9 @@ Repository-level configuration the workflows expect (already present):
 - environments `test` and `production`;
 - variables `IMAGE_NAMESPACE`, `PREVIEW_BASE_DOMAIN`, `AI_MODEL`, `AI_BASE_URL`, and the
   `TEST_*` / `PRODUCTION_*` host, port and user pairs;
+- the optional `REGISTRATION_ENABLED` variable, which turns self-service sign-up on for the
+  environment it is set in. It is off in the application and in the chart, so registration
+  only opens where someone asked for it, and an unset variable cannot open it by accident;
 - secrets `TEST_SSH_*`, `PRODUCTION_SSH_*`, `AI_API_KEY`.
 
 ## Local checks

@@ -110,6 +110,9 @@ jobs:
           # prompt moved into ChatOptions.Instructions; drop this line if the
           # provider moves to a first-party endpoint.
           AI_RELAY: NewApi
+          # See deploy-production.yml: environment variable first, repository second,
+          # unset leaves the chart default (off) in place.
+          REGISTRATION_ENABLED: ${{ vars.REGISTRATION_ENABLED }}
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           CD_SCRIPTS_DIR: .trusted/scripts/cd
         run: bash .trusted/scripts/cd/deploy-environment.sh

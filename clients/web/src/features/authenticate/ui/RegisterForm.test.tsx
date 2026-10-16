@@ -101,4 +101,23 @@ describe('RegisterForm', () => {
     ).toBeInTheDocument()
     expect(useSessionStore.getState().status).toBe('anonymous')
   })
+
+  it('says sign-up is closed when the deployment refuses registration', async () => {
+    vi.mocked(registerAccount).mockRejectedValue(
+      new ApiError({
+        status: 403,
+        code: 'registration_disabled',
+        kind: 'Forbidden',
+        message: 'Registration is disabled.',
+      }),
+    )
+    renderForm()
+
+    await fillForm('espresso42')
+
+    expect(
+      await screen.findByText('This instance is not taking new accounts.'),
+    ).toBeInTheDocument()
+    expect(useSessionStore.getState().status).toBe('anonymous')
+  })
 })

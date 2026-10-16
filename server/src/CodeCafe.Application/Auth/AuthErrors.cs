@@ -10,6 +10,15 @@ public static class AuthErrors
         ErrorKind.Conflict
     );
 
+    // The operator decides whether the deployment accepts new accounts. The endpoint stays
+    // mounted either way, so a client gets a reason instead of a 404 that looks like a
+    // wrong URL.
+    public static readonly Error RegistrationDisabled = new(
+        "registration_disabled",
+        "Registration is disabled.",
+        ErrorKind.Forbidden
+    );
+
     // One uniform failure for unknown email and wrong password, so the response
     // cannot be used to probe which emails are registered.
     public static readonly Error InvalidCredentials = new(

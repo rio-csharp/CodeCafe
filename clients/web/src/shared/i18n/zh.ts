@@ -179,6 +179,7 @@ export const zh = {
     error: {
       invalidCredentials: '邮箱和密码对不上我们的名单。',
       emailTaken: '这个邮箱已经有老位子了。',
+      registrationDisabled: '这个实例暂时不接受新账号。',
       generic: '这杯洒了，稍后再试一次。',
     },
   },

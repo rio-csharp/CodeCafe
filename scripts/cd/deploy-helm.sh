@@ -29,6 +29,9 @@ FRONTEND_REPLICA_COUNT="${FRONTEND_REPLICA_COUNT:-}"
 API_REPLICA_COUNT="${API_REPLICA_COUNT:-}"
 API_MIGRATION_ENABLED="${API_MIGRATION_ENABLED:-}"
 API_MIGRATE_ON_STARTUP="${API_MIGRATE_ON_STARTUP:-}"
+# No script-side default either: unset means no --set, so the chart's off-by-default
+# stands and a deployment that forgets the variable cannot open registration.
+REGISTRATION_ENABLED="${REGISTRATION_ENABLED:-}"
 AI_ENABLED="${AI_ENABLED:-false}"
 AI_MODEL="${AI_MODEL:-}"
 AI_BASE_URL="${AI_BASE_URL:-}"
@@ -203,6 +206,10 @@ fi
 
 if [ -n "$API_MIGRATE_ON_STARTUP" ]; then
   helm_args+=(--set "api.migrateOnStartup=$API_MIGRATE_ON_STARTUP")
+fi
+
+if [ -n "$REGISTRATION_ENABLED" ]; then
+  helm_args+=(--set "api.auth.registrationEnabled=$REGISTRATION_ENABLED")
 fi
 
 if [ -n "$AI_MODEL" ]; then

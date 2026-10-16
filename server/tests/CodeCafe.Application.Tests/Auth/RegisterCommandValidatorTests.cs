@@ -13,7 +13,7 @@ public sealed class RegisterCommandValidatorTests
     [Fact]
     public void Valid_Command_Passes()
     {
-        var result = _validator.Validate(new RegisterCommand(ValidEmail, ValidPassword, ValidDisplayName));
+        var result = _validator.Validate(new RegisterCommand(ValidEmail, ValidPassword, ValidDisplayName, RegistrationEnabled: true));
 
         Assert.True(result.IsValid);
     }
@@ -24,7 +24,7 @@ public sealed class RegisterCommandValidatorTests
     [InlineData("not-an-email")]
     public void Invalid_Email_Fails(string email)
     {
-        var result = _validator.Validate(new RegisterCommand(email, ValidPassword, ValidDisplayName));
+        var result = _validator.Validate(new RegisterCommand(email, ValidPassword, ValidDisplayName, RegistrationEnabled: true));
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(RegisterCommand.Email));
@@ -35,7 +35,7 @@ public sealed class RegisterCommandValidatorTests
     {
         var email = new string('a', 250) + "@example.com";
 
-        var result = _validator.Validate(new RegisterCommand(email, ValidPassword, ValidDisplayName));
+        var result = _validator.Validate(new RegisterCommand(email, ValidPassword, ValidDisplayName, RegistrationEnabled: true));
 
         Assert.False(result.IsValid);
     }
@@ -46,7 +46,7 @@ public sealed class RegisterCommandValidatorTests
     [InlineData("7chars!")]
     public void Short_Password_Fails(string password)
     {
-        var result = _validator.Validate(new RegisterCommand(ValidEmail, password, ValidDisplayName));
+        var result = _validator.Validate(new RegisterCommand(ValidEmail, password, ValidDisplayName, RegistrationEnabled: true));
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(RegisterCommand.Password));
@@ -57,7 +57,7 @@ public sealed class RegisterCommandValidatorTests
     {
         var password = new string('a', 129);
 
-        var result = _validator.Validate(new RegisterCommand(ValidEmail, password, ValidDisplayName));
+        var result = _validator.Validate(new RegisterCommand(ValidEmail, password, ValidDisplayName, RegistrationEnabled: true));
 
         Assert.False(result.IsValid);
     }
@@ -67,7 +67,7 @@ public sealed class RegisterCommandValidatorTests
     [InlineData("   ")]
     public void Empty_DisplayName_Fails(string displayName)
     {
-        var result = _validator.Validate(new RegisterCommand(ValidEmail, ValidPassword, displayName));
+        var result = _validator.Validate(new RegisterCommand(ValidEmail, ValidPassword, displayName, RegistrationEnabled: true));
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.PropertyName == nameof(RegisterCommand.DisplayName));
@@ -78,7 +78,7 @@ public sealed class RegisterCommandValidatorTests
     {
         var displayName = new string('a', 41);
 
-        var result = _validator.Validate(new RegisterCommand(ValidEmail, ValidPassword, displayName));
+        var result = _validator.Validate(new RegisterCommand(ValidEmail, ValidPassword, displayName, RegistrationEnabled: true));
 
         Assert.False(result.IsValid);
     }
