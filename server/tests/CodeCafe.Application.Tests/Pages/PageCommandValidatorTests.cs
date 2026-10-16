@@ -1,3 +1,4 @@
+using CodeCafe.Application.Pages.ChangePageSlug;
 using CodeCafe.Application.Pages.CreatePage;
 using CodeCafe.Application.Pages.SharePage;
 using CodeCafe.Application.Pages.UpdatePage;
@@ -9,6 +10,7 @@ public sealed class PageCommandValidatorTests
 {
     private readonly CreatePageCommandValidator _createValidator = new();
     private readonly UpdatePageCommandValidator _updateValidator = new();
+    private readonly ChangePageSlugCommandValidator _changeSlugValidator = new();
     private readonly SharePageCommandValidator _shareValidator = new();
 
     [Fact]
@@ -86,6 +88,50 @@ public sealed class PageCommandValidatorTests
         var title = new string('a', Page.MaxTitleLength + 1);
 
         var result = _updateValidator.Validate(new UpdatePageCommand(Guid.NewGuid(), title, null));
+
+        Assert.False(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Absent_Slug_PassesChangePageSlug(string? slug)
+    {
+        // No slug means "derive one from the title", so there is nothing to validate.
+        var result = _changeSlugValidator.Validate(new ChangePageSlugCommand(Guid.NewGuid(), slug));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void Padded_Slug_PassesChangePageSlug()
+    {
+        var result = _changeSlugValidator.Validate(new ChangePageSlugCommand(Guid.NewGuid(), "  Filter-Notes  "));
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData("filter notes")]
+    [InlineData("-leading")]
+    [InlineData("trailing-")]
+    [InlineData("double--hyphen")]
+    [InlineData("punct!")]
+    public void Invalid_Slug_FailsChangePageSlug(string slug)
+    {
+        var result = _changeSlugValidator.Validate(new ChangePageSlugCommand(Guid.NewGuid(), slug));
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(ChangePageSlugCommand.Slug));
+    }
+
+    [Fact]
+    public void Oversized_Slug_FailsChangePageSlug()
+    {
+        var slug = new string('a', Page.MaxSlugLength + 1);
+
+        var result = _changeSlugValidator.Validate(new ChangePageSlugCommand(Guid.NewGuid(), slug));
 
         Assert.False(result.IsValid);
     }

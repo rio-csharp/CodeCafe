@@ -37,6 +37,7 @@ public sealed class OpenApiContractTests(CodeCafeFactory factory)
 
         ("get", "/api/pages/{pageId}"),
         ("patch", "/api/pages/{pageId}"),
+        ("post", "/api/pages/{pageId}/slug"),
         ("post", "/api/pages/{pageId}/move"),
         ("delete", "/api/pages/{pageId}"),
         ("post", "/api/pages/{pageId}/favorite"),

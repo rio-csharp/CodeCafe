@@ -43,7 +43,7 @@ public sealed class CreatePageCommandHandler(
         var last = siblings.Count > 0 ? siblings[^1] : null;
 
         var title = command.Title.Trim();
-        var slug = await FindAvailableSlugAsync(notebook.Id, title, pages, cancellationToken);
+        var slug = await PageSlugPolicy.FindAvailableAsync(notebook.Id, title, pages, cancellationToken);
         if (slug is null)
         {
             return Result.Failure<PageDetailsDto>(PageErrors.SlugAlreadyTaken);
@@ -56,7 +56,7 @@ public sealed class CreatePageCommandHandler(
         // The caller never picked the slug, so losing the race is worth re-keying rather than failing.
         var save = await SlugConflict.SaveAsync(
             unitOfWork,
-            ct => ReKeyAsync(page, notebook.Id, title, ct),
+            ct => PageSlugPolicy.ReKeyAsync(page, notebook.Id, title, pages, ct),
             PageErrors.SlugAlreadyTaken,
             cancellationToken
         );
@@ -74,31 +74,5 @@ public sealed class CreatePageCommandHandler(
         return Result.Success(
             PageDetailsMapping.ToDto(page, PageHierarchy.PathOf(page, ancestors), isFavorite: false, canWrite: true, shareUserNames: new Dictionary<Guid, string>())
         );
-    }
-
-    // Keeps the same page and moves it to a fresh candidate; false means none is left.
-    private async Task<bool> ReKeyAsync(Page page, Guid notebookId, string title, CancellationToken cancellationToken)
-    {
-        var slug = await FindAvailableSlugAsync(notebookId, title, pages, cancellationToken);
-        if (slug is null)
-        {
-            return false;
-        }
-
-        page.ChangeSlug(slug);
-        return true;
-    }
-
-    private static async Task<string?> FindAvailableSlugAsync(Guid notebookId, string title, IPageRepository pages, CancellationToken cancellationToken)
-    {
-        var candidates = await SlugAvailability.FindAvailableAsync(
-            PageSlug.GenerateFromTitle(title),
-            Page.MaxSlugLength,
-            1,
-            async (candidate, ct) => await pages.FindBySlugAsync(notebookId, candidate, ct) is not null,
-            cancellationToken
-        );
-
-        return candidates.Count > 0 ? candidates[0] : null;
     }
 }

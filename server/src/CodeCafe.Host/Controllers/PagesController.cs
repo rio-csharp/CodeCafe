@@ -1,5 +1,6 @@
 using System.Text;
 using CodeCafe.Application.Common;
+using CodeCafe.Application.Pages.ChangePageSlug;
 using CodeCafe.Application.Pages.DeletePage;
 using CodeCafe.Application.Pages.ExportPage;
 using CodeCafe.Application.Pages.GetPage;
@@ -32,6 +33,12 @@ public sealed class PagesController(ISender sender) : ControllerBase
     [HttpPatch("pages/{pageId:guid}")]
     public Task<Result<PageDetailsDto>> Update(Guid pageId, UpdatePageRequest request, CancellationToken cancellationToken)
         => sender.Send(new UpdatePageCommand(pageId, request.Title, request.IsArchived), cancellationToken);
+
+    // Separate from Update: a slug the caller picked is theirs to fix on a clash, while one
+    // derived from the title may be re-keyed, and that policy belongs to this operation alone.
+    [HttpPost("pages/{pageId:guid}/slug")]
+    public Task<Result<PageDetailsDto>> ChangeSlug(Guid pageId, ChangePageSlugRequest request, CancellationToken cancellationToken)
+        => sender.Send(new ChangePageSlugCommand(pageId, request.Slug), cancellationToken);
 
     [HttpPost("pages/{pageId:guid}/move")]
     public Task<Result<PageDetailsDto>> Move(Guid pageId, MovePageRequest request, CancellationToken cancellationToken)
