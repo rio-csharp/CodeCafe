@@ -78,7 +78,7 @@ export function PageNodeMenu({ node, onToggleArchive, onDelete, onImportSubpage 
               }}
               className="w-full rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
-              {t('reader.importSubpage', { title: node.title })}
+              {t('reader.importSubpage')}
             </button>
           ) : null}
           <button

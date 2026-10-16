@@ -174,7 +174,7 @@ describe('PageTree', () => {
     const user = userEvent.setup()
     render(
       <MemoryRouter>
-        <PageTree slug="book" roots={ROOTS} canWrite />
+        <PageTree slug="book" roots={ROOTS} canWrite includeArchived />
       </MemoryRouter>,
     )
 
@@ -186,7 +186,17 @@ describe('PageTree', () => {
     expect(screen.getByRole('link', { name: /Retired pour/ })).toHaveClass('opacity-60')
   })
 
-  it('offers drag handles and node menus to writers only', () => {
+  it('keeps archived pages out of the writer tree until asked to include them', () => {
+    render(
+      <MemoryRouter>
+        <PageTree slug="book" roots={ROOTS} canWrite />
+      </MemoryRouter>,
+    )
+
+    expect(screen.queryByRole('link', { name: /Hidden stash/ })).not.toBeInTheDocument()
+  })
+
+  it('makes rows draggable and offers node menus to writers only', () => {
     render(
       <MemoryRouter>
         <PageTree
@@ -200,7 +210,8 @@ describe('PageTree', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('button', { name: 'Drag to move Guide' })).toBeInTheDocument()
+    const guide = screen.getByRole('link', { name: 'Guide' })
+    expect(guide.parentElement).toHaveAttribute('draggable', 'true')
     expect(screen.getByRole('button', { name: 'Actions for "Guide"' })).toBeInTheDocument()
   })
 
@@ -220,6 +231,7 @@ describe('PageTree', () => {
           slug="book"
           roots={ROOTS}
           canWrite
+          includeArchived
           onToggleArchive={onToggleArchive}
           onDeletePage={vi.fn()}
         />
@@ -261,14 +273,14 @@ describe('PageTree', () => {
     const onMovePage = vi.fn()
     render(
       <MemoryRouter>
-        <PageTree slug="book" roots={ROOTS} canWrite onMovePage={onMovePage} />
+        <PageTree slug="book" roots={ROOTS} canWrite includeArchived onMovePage={onMovePage} />
       </MemoryRouter>,
     )
 
     const dataTransfer = { setData: vi.fn(), effectAllowed: '', dropEffect: '' }
-    fireEvent.dragStart(screen.getByRole('button', { name: 'Drag to move Hidden stash' }), {
-      dataTransfer,
-    })
+    const stashRow = screen.getByRole('link', { name: /Hidden stash/ }).parentElement
+    expect(stashRow).not.toBeNull()
+    fireEvent.dragStart(stashRow as Element, { dataTransfer })
     // jsdom reports zero rects, which dropPositionAt reads as the row middle.
     const guideRow = screen.getByRole('link', { name: 'Guide' }).parentElement
     expect(guideRow).not.toBeNull()
@@ -292,9 +304,9 @@ describe('PageTree', () => {
     await user.click(screen.getByRole('button', { name: 'Toggle the subsections of Guide' }))
 
     const dataTransfer = { setData: vi.fn(), effectAllowed: '', dropEffect: '' }
-    fireEvent.dragStart(screen.getByRole('button', { name: 'Drag to move Guide' }), {
-      dataTransfer,
-    })
+    const guideRow = screen.getByRole('link', { name: 'Guide' }).parentElement
+    expect(guideRow).not.toBeNull()
+    fireEvent.dragStart(guideRow as Element, { dataTransfer })
     const setupRow = screen.getByRole('link', { name: 'Setup' }).parentElement
     fireEvent.dragOver(setupRow as Element, { dataTransfer })
     fireEvent.drop(setupRow as Element, { dataTransfer })

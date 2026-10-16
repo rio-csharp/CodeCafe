@@ -17,8 +17,10 @@ export interface PageTreeProps {
   activePath?: string | null
   /** Title substring; non-empty swaps the tree for flat search results. */
   filter?: string
-  /** Writers get drag-and-drop, node menus and archived pages; readers don't. */
+  /** Writers get drag-and-drop and node menus; readers don't. */
   canWrite?: boolean
+  /** Whether archived pages should be included in the tree. */
+  includeArchived?: boolean
   /** Per-node subpage creation; writers only, hidden otherwise. */
   onAddChild?: (parentPath: string) => void
   /** Per-node markdown import, offered in the node menu; writers only. */
@@ -54,6 +56,7 @@ export function PageTree({
   activePath = null,
   filter = '',
   canWrite = false,
+  includeArchived = false,
   onAddChild,
   onImportSubpage,
   onMovePage,
@@ -63,8 +66,8 @@ export function PageTree({
 }: PageTreeProps) {
   const { t } = useTranslation()
   const nodes = useMemo(
-    () => visibleTree(roots, { includeArchived: canWrite }),
-    [roots, canWrite],
+    () => visibleTree(roots, { includeArchived }),
+    [roots, includeArchived],
   )
   const expanded = useMemo(() => ancestorPathsOf(roots, activePath), [roots, activePath])
   const active = activePath === null ? null : normalizePagePath(activePath)
@@ -227,7 +230,7 @@ function SearchResults({
   )
 }
 
-/** Only writers ever see archived nodes; the badge explains the dimming. */
+/** Archived nodes stay dimmed and badged so their status is unambiguous. */
 function ArchivedBadge() {
   const { t } = useTranslation()
   return (
@@ -279,12 +282,24 @@ function TreeItem({
   return (
     <li>
       <div
+        draggable={dnd !== undefined}
         className={[
-          'group relative flex items-center gap-1 rounded',
+          'group relative flex items-center gap-0 rounded',
+          dnd !== undefined ? 'cursor-grab active:cursor-grabbing' : '',
           indicator === 'inside' ? 'bg-accent-soft' : '',
           dnd?.draggingId === node.id ? 'opacity-50' : '',
         ].join(' ')}
         style={{ paddingLeft: `${depth * 0.75}rem` }}
+        onDragStart={
+          dnd !== undefined
+            ? (event) => {
+                event.dataTransfer.setData('text/plain', node.id)
+                event.dataTransfer.effectAllowed = 'move'
+                dnd.onDragStart(node.id)
+              }
+            : undefined
+        }
+        onDragEnd={dnd?.onDragEnd}
         onDragOver={
           dnd !== undefined
             ? (event) => {
@@ -313,60 +328,37 @@ function TreeItem({
           />
         ) : null}
 
-        {dnd !== undefined ? (
-          <button
-            type="button"
-            draggable
-            aria-label={t('reader.dragPage', { title: node.title })}
-            title={t('reader.dragPage', { title: node.title })}
-            onDragStart={(event) => {
-              event.dataTransfer.setData('text/plain', node.id)
-              event.dataTransfer.effectAllowed = 'move'
-              dnd.onDragStart(node.id)
-            }}
-            onDragEnd={dnd.onDragEnd}
-            className="grid size-5 shrink-0 cursor-grab place-items-center rounded text-muted transition-all hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent active:cursor-grabbing sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
-          >
-            <svg viewBox="0 0 10 16" className="size-3" fill="currentColor" aria-hidden="true">
-              <circle cx="2.5" cy="2.5" r="1.4" />
-              <circle cx="7.5" cy="2.5" r="1.4" />
-              <circle cx="2.5" cy="8" r="1.4" />
-              <circle cx="7.5" cy="8" r="1.4" />
-              <circle cx="2.5" cy="13.5" r="1.4" />
-              <circle cx="7.5" cy="13.5" r="1.4" />
-            </svg>
-          </button>
-        ) : null}
-
-        {hasChildren ? (
-          <button
-            type="button"
-            aria-expanded={isOpen}
-            aria-label={t('reader.toggleBranch', { title: node.title })}
-            onClick={() => {
-              setOpen((current) => !current)
-            }}
-            className="grid size-5 shrink-0 place-items-center rounded text-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-          >
-            <svg
-              viewBox="0 0 12 12"
-              className={`size-3 transition-transform ${isOpen ? 'rotate-90' : ''}`}
-              fill="currentColor"
-              aria-hidden="true"
+        {/* One slot for every row, so siblings start at the same x whether or not
+            they have children; only rows with a branch get the toggle inside it. */}
+        <span className="grid size-4 shrink-0 place-items-center">
+          {hasChildren ? (
+            <button
+              type="button"
+              aria-expanded={isOpen}
+              aria-label={t('reader.toggleBranch', { title: node.title })}
+              onClick={() => {
+                setOpen((current) => !current)
+              }}
+              className="grid size-4 place-items-center rounded text-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              <path d="M4 2.5 8 6l-4 3.5V2.5Z" />
-            </svg>
-          </button>
-        ) : (
-          <span className="size-5 shrink-0" aria-hidden="true" />
-        )}
+              <svg
+                viewBox="0 0 12 12"
+                className={`size-2.5 transition-transform ${isOpen ? 'rotate-90' : ''}`}
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M4 2.5 8 6l-4 3.5V2.5Z" />
+              </svg>
+            </button>
+          ) : null}
+        </span>
 
         <Link
           to={toPageHref(slug, node.path)}
           aria-current={self === active ? 'page' : undefined}
           onClick={onNavigate}
           className={[
-            'min-w-0 flex-1 truncate rounded px-2 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
+            'min-w-0 flex-1 truncate rounded px-1 py-1 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent',
             self === active
               ? 'bg-accent-soft font-medium text-accent-strong'
               : 'text-ink hover:bg-muted-soft hover:text-accent-strong',

@@ -539,6 +539,26 @@ describe('NotebookReaderPage', () => {
     expect(screen.queryByRole('menuitem', { name: 'Page trash' })).not.toBeInTheDocument()
   })
 
+  it('shows archived pages to writers only once they ask for them', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [{ ...ROOTS[0]!, isArchived: true }, ROOTS[1]!],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Brewing', '/brewing'))
+
+    renderReader('/notebooks/espresso-notes/brewing')
+    await screen.findByRole('heading', { level: 1, name: 'Brewing' })
+
+    expect(screen.queryByRole('link', { name: /Grinding/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Show archived' }))
+
+    expect(screen.getByRole('link', { name: /Grinding/ })).toBeInTheDocument()
+  })
+
   it('refreshes the page tree from the header menu, readers included', async () => {
     const user = userEvent.setup()
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
@@ -632,7 +652,7 @@ describe('NotebookReaderPage', () => {
 
     const { container } = renderReader('/notebooks/espresso-notes/grinding')
     await user.click(await screen.findByRole('button', { name: 'Actions for "Grinding"' }))
-    await user.click(screen.getByRole('menuitem', { name: 'Import a subpage under Grinding' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Import' }))
 
     const input = container.querySelector('input[type="file"]')
     fireEvent.change(input as HTMLInputElement, {

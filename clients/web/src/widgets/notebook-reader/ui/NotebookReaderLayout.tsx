@@ -100,6 +100,7 @@ export function NotebookReaderLayout({
   const [contentWide, setContentWide] = useState(false)
   // Tree title filter, client-side: the whole tree is already here.
   const [treeQuery, setTreeQuery] = useState('')
+  const [includeArchived, setIncludeArchived] = useState(false)
   const [trashOpen, setTrashOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<PageTreeNode | null>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -173,6 +174,18 @@ export function NotebookReaderLayout({
             icon: <path d="M8 10V2.5M5.5 5 8 2.5 10.5 5M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />,
             onSelect: () => {
               onImportPage()
+            },
+          },
+        ]
+      : []),
+    ...(canEdit
+      ? [
+          {
+            id: 'toggle-archived',
+            label: includeArchived ? t('reader.hideArchived') : t('reader.showArchived'),
+            selected: includeArchived,
+            onSelect: () => {
+              setIncludeArchived((visible) => !visible)
             },
           },
         ]
@@ -270,6 +283,7 @@ export function NotebookReaderLayout({
             activePath={activePath}
             filter={treeQuery}
             canWrite={canEdit}
+            includeArchived={canEdit && includeArchived}
             onMovePage={canEdit ? onMovePage : undefined}
             onToggleArchive={canEdit ? onToggleArchive : undefined}
             onImportSubpage={
