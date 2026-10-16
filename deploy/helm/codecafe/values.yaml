@@ -13,10 +13,12 @@ frontend:
     runAsNonRoot: true
     seccompProfile:
       type: RuntimeDefault
-  # NOTE: readOnlyRootFilesystem stays false — the container entrypoint
-  # writes config.js and patches index.html under the html root at startup.
+  # readOnlyRootFilesystem stays true even though the deployment injects runtime
+  # configuration: the API origin arrives as a ConfigMap mounted over the
+  # image's default /config.js, so nothing writes under the html root at start-up.
   securityContext:
     allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
     capabilities:
       drop:
         - ALL
@@ -31,9 +33,11 @@ frontend:
   service:
     port: 80
     targetPort: 8080
-  env:
-    apiBaseUrl: https://api.example.local
-    aiStatusEndpointPath: /api/ai/status
+  config:
+    # Browser-facing API origin written to /config.js. Empty means same-origin,
+    # which is only useful with the image's own /api fallback. deploy-helm.sh
+    # always sets it to https://$API_HOST so the SPA calls the API host directly.
+    apiBaseUrl: ""
   probes:
     readiness:
       path: /
@@ -66,6 +70,11 @@ frontend:
 
 api:
   replicaCount: 2
+  auth:
+    # Self-service sign-up. Off in the chart so that a bare `helm install` matches the
+    # application default; deploy-helm.sh maps the REGISTRATION_ENABLED repository
+    # variable onto it, which is how an environment opts in.
+    registrationEnabled: false
   pdb:
     enabled: true
     minAvailable: 1
@@ -92,28 +101,57 @@ api:
   service:
     port: 80
     targetPort: 8080
+  # The frontend nginx resolves its upstream by this release-independent name
+  # (see clients/web/nginx.conf), which is why a namespace must hold exactly one
+  # CodeCafe release — it does: one per environment, one per PR preview.
+  serviceAliasName: codecafe-api
   envFromSecrets: []
+  # Kubernetes migrates through the pre-upgrade Job below, so the replicas must
+  # not migrate too: two pods calling MigrateAsync at once race. Leave false on
+  # Kubernetes; true is only for a single-replica install that has
+  # migration.enabled=false.
+  migrateOnStartup: false
   migration:
     enabled: true
     backoffLimit: 1
     ttlSecondsAfterFinished: 300
-  auth:
-    registrationEnabled: true
+    activeDeadlineSeconds: 600
+  # Empty leaves the image's AllowedHosts default in place. The deploy script
+  # sets "<frontend host>;<api host>": the browser-facing host is needed because
+  # the frontend nginx forwards the original Host header, and the API host for
+  # direct traffic.
+  allowedHosts: ""
+  forwardedHeaders:
+    # Single-proxy topology: exactly one forwarding hop is trusted.
+    forwardLimit: 1
+    # CIDR ranges whose X-Forwarded-For headers are trusted (the egress networks
+    # of the ingress controller in front of the API). Empty means the server
+    # default (loopback only), which ignores client-supplied X-Forwarded-For and
+    # keeps IP-partitioned rate limits spoof-proof — but then nothing the ingress
+    # sets is believed either, so every anonymous request shares one bucket.
+    # Assumed k3s default pod CIDR. VERIFY on the target cluster before the first
+    # deploy (kubectl get pods -A -o wide): if the ingress pods live in a
+    # different range, update this value.
+    knownNetworks:
+      - "10.42.0.0/16"
   ai:
     enabled: false
-    endpointPath: /api/ai/assistant
-    statusEndpointPath: /api/ai/status
-    draftEndpointPath: /api/ai/drafts
-    agentName: CodeCafeAssistant
     model: ""
     baseUrl: ""
+    wireFormat: OpenAiChatCompletions # OpenAiChatCompletions or OpenAiResponses
+    relay: Generic
     apiKeySecretName: ""
     apiKeySecretKey: "Ai__ApiKey"
-    maxToolResults: 10
-    maxToolContentChars: 4000
-    maxDraftPromptChars: 2000
-    maxDraftContextChars: 200000
-    maxDraftOutputTokens: 1600
+    maxOutputTokens: 16384
+    maxHistoryChars: 400000
+    maxOutlineChars: 24000
+    maxToolResultChars: 24000
+    maxToolIterations: 16
+    maxProviderRetries: 5
+    providerRetryBaseDelayMs: 1000
+  mcp:
+    enabled: true
+    endpointPath: /mcp
   cors:
     allowedOrigins:
       - https://frontend.example.local

@@ -1,0 +1,194 @@
+using System.Text.Json;
+
+namespace CodeCafe.Host.Tests.Endpoints;
+
+public sealed class OpenApiContractTests(CodeCafeFactory factory)
+    : IClassFixture<CodeCafeFactory>
+{
+    private static readonly (string Method, string Path)[] ContractOperations =
+    [
+        ("post", "/api/auth/register"),
+        ("post", "/api/auth/login"),
+        ("post", "/api/auth/refresh"),
+        ("post", "/api/auth/logout"),
+        ("get", "/api/auth/me"),
+        ("patch", "/api/auth/me"),
+        ("post", "/api/auth/change-password"),
+
+        ("post", "/api/notebooks"),
+        ("post", "/api/notebooks/import"),
+        ("post", "/api/notebooks/import/upload"),
+        ("patch", "/api/notebooks/{idOrSlug}"),
+        ("delete", "/api/notebooks/{idOrSlug}"),
+        ("post", "/api/notebooks/{idOrSlug}/slug"),
+        ("get", "/api/notebooks/slugs/{slug}"),
+        ("post", "/api/notebooks/{idOrSlug}/access-code"),
+        ("post", "/api/notebooks/{idOrSlug}/favorite"),
+        ("post", "/api/notebooks/{idOrSlug}/shares"),
+        ("delete", "/api/notebooks/{idOrSlug}/shares/{userId}"),
+        ("put", "/api/notebooks/{idOrSlug}/tags"),
+
+        ("get", "/api/notebooks"),
+        ("get", "/api/notebooks/{idOrSlug}"),
+        ("get", "/api/notebooks/{idOrSlug}/tree"),
+        ("get", "/api/notebooks/{idOrSlug}/export"),
+
+        ("post", "/api/notebooks/{idOrSlug}/pages"),
+        ("post", "/api/notebooks/{idOrSlug}/pages/import/upload"),
+        ("get", "/api/notebooks/{idOrSlug}/pages/by-path"),
+
+        ("get", "/api/pages/{pageId}"),
+        ("patch", "/api/pages/{pageId}"),
+        ("post", "/api/pages/{pageId}/slug"),
+        ("post", "/api/pages/{pageId}/move"),
+        ("delete", "/api/pages/{pageId}"),
+        ("post", "/api/pages/{pageId}/favorite"),
+        ("get", "/api/pages/favorites"),
+        ("post", "/api/pages/{pageId}/shares"),
+        ("delete", "/api/pages/{pageId}/shares/{userId}"),
+
+        ("post", "/api/pages/{pageId}/blocks"),
+        ("post", "/api/pages/{pageId}/blocks/batch"),
+        ("patch", "/api/pages/{pageId}/blocks/{blockId}"),
+        ("delete", "/api/pages/{pageId}/blocks/{blockId}"),
+        ("post", "/api/pages/{pageId}/blocks/{blockId}/move"),
+
+        ("get", "/api/pages/{pageId}/revisions"),
+        ("post", "/api/pages/{pageId}/revisions/restore"),
+        ("get", "/api/pages/{pageId}/blocks/{blockId}/revisions"),
+        ("post", "/api/pages/{pageId}/blocks/{blockId}/revisions/restore"),
+
+        ("get", "/api/trash"),
+        ("post", "/api/trash/{notebookId}/restore"),
+        ("delete", "/api/trash/{notebookId}"),
+        ("delete", "/api/trash"),
+        ("get", "/api/notebooks/{idOrSlug}/trash"),
+        ("post", "/api/trash/pages/{pageId}/restore"),
+        ("delete", "/api/trash/pages/{pageId}"),
+
+        ("get", "/api/search"),
+
+        ("post", "/api/notebooks/{idOrSlug}/ai/chat"),
+    ];
+
+    [Fact]
+    public async Task OpenApi_Document_Contains_Every_Contract_Operation()
+    {
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        using var document = JsonDocument.Parse(json);
+        var paths = document.RootElement.GetProperty("paths");
+        foreach (var (method, path) in ContractOperations)
+        {
+            Assert.True(
+                paths.TryGetProperty(path, out var operations)
+                    && operations.EnumerateObject().Any(operation => operation.Name == method),
+                $"Missing from OpenAPI document: {method.ToUpperInvariant()} {path}");
+        }
+    }
+
+    [Fact]
+    public async Task OpenApi_Document_Declares_Bearer_And_Requires_It_On_Protected_Operations()
+    {
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        using var document = JsonDocument.Parse(json);
+        var bearer = document.RootElement
+            .GetProperty("components")
+            .GetProperty("securitySchemes")
+            .GetProperty("Bearer");
+        Assert.Equal("http", bearer.GetProperty("type").GetString());
+        Assert.Equal("bearer", bearer.GetProperty("scheme").GetString());
+
+        var paths = document.RootElement.GetProperty("paths");
+
+        var protectedSecurity = paths
+            .GetProperty("/api/pages/{pageId}")
+            .GetProperty("patch")
+            .GetProperty("security");
+        Assert.Contains(
+            protectedSecurity.EnumerateArray(),
+            requirement => requirement.TryGetProperty("Bearer", out _));
+
+        var anonymousOperation = paths.GetProperty("/api/auth/login").GetProperty("post");
+        Assert.False(anonymousOperation.TryGetProperty("security", out _));
+    }
+
+    [Fact]
+    public async Task Protected_Operation_Documents_Error_Responses()
+    {
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        using var document = JsonDocument.Parse(json);
+        var responses = document.RootElement
+            .GetProperty("paths")
+            .GetProperty("/api/pages/{pageId}")
+            .GetProperty("patch")
+            .GetProperty("responses");
+
+        foreach (var status in new[] { "400", "401", "403", "404", "409", "500" })
+            Assert.True(responses.TryGetProperty(status, out _), $"Missing documented response: {status}");
+    }
+
+    [Fact]
+    public async Task Result_Operations_Document_The_Success_Envelope()
+    {
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        using var document = JsonDocument.Parse(json);
+        var paths = document.RootElement.GetProperty("paths");
+
+        var create = paths.GetProperty("/api/notebooks").GetProperty("post").GetProperty("responses").GetProperty("200");
+        var schema = create.GetProperty("content").GetProperty("application/json").GetProperty("schema");
+        Assert.Equal("#/components/schemas/ResultOfNotebookDetailsDto", schema.GetProperty("$ref").GetString());
+
+        // Operations returning a bare Result still document 200, with the payload-less envelope.
+        var delete = paths.GetProperty("/api/pages/{pageId}").GetProperty("delete").GetProperty("responses").GetProperty("200");
+        var deleteSchema = delete.GetProperty("content").GetProperty("application/json").GetProperty("schema");
+        Assert.Equal("#/components/schemas/Result", deleteSchema.GetProperty("$ref").GetString());
+    }
+
+    [Fact]
+    public async Task Rate_Limited_Operation_Documents_429()
+    {
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        using var document = JsonDocument.Parse(json);
+        var responses = document.RootElement
+            .GetProperty("paths")
+            .GetProperty("/api/auth/login")
+            .GetProperty("post")
+            .GetProperty("responses");
+
+        Assert.True(responses.TryGetProperty("429", out _), "Rate-limited operations must document 429.");
+    }
+
+    [Fact]
+    public async Task Ai_Chat_Documents_Server_Sent_Events()
+    {
+        using var client = factory.CreateClient();
+
+        var json = await client.GetStringAsync("/openapi/v1.json", TestContext.Current.CancellationToken);
+
+        using var document = JsonDocument.Parse(json);
+        var content = document.RootElement
+            .GetProperty("paths")
+            .GetProperty("/api/notebooks/{idOrSlug}/ai/chat")
+            .GetProperty("post")
+            .GetProperty("responses")
+            .GetProperty("200")
+            .GetProperty("content");
+
+        Assert.True(content.TryGetProperty("text/event-stream", out _), "AI chat must document text/event-stream.");
+    }
+}

@@ -42,7 +42,11 @@ module.exports = async function resolvePrPreview({ github, context, core }) {
     return;
   }
 
-  let prNumber = isDispatch ? Number(process.env.PREVIEW_PR_NUMBER) : run.pull_requests?.[0]?.number;
+  // Prefer a PR targeting release/*: the first associated PR may point at a
+  // non-release base, which would wrongly skip the preview deploy.
+  let prNumber = isDispatch
+    ? Number(process.env.PREVIEW_PR_NUMBER)
+    : run.pull_requests?.find(pr => pr.base?.ref?.startsWith('release/'))?.number;
 
   if (isDispatch && (!Number.isInteger(prNumber) || prNumber <= 0)) {
     core.setFailed('pr_number must be a positive integer.');
@@ -90,4 +94,7 @@ module.exports = async function resolvePrPreview({ github, context, core }) {
   core.setOutput('pr_number', String(pr.number));
   core.setOutput('head_sha', run.head_sha);
   core.setOutput('ci_run_id', String(ciRunId));
+  // Trusted ref (protected release branch) from which the deploy workflow
+  // checks out CD scripts; the workflow_run head_sha is never checked out.
+  core.setOutput('base_ref', pr.base.ref);
 };

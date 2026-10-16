@@ -1,16 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { AppProviders } from './providers'
-import { reportWebVitals } from '@/shared/lib/webVitals'
+import { Providers } from './providers'
 import './styles/index.css'
-import App from './App'
 
-createRoot(document.getElementById('root')!).render(
+const container = document.getElementById('root')
+if (!container) {
+  throw new Error('index.html is missing its #root container')
+}
+
+createRoot(container).render(
   <StrictMode>
-    <AppProviders>
-      <App />
-    </AppProviders>
+    <Providers />
   </StrictMode>,
 )
-
-reportWebVitals()

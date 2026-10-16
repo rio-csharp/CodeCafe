@@ -1,0 +1,17 @@
+<Project>
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>latest</LangVersion>
+    </PropertyGroup>
+
+    <!-- MSBuild stops at the first Directory.Build.props it finds walking up from a
+         project, so a repo-root file would be shadowed by this one. The analyzer
+         settings live here for that reason. -->
+    <PropertyGroup>
+        <AnalysisLevel>latest</AnalysisLevel>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    </PropertyGroup>
+</Project>

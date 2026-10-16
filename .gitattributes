@@ -1,3 +1,6 @@
+# Shell scripts run on the Linux deploy host, so they must never pick up CRLF:
+# `bash: $'\r': command not found` only shows up at deploy time, and CI's
+# `bash -n` runs on Linux where the checkout is already LF.
 *.sh text eol=lf
 * text=auto eol=lf
 *.ts text eol=lf

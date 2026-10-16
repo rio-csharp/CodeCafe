@@ -1,0 +1,15 @@
+# Development database only; deployments run the Helm chart in deploy/helm/codecafe.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: codecafe
+      POSTGRES_PASSWORD: codecafe
+      POSTGRES_DB: codecafe
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

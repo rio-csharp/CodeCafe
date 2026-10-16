@@ -1,2 +1,2 @@
-export { useCreateNotebook } from './model/useCreateNotebook'
-export { useCreateNotebookForm } from './model/useCreateNotebookForm'
+export { CreateNotebookDialog } from './ui/CreateNotebookDialog'
+export type { CreateNotebookDialogProps } from './ui/CreateNotebookDialog'

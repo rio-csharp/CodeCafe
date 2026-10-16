@@ -1,0 +1,813 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { NotebookDetails, PageTreeNode } from '@/entities/notebook'
+import { applyBlockOps } from '@/entities/block'
+import { getNotebookDetails, getNotebookTree } from '@/entities/notebook'
+import { createPage, changePageSlug, exportPage, getPageByPath, importPage, pageKeys, updatePage } from '@/entities/page'
+import type { PageDetails } from '@/entities/page'
+import { ApiError, getAccessCode } from '@/shared/api'
+import { NotebookReaderPage } from './NotebookReaderPage'
+
+vi.mock('@/entities/notebook', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/notebook')>()),
+  getNotebookDetails: vi.fn(),
+  getNotebookTree: vi.fn(),
+}))
+
+vi.mock('@/entities/block', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/block')>()),
+  applyBlockOps: vi.fn(),
+}))
+
+vi.mock('@/entities/page', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/entities/page')>()),
+  getPageByPath: vi.fn(),
+  updatePage: vi.fn(),
+  changePageSlug: vi.fn(),
+  createPage: vi.fn(),
+  exportPage: vi.fn(),
+  importPage: vi.fn(),
+  listFavoritePages: vi.fn().mockResolvedValue([]),
+  listPageRevisions: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
+}))
+
+const NOTEBOOK: NotebookDetails = {
+  id: '11111111-1111-1111-1111-111111111111',
+  title: 'Espresso Notes',
+  description: 'Short and strong.',
+  slug: 'espresso-notes',
+  visibility: 'Public',
+  hasAccessCode: false,
+  shares: [],
+  tags: ['coffee'],
+  pageCount: 2,
+  createdAtUtc: '2026-01-01T00:00:00.000Z',
+  updatedAtUtc: '2026-01-07T12:00:00.000Z',
+  isOwner: false,
+  canWrite: false,
+}
+
+const ROOTS: PageTreeNode[] = [
+  {
+    id: 'page-1',
+    title: 'Grinding',
+    path: '/grinding',
+    sortOrder: 0,
+    isArchived: false,
+    isFavorite: false,
+    children: [],
+  },
+  {
+    id: 'page-2',
+    title: 'Brewing',
+    path: '/brewing',
+    sortOrder: 1,
+    isArchived: false,
+    isFavorite: false,
+    children: [],
+  },
+]
+
+const TREE = { notebookId: NOTEBOOK.id, roots: ROOTS }
+
+function page(title: string, path: string): PageDetails {
+  return {
+    id: 'page-1',
+    notebookId: NOTEBOOK.id,
+    title,
+    path,
+    isArchived: false,
+    isFavorite: false,
+    shares: [],
+    blocks: [
+      {
+        id: 'block-1',
+        parentBlockId: null,
+        type: 'paragraph',
+        content: { spans: [{ text: 'Start with fresh beans.', marks: [] }] },
+        sortKey: 'a',
+        version: 1,
+        updatedAtUtc: '2026-01-07T12:00:00.000Z',
+      },
+    ],
+    createdAtUtc: '2026-01-01T00:00:00.000Z',
+    updatedAtUtc: '2026-01-07T12:00:00.000Z',
+  }
+}
+
+function pageWithHeadings(): PageDetails {
+  return {
+    ...page('Grinding', '/grinding'),
+    blocks: [
+      {
+        id: 'heading-1',
+        parentBlockId: null,
+        type: 'heading',
+        content: { level: 2, spans: [{ text: 'Beans', marks: [] }] },
+        sortKey: 'a',
+        version: 1,
+        updatedAtUtc: '2026-01-07T12:00:00.000Z',
+      },
+      {
+        id: 'heading-2',
+        parentBlockId: null,
+        type: 'heading',
+        content: { level: 3, spans: [{ text: 'Grind size', marks: [] }] },
+        sortKey: 'b',
+        version: 1,
+        updatedAtUtc: '2026-01-07T12:00:00.000Z',
+      },
+    ],
+  }
+}
+
+const notFound = () =>
+  new ApiError({ status: 404, code: 'notebooks.not_found', kind: 'NotFound', message: 'nope' })
+
+const accessRequired = () =>
+  new ApiError({
+    status: 403,
+    code: 'access_code_required',
+    kind: 'Forbidden',
+    message: 'This notebook requires an access code.',
+  })
+
+function renderReader(initialPath: string) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+
+  return {
+    client,
+    ...render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Routes>
+            <Route path="/notebooks/:slug/*" element={<NotebookReaderPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    ),
+  }
+}
+
+beforeEach(() => {
+  window.sessionStorage.clear()
+  vi.mocked(getNotebookDetails).mockReset()
+  vi.mocked(getNotebookTree).mockReset()
+  vi.mocked(getPageByPath).mockReset()
+  vi.mocked(updatePage).mockReset()
+  vi.mocked(changePageSlug).mockReset()
+  vi.mocked(createPage).mockReset()
+  vi.mocked(exportPage).mockReset()
+  vi.mocked(importPage).mockReset()
+  vi.mocked(exportPage).mockResolvedValue(undefined)
+  vi.mocked(applyBlockOps).mockReset()
+  vi.mocked(getNotebookDetails).mockResolvedValue(NOTEBOOK)
+  vi.mocked(getNotebookTree).mockResolvedValue(TREE)
+})
+
+describe('NotebookReaderPage', () => {
+  it('opens the first page when the notebook root is requested', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
+    expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
+      expect.objectContaining({ slug: 'espresso-notes', path: '/grinding' }),
+    )
+    expect(document.title).toBe('Grinding · Espresso Notes · CodeCafe')
+  })
+
+  it('renders the page blocks returned by the API', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+
+    expect(await screen.findByText('Start with fresh beans.')).toBeInTheDocument()
+  })
+
+  it('offers a way back to the menu from every page', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+
+    expect(await screen.findByRole('link', { name: 'Back home' })).toHaveAttribute('href', '/')
+  })
+
+  it('starts narrow and lets the reader go full width', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    const { container } = renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    expect(container.querySelector('main > div')).toHaveClass('max-w-3xl')
+
+    await user.click(screen.getByRole('button', { name: 'More actions' }))
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Full width' }))
+
+    expect(container.querySelector('main > div')).not.toHaveClass('max-w-3xl')
+  })
+
+  it('drops the site chrome so only the reading surface remains', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    expect(screen.queryByText('Brewed with ❤️ and caffeine')).not.toBeInTheDocument()
+    expect(screen.queryByText("Today's Menu")).not.toBeInTheDocument()
+  })
+
+  it('lists the page headings in the outline panel', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(pageWithHeadings())
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    const outline = screen.getByRole('navigation', { name: 'Outline' })
+    expect(within(outline).getByRole('link', { name: 'Beans' })).toHaveAttribute(
+      'href',
+      '#block-heading-1',
+    )
+    expect(within(outline).getByRole('link', { name: 'Grind size' })).toBeInTheDocument()
+    // The heading itself carries the matching id, or the link goes nowhere.
+    expect(document.getElementById('block-heading-1')?.tagName).toBe('H2')
+  })
+
+  it('opens the panels as mobile drawers and closes them again', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    const contentsPill = screen.getByRole('button', { name: 'Contents' })
+    expect(contentsPill).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('navigation', { name: 'Contents' }).closest('aside')).toHaveClass(
+      'hidden',
+    )
+
+    await user.click(contentsPill)
+
+    expect(contentsPill).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('navigation', { name: 'Contents' }).closest('aside')).toHaveClass(
+      'fixed',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(contentsPill).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('navigation', { name: 'Contents' }).closest('aside')).toHaveClass(
+      'hidden',
+    )
+  })
+
+  it('offers the tree as a disclosure so mobile readers can reach it', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+
+    expect(await screen.findByRole('button', { name: 'Contents' })).toBeInTheDocument()
+    expect(await screen.findByRole('navigation', { name: 'Contents' })).toBeInTheDocument()
+  })
+
+  it('asks for the access code instead of claiming the notebook is missing', async () => {
+    vi.mocked(getNotebookDetails).mockRejectedValue(accessRequired())
+
+    renderReader('/notebooks/locked-menu')
+
+    expect(await screen.findByText('This menu is under lock')).toBeInTheDocument()
+    expect(screen.getByLabelText('Access code')).toBeInTheDocument()
+    expect(
+      screen.queryByText("This notebook doesn't exist, or it isn't public yet."),
+    ).not.toBeInTheDocument()
+    // No automatic probing: the rate-limited endpoint is hit only on submit.
+    expect(vi.mocked(getNotebookDetails)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(getNotebookTree)).not.toHaveBeenCalled()
+  })
+
+  it('unlocks the notebook when the code fits and remembers it for later calls', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails)
+      .mockRejectedValueOnce(accessRequired())
+      .mockResolvedValue(NOTEBOOK)
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.type(await screen.findByLabelText('Access code'), 'let-me-in')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
+    expect(getAccessCode('espresso-notes')).toBe('let-me-in')
+    expect(vi.mocked(getNotebookTree)).toHaveBeenCalled()
+  })
+
+  it('reports a wrong code inline and clears it, keeping the prompt', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockRejectedValue(accessRequired())
+
+    renderReader('/notebooks/espresso-notes')
+    await user.type(await screen.findByLabelText('Access code'), 'nope')
+    await user.click(screen.getByRole('button', { name: 'Unlock' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("That key doesn't fit")
+    expect(screen.getByText('This menu is under lock')).toBeInTheDocument()
+    expect(getAccessCode('espresso-notes')).toBeNull()
+  })
+
+  it('serves the non-committal state when the notebook itself is missing', async () => {
+    vi.mocked(getNotebookDetails).mockRejectedValue(notFound())
+
+    renderReader('/notebooks/absent')
+
+    expect(
+      await screen.findByText("This notebook doesn't exist, or it isn't public yet."),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Back home' })).toHaveAttribute('href', '/')
+    expect(vi.mocked(getNotebookTree)).not.toHaveBeenCalled()
+  })
+
+  it('keeps the tree beside a missing page so there is a way out', async () => {
+    vi.mocked(getPageByPath).mockRejectedValue(notFound())
+
+    renderReader('/notebooks/espresso-notes/gone')
+
+    expect(await screen.findByText('This page is missing')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Brewing' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Espresso Notes' })).toHaveAttribute(
+      'href',
+      '/notebooks/espresso-notes',
+    )
+  })
+
+  it('serves the empty state when the notebook has no visible pages', async () => {
+    vi.mocked(getNotebookTree).mockResolvedValue({ notebookId: NOTEBOOK.id, roots: [] })
+
+    renderReader('/notebooks/espresso-notes')
+
+    expect(
+      await screen.findByText("Nothing's been written on this menu yet"),
+    ).toBeInTheDocument()
+    expect(vi.mocked(getPageByPath)).not.toHaveBeenCalled()
+  })
+
+  it('lets a writer rename the page from the chrome', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockResolvedValue(page('Grinding finer', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.clear(title)
+    await user.type(title, 'Grinding finer')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).toHaveBeenCalledWith('page-1', { title: 'Grinding finer' })
+    // Saved and back in reading mode, with the reader's own chrome restored.
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
+  })
+
+  it('gives a freshly named page a real URL', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [{ ...ROOTS[0]!, title: 'Untitled', path: '/untitled-4821' }],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled-4821'))
+    vi.mocked(updatePage).mockResolvedValue(page('Filter Notes', '/untitled-4821'))
+    vi.mocked(changePageSlug).mockResolvedValue(page('Filter Notes', '/filter-notes'))
+
+    renderReader('/notebooks/espresso-notes/untitled-4821')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.clear(title)
+    await user.type(title, 'Filter Notes')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    // No slug argument: the server derives it from the title it just stored.
+    expect(vi.mocked(changePageSlug)).toHaveBeenCalledWith('page-1')
+    // The reader follows the page to its new address instead of 404ing on the placeholder one.
+    await waitFor(() => {
+      expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/filter-notes' }),
+      )
+    })
+  })
+
+  it('lets a writer rewrite the page URL from the chrome', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(changePageSlug).mockResolvedValue(page('Grinding', '/filter-notes'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    await user.click(screen.getByRole('button', { name: 'More actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Change URL' }))
+
+    const link = screen.getByLabelText('Link')
+    await user.clear(link)
+    await user.type(link, 'filter-notes')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(changePageSlug)).toHaveBeenCalledWith('page-1', 'filter-notes')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // The reader follows the open page to the address the writer just gave it.
+    await waitFor(() => {
+      expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/filter-notes' }),
+      )
+    })
+  })
+
+  it('keeps a named page at its URL', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockResolvedValue(page('Grinding finer', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.type(title, ' finer')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).toHaveBeenCalled()
+    // The slug was never the placeholder, so the URL is nobody's business but the first page's.
+    expect(vi.mocked(changePageSlug)).not.toHaveBeenCalled()
+  })
+
+  it('leaves the placeholder URL alone until the page is actually named', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [{ ...ROOTS[0]!, title: 'Untitled', path: '/untitled-4821' }],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled-4821'))
+
+    renderReader('/notebooks/espresso-notes/untitled-4821')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(changePageSlug)).not.toHaveBeenCalled()
+  })
+
+  it('re-slugs a parent and says how many pages moved with it', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [
+        {
+          ...ROOTS[0]!,
+          title: 'Untitled',
+          path: '/untitled-4821',
+          children: [{ ...ROOTS[1]!, title: 'Brewing', path: '/untitled-4821/brewing' }],
+        },
+      ],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled-4821'))
+    vi.mocked(updatePage).mockResolvedValue(page('Filter Notes', '/untitled-4821'))
+    vi.mocked(changePageSlug).mockResolvedValue(page('Filter Notes', '/filter-notes'))
+
+    renderReader('/notebooks/espresso-notes/untitled-4821')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.clear(title)
+    await user.type(title, 'Filter Notes')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    // A parent is renamed like any page; the subpages moving with it is said, not forbidden.
+    expect(vi.mocked(changePageSlug)).toHaveBeenCalledWith('page-1')
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '1 subpages moved to the new address with it.',
+    )
+  })
+
+  it('keeps the edit-session baseline stable when the page cache refreshes', async () => {
+    const user = userEvent.setup()
+    const original = page('Grinding', '/grinding')
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(original)
+    vi.mocked(updatePage).mockResolvedValue(original)
+
+    const { client } = renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    client.setQueryData(pageKeys.byPath('espresso-notes', 'grinding'), {
+      ...original,
+      title: 'Changed remotely',
+      updatedAtUtc: '2026-01-08T12:00:00.000Z',
+    })
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).not.toHaveBeenCalled()
+  })
+
+  it('shows the server-provided reason when saving fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockRejectedValue(
+      new ApiError({
+        status: 400,
+        code: 'invalid_block_payload',
+        kind: 'Validation',
+        message: "The block payload does not match its type's contract.",
+      }),
+    )
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.type(title, 'x')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "The block payload does not match its type's contract.",
+    )
+  })
+
+  it('does not submit block changes after a title update fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockRejectedValue(new Error('title failed'))
+    vi.mocked(applyBlockOps).mockResolvedValue([])
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.type(screen.getByRole('textbox', { name: 'Page title' }), ' revised')
+    const paragraph = screen.getByRole('textbox', { name: 'Paragraph' })
+    paragraph.textContent = 'Changed locally.'
+    fireEvent.input(paragraph)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    expect(vi.mocked(applyBlockOps)).not.toHaveBeenCalled()
+  })
+
+  it('retries only the block batch after the title has already saved', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockResolvedValue(page('Grinding revised', '/grinding'))
+    vi.mocked(applyBlockOps)
+      .mockRejectedValueOnce(new Error('blocks failed'))
+      .mockResolvedValueOnce([])
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.type(screen.getByRole('textbox', { name: 'Page title' }), ' revised')
+    const paragraph = screen.getByRole('textbox', { name: 'Paragraph' })
+    paragraph.textContent = 'Changed locally.'
+    fireEvent.input(paragraph)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(await screen.findByRole('alert')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(applyBlockOps)).toHaveBeenCalledTimes(2)
+  })
+
+  it('drops an edit session after navigating away from its page', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockImplementation(async ({ path }) =>
+      path === '/brewing' ? page('Brewing', '/brewing') : page('Grinding', '/grinding'),
+    )
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    expect(screen.getByRole('textbox', { name: 'Page title' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'Brewing' }))
+    await user.click(await screen.findByRole('link', { name: 'Grinding' }))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Page title' })).not.toBeInTheDocument()
+  })
+
+  it('hides the edit pill from readers without write access', async () => {
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('creates a page from the tree header and lands in edit mode', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled'))
+    vi.mocked(createPage).mockResolvedValue(page('Untitled', '/untitled'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'New page' }))
+
+    expect(vi.mocked(createPage)).toHaveBeenCalledWith({
+      slug: 'espresso-notes',
+      title: 'Untitled',
+      parentPath: null,
+    })
+    await waitFor(() => {
+      expect(vi.mocked(getNotebookDetails).mock.calls.length).toBeGreaterThan(1)
+    })
+    // Straight into edit mode on the new page, title ready to be named.
+    expect(await screen.findByRole('textbox', { name: 'Page title' })).toHaveValue('Untitled')
+  })
+
+  it('creates a subpage under a tree node', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/grinding/untitled'))
+    vi.mocked(createPage).mockResolvedValue(page('Untitled', '/grinding/untitled'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'New subpage under Grinding' }))
+
+    expect(vi.mocked(createPage)).toHaveBeenCalledWith({
+      slug: 'espresso-notes',
+      title: 'Untitled',
+      parentPath: '/grinding',
+    })
+    expect(await screen.findByRole('textbox', { name: 'Page title' })).toHaveValue('Untitled')
+  })
+
+  it('hides page creation from readers without write access', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    await user.click(screen.getByRole('button', { name: 'Notebook actions' }))
+
+    expect(screen.queryByRole('menuitem', { name: 'New page' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Page trash' })).not.toBeInTheDocument()
+  })
+
+  it('shows archived pages to writers only once they ask for them', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [{ ...ROOTS[0]!, isArchived: true }, ROOTS[1]!],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Brewing', '/brewing'))
+
+    renderReader('/notebooks/espresso-notes/brewing')
+    await screen.findByRole('heading', { level: 1, name: 'Brewing' })
+
+    expect(screen.queryByRole('link', { name: /Grinding/ })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Show archived' }))
+
+    expect(screen.getByRole('link', { name: /Grinding/ })).toBeInTheDocument()
+  })
+
+  it('refreshes the page tree from the header menu, readers included', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+    expect(vi.mocked(getNotebookTree)).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Refresh tree' }))
+
+    await waitFor(() => {
+      expect(vi.mocked(getNotebookTree)).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('skips archived pages when picking the first page', async () => {
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [
+        { ...ROOTS[0]!, isArchived: true },
+        ROOTS[1]!,
+      ],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Brewing', '/brewing'))
+
+    renderReader('/notebooks/espresso-notes')
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Brewing' })).toBeInTheDocument()
+    expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '/brewing' }),
+    )
+  })
+
+  it('exports the open page as markdown from the chrome', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'More actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Export page' }))
+
+    expect(vi.mocked(exportPage)).toHaveBeenCalledWith('page-1')
+  })
+
+  it('surfaces a themed error when the export fails', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(exportPage).mockRejectedValue(new Error('nope'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'More actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Export page' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Export failed. Please try again.')
+  })
+
+  it('lets a writer import a markdown file as a root page and lands on it', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockImplementation(({ path }) =>
+      Promise.resolve(path === '/imported' ? page('Imported', '/imported') : page('Grinding', '/grinding')),
+    )
+    vi.mocked(importPage).mockResolvedValue(page('Imported', '/imported'))
+
+    const { container } = renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Import page' }))
+
+    const input = container.querySelector('input[type="file"]')
+    expect(input).not.toBeNull()
+    fireEvent.change(input as HTMLInputElement, {
+      target: { files: [new File(['# Imported\n'], 'imported.md')] },
+    })
+
+    await waitFor(() => {
+      expect(vi.mocked(importPage)).toHaveBeenCalledWith('espresso-notes', {
+        fileName: 'imported.md',
+        markdown: '# Imported\n',
+        parentPath: null,
+      })
+    })
+    expect(await screen.findByRole('heading', { level: 1, name: 'Imported' })).toBeInTheDocument()
+  })
+
+  it('imports under a node from its menu', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(importPage).mockResolvedValue(page('Imported', '/grinding/imported'))
+
+    const { container } = renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Actions for "Grinding"' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Import' }))
+
+    const input = container.querySelector('input[type="file"]')
+    fireEvent.change(input as HTMLInputElement, {
+      target: { files: [new File(['# Child\n'], 'child.md')] },
+    })
+
+    await waitFor(() => {
+      expect(vi.mocked(importPage)).toHaveBeenCalledWith('espresso-notes', {
+        fileName: 'child.md',
+        markdown: '# Child\n',
+        parentPath: '/grinding',
+      })
+    })
+  })
+
+  it('rejects oversized import files before any request is made', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    const { container } = renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Import page' }))
+
+    const big = new File(['x'], 'huge.md')
+    Object.defineProperty(big, 'size', { value: 4 * 1024 * 1024 + 1 })
+    const input = container.querySelector('input[type="file"]')
+    fireEvent.change(input as HTMLInputElement, { target: { files: [big] } })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('That file is over 4 MB')
+    expect(vi.mocked(importPage)).not.toHaveBeenCalled()
+  })
+})

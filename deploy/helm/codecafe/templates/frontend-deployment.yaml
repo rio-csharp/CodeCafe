@@ -21,6 +21,12 @@ spec:
       labels:
         {{- include "codecafe.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: frontend
+      {{- if .Values.frontend.config.apiBaseUrl }}
+      annotations:
+        # ConfigMap content is not part of the pod spec, so without this a changed
+        # API origin would leave the running pods serving the old /config.js.
+        checksum/config: {{ include (print $.Template.BasePath "/frontend-configmap.yaml") . | sha256sum }}
+      {{- end }}
     spec:
       terminationGracePeriodSeconds: {{ .Values.frontend.terminationGracePeriodSeconds }}
       # The app never calls the Kubernetes API — don't mount a SA token.
@@ -41,11 +47,8 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          env:
-            - name: API_BASE_URL
-              value: {{ .Values.frontend.env.apiBaseUrl | quote }}
-            - name: AI_STATUS_ENDPOINT_PATH
-              value: {{ .Values.frontend.env.aiStatusEndpointPath | quote }}
+          # Only the API origin varies per environment, and it arrives as a file
+          # rather than an environment variable.
           ports:
             - name: http
               containerPort: {{ .Values.frontend.service.targetPort }}
@@ -65,5 +68,26 @@ spec:
             periodSeconds: {{ .Values.frontend.probes.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.frontend.probes.liveness.timeoutSeconds }}
             failureThreshold: {{ .Values.frontend.probes.liveness.failureThreshold }}
+          volumeMounts:
+            # nginx's temp paths and pid live under /tmp in the unprivileged
+            # image, which is what lets the root filesystem stay read-only.
+            - name: tmp
+              mountPath: /tmp
+            {{- if .Values.frontend.config.apiBaseUrl }}
+            # A subPath mount shadows the single file, so the rest of the html
+            # root stays read-only too.
+            - name: runtime-config
+              mountPath: /usr/share/nginx/html/config.js
+              subPath: config.js
+              readOnly: true
+            {{- end }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if .Values.frontend.config.apiBaseUrl }}
+        - name: runtime-config
+          configMap:
+            name: {{ include "codecafe.fullname" . }}-frontend-config
+        {{- end }}

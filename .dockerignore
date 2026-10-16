@@ -3,6 +3,7 @@
 .vs
 **/.vs
 .dotnet-user
+.workbuddy
 docs
 deploy
 scripts

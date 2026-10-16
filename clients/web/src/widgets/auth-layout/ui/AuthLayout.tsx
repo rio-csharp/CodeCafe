@@ -1,32 +1,43 @@
 import type { ReactNode } from 'react'
-import { LogoMark } from '@/shared/ui/icons'
+import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 
-interface AuthLayoutProps {
+export interface AuthLayoutProps {
   title: string
-  subtitle: string
-  children: ReactNode
+  /** The link to the other auth page, rendered under the card. */
   footer: ReactNode
+  children: ReactNode
 }
 
-export default function AuthLayout({ title, subtitle, children, footer }: AuthLayoutProps) {
+/** Centered card on the canvas: brand, one form, and a way across. */
+export function AuthLayout({ title, footer, children }: AuthLayoutProps) {
+  const { t } = useTranslation()
+
   return (
-    <div className="min-h-screen bg-surface flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col items-center mb-10">
-          <LogoMark className="h-12 w-12 mb-3 text-text-primary" />
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">CodeCafe</h1>
-          <p className="text-xs text-text-tertiary mt-0.5">codes.cafe</p>
+    <div className="flex min-h-dvh flex-col bg-canvas">
+      <main className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
+        {/* Not `Container`: the card needs its own width, and two max-w-* classes
+            on one element would fight in the stylesheet rather than in the markup. */}
+        <div className="w-full max-w-md">
+          <div className="rounded-3xl border border-line bg-card p-8 shadow-sm">
+            <div className="text-center">
+              <Link
+                to="/"
+                className="text-xl font-semibold tracking-tight text-ink hover:text-accent-strong"
+              >
+                {t('brand.name')}
+              </Link>
+              <p className="mt-1 text-sm text-muted">{t('auth.tagline')}</p>
+            </div>
+
+            <h1 className="mt-6 text-center text-xl font-semibold text-ink">{title}</h1>
+
+            <div className="mt-6">{children}</div>
+
+            <div className="mt-6 text-center text-sm text-muted">{footer}</div>
+          </div>
         </div>
-
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-semibold text-text-primary">{title}</h2>
-          <p className="text-sm text-text-secondary mt-1">{subtitle}</p>
-        </div>
-
-        <div className="space-y-5">{children}</div>
-
-        <div className="mt-8 text-center">{footer}</div>
-      </div>
+      </main>
     </div>
   )
 }

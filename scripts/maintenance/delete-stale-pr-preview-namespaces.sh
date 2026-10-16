@@ -23,7 +23,12 @@ while IFS= read -r namespace; do
 
   found_preview_namespace=true
   pr_number="${namespace#${namespace_prefix}-}"
-  state="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" --json state --jq .state 2>/dev/null || echo CLOSED)"
+  # Distinguish "query failed" (network, rate limit, token) from a real
+  # non-OPEN state; never delete on a failed lookup.
+  if ! state="$(gh pr view "$pr_number" --repo "$GITHUB_REPOSITORY" --json state --jq .state 2>/dev/null)"; then
+    echo "Skipping namespace $namespace: failed to query state of PR #$pr_number." >&2
+    continue
+  fi
 
   if [ "$state" != "OPEN" ]; then
     echo "Deleting stale namespace $namespace for PR #$pr_number (state: $state)."

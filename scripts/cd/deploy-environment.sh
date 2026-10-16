@@ -24,11 +24,11 @@ done
 
 helm_artifact_dir="${HELM_ARTIFACT_DIR:-.artifacts/helm}"
 cd_scripts_dir="${CD_SCRIPTS_DIR:-.artifacts/scripts}"
-oauth_env_file="${OAUTH_ENV_FILE:-.artifacts/deployment/oauth.env}"
 ai_env_file="${AI_ENV_FILE:-.artifacts/deployment/ai.env}"
 deploy_helm_script="${cd_scripts_dir}/deploy-helm.sh"
+port_forward_lib="${cd_scripts_dir}/lib-port-forward.sh"
 
-for path in "$helm_artifact_dir" "$deploy_helm_script" "$oauth_env_file"; do
+for path in "$helm_artifact_dir" "$deploy_helm_script" "$port_forward_lib"; do
   if [ ! -e "$path" ]; then
     echo "Required deploy input is missing: $path" >&2
     exit 1
@@ -88,12 +88,12 @@ scp -P "$DEPLOY_SSH_PORT" \
 scp -P "$DEPLOY_SSH_PORT" \
   -o "UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE" \
   -o StrictHostKeyChecking=yes \
-  "$oauth_env_file" "$ssh_target:$remote_dir/oauth.env"
+  "$port_forward_lib" "$ssh_target:$remote_dir/lib-port-forward.sh"
 
-# Ship AI_API_KEY as a file (like oauth.env) instead of on the remote command
-# line, where it would be visible to ps and sshd/sudo audit logs.
+# Ship AI_API_KEY as a file (like the deploy inputs above) instead of on the
+# remote command line, where it would be visible to ps and sshd/sudo audit logs.
 if [ -n "${AI_API_KEY:-}" ]; then
-  (umask 077; printf 'AI_API_KEY=%s\n' "$AI_API_KEY" > "$ai_env_file")
+  (umask 077; printf 'AI_API_KEY=%q\n' "$AI_API_KEY" > "$ai_env_file")
   ai_env_file_written=true
   scp -P "$DEPLOY_SSH_PORT" \
     -o "UserKnownHostsFile=$SSH_KNOWN_HOSTS_FILE" \
@@ -111,12 +111,15 @@ remote_command+=" API_HOST=$(shell_quote "$API_HOST")"
 remote_command+=" REGISTRY=$(shell_quote "$REGISTRY")"
 remote_command+=" IMAGE_NAMESPACE=$(shell_quote "$IMAGE_NAMESPACE")"
 remote_command+=" DB_SECRET_NAMESPACE=$(shell_quote "$DB_SECRET_NAMESPACE")"
-remote_command+=" OAUTH_ENV_FILE=$(shell_quote "$remote_dir/oauth.env")"
 
 for optional_name in \
   VALUES_FILE KUBECTL_BIN HELM_BIN \
   HELM_TIMEOUT FRONTEND_REPLICA_COUNT API_REPLICA_COUNT API_MIGRATION_ENABLED \
-  AI_ENABLED AI_MODEL AI_BASE_URL; do
+  API_MIGRATE_ON_STARTUP TLS_SECRET_NAMESPACE REGISTRATION_ENABLED \
+  AI_ENABLED AI_MODEL AI_BASE_URL \
+  AI_WIRE_FORMAT AI_RELAY AI_MAX_OUTPUT_TOKENS AI_MAX_HISTORY_CHARS \
+  AI_MAX_OUTLINE_CHARS AI_MAX_TOOL_RESULT_CHARS AI_MAX_TOOL_ITERATIONS \
+  AI_MAX_PROVIDER_RETRIES AI_PROVIDER_RETRY_BASE_DELAY_MS; do
   if [ -n "${!optional_name:-}" ]; then
     remote_command+=" $optional_name=$(shell_quote "${!optional_name}")"
   fi

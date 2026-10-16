@@ -38,7 +38,17 @@ remote_get_images+=" 2>/dev/null || true"
 
 current_images="$(ssh "${ssh_options[@]}" "$ssh_target" "$remote_get_images")"
 
-if ! grep -qF ":$IMAGE_TAG" <<< "$current_images"; then
+# Exact suffix match: a substring check would also match longer tags that
+# share this tag as a prefix (e.g. ":pr-5-x" inside ":pr-5-xyz").
+image_tag_in_use=false
+while IFS= read -r image; do
+  if [[ "$image" == *":$IMAGE_TAG" ]]; then
+    image_tag_in_use=true
+    break
+  fi
+done <<< "$current_images"
+
+if [ "$image_tag_in_use" != true ]; then
   echo "Preview namespace no longer uses image tag $IMAGE_TAG; skipping delete."
   exit 0
 fi

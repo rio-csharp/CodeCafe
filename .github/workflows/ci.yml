@@ -15,7 +15,6 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  packages: write
 
 env:
   DOTNET_VERSION: 10.0.x
@@ -25,6 +24,7 @@ jobs:
   artifact-policy:
     name: Decide artifact policy
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       upload_artifacts: ${{ steps.artifacts.outputs.upload_artifacts }}
       image_tag: ${{ steps.artifacts.outputs.image_tag }}
@@ -47,6 +47,12 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Image push rights live only on the jobs that build and push images;
+    # workflow-level permissions stay read-only.
+    permissions:
+      contents: read
+      packages: write
     needs:
       - artifact-policy
     steps:
@@ -64,13 +70,18 @@ jobs:
       - name: Build backend
         run: dotnet build server/CodeCafe.slnx --configuration Release --no-restore
 
+      # Microsoft.Testing.Platform: never pass --nologo/--logger/--blame-* — unmatched
+      # tokens are forwarded to every test assembly and kill it before the handshake.
+      # --minimum-expected-tests makes a false green fail loudly instead.
+      # CodeCafe.Infrastructure.Tests spins up PostgreSQL via Testcontainers;
+      # ubuntu-latest provides Docker out of the box.
       - name: Test backend
-        run: dotnet test server/CodeCafe.slnx --configuration Release --no-build
+        run: dotnet test server/CodeCafe.slnx --configuration Release --no-build -- --minimum-expected-tests 1
 
       - name: Publish API image input
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
         run: >
-          dotnet publish server/Host/CodeCafe.Server/CodeCafe.Server.csproj
+          dotnet publish server/src/CodeCafe.Host/CodeCafe.Host.csproj
           --configuration Release
           --output .artifacts/api
           --no-build
@@ -93,7 +104,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: server/Host/CodeCafe.Server/Dockerfile
+          file: server/src/CodeCafe.Host/Dockerfile
           push: true
           tags: ghcr.io/${{ vars.IMAGE_NAMESPACE }}/api:${{ needs.artifact-policy.outputs.image_tag }}
           cache-from: type=gha,scope=codecafe-api
@@ -102,39 +113,51 @@ jobs:
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
     needs:
       - artifact-policy
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          # The frontend is not at the repository root, and its package.json is
+          # where the pnpm version is pinned (packageManager) — the action reads
+          # the root package.json by default and finds none.
+          package_json_file: clients/web/package.json
+
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: clients/web/package-lock.json
+          cache: pnpm
+          cache-dependency-path: clients/web/pnpm-lock.yaml
 
       - name: Install frontend dependencies
         working-directory: clients/web
-        run: npm ci
+        run: pnpm install --frozen-lockfile
+
+      # The same gates AGENTS.md requires locally: lint, typecheck, test, build.
+      - name: Lint frontend
+        working-directory: clients/web
+        run: pnpm lint
+
+      - name: Typecheck frontend
+        working-directory: clients/web
+        run: pnpm typecheck
 
       - name: Test frontend
         working-directory: clients/web
-        run: |
-          if node -e "process.exit(require('./package.json').scripts?.test ? 0 : 1)"; then
-            npm run test
-          else
-            echo "No frontend test script configured; skipping."
-          fi
-
-      - name: Lint frontend
-        working-directory: clients/web
-        run: npm run lint
+        run: pnpm test
 
       - name: Build frontend
         working-directory: clients/web
-        run: npm run build
+        run: pnpm build
 
       - name: Prepare frontend image input
         if: needs.artifact-policy.outputs.upload_artifacts == 'true'
@@ -169,6 +192,7 @@ jobs:
   helm-chart:
     name: Helm chart
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs:
       - artifact-policy
     if: needs.artifact-policy.outputs.upload_artifacts == 'true'
@@ -177,16 +201,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4 (digest-pinned)
 
       - name: Validate Helm chart
-        run: |
-          # The chart intentionally requires explicit image tags; pass dummy
-          # tags here since CI validation does not deploy.
-          helm lint deploy/helm/codecafe --set frontend.image.tag=ci --set api.image.tag=ci
-          helm template codecafe deploy/helm/codecafe --set frontend.image.tag=ci --set api.image.tag=ci
-          helm template codecafe-test deploy/helm/codecafe --values deploy/helm/codecafe/values-test.yaml --set frontend.image.tag=ci --set api.image.tag=ci
-          helm template codecafe-prod deploy/helm/codecafe --values deploy/helm/codecafe/values-prod.yaml --set frontend.image.tag=ci --set api.image.tag=ci
+        run: bash scripts/ci/validate-helm-chart.sh
 
       - name: Upload Helm chart artifact
         uses: actions/upload-artifact@v7
@@ -195,45 +213,43 @@ jobs:
           path: deploy/helm/codecafe
           if-no-files-found: error
 
+  # Unconditional and publishes nothing. scripts/cd holds the only scripts that
+  # execute on the deploy host, where a syntax error surfaces halfway through a
+  # deployment instead of in a step of its own — so this check must also cover
+  # runs that publish no artifacts at all. The artifact this job used to upload
+  # had no consumer (the deploy workflows check out a protected branch into
+  # .trusted/ instead), and leaving it in place invited someone to wire the
+  # untrusted CI output back into the deploy path.
   cd-scripts:
     name: CD scripts
     runs-on: ubuntu-latest
-    needs:
-      - artifact-policy
-    if: needs.artifact-policy.outputs.upload_artifacts == 'true'
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Validate CD scripts
         run: |
-          bash -n scripts/cd/delete-stale-pr-preview.sh
-          bash -n scripts/cd/deploy-environment.sh
-          bash -n scripts/cd/deploy-helm.sh
-          bash -n scripts/cd/rollback-environment.sh
-          bash -n scripts/cd/rollback-helm-release.sh
-          bash -n scripts/cd/set-image-tag-env.sh
-          bash -n scripts/cd/smoke-test-release.sh
-          bash -n scripts/cd/write-oauth-env.sh
+          shopt -s nullglob
+          scripts=(scripts/cd/*.sh)
 
-      - name: Upload CD scripts artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: codecafe-cd-scripts
-          path: |
-            scripts/cd/delete-stale-pr-preview.sh
-            scripts/cd/deploy-environment.sh
-            scripts/cd/deploy-helm.sh
-            scripts/cd/rollback-environment.sh
-            scripts/cd/rollback-helm-release.sh
-            scripts/cd/set-image-tag-env.sh
-            scripts/cd/smoke-test-release.sh
-            scripts/cd/write-oauth-env.sh
-          if-no-files-found: error
+          if [ "${#scripts[@]}" -eq 0 ]; then
+            echo "No CD scripts found under scripts/cd." >&2
+            exit 1
+          fi
+
+          status=0
+          for script in "${scripts[@]}"; do
+            echo "bash -n $script"
+            bash -n "$script" || status=1
+          done
+
+          exit "$status"
 
   deployment-metadata:
     name: Deployment metadata
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     needs:
       - artifact-policy
       - backend
@@ -256,3 +272,33 @@ jobs:
           name: codecafe-deployment
           path: .artifacts/deployment/deployment.env
           if-no-files-found: error
+
+  # One aggregated status so branch protection has a single check to require.
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - artifact-policy
+      - backend
+      - frontend
+      - helm-chart
+      - cd-scripts
+      - deployment-metadata
+    if: always()
+    steps:
+      # The gate is a script, so this job needs the checkout the inline version
+      # used to do without.
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Check job results
+        env:
+          UPLOAD_ARTIFACTS: ${{ needs.artifact-policy.outputs.upload_artifacts }}
+          ARTIFACT_POLICY: ${{ needs.artifact-policy.result }}
+          BACKEND: ${{ needs.backend.result }}
+          FRONTEND: ${{ needs.frontend.result }}
+          CD_SCRIPTS: ${{ needs.cd-scripts.result }}
+          HELM_CHART: ${{ needs.helm-chart.result }}
+          DEPLOYMENT_METADATA: ${{ needs.deployment-metadata.result }}
+        run: bash scripts/ci/assert-ci-jobs.sh

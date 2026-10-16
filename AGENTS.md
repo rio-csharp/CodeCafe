@@ -1,13 +1,17 @@
-# AGENTS.md
+## Commits
 
-Create new working branches from the intended remote base branch (`origin/release/*`), never from the current local branch; run `git fetch origin` first, then branch from the target remote release branch when a separate feature branch is still desired.
-Open PRs as `feature/* -> release/*` for normal release work; `release/* -> main` remains allowed.
-Direct hotfix work on `release/*` is allowed when the team explicitly chooses that path, including local commits and direct pushes to the target `release/*` branch.
-If asked to "merge into release/*", either push the `feature/*` branch and prepare or create the PR, or push directly to `release/*` when the user explicitly requests the relaxed hotfix flow.
-Treat `main` as pull-request-only: never push directly to `main`; merge changes through a PR after required checks pass.
-Prefer the GitHub CLI (`gh`) for creating and managing pull requests when it is available.
+Conventional Commits (`feat:`, `fix:`, `refactor:`, `chore:`, `docs:`), scoped where useful.
 
-Before pushing or reporting that CI should be green, run the relevant local checks and ensure they pass:
-- **Frontend**: `npm run lint && npm run test && npm run build && npm run e2e` from `clients/web`
-- **Backend**: `dotnet build server/CodeCafe.slnx` and `dotnet test server/CodeCafe.slnx` from repository root
-Always report the result.
+## Comments
+
+Code should be self-explanatory; write comments only when a "why" cannot be expressed in code. When a comment is necessary, write it in English.
+
+## Build & Test
+
+All commands run from `server/`.
+
+- Build: `dotnet build CodeCafe.slnx`
+- Unit tests: `dotnet test --project tests/CodeCafe.Application.Tests` (same for `CodeCafe.Domain.Tests` and `CodeCafe.Host.Tests`)
+- `CodeCafe.Infrastructure.Tests` requires a real PostgreSQL (Docker/Testcontainers).
+- This repo uses Microsoft.Testing.Platform: **never** pass `--nologo`, `--logger`, `--blame-*`, `-tl`, or `-m:1` to `dotnet test`. Unmatched tokens are forwarded to every test assembly, which exits 5 before the handshake and renders as `Zero tests ran`. Write `--no-banner` if you mean the banner, and add `--minimum-expected-tests 1` so a false green fails loudly with exit 9.
+- Running the backend with output redirection: write to `server/logs/` (gitignored), never the `server/` root.

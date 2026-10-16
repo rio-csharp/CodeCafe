@@ -1,0 +1,118 @@
+using CodeCafe.Application.Blocks.Abstractions;
+using CodeCafe.Application.Common;
+using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Common.Markdown;
+using CodeCafe.Application.Common.Messaging;
+using CodeCafe.Application.Common.Security;
+using CodeCafe.Application.Notebooks.Abstractions;
+using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Application.Pages.Abstractions;
+using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Application.Revisions.Abstractions;
+using CodeCafe.Domain.Pages;
+
+namespace CodeCafe.Application.Pages.ImportPage;
+
+// Imports a markdown page file as a NEW page in the target notebook (appended after the last
+// sibling, mirroring CreatePage), recreating its block tree as one revision batch.
+public sealed class ImportPageCommandHandler(
+    ICurrentUserAccessor currentUserAccessor,
+    INotebookRepository notebooks,
+    IPageRepository pages,
+    IBlockRepository blocks,
+    IBlockRevisionRepository revisions,
+    IChangeSourceAccessor changeSource,
+    IUnitOfWork unitOfWork
+) : ICommandHandler<ImportPageCommand, Result<PageDetailsDto>>
+{
+    public async Task<Result<PageDetailsDto>> Handle(ImportPageCommand command, CancellationToken cancellationToken)
+    {
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await notebooks.LockPageStructureAsync(command.NotebookIdOrSlug, cancellationToken);
+
+        var context = await NotebookAccess.RequireWriterAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
+        if (context.Error is { } error)
+        {
+            return Result.Failure<PageDetailsDto>(error);
+        }
+
+        var notebook = context.Value!.Notebook;
+
+        var parent = command.ParentPath is not null
+            ? await PageHierarchy.ResolveByPathAsync(notebook.Id, command.ParentPath, pages, cancellationToken)
+            : null;
+        if (command.ParentPath is not null && parent is null)
+        {
+            return Result.Failure<PageDetailsDto>(PageErrors.ParentNotFound);
+        }
+
+        var parsed = MarkdownPageParser.Parse(command.Export.FileName, command.Export.Markdown);
+        var title = parsed.Title.Trim();
+        if (title.Length == 0)
+        {
+            return Result.Failure<PageDetailsDto>(PageErrors.InvalidImport);
+        }
+
+        if (title.Length > Page.MaxTitleLength)
+        {
+            title = title[..Page.MaxTitleLength].TrimEnd();
+        }
+
+        // New pages append after the last sibling, matching how tree UIs grow.
+        var siblings = await pages.ListChildrenAsync(notebook.Id, parent?.Id, cancellationToken);
+        var last = siblings.Count > 0 ? siblings[^1] : null;
+
+        var slug = await PageSlugPolicy.FindAvailableAsync(notebook.Id, title, pages, cancellationToken);
+        if (slug is null)
+        {
+            return Result.Failure<PageDetailsDto>(PageErrors.SlugAlreadyTaken);
+        }
+
+        var page = Page.Create(notebook.Id, parent?.Id, title, slug, SiblingSortKeys.KeyForInsert(siblings, siblings.Count));
+        PageChain.Link(page, notebook, parent, last);
+        await pages.AddAsync(page, cancellationToken);
+
+        // The page goes in first, on its own: Page.FirstBlockId (page -> block) and Block.PageId
+        // (block -> page) are a two-way foreign key, and EF cannot order two rows that reference
+        // each other inside one SaveChanges. That makes this the save the slug race lives on, so
+        // SlugConflict still guards it — a page is inserted with a null first-block pointer.
+        var save = await SlugConflict.SaveAsync(
+            unitOfWork,
+            ct => PageSlugPolicy.ReKeyAsync(page, notebook.Id, title, pages, ct),
+            PageErrors.SlugAlreadyTaken,
+            cancellationToken
+        );
+        if (save.Error is { } conflict)
+        {
+            return Result.Failure<PageDetailsDto>(conflict);
+        }
+
+        // The whole import is one batch in the page history: the block rows land, then their
+        // sibling and child chains are linked — Block.FirstChildId against Block.ParentBlockId is
+        // the second two-way foreign key, so the chains have to wait for the rows. All the saves
+        // share the transaction, so the page is never visible without the content it imported.
+        var imported = MarkdownBlockImporter.CreateBlocks(
+            page,
+            parsed.Blocks,
+            parent: null,
+            Guid.CreateVersion7(),
+            blocks,
+            revisions,
+            changeSource.Source
+        );
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        MarkdownBlockImporter.LinkChains(page, imported, parent: null);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        // Assemble the DTO once the save has stuck, not on every attempt.
+        var ancestors = parent is null
+            ? []
+            : (await PageHierarchy.LoadAncestorsAsync(parent, pages, cancellationToken)).Append(parent).ToList();
+        return Result.Success(
+            PageDetailsMapping.ToDto(page, PageHierarchy.PathOf(page, ancestors), isFavorite: false, canWrite: true, shareUserNames: new Dictionary<Guid, string>())
+        );
+    }
+}

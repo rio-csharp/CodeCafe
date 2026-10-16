@@ -49,10 +49,24 @@ spec:
             {{- end }}
           {{- end }}
           env:
-            - name: Auth__RegistrationEnabled
-              value: {{ .Values.api.auth.registrationEnabled | quote }}
+            {{- if .Values.api.allowedHosts }}
+            - name: AllowedHosts
+              value: {{ .Values.api.allowedHosts | quote }}
+            {{- end }}
+            # The pre-upgrade Job owns migrations; letting the replicas migrate as
+            # well would have two pods race inside MigrateAsync on every rollout.
+            - name: Database__MigrateOnStartup
+              value: {{ .Values.api.migrateOnStartup | quote }}
+            - name: ForwardedHeaders__ForwardLimit
+              value: {{ .Values.api.forwardedHeaders.forwardLimit | quote }}
+            {{- range $index, $network := .Values.api.forwardedHeaders.knownNetworks }}
+            - name: ForwardedHeaders__KnownNetworks__{{ $index }}
+              value: {{ $network | quote }}
+            {{- end }}
             - name: Shutdown__TimeoutSeconds
               value: {{ max 1 (sub .Values.api.terminationGracePeriodSeconds .Values.api.preStopSleepSeconds) | quote }}
+            - name: Auth__RegistrationEnabled
+              value: {{ .Values.api.auth.registrationEnabled | quote }}
             {{- if .Values.api.ai.apiKeySecretName }}
             - name: Ai__ApiKey
               valueFrom:
@@ -62,28 +76,32 @@ spec:
             {{- end }}
             - name: Ai__Enabled
               value: {{ .Values.api.ai.enabled | quote }}
-            - name: Ai__EndpointPath
-              value: {{ .Values.api.ai.endpointPath | quote }}
-            - name: Ai__StatusEndpointPath
-              value: {{ .Values.api.ai.statusEndpointPath | quote }}
-            - name: Ai__DraftEndpointPath
-              value: {{ .Values.api.ai.draftEndpointPath | quote }}
-            - name: Ai__AgentName
-              value: {{ .Values.api.ai.agentName | quote }}
             - name: Ai__Model
               value: {{ .Values.api.ai.model | quote }}
             - name: Ai__BaseUrl
               value: {{ .Values.api.ai.baseUrl | quote }}
-            - name: Ai__MaxToolResults
-              value: {{ .Values.api.ai.maxToolResults | quote }}
-            - name: Ai__MaxToolContentChars
-              value: {{ .Values.api.ai.maxToolContentChars | quote }}
-            - name: Ai__MaxDraftPromptChars
-              value: {{ .Values.api.ai.maxDraftPromptChars | quote }}
-            - name: Ai__MaxDraftContextChars
-              value: {{ .Values.api.ai.maxDraftContextChars | quote }}
-            - name: Ai__MaxDraftOutputTokens
-              value: {{ .Values.api.ai.maxDraftOutputTokens | quote }}
+            - name: Ai__WireFormat
+              value: {{ .Values.api.ai.wireFormat | quote }}
+            - name: Ai__Relay
+              value: {{ .Values.api.ai.relay | quote }}
+            - name: Ai__MaxOutputTokens
+              value: {{ .Values.api.ai.maxOutputTokens | quote }}
+            - name: Ai__MaxHistoryChars
+              value: {{ .Values.api.ai.maxHistoryChars | quote }}
+            - name: Ai__MaxOutlineChars
+              value: {{ .Values.api.ai.maxOutlineChars | quote }}
+            - name: Ai__MaxToolResultChars
+              value: {{ .Values.api.ai.maxToolResultChars | quote }}
+            - name: Ai__MaxToolIterations
+              value: {{ .Values.api.ai.maxToolIterations | quote }}
+            - name: Ai__MaxProviderRetries
+              value: {{ .Values.api.ai.maxProviderRetries | quote }}
+            - name: Ai__ProviderRetryBaseDelayMs
+              value: {{ .Values.api.ai.providerRetryBaseDelayMs | quote }}
+            - name: Mcp__Enabled
+              value: {{ .Values.api.mcp.enabled | quote }}
+            - name: Mcp__EndpointPath
+              value: {{ .Values.api.mcp.endpointPath | quote }}
             {{- range $index, $origin := .Values.api.cors.allowedOrigins }}
             - name: Cors__AllowedOrigins__{{ $index }}
               value: {{ $origin | quote }}

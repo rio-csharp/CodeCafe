@@ -1,1 +1,2 @@
-export { default } from './ui/AuthLayout'
+export { AuthLayout } from './ui/AuthLayout'
+export type { AuthLayoutProps } from './ui/AuthLayout'

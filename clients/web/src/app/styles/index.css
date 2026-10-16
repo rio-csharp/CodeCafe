@@ -1,318 +1,166 @@
-@import "tailwindcss";
-@plugin "@tailwindcss/typography";
+@import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+ * Two layers. This block is the semantic layer components are allowed to use,
+ * carrying the light values. Nothing below may reference the raw cafe palette.
+ */
 @theme {
-  /* Brand Colors */
-  --color-brand-brown: #9C7C5C;
-  --color-brand-brown-light: #B8A08A;
-  --color-brand-brown-dark: #7A6146;
-  /* Brand brown for text-level usage (AA contrast on surface) */
-  --color-brand-brown-text: #7A6146;
+  --color-canvas: #faf6f0; /* page background */
+  --color-card: #fffdf9; /* elevated surface */
+  --color-ink: #2b2118; /* primary text */
+  --color-muted: #7a6a5a; /* secondary text */
+  --color-accent: #c07a3e; /* actions, focus rings */
+  --color-accent-strong: #9c5f2c; /* accent hover/active */
+  --color-line: #e5d9c8; /* borders, dividers */
+  --color-band: #4a382a; /* footer block */
+  --color-band-ink: #faf6f0; /* text on band */
 
-  /* Semantic Colors (light default) — warm stone neutrals to match the cafe brand */
-  --color-surface: #ffffff;
-  --color-surface-elevated: #fafaf9;
-  --color-border-default: #e7e5e4;
-  --color-border-subtle: #f5f5f4;
-  --color-text-primary: #1c1917;
-  --color-text-secondary: #57534e;
-  --color-text-tertiary: #78716c;
-  --color-text-inverse: #ffffff;
+  /* Status palette: callouts, colour marks and highlights. Every `-soft` pairs
+     with its non-soft partner at >= 4.5:1, in both themes. */
+  --color-accent-soft: #fbf1e4; /* primary variant surface */
+  --color-success: #376b48;
+  --color-success-soft: #e4efe6;
+  --color-danger: #a1433a;
+  --color-danger-soft: #f7e6e2;
+  --color-warning: #8f5f1c;
+  --color-warning-soft: #f6ead3;
+  --color-info: #3d6a8a;
+  --color-info-soft: #e3edf6;
+  --color-muted-soft: #f4efe8;
 
-  /* Surface Extensions */
-  --color-surface-hover: #fafaf9;
-  --color-surface-active: #f5f5f4;
-
-  /* Border Extensions */
-  --color-border-hover: #d6d3d1;
-  --color-border-focus: #1c1917;
-
-  /* Inverse Surface (for dark buttons on light bg) */
-  --color-surface-inverse-hover: #1f2937;
-
-  /* Decorative Glow Colors */
-  --color-glow-primary: color-mix(in srgb, #DBEAFE 50%, transparent);
-  --color-glow-secondary: color-mix(in srgb, #F3E8FF 50%, transparent);
-  --color-brand-alpha-15: color-mix(in srgb, var(--color-brand-brown) 15%, transparent);
-  --color-brand-alpha-25: color-mix(in srgb, var(--color-brand-brown) 25%, transparent);
-
-  /* Status Colors */
-  --color-status-success: #16a34a;
-  --color-status-success-bg: #dcfce7;
-  --color-status-success-border: #bbf7d0;
-  --color-status-success-ping: #4ade80;
-  --color-status-error: #dc2626;
-  --color-status-error-bg: #fee2e2;
-  --color-status-error-border: #fecaca;
-  --color-status-error-hover: #b91c1c;
-  --color-status-warning: #ca8a04;
-  --color-status-warning-bg: #fef9c3;
-  --color-status-favorite: #f59e0b;
-  --color-status-favorite-bg: #fffbeb;
-  --color-status-favorite-border: #fde68a;
-
-  /* Layout */
-  --sidebar-width: 15rem;
-  --sidebar-collapsed-width: 4rem;
-
-  /* Spacing Scale (base 4px) */
-  --spacing-1: 0.25rem;
-  --spacing-2: 0.5rem;
-  --spacing-3: 0.75rem;
-  --spacing-4: 1rem;
-  --spacing-5: 1.25rem;
-  --spacing-6: 1.5rem;
-  --spacing-8: 2rem;
-  --spacing-10: 2.5rem;
-  --spacing-12: 3rem;
-  --spacing-16: 4rem;
-
-  /* Typography */
-  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, Consolas, monospace;
 }
 
-/* Dark mode overrides */
-.dark {
-  --color-surface: #121110;
-  --color-surface-elevated: #1c1917;
-  --color-border-default: #292524;
-  --color-border-subtle: #201d1b;
-  --color-text-primary: #f5f5f4;
-  --color-text-secondary: #a8a29e;
-  --color-text-tertiary: #8d8880;
-  --color-brand-brown-text: #B8A08A;
-  --color-text-inverse: #0c0a09;
-  --color-glow-primary: color-mix(in srgb, #1E3A8A 20%, transparent);
-  --color-glow-secondary: color-mix(in srgb, #581C87 20%, transparent);
+/*
+ * Same tokens, dark values. Utilities read these variables, so redefining them
+ * here re-themes every component without a single `dark:` class in markup.
+ */
+@layer theme {
+  .dark {
+    --color-canvas: #14120f;
+    --color-card: #1e1b17;
+    --color-ink: #eeeae4;
+    --color-muted: #a49e96;
+    --color-accent: #d08d4e;
+    --color-accent-strong: #e0a266;
+    --color-line: #38342e;
+    --color-band: #25211c;
+    --color-band-ink: #eeeae4;
 
-  --color-surface-hover: #201d1b;
-  --color-surface-active: #292524;
+    --color-accent-soft: #2b1f16;
+    --color-success: #8fc79b;
+    --color-success-soft: #1c2a20;
+    --color-danger: #e39b90;
+    --color-danger-soft: #2e1c19;
+    --color-warning: #e0b169;
+    --color-warning-soft: #2c2318;
+    --color-info: #8fb8dc;
+    --color-info-soft: #182430;
+    --color-muted-soft: #232019;
 
-  --color-border-hover: #44403c;
-  --color-border-focus: #f5f5f4;
-
-  --color-surface-inverse-hover: #e7e5e4;
-
-  --color-status-success: #22c55e;
-  --color-status-success-bg: #14532d;
-  --color-status-success-border: #166534;
-  --color-status-success-ping: #4ade80;
-  --color-status-error: #ef4444;
-  --color-status-error-bg: #7f1d1d;
-  --color-status-error-border: #991b1b;
-  --color-status-error-hover: #f87171;
-  --color-status-warning: #eab308;
-  --color-status-warning-bg: #713f12;
-  --color-status-favorite: #fbbf24;
-  --color-status-favorite-bg: #78350f;
-  --color-status-favorite-border: #92400e;
-}
-
-/* TipTap placeholder */
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  float: left;
-  color: var(--color-text-tertiary);
-  pointer-events: none;
-  height: 0;
-}
-
-/* TipTap table styles */
-.prose table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.prose table th,
-.prose table td {
-  border: 1px solid var(--color-border-hover);
-  padding: 0.25rem 0.75rem;
-  text-align: left;
-  vertical-align: top;
-}
-
-.prose table th {
-  background-color: var(--color-surface-active);
-  font-weight: 600;
-  color: var(--color-text-primary);
-}
-
-.prose table td {
-  background-color: var(--color-surface);
-}
-
-.prose table tbody tr:nth-child(even) td {
-  background-color: var(--color-surface-hover);
-}
-
-/* Selected cell highlight for TipTap table editing */
-.ProseMirror table .selectedCell:after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-color: var(--color-brand-alpha-15);
-  pointer-events: none;
-}
-
-.ProseMirror table .selectedCell {
-  position: relative;
-}
-
-/* Remove backticks around inline code added by @tailwindcss/typography */
-.prose code::before,
-.prose code::after {
-  content: none;
-}
-
-/* Reduce vertical margin on horizontal rules */
-.prose hr {
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-/* Offset anchor scroll so sticky reader chrome doesn't cover headings */
-.prose h1,
-.prose h2,
-.prose h3,
-.prose h4,
-.prose h5,
-.prose h6 {
-  scroll-margin-top: 3rem;
-}
-
-/* Code block copy button */
-.prose pre:hover .code-copy-btn {
-  opacity: 1;
-}
-
-/* TipTap image */
-.prose img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.375rem;
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-/* TipTap YouTube embed */
-.prose div[data-youtube-video] {
-  position: relative;
-  padding-bottom: 56.25%;
-  height: 0;
-  overflow: hidden;
-  max-width: 100%;
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
-  border-radius: 0.5rem;
-}
-
-.prose div[data-youtube-video] iframe {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border-hover);
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
-}
-
-/* Selection color */
-::selection {
-  background-color: var(--color-brand-alpha-25);
-  color: var(--color-text-primary);
-}
-
-/* Focus visible ring */
-:focus-visible {
-  outline: 2px solid var(--color-brand-brown);
-  outline-offset: 2px;
-}
-
-/* Smooth scroll */
-html {
-  scroll-behavior: smooth;
-  color-scheme: light;
-  /* Paint the surface color before React mounts; .dark swaps the variable. */
-  background-color: var(--color-surface);
-}
-
-html.dark {
-  color-scheme: dark;
-}
-
-body {
-  background-color: var(--color-surface);
-  color: var(--color-text-primary);
-}
-
-/* Page transition (replaces framer-motion on route change) */
-@keyframes page-enter {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
+    color-scheme: dark;
   }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+
+    /* How far an in-page jump (the outline's fragment links) must stay clear of
+       the top of the scrollport. The reader's sticky chrome overwrites this
+       while it is mounted; the default is the plain editor's breathing room. */
+    --reader-chrome-offset: 1.5rem;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    line-height: 1.45;
+    transition: background-color 150ms ease, color 150ms ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Fallback theme crossfade, enabled only for the duration of a switch. */
+  .theme-switching,
+  .theme-switching *,
+  .theme-switching *::before,
+  .theme-switching *::after {
+    transition:
+      background-color 250ms ease,
+      border-color 250ms ease,
+      color 250ms ease,
+      outline-color 250ms ease !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+/* Circular reveal from the toggle for browsers with the View Transitions API. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 50%));
+  animation: theme-reveal 450ms ease-out forwards;
+}
+
+@keyframes theme-reveal {
   to {
-    opacity: 1;
-    transform: none;
+    clip-path: circle(150% at var(--theme-x, 50%) var(--theme-y, 50%));
   }
 }
 
-.page-transition {
-  animation: page-enter 0.25s ease-out;
+/* Syntax highlighting: hljs token classes mapped onto the semantic palette,
+   so both themes stay in sync without shipping a highlight.js theme. */
+.hljs-comment,
+.hljs-quote {
+  color: var(--color-muted);
+  font-style: italic;
 }
-
-/* Toast animations (replaces framer-motion) */
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(16px) scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-meta {
+  color: var(--color-accent-strong);
 }
-
-.toast-enter {
-  animation: toast-in 0.2s ease-out;
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-doctag {
+  color: var(--color-success);
 }
-
-.toast-leaving {
-  opacity: 0;
-  transform: translateX(24px) scale(0.96);
-  transition:
-    opacity 0.18s ease-in,
-    transform 0.18s ease-in;
+.hljs-number,
+.hljs-literal {
+  color: var(--color-warning);
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .page-transition,
-  .toast-enter {
-    animation: none;
-  }
-
-  .toast-leaving {
-    transition: none;
-  }
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-built_in,
+.hljs-type {
+  color: var(--color-info);
+}
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable {
+  color: var(--color-ink);
+}
+.hljs-deletion {
+  color: var(--color-danger);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
 }

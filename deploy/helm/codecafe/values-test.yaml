@@ -3,5 +3,9 @@ frontend:
 
 api:
   replicaCount: 1
+  # NOTE: scripts/cd/deploy-helm.sh always overrides api.envFromSecrets[0]
+  # with the generated <release>-api-config secret, so this entry only takes
+  # effect for bare `helm install/template -f values-test.yaml` runs (e.g. CI
+  # chart validation), not for scripted deployments.
   envFromSecrets:
     - codecafe-db-secret

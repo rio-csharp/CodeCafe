@@ -1,57 +1,45 @@
-export type {
-  Notebook,
-  NotebookVisibility,
-  NotebookFavorite,
-  CreateNotebookRequest,
-  UpdateNotebookRequest,
-} from './model/types'
-export type {
-  MarkdownDiscardResponse,
-  MarkdownImportErrorBody,
-  MarkdownImportErrorCode,
-  MarkdownImportRequest,
-  MarkdownImportResponse,
-  MarkdownUpdateRequest,
-  MarkdownUploadResponse,
-} from './model/markdownImportTypes'
+export { createNotebook } from './api/createNotebook'
+export { importNotebook } from './api/importNotebook'
+export type { ImportNotebookData } from './api/importNotebook'
+export { exportNotebook } from './api/exportNotebook'
+export { getNotebookSlugAvailability } from './api/getNotebookSlugAvailability'
+export type { NotebookSlugAvailability } from './api/getNotebookSlugAvailability'
+export type { CreateNotebookInput } from './api/createNotebook'
+export { deleteNotebook } from './api/trash'
+export { emptyTrash, listTrash, purgeTrashedNotebook, restoreTrashedNotebook } from './api/trash'
+export type { TrashEntry } from './api/trash'
 export {
-  getPublicNotes,
-  getMyNotes,
-  getNotebookBySlug,
-  getNotebookItems,
-  getNotebookItem,
-  createNotebook,
+  changeNotebookSlug,
+  revokeNotebookShare,
+  setNotebookAccessCode,
+  setNotebookTags,
+  shareNotebook,
   updateNotebook,
-  deleteNotebook,
-  createNotebookItem,
-  updateNotebookItem,
-  archiveNotebookItem,
-  restoreNotebookItem,
-  deleteNotebookItem,
-  reorderNotebookItems,
-  getFavoriteStatus,
-  addFavorite,
-  removeFavorite,
-} from './api/notebookApi'
-export {
-  appendMarkdownToPage,
-  discardMarkdownUpload,
-  importMarkdownAsPage,
-  replacePageContentFromMarkdown,
-  uploadMarkdownFile,
-  uploadMarkdownText,
-} from './api/markdownImportApi'
-export { notesKeys } from './api/queryKeys'
-export type { TreeNode } from './lib/buildTree'
-export { buildTree, findFirstPage, findPageByPath, flattenTree } from './lib/buildTree'
-export { extractOutline, slugifyHeadingId } from './lib/extractOutline'
-export type { OutlineHeading } from './lib/extractOutline'
-export { findSiblings, findNodeAndSiblings, findNode } from './lib/findSiblings'
-export { findAdjacentPage } from './lib/findAdjacentPage'
-export {
-  useNotebookVisibilityCollectionLabels,
-  useNotebookVisibilityContextLabels,
-  useNotebookVisibilityHelpText,
-  useNotebookVisibilityLabels,
-} from './lib/visibility'
-export { useNotebook, useNotebookItems, useNotebookItem } from './model/useNotebookQueries'
+} from './api/manageNotebook'
+export type { NotebookPatch } from './api/manageNotebook'
+export { getNotebookDetails } from './api/getNotebookDetails'
+export type { GetNotebookDetailsParams } from './api/getNotebookDetails'
+export { getNotebookTree } from './api/getNotebookTree'
+export type { GetNotebookTreeParams } from './api/getNotebookTree'
+export { listNotebooks, NOTEBOOK_PAGE_SIZE } from './api/listNotebooks'
+export type { ListNotebooksParams } from './api/listNotebooks'
+export { listMyNotebooks } from './api/listMyNotebooks'
+export type { ListMyNotebooksParams } from './api/listMyNotebooks'
+export { flattenPages } from './lib/flattenPages'
+export { NOTEBOOK_SLUG_PATTERN, normalizeNotebookSlug } from './lib/slug'
+export { formatRelativeTime } from './lib/formatRelativeTime'
+export { notebookKeys } from './model/types'
+export type {
+  CollaboratorRole,
+  NotebookShare,
+  MyNotebookListFilters,
+  NotebookDetails,
+  NotebookListFilters,
+  NotebookSort,
+  NotebookSummary,
+  NotebookTree,
+  NotebookVisibility,
+  PageTreeNode,
+} from './model/types'
+export { NotebookCard } from './ui/NotebookCard'
+export type { NotebookCardProps } from './ui/NotebookCard'

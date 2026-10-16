@@ -5,19 +5,6 @@
 
 # dotenv files
 .env
-deploy/secrets.env
-deploy/cloudflare/*.private.*
-.local-keys/
-.artifacts/
-.tmp/
-tmp/
-.dotnet-user/
-clients/web/e2e/.auth/
-
-# Local development configuration can contain secrets.
-appsettings.Development.json
-appsettings.development.json
-appsettings.*.local.json
 
 # User-specific files
 *.rsuser
@@ -77,6 +64,9 @@ BenchmarkDotNet.Artifacts/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+
+# CI image build inputs (dotnet publish output, frontend dist copy)
+.artifacts/
 
 # Tye
 .tye/
@@ -305,9 +295,6 @@ FakesAssemblies/
 # Node.js Tools for Visual Studio
 .ntvs_analysis.dat
 node_modules/
-dist/
-clients/web/.vite/
-clients/web/coverage/
 
 # Visual Studio 6 build log
 *.plg
@@ -497,6 +484,8 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# Cookie jars from local API testing
-cookies.txt
-*_cookies.txt
+# Local development settings (may contain machine-specific secrets)
+appsettings.Development.json
+
+# Local agent state: WorkBuddy session memory and skills, not project source
+.workbuddy/

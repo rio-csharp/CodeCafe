@@ -1,43 +1,90 @@
-import type { NotebookItem } from '@/entities/notebook-item'
+export type NotebookVisibility = 'Private' | 'Unlisted' | 'Public'
 
-export type NotebookVisibility = 'public' | 'private' | 'unlisted'
+/** Mirrors the backend `NotebookSort` enum, which travels as a string. */
+export type NotebookSort = 'UpdatedDesc' | 'CreatedDesc' | 'TitleAsc'
 
-export interface Notebook {
+export interface NotebookSummary {
   id: string
-  ownerId: string
   title: string
-  slug: string
   description: string | null
+  slug: string
   visibility: NotebookVisibility
-  isPublished: boolean
-  authorDisplayName: string
-  itemCount: number
-  folderCount: number
+  isFavorite: boolean
+  tags: string[]
   pageCount: number
-  favoriteCount: number
-  isFavoritedByMe: boolean
-  lastActivityAtUtc: string
+  updatedAtUtc: string
+  /** Attribution for the shelf: whose notebook this is. */
+  ownerDisplayName: string
+
+}
+
+export interface NotebookListFilters {
+  search: string
+  sort: NotebookSort
+}
+
+/** The authenticated list can additionally filter by ownership-side flags. */
+export interface MyNotebookListFilters extends NotebookListFilters {
+  favoritesOnly: boolean
+  visibility: NotebookVisibility | null
+}
+
+export type CollaboratorRole = 'Viewer' | 'Editor'
+
+export interface NotebookShare {
+  userId: string
+  userName: string
+  role: CollaboratorRole
+}
+
+/**
+ * Full notebook metadata. `isOwner` / `canWrite` are the caller's relationship
+ * to it — both false for anonymous readers.
+ */
+export interface NotebookDetails {
+  id: string
+  title: string
+  description: string | null
+  slug: string
+  visibility: NotebookVisibility
+  hasAccessCode: boolean
+  tags: string[]
+  shares: NotebookShare[]
+  pageCount: number
   createdAtUtc: string
-  updatedAtUtc: string | null
-  publishedAtUtc: string | null
-  canEdit?: boolean
-  items?: NotebookItem[]
+  updatedAtUtc: string
+  isOwner: boolean
+  canWrite: boolean
 }
 
-export interface NotebookFavorite {
+/** One node of the notebook's page hierarchy. */
+export interface PageTreeNode {
+  id: string
+  title: string
+  /** Slug chain built by the server, e.g. `/setup/rust-notes`. */
+  path: string
+  sortOrder: number
+  isArchived: boolean
+  isFavorite: boolean
+  children: PageTreeNode[]
+}
+
+export interface NotebookTree {
   notebookId: string
-  isFavorited: boolean
-  favoriteCount: number
+  roots: PageTreeNode[]
 }
 
-export interface CreateNotebookRequest {
-  title: string
-  description: string
-  visibility: NotebookVisibility
-}
-
-export interface UpdateNotebookRequest {
-  title: string
-  description?: string | null
-  visibility: NotebookVisibility
+/**
+ * Page number lives in the infinite query, not in the key. Every namespace here
+ * is distinct so logging in cannot hand one cache another's entries.
+ */
+export const notebookKeys = {
+  all: ['notebooks'],
+  publicList: (filters: NotebookListFilters) => ['notebooks', 'public', filters],
+  mine: () => ['notebooks', 'mine'],
+  myList: (filters: MyNotebookListFilters) => ['notebooks', 'mine', filters],
+  myFavorites: () => ['notebooks', 'mine', 'favorites'],
+  trash: () => ['notebooks', 'trash'],
+  details: (slug: string) => ['notebooks', 'details', slug],
+  tree: (slug: string) => ['notebooks', 'tree', slug],
 }
