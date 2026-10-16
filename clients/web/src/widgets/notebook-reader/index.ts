@@ -26,7 +26,7 @@ export {
   normalizePagePath,
   pageNeighbours,
   toPageHref,
-  treePageHasChildren,
+  treeDescendantCount,
   visibleTree,
 } from './lib/tree'
 export type { PageNeighbour } from './lib/tree'

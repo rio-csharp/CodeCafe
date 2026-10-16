@@ -46,7 +46,7 @@ export const en = {
     invalid: 'Use letters, digits and single hyphens.',
     taken: 'Another page in this notebook already uses that link.',
     failed: 'Could not change the link. Please try again.',
-    movesDescendants: 'Every page filed under this one moves with it.',
+    movesDescendants: 'All {{count}} pages under this one move with it.',
   },
   settings: {
     title: 'Notebook settings',
@@ -444,6 +444,7 @@ export const en = {
     saveFailedWithReason: 'Could not save: {{reason}}',
     blockHistory: 'History',
     blockRestored: 'Block restored — back to reading mode, so you are seeing the fresh copy.',
+    subpagesMoved: '{{count}} subpages moved to the new address with it.',
   },
   blockHistory: {
     title: 'Block history',

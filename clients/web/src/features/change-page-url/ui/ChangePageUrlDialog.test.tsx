@@ -28,8 +28,8 @@ const PAGE: PageDetails = {
 
 function renderDialog({
   page = PAGE,
-  movesDescendants = false,
-}: { page?: PageDetails | null; movesDescendants?: boolean } = {}) {
+  movesDescendants = 0,
+}: { page?: PageDetails | null; movesDescendants?: number } = {}) {
   const onClose = vi.fn()
   const onDone = vi.fn()
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
@@ -156,12 +156,18 @@ describe('ChangePageUrlDialog', () => {
     expect(onDone).toHaveBeenCalledWith('/setup/grinding')
   })
 
-  it('warns when subpages would move with the page', () => {
-    renderDialog({ movesDescendants: true })
+  it('warns how many subpages would move with the page', () => {
+    renderDialog({ movesDescendants: 3 })
 
     expect(
-      screen.getByText('Every page filed under this one moves with it.'),
+      screen.getByText('All 3 pages under this one move with it.'),
     ).toBeInTheDocument()
+  })
+
+  it('keeps quiet when nothing sits under the page', () => {
+    renderDialog()
+
+    expect(screen.queryByText(/move with it/)).not.toBeInTheDocument()
   })
 
   it('renders nothing without a page', () => {

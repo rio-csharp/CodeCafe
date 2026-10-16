@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PageTreeNode } from '@/entities/notebook'
-import { pageNeighbours, treePageHasChildren, visibleTree } from './tree'
+import { pageNeighbours, treeDescendantCount, visibleTree } from './tree'
 
 function node(
   id: string,
@@ -49,29 +49,28 @@ const PAGES = [
   { path: '/brew', title: 'Brew' },
 ]
 
-describe('treePageHasChildren', () => {
+describe('treeDescendantCount', () => {
   const roots: PageTreeNode[] = [
-    node('guide', '/guide', false, [node('setup', '/guide/setup')]),
+    node('guide', '/guide', false, [
+      node('setup', '/guide/setup', false, [node('rust', '/guide/setup/rust')]),
+      node('retired', '/guide/retired', true),
+    ]),
     node('loose', '/loose'),
-    node('stash', '/stash', true, [node('hidden', '/stash/hidden')]),
   ]
 
-  it('finds a parent below the root level', () => {
-    expect(treePageHasChildren(roots, 'guide')).toBe(true)
+  it('counts the whole subtree, archived pages included', () => {
+    expect(treeDescendantCount(roots, 'guide')).toBe(3)
   })
 
-  it('reports a leaf as childless', () => {
-    expect(treePageHasChildren(roots, 'setup')).toBe(false)
+  it('counts a nested subtree on its own', () => {
+    expect(treeDescendantCount(roots, 'setup')).toBe(1)
   })
 
-  it('counts an archived child: the URL move would still break it', () => {
-    expect(treePageHasChildren(roots, 'stash')).toBe(true)
-  })
-
-  it('treats a page the tree does not know yet as childless', () => {
+  it('reports a leaf and an unknown page as childless', () => {
     // A page created moments ago is missing from the tree until the refetch lands, and a
     // fresh page cannot have children.
-    expect(treePageHasChildren(roots, 'brand-new')).toBe(false)
+    expect(treeDescendantCount(roots, 'loose')).toBe(0)
+    expect(treeDescendantCount(roots, 'brand-new')).toBe(0)
   })
 })
 

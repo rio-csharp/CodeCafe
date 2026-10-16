@@ -46,7 +46,7 @@ export const zh = {
     invalid: '只能使用字母、数字和单个连字符。',
     taken: '本笔记本中已有页面使用了这个链接。',
     failed: '无法更改链接，请重试。',
-    movesDescendants: '此页面下的所有子页面链接也会一起改变。',
+    movesDescendants: '此页面下的 {{count}} 个子页面链接也会一起改变。',
   },
   settings: {
     title: '笔记本设置',
@@ -439,6 +439,7 @@ export const zh = {
     saveFailedWithReason: '保存失败：{{reason}}',
     blockHistory: '历史',
     blockRestored: '已恢复该块——已退出编辑模式，现在看到的是最新内容。',
+    subpagesMoved: '{{count}} 个子页面的链接已随之改变。',
   },
   blockHistory: {
     title: '块历史',

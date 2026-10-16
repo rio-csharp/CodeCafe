@@ -29,21 +29,27 @@ export function findFirstPagePath(roots: readonly PageTreeNode[]): string | null
 }
 
 /**
- * Whether the page still has children. The reader protects a parent's URL rewrite on
- * this: a path is a chain of slugs, so renaming a parent moves every descendant with it.
+ * How many pages sit under the given one, archived ones included — their URLs move too.
+ * The reader says this number out loud when a parent's own slug changes, because a path
+ * is the chain of ancestor slugs: every descendant answers somewhere else afterwards.
  */
-export function treePageHasChildren(roots: readonly PageTreeNode[], pageId: string): boolean {
+export function treeDescendantCount(roots: readonly PageTreeNode[], pageId: string): number {
   for (const node of roots) {
     if (node.id === pageId) {
-      return node.children.length > 0
+      return countTree(node.children)
     }
 
-    if (treePageHasChildren(node.children, pageId)) {
-      return true
+    const found = treeDescendantCount(node.children, pageId)
+    if (found > 0) {
+      return found
     }
   }
 
-  return false
+  return 0
+}
+
+function countTree(nodes: readonly PageTreeNode[]): number {
+  return nodes.reduce((total, node) => total + 1 + countTree(node.children), 0)
 }
 
 /** Paths whose sections must be open for the active page to be reachable. */

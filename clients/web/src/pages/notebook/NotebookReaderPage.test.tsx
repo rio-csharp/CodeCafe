@@ -464,7 +464,7 @@ describe('NotebookReaderPage', () => {
     expect(vi.mocked(changePageSlug)).not.toHaveBeenCalled()
   })
 
-  it('never re-slugs a page that has children', async () => {
+  it('re-slugs a parent and says how many pages moved with it', async () => {
     const user = userEvent.setup()
     vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
     vi.mocked(getNotebookTree).mockResolvedValue({
@@ -480,6 +480,7 @@ describe('NotebookReaderPage', () => {
     })
     vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled-4821'))
     vi.mocked(updatePage).mockResolvedValue(page('Filter Notes', '/untitled-4821'))
+    vi.mocked(changePageSlug).mockResolvedValue(page('Filter Notes', '/filter-notes'))
 
     renderReader('/notebooks/espresso-notes/untitled-4821')
     await user.click(await screen.findByRole('button', { name: 'Edit' }))
@@ -489,9 +490,11 @@ describe('NotebookReaderPage', () => {
     await user.type(title, 'Filter Notes')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(vi.mocked(updatePage)).toHaveBeenCalled()
-    // A parent's new slug would move every descendant's URL, so the placeholder URL stays.
-    expect(vi.mocked(changePageSlug)).not.toHaveBeenCalled()
+    // A parent is renamed like any page; the subpages moving with it is said, not forbidden.
+    expect(vi.mocked(changePageSlug)).toHaveBeenCalledWith('page-1')
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '1 subpages moved to the new address with it.',
+    )
   })
 
   it('keeps the edit-session baseline stable when the page cache refreshes', async () => {

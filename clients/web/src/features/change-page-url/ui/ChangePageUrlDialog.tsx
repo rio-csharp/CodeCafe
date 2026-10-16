@@ -10,8 +10,8 @@ import { Button, DialogField, DialogShell, Input } from '@/shared/ui'
 export interface ChangePageUrlDialogProps {
   /** The open page's live details; null keeps the dialog closed. */
   page: PageDetails | null
-  /** Subpages carry this page's slug inside their paths, so their links move with it. */
-  movesDescendants: boolean
+  /** How many subpages carry this page's slug inside their paths; 0 hides the warning. */
+  movesDescendants: number
   onClose: () => void
   /** The page's path once the dialog is done — unchanged when nothing was renamed. */
   onDone: (path: string) => void
@@ -63,7 +63,7 @@ function UrlBody({
   onDone,
 }: {
   page: PageDetails
-  movesDescendants: boolean
+  movesDescendants: number
   onClose: () => void
   onDone: (path: string) => void
 }) {
@@ -138,8 +138,10 @@ function UrlBody({
         </p>
       ) : null}
 
-      {movesDescendants ? (
-        <p className="text-xs text-accent-strong">{t('pageUrl.movesDescendants')}</p>
+      {movesDescendants > 0 ? (
+        <p className="text-xs text-accent-strong">
+          {t('pageUrl.movesDescendants', { count: movesDescendants })}
+        </p>
       ) : null}
 
       <div className="flex justify-end gap-2 pt-1">

@@ -32,7 +32,7 @@ import {
   normalizePagePath,
   pageNeighbours,
   toPageHref,
-  treePageHasChildren,
+  treeDescendantCount,
 } from '@/widgets/notebook-reader'
 
 /**
@@ -162,19 +162,18 @@ export function NotebookReaderPage() {
         latchSessionPage(pageId, { title, path })
       }
 
-      if (
-        shouldReslug({
-          title,
-          placeholderTitle: t('editor.untitled'),
-          path,
-          roots: tree.data?.roots,
-          pageId,
-        })
-      ) {
+      if (shouldReslug({ title, placeholderTitle: t('editor.untitled'), path })) {
         // The server derives the real slug from the title it just stored, so the reader never
         // hand-rolls one.
         path = (await changePageSlug(pageId)).path
         latchSessionPage(pageId, { path })
+
+        // Subpages now answer at new addresses too. Saying so beats refusing to rename a
+        // parent, which would leave it on its placeholder URL for good.
+        const descendants = treeDescendantCount(tree.data?.roots ?? [], pageId)
+        if (descendants > 0) {
+          setNotice(t('editor.subpagesMoved', { count: descendants }))
+        }
       }
 
       if (ops.length > 0) {
@@ -671,7 +670,7 @@ export function NotebookReaderPage() {
 
       <ChangePageUrlDialog
         page={urlOpen && page.data !== undefined ? page.data : null}
-        movesDescendants={page.data !== undefined && treePageHasChildren(tree.data?.roots ?? [], page.data.id)}
+        movesDescendants={page.data === undefined ? 0 : treeDescendantCount(tree.data?.roots ?? [], page.data.id)}
         onClose={() => {
           setUrlOpen(false)
         }}
@@ -682,21 +681,17 @@ export function NotebookReaderPage() {
 }
 
 /**
- * Whether saving this page should also rewrite its URL. A page still wearing the placeholder
- * title has not been named yet, so it keeps its provisional URL; and a path is the chain of
- * ancestor slugs, so re-slugging a parent would move every descendant out from under whoever
- * has it open. Only a named leaf earns a derived slug.
+ * Whether saving this page should also rewrite its URL: a page still wearing the placeholder
+ * title has not been named yet, so it keeps its provisional URL, and a slug derived from a real
+ * title is never provisional again.
  */
 function shouldReslug(options: {
   title: string
   placeholderTitle: string
   path: string
-  roots: readonly PageTreeNode[] | undefined
-  pageId: string
 }): boolean {
   return (
     slugify(options.title) !== slugify(options.placeholderTitle) &&
-    !treePageHasChildren(options.roots ?? [], options.pageId) &&
     isPlaceholderSlug(pageSlug(options.path), options.placeholderTitle)
   )
 }
