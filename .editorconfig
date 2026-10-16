@@ -12,3 +12,8 @@ csharp_style_namespace_declarations = file_scoped:warning
 dotnet_sort_system_directives_first = true
 ; One contiguous block: no blank line between the System directives and the rest.
 dotnet_separate_import_directive_groups = false
+
+; EF writes migrations with a block-scoped namespace, so the file-scoped rule has to
+; stand down for generated code rather than the generator being edited by hand.
+[**/Migrations/*.cs]
+csharp_style_namespace_declarations = block_scoped:silent

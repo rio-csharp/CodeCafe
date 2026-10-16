@@ -24,10 +24,10 @@ public sealed class ListPersonalAccessTokensQueryHandlerTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(2, result.Value!.Count);
-        var revokedDto = Assert.Single(result.Value.Where(dto => dto.Id == revoked.Id));
+        var revokedDto = Assert.Single(result.Value, dto => dto.Id == revoked.Id);
         Assert.NotNull(revokedDto.RevokedAtUtc);
         Assert.Equal(revoked.RevokedAtUtc, revokedDto.RevokedAtUtc);
-        Assert.Single(result.Value.Where(dto => dto.Id == active.Id));
+        Assert.Single(result.Value, dto => dto.Id == active.Id);
     }
 
     [Fact]
