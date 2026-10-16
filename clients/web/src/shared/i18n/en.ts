@@ -285,6 +285,10 @@ export const en = {
     sharePage: 'Share',
     importPage: 'Import page',
     importSubpage: 'Import a subpage under {{title}}',
+    moreActions: 'More actions',
+    more: 'More',
+    refreshTree: 'Refresh tree',
+    notebookActions: 'Notebook actions',
   },
   pageTrash: {
     title: 'Page trash',

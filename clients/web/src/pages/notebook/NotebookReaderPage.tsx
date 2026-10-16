@@ -408,6 +408,10 @@ export function NotebookReaderPage() {
         canEdit={notebook.canWrite}
         onAddPage={notebook.canWrite ? handleAddPage : undefined}
         onImportPage={notebook.canWrite ? handleImportPage : undefined}
+        onRefreshTree={() => {
+          void tree.refetch()
+        }}
+        refreshingTree={tree.isFetching}
         onMovePage={
           notebook.canWrite
             ? (pageId, data) => {
@@ -532,6 +536,10 @@ export function NotebookReaderPage() {
       }
       onAddPage={notebook.canWrite ? handleAddPage : undefined}
       onImportPage={notebook.canWrite ? handleImportPage : undefined}
+      onRefreshTree={() => {
+        void tree.refetch()
+      }}
+      refreshingTree={tree.isFetching}
       onMovePage={
         notebook.canWrite
           ? (pageId, data) => {

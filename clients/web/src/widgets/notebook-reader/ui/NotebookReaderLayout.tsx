@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import type { NotebookDetails, PageTreeNode } from '@/entities/notebook'
 import type { MovePageData } from '@/entities/page'
+import { OverflowMenu } from '@/shared/ui'
+import type { OverflowMenuItem } from '@/shared/ui'
 import { ContentSkeleton, TreeSkeleton } from './ReaderSkeletons'
 import { FavoritePagesSection } from './FavoritePagesSection'
 import { PageDeleteDialog } from './PageDeleteDialog'
@@ -40,6 +42,9 @@ export interface NotebookReaderLayoutProps {
   onAddPage?: (parentPath?: string) => void
   /** Markdown import from the tree header (root) or a node menu (subpage); writers only. */
   onImportPage?: (parentPath?: string) => void
+  /** Re-reads the page tree; the header's ⋯ offers it to readers and writers alike. */
+  onRefreshTree?: () => void
+  refreshingTree?: boolean
   /** Move/reorder from tree drag-and-drop; writers only. */
   onMovePage?: (pageId: string, data: MovePageData) => void
   /** Archive/unarchive from the node menu; writers only. */
@@ -76,6 +81,8 @@ export function NotebookReaderLayout({
   onExportPage,
   onAddPage,
   onImportPage,
+  onRefreshTree,
+  refreshingTree = false,
   onMovePage,
   onToggleArchive,
   onDeletePage,
@@ -131,6 +138,61 @@ export function NotebookReaderLayout({
     setMobilePanel('none')
   }
 
+  // The tree header keeps only the way home and the menu's name; the refresh
+  // every reader may want, and everything a writer can do to the notebook as a
+  // whole, hide behind the ⋯.
+  const notebookActions: OverflowMenuItem[] = [
+    ...(onRefreshTree !== undefined
+      ? [
+          {
+            id: 'refresh-tree',
+            label: t('reader.refreshTree'),
+            icon: <path d="M13.5 8a5.5 5.5 0 1 1-1.61-3.89M13.5 2.5v2.6h-2.6" />,
+            onSelect: onRefreshTree,
+            disabled: refreshingTree,
+          },
+        ]
+      : []),
+    ...(canEdit && onAddPage !== undefined
+      ? [
+          {
+            id: 'add-page',
+            label: t('reader.addPage'),
+            icon: <path d="M8 3.5v9M3.5 8h9" />,
+            onSelect: () => {
+              onAddPage()
+            },
+          },
+        ]
+      : []),
+    ...(canEdit && onImportPage !== undefined
+      ? [
+          {
+            id: 'import-page',
+            label: t('reader.importPage'),
+            icon: <path d="M8 10V2.5M5.5 5 8 2.5 10.5 5M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />,
+            onSelect: () => {
+              onImportPage()
+            },
+          },
+        ]
+      : []),
+    ...(canEdit
+      ? [
+          {
+            id: 'page-trash',
+            label: t('reader.pageTrash'),
+            icon: (
+              <path d="M2.5 4h11M6 4V2.8A.8.8 0 0 1 6.8 2h2.4a.8.8 0 0 1 .8.8V4M4 4l.6 8.6A1.4 1.4 0 0 0 6 14h4a1.4 1.4 0 0 0 1.4-1.4L12 4M6.6 6.8v4.2M9.4 6.8v4.2" />
+            ),
+            onSelect: () => {
+              setTrashOpen(true)
+            },
+          },
+        ]
+      : []),
+  ]
+
   return (
     <div className="grid h-dvh grid-cols-1 bg-canvas lg:grid-cols-[280px_minmax(0,1fr)_300px]">
       {/* Page tree: a drawer below lg, a column from lg up. */}
@@ -161,50 +223,12 @@ export function NotebookReaderLayout({
             </Link>
             <p className="text-[11px] text-muted">{t('reader.pageCount', { count: notebook.pageCount })}</p>
           </div>
-          {canEdit ? (
-            <button
-              type="button"
-              aria-label={t('reader.pageTrash')}
-              title={t('reader.pageTrash')}
-              onClick={() => {
-                setTrashOpen(true)
-              }}
-              className="grid size-8 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-muted-soft hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M2.5 4h11M6 4V2.8A.8.8 0 0 1 6.8 2h2.4a.8.8 0 0 1 .8.8V4M4 4l.6 8.6A1.4 1.4 0 0 0 6 14h4a1.4 1.4 0 0 0 1.4-1.4L12 4M6.6 6.8v4.2M9.4 6.8v4.2" />
-              </svg>
-            </button>
-          ) : null}
-          {canEdit && onImportPage !== undefined ? (
-            <button
-              type="button"
-              aria-label={t('reader.importPage')}
-              title={t('reader.importPage')}
-              onClick={() => {
-                onImportPage()
-              }}
-              className="grid size-8 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-muted-soft hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M8 10V2.5M5.5 5 8 2.5 10.5 5M2.5 10.5v2a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-2" />
-              </svg>
-            </button>
-          ) : null}
-          {canEdit && onAddPage !== undefined ? (
-            <button
-              type="button"
-              aria-label={t('reader.addPage')}
-              title={t('reader.addPage')}
-              onClick={() => {
-                onAddPage()
-              }}
-              className="grid size-8 shrink-0 place-items-center rounded-full text-muted transition-colors hover:bg-muted-soft hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-            >
-              <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-                <path d="M8 3.5v9M3.5 8h9" />
-              </svg>
-            </button>
+          {notebookActions.length > 0 ? (
+            <OverflowMenu
+              trigger="icon"
+              label={t('reader.notebookActions')}
+              items={notebookActions}
+            />
           ) : null}
           {mobilePanel === 'tree' ? <DrawerCloseButton ref={drawerCloseRef} onClose={closeDrawer} /> : null}
         </div>

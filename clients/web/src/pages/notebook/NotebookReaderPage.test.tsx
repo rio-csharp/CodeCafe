@@ -202,13 +202,11 @@ describe('NotebookReaderPage', () => {
     const { container } = renderReader('/notebooks/espresso-notes/grinding')
     await screen.findByRole('heading', { level: 1, name: 'Grinding' })
 
-    const toggle = screen.getByRole('button', { name: 'Full width' })
-    expect(toggle).toHaveAttribute('aria-pressed', 'false')
     expect(container.querySelector('main > div')).toHaveClass('max-w-3xl')
 
-    await user.click(toggle)
+    await user.click(screen.getByRole('button', { name: 'More actions' }))
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'Full width' }))
 
-    expect(toggle).toHaveAttribute('aria-pressed', 'true')
     expect(container.querySelector('main > div')).not.toHaveClass('max-w-3xl')
   })
 
@@ -496,7 +494,8 @@ describe('NotebookReaderPage', () => {
     vi.mocked(createPage).mockResolvedValue(page('Untitled', '/untitled'))
 
     renderReader('/notebooks/espresso-notes/grinding')
-    await user.click(await screen.findByRole('button', { name: 'New page' }))
+    await user.click(await screen.findByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'New page' }))
 
     expect(vi.mocked(createPage)).toHaveBeenCalledWith({
       slug: 'espresso-notes',
@@ -528,12 +527,32 @@ describe('NotebookReaderPage', () => {
   })
 
   it('hides page creation from readers without write access', async () => {
+    const user = userEvent.setup()
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
     renderReader('/notebooks/espresso-notes/grinding')
     await screen.findByRole('heading', { level: 1, name: 'Grinding' })
 
-    expect(screen.queryByRole('button', { name: 'New page' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Notebook actions' }))
+
+    expect(screen.queryByRole('menuitem', { name: 'New page' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Page trash' })).not.toBeInTheDocument()
+  })
+
+  it('refreshes the page tree from the header menu, readers included', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+    expect(vi.mocked(getNotebookTree)).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Refresh tree' }))
+
+    await waitFor(() => {
+      expect(vi.mocked(getNotebookTree)).toHaveBeenCalledTimes(2)
+    })
   })
 
   it('skips archived pages when picking the first page', async () => {
@@ -559,7 +578,8 @@ describe('NotebookReaderPage', () => {
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
     renderReader('/notebooks/espresso-notes/grinding')
-    await user.click(await screen.findByRole('button', { name: 'Export page' }))
+    await user.click(await screen.findByRole('button', { name: 'More actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Export page' }))
 
     expect(vi.mocked(exportPage)).toHaveBeenCalledWith('page-1')
   })
@@ -570,7 +590,8 @@ describe('NotebookReaderPage', () => {
     vi.mocked(exportPage).mockRejectedValue(new Error('nope'))
 
     renderReader('/notebooks/espresso-notes/grinding')
-    await user.click(await screen.findByRole('button', { name: 'Export page' }))
+    await user.click(await screen.findByRole('button', { name: 'More actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Export page' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Export failed. Please try again.')
   })
@@ -584,7 +605,8 @@ describe('NotebookReaderPage', () => {
     vi.mocked(importPage).mockResolvedValue(page('Imported', '/imported'))
 
     const { container } = renderReader('/notebooks/espresso-notes/grinding')
-    await user.click(await screen.findByRole('button', { name: 'Import page' }))
+    await user.click(await screen.findByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Import page' }))
 
     const input = container.querySelector('input[type="file"]')
     expect(input).not.toBeNull()
@@ -632,7 +654,8 @@ describe('NotebookReaderPage', () => {
     vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
 
     const { container } = renderReader('/notebooks/espresso-notes/grinding')
-    await user.click(await screen.findByRole('button', { name: 'Import page' }))
+    await user.click(await screen.findByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Import page' }))
 
     const big = new File(['x'], 'huge.md')
     Object.defineProperty(big, 'size', { value: 4 * 1024 * 1024 + 1 })

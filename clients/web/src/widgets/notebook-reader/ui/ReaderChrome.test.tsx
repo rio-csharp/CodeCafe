@@ -74,13 +74,24 @@ describe('ReaderChrome', () => {
     )
   }
 
-  it('forwards the refresh request', async () => {
+  it('forwards the refresh request from the overflow menu', async () => {
     const user = userEvent.setup()
     const onRefresh = vi.fn()
     renderChrome({ onRefresh })
 
-    await user.click(screen.getByRole('button', { name: 'reader.refresh' }))
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'reader.refresh' }))
     expect(onRefresh).toHaveBeenCalledOnce()
+  })
+
+  it('keeps only the edit pill beside the title and folds the rest away', () => {
+    renderChrome({ canEdit: true, onEdit: vi.fn(), onExportPage: vi.fn(), onSharePage: vi.fn() })
+
+    expect(screen.getByRole('button', { name: 'reader.moreActions' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    )
+    expect(screen.queryByRole('menuitem', { name: 'reader.refresh' })).not.toBeInTheDocument()
   })
 
   it('copies the current URL and confirms briefly', async () => {
@@ -89,12 +100,12 @@ describe('ReaderChrome', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     renderChrome()
 
-    await user.click(screen.getByRole('button', { name: 'reader.copyLink' }))
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'reader.copyLink' }))
 
     expect(writeText).toHaveBeenCalledWith(window.location.href)
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'reader.linkCopied' })).toBeInTheDocument()
-    })
+    // The row confirms in place, so the menu stays open.
+    expect(await screen.findByRole('menuitem', { name: 'reader.linkCopied' })).toBeInTheDocument()
   })
 
   it('shows a retryable failure when clipboard access is rejected', async () => {
@@ -103,12 +114,13 @@ describe('ReaderChrome', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
     renderChrome()
 
-    await user.click(screen.getByRole('button', { name: 'reader.copyLink' }))
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'reader.copyLink' }))
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(window.location.href)
     })
-    expect(screen.getByRole('button', { name: 'reader.copyFailed' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'reader.copyFailed' })).toBeInTheDocument()
   })
 
   it('shows a retryable failure when the Clipboard API is unavailable', async () => {
@@ -116,9 +128,10 @@ describe('ReaderChrome', () => {
     Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
     renderChrome()
 
-    await user.click(screen.getByRole('button', { name: 'reader.copyLink' }))
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'reader.copyLink' }))
 
-    expect(await screen.findByRole('button', { name: 'reader.copyFailed' })).toBeInTheDocument()
+    expect(await screen.findByRole('menuitem', { name: 'reader.copyFailed' })).toBeInTheDocument()
   })
 
   it('hides the edit pill from readers and offers it to writers', async () => {
@@ -142,13 +155,41 @@ describe('ReaderChrome', () => {
 
     expect(screen.getByTestId('star')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'reader.exportPage' }))
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'reader.exportPage' }))
     expect(onExportPage).toHaveBeenCalledOnce()
   })
 
-  it('omits the export pill without an export handler', () => {
+  it('omits the export row without an export handler', async () => {
+    const user = userEvent.setup()
     renderChrome()
 
-    expect(screen.queryByRole('button', { name: 'reader.exportPage' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+
+    expect(screen.queryByRole('menuitem', { name: 'reader.exportPage' })).not.toBeInTheDocument()
+  })
+
+  it('publishes the sticky bar height so jumped-to headings clear it', () => {
+    const { unmount } = renderChrome()
+
+    // jsdom reports a zero-height box, so this is the gap alone — enough to
+    // prove the offset is positive and in pixels.
+    expect(document.documentElement.style.getPropertyValue('--reader-chrome-offset')).toBe('16px')
+
+    unmount()
+    expect(document.documentElement.style.getPropertyValue('--reader-chrome-offset')).toBe('')
+  })
+
+  it('marks the width preference and toggles it from the menu', async () => {
+    const user = userEvent.setup()
+    const onToggleWide = vi.fn()
+    renderChrome({ wide: true, onToggleWide })
+
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+    await user.click(screen.getByRole('menuitemcheckbox', { name: 'reader.narrowWidth' }))
+
+    expect(onToggleWide).toHaveBeenCalledOnce()
+    // Picking an action closes the menu again.
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'reader.narrowWidth' })).not.toBeInTheDocument()
   })
 })

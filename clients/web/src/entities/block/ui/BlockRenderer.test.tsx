@@ -41,6 +41,16 @@ describe('BlockRenderer', () => {
     expect(screen.getByRole('heading', { level: 6, name: 'Too deep' })).toBeInTheDocument()
   })
 
+  it('keeps a jumped-to heading clear of the reader chrome', () => {
+    renderBlock({ type: 'heading', content: { level: 2, spans: text('Grind size') } })
+
+    // The variable is what the sticky bar publishes; without it the heading
+    // would land underneath the bar instead of below it.
+    expect(screen.getByRole('heading', { level: 2 })).toHaveClass(
+      'scroll-mt-[var(--reader-chrome-offset)]',
+    )
+  })
+
   it('renders a quote', () => {
     renderBlock({ type: 'quote', content: { spans: text('Espresso is patience.') } })
 

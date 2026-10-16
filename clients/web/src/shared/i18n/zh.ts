@@ -280,6 +280,10 @@ export const zh = {
     sharePage: '分享',
     importPage: '导入页面',
     importSubpage: '在「{{title}}」下导入页面',
+    moreActions: '更多操作',
+    more: '更多',
+    refreshTree: '刷新目录树',
+    notebookActions: '笔记本操作',
   },
   pageTrash: {
     title: '页面回收站',

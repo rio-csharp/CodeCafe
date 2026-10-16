@@ -66,6 +66,11 @@
 @layer base {
   html {
     color-scheme: light;
+
+    /* How far an in-page jump (the outline's fragment links) must stay clear of
+       the top of the scrollport. The reader's sticky chrome overwrites this
+       while it is mounted; the default is the plain editor's breathing room. */
+    --reader-chrome-offset: 1.5rem;
   }
 
   body {
