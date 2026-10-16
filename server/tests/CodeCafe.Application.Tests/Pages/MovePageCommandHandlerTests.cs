@@ -61,7 +61,7 @@ public sealed class MovePageCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_MovingFirstChild_RelinksTheOldParent()
+    public async Task Handle_MovingFirstChild_RelinksBothChainsAndHeadsTheNewChain()
     {
         var owner = SeedOwner();
         var notebook = SeedNotebook(owner);
@@ -71,16 +71,18 @@ public sealed class MovePageCommandHandlerTests
         var c2 = Page.Create(notebook.Id, p.Id, "C2", "c2", "b");
         p.SetFirstChild(c1.Id);
         c1.SetNextSibling(c2.Id);
+        p.SetNextSibling(x.Id);
+        notebook.SetFirstPage(p.Id);
         var (handler, _) = CreateHandler(owner.Id, notebook, p, x, c1, c2);
 
-        // Move the first child to the notebook root (appended after x).
+        // A null AfterPageId means the first position in the new sibling chain.
         var result = await handler.Handle(new MovePageCommand(c1.Id, null, null), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(c2.Id, p.FirstChildId); // the parent heads the remaining child chain
-        Assert.Equal(c1.Id, x.NextSiblingId);
+        Assert.Equal(c1.Id, notebook.FirstPageId);
+        Assert.Equal(p.Id, c1.NextSiblingId);
         Assert.Null(c1.ParentId);
-        Assert.Null(c1.NextSiblingId);
     }
 
     [Fact]

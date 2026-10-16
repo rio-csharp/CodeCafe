@@ -52,10 +52,12 @@ public sealed class MovePageCommandHandler(
             .Where(sibling => sibling.Id != page.Id)
             .ToList();
 
-        // No AfterPageId appends after the last sibling, matching how tree UIs grow.
+        // A null AfterPageId inserts at the beginning. This lets the reader's
+        // drop-before-first operation represent the first position without a
+        // second sentinel value; creation has its own append semantics.
         var after = command.AfterPageId is { } afterPageId
             ? newSiblings.FirstOrDefault(sibling => sibling.Id == afterPageId)
-            : newSiblings.Count > 0 ? newSiblings[^1] : null;
+            : null;
         if (command.AfterPageId is not null && after is null)
         {
             return Result.Failure<PageDetailsDto>(PageErrors.AfterPageNotFound);
