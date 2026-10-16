@@ -84,6 +84,22 @@ describe('ReaderChrome', () => {
     expect(onRefresh).toHaveBeenCalledOnce()
   })
 
+  it('offers the URL rewrite to writers only', async () => {
+    const user = userEvent.setup()
+    const onChangeUrl = vi.fn()
+    const { unmount } = renderChrome({ canEdit: true, onEdit: vi.fn() })
+
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+    expect(screen.queryByRole('menuitem', { name: 'reader.changeUrl' })).not.toBeInTheDocument()
+
+    unmount()
+    renderChrome({ canEdit: true, onEdit: vi.fn(), onChangeUrl })
+    await user.click(screen.getByRole('button', { name: 'reader.moreActions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'reader.changeUrl' }))
+
+    expect(onChangeUrl).toHaveBeenCalledOnce()
+  })
+
   it('keeps only the edit pill beside the title and folds the rest away', () => {
     renderChrome({ canEdit: true, onEdit: vi.fn(), onExportPage: vi.fn(), onSharePage: vi.fn() })
 

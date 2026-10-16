@@ -39,6 +39,15 @@ export const en = {
   shareDialog: {
     title: 'Sharing',
   },
+  pageUrl: {
+    title: 'Page URL',
+    label: 'Link',
+    preview: 'The page will answer at {{path}}',
+    invalid: 'Use letters, digits and single hyphens.',
+    taken: 'Another page in this notebook already uses that link.',
+    failed: 'Could not change the link. Please try again.',
+    movesDescendants: 'Every page filed under this one moves with it.',
+  },
   settings: {
     title: 'Notebook settings',
     close: 'Close',
@@ -282,6 +291,7 @@ export const en = {
     exportPage: 'Export page',
     exportFailed: 'Export failed. Please try again.',
     sharePage: 'Share',
+    changeUrl: 'Change URL',
     importPage: 'Import page',
     importSubpage: 'Import',
     moreActions: 'More actions',

@@ -28,6 +28,24 @@ export function findFirstPagePath(roots: readonly PageTreeNode[]): string | null
   return roots.find((node) => !node.isArchived)?.path ?? null
 }
 
+/**
+ * Whether the page still has children. The reader protects a parent's URL rewrite on
+ * this: a path is a chain of slugs, so renaming a parent moves every descendant with it.
+ */
+export function treePageHasChildren(roots: readonly PageTreeNode[], pageId: string): boolean {
+  for (const node of roots) {
+    if (node.id === pageId) {
+      return node.children.length > 0
+    }
+
+    if (treePageHasChildren(node.children, pageId)) {
+      return true
+    }
+  }
+
+  return false
+}
+
 /** Paths whose sections must be open for the active page to be reachable. */
 export function ancestorPathsOf(
   roots: readonly PageTreeNode[],

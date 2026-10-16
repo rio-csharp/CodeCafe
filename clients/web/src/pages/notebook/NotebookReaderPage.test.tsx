@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NotebookDetails, PageTreeNode } from '@/entities/notebook'
 import { applyBlockOps } from '@/entities/block'
 import { getNotebookDetails, getNotebookTree } from '@/entities/notebook'
-import { createPage, exportPage, getPageByPath, importPage, pageKeys, updatePage } from '@/entities/page'
+import { createPage, changePageSlug, exportPage, getPageByPath, importPage, pageKeys, updatePage } from '@/entities/page'
 import type { PageDetails } from '@/entities/page'
 import { ApiError, getAccessCode } from '@/shared/api'
 import { NotebookReaderPage } from './NotebookReaderPage'
@@ -26,6 +26,7 @@ vi.mock('@/entities/page', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/entities/page')>()),
   getPageByPath: vi.fn(),
   updatePage: vi.fn(),
+  changePageSlug: vi.fn(),
   createPage: vi.fn(),
   exportPage: vi.fn(),
   importPage: vi.fn(),
@@ -157,6 +158,7 @@ beforeEach(() => {
   vi.mocked(getNotebookTree).mockReset()
   vi.mocked(getPageByPath).mockReset()
   vi.mocked(updatePage).mockReset()
+  vi.mocked(changePageSlug).mockReset()
   vi.mocked(createPage).mockReset()
   vi.mocked(exportPage).mockReset()
   vi.mocked(importPage).mockReset()
@@ -370,6 +372,126 @@ describe('NotebookReaderPage', () => {
     expect(vi.mocked(updatePage)).toHaveBeenCalledWith('page-1', { title: 'Grinding finer' })
     // Saved and back in reading mode, with the reader's own chrome restored.
     expect(await screen.findByRole('heading', { level: 1, name: 'Grinding' })).toBeInTheDocument()
+  })
+
+  it('gives a freshly named page a real URL', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [{ ...ROOTS[0]!, title: 'Untitled', path: '/untitled-4821' }],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled-4821'))
+    vi.mocked(updatePage).mockResolvedValue(page('Filter Notes', '/untitled-4821'))
+    vi.mocked(changePageSlug).mockResolvedValue(page('Filter Notes', '/filter-notes'))
+
+    renderReader('/notebooks/espresso-notes/untitled-4821')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.clear(title)
+    await user.type(title, 'Filter Notes')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    // No slug argument: the server derives it from the title it just stored.
+    expect(vi.mocked(changePageSlug)).toHaveBeenCalledWith('page-1')
+    // The reader follows the page to its new address instead of 404ing on the placeholder one.
+    await waitFor(() => {
+      expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/filter-notes' }),
+      )
+    })
+  })
+
+  it('lets a writer rewrite the page URL from the chrome', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(changePageSlug).mockResolvedValue(page('Grinding', '/filter-notes'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+
+    await user.click(screen.getByRole('button', { name: 'More actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Change URL' }))
+
+    const link = screen.getByLabelText('Link')
+    await user.clear(link)
+    await user.type(link, 'filter-notes')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(changePageSlug)).toHaveBeenCalledWith('page-1', 'filter-notes')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    // The reader follows the open page to the address the writer just gave it.
+    await waitFor(() => {
+      expect(vi.mocked(getPageByPath)).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/filter-notes' }),
+      )
+    })
+  })
+
+  it('keeps a named page at its URL', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+    vi.mocked(updatePage).mockResolvedValue(page('Grinding finer', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.type(title, ' finer')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).toHaveBeenCalled()
+    // The slug was never the placeholder, so the URL is nobody's business but the first page's.
+    expect(vi.mocked(changePageSlug)).not.toHaveBeenCalled()
+  })
+
+  it('leaves the placeholder URL alone until the page is actually named', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [{ ...ROOTS[0]!, title: 'Untitled', path: '/untitled-4821' }],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled-4821'))
+
+    renderReader('/notebooks/espresso-notes/untitled-4821')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(changePageSlug)).not.toHaveBeenCalled()
+  })
+
+  it('never re-slugs a page that has children', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, isOwner: true, canWrite: true })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [
+        {
+          ...ROOTS[0]!,
+          title: 'Untitled',
+          path: '/untitled-4821',
+          children: [{ ...ROOTS[1]!, title: 'Brewing', path: '/untitled-4821/brewing' }],
+        },
+      ],
+    })
+    vi.mocked(getPageByPath).mockResolvedValue(page('Untitled', '/untitled-4821'))
+    vi.mocked(updatePage).mockResolvedValue(page('Filter Notes', '/untitled-4821'))
+
+    renderReader('/notebooks/espresso-notes/untitled-4821')
+    await user.click(await screen.findByRole('button', { name: 'Edit' }))
+
+    const title = screen.getByRole('textbox', { name: 'Page title' })
+    await user.clear(title)
+    await user.type(title, 'Filter Notes')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(vi.mocked(updatePage)).toHaveBeenCalled()
+    // A parent's new slug would move every descendant's URL, so the placeholder URL stays.
+    expect(vi.mocked(changePageSlug)).not.toHaveBeenCalled()
   })
 
   it('keeps the edit-session baseline stable when the page cache refreshes', async () => {

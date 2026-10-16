@@ -39,6 +39,15 @@ export const zh = {
   shareDialog: {
     title: '共享',
   },
+  pageUrl: {
+    title: '页面链接',
+    label: '链接',
+    preview: '页面地址将变为 {{path}}',
+    invalid: '只能使用字母、数字和单个连字符。',
+    taken: '本笔记本中已有页面使用了这个链接。',
+    failed: '无法更改链接，请重试。',
+    movesDescendants: '此页面下的所有子页面链接也会一起改变。',
+  },
   settings: {
     title: '笔记本设置',
     close: '关闭',
@@ -277,6 +286,7 @@ export const zh = {
     exportPage: '导出页面',
     exportFailed: '导出失败，请重试。',
     sharePage: '分享',
+    changeUrl: '更改链接',
     importPage: '导入页面',
     importSubpage: '导入',
     moreActions: '更多操作',

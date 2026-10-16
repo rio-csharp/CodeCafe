@@ -7,13 +7,14 @@ import { applyBlockOps, BlockList, assembleBlockTree, extractOutline } from '@/e
 import type { BlockNode, BlockOpWire } from '@/entities/block'
 import { flattenPages, getNotebookDetails, getNotebookTree, notebookKeys } from '@/entities/notebook'
 import type { PageTreeNode } from '@/entities/notebook'
-import { createPage, deletePage, exportPage, getPageByPath, importPage, movePage, pageKeys, updatePage } from '@/entities/page'
+import { createPage, changePageSlug, deletePage, exportPage, getPageByPath, importPage, isPlaceholderSlug, movePage, pageKeys, pageSlug, slugify, updatePage } from '@/entities/page'
 import type { MovePageData, PageDetails } from '@/entities/page'
 import { ApiError, clearAccessCode, setAccessCode } from '@/shared/api'
 import { MARKDOWN_FILE_ACCEPT, readMarkdownFile } from '@/shared/lib'
 import { PageEditor } from '@/widgets/page-editor'
 import { AiChatPanel } from '@/features/ai-chat'
 import { SharePageDialog } from '@/features/share-page'
+import { ChangePageUrlDialog } from '@/features/change-page-url'
 import { FavoritePageButton } from '@/features/toggle-page-favorite'
 import {
   ContentSkeleton,
@@ -31,6 +32,7 @@ import {
   normalizePagePath,
   pageNeighbours,
   toPageHref,
+  treePageHasChildren,
 } from '@/widgets/notebook-reader'
 
 /**
@@ -125,40 +127,74 @@ export function NotebookReaderPage() {
     normalizePagePath(editingSession.page.path) === pagePath &&
     (editingSession.locationKey === null || editingSession.locationKey === location.key)
 
+  // Patches the frozen edit snapshot so a retry sees what the server already accepted.
+  const latchSessionPage = (pageId: string, patch: Partial<PageDetails>) => {
+    setEditingSession((current) =>
+      current?.page.id === pageId ? { ...current, page: { ...current.page, ...patch } } : current,
+    )
+  }
+
+  const navigate = useNavigate()
+
   const savePage = useMutation({
     mutationFn: async ({
       pageId,
       title,
       previousTitle,
+      currentPath,
       ops,
     }: {
       pageId: string
       title: string
       previousTitle: string
+      /** The snapshot's path, so a retry still knows which URL the page currently answers to. */
+      currentPath: string
       ops: BlockOpWire[]
     }) => {
+      // The session snapshot, not this attempt's request: a retry after a half-committed
+      // save must not repeat the title half, but the slug half may still be outstanding.
+      let path = currentPath
+
       if (title !== previousTitle) {
-        await updatePage(pageId, { title })
-        // If the block batch fails next, a retry must not repeat the title half
-        // that already committed successfully.
-        setEditingSession((current) =>
-          current?.page.id === pageId
-            ? { ...current, page: { ...current.page, title } }
-            : current,
-        )
+        path = (await updatePage(pageId, { title })).path
+        // If anything fails next, a retry must not repeat the title half that already
+        // committed successfully.
+        latchSessionPage(pageId, { title, path })
       }
+
+      if (
+        shouldReslug({
+          title,
+          placeholderTitle: t('editor.untitled'),
+          path,
+          roots: tree.data?.roots,
+          pageId,
+        })
+      ) {
+        // The server derives the real slug from the title it just stored, so the reader never
+        // hand-rolls one.
+        path = (await changePageSlug(pageId)).path
+        latchSessionPage(pageId, { path })
+      }
+
       if (ops.length > 0) {
         await applyBlockOps(pageId, ops)
       }
+
+      return path
     },
-    onSuccess: () => {
+    onSuccess: (path) => {
       void queryClient.invalidateQueries({ queryKey: pageKeys.all })
       void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
       setEditingSession(null)
+      // A freshly named page may have just been given a new address: follow it instead of
+      // leaving the reader on the placeholder URL.
+      if (normalizePagePath(path) !== pagePath) {
+        void navigate(toPageHref(slug, path), { replace: true })
+      }
     },
   })
 
-  const navigate = useNavigate()
   // New pages open straight in edit mode so the title can be named right away.
   const addPage = useMutation({
     mutationFn: (parentPath: string | null) =>
@@ -222,6 +258,16 @@ export function NotebookReaderPage() {
   const [notice, setNotice] = useState<string | null>(null)
   // Page sharing is a dialog over the already-loaded page details; writers only.
   const [shareOpen, setShareOpen] = useState(false)
+  const [urlOpen, setUrlOpen] = useState(false)
+
+  // The page just changed address, so follow it and drop every cached path.
+  const handleUrlChanged = (path: string) => {
+    setUrlOpen(false)
+    invalidateTree()
+    if (normalizePagePath(path) !== pagePath) {
+      void navigate(toPageHref(slug, path), { replace: true })
+    }
+  }
   useEffect(() => {
     if (actionError === null) {
       return
@@ -534,6 +580,13 @@ export function NotebookReaderPage() {
             }
           : undefined
       }
+      onChangeUrl={
+        page.data !== undefined && !editing && notebook.canWrite
+          ? () => {
+              setUrlOpen(true)
+            }
+          : undefined
+      }
       onAddPage={notebook.canWrite ? handleAddPage : undefined}
       onImportPage={notebook.canWrite ? handleImportPage : undefined}
       onRefreshTree={() => {
@@ -586,6 +639,7 @@ export function NotebookReaderPage() {
               pageId: editingSession.page.id,
               title,
               previousTitle: editingSession.page.title,
+              currentPath: editingSession.page.path,
               ops,
             })
           }}
@@ -614,7 +668,36 @@ export function NotebookReaderPage() {
           setShareOpen(false)
         }}
       />
+
+      <ChangePageUrlDialog
+        page={urlOpen && page.data !== undefined ? page.data : null}
+        movesDescendants={page.data !== undefined && treePageHasChildren(tree.data?.roots ?? [], page.data.id)}
+        onClose={() => {
+          setUrlOpen(false)
+        }}
+        onDone={handleUrlChanged}
+      />
     </>
+  )
+}
+
+/**
+ * Whether saving this page should also rewrite its URL. A page still wearing the placeholder
+ * title has not been named yet, so it keeps its provisional URL; and a path is the chain of
+ * ancestor slugs, so re-slugging a parent would move every descendant out from under whoever
+ * has it open. Only a named leaf earns a derived slug.
+ */
+function shouldReslug(options: {
+  title: string
+  placeholderTitle: string
+  path: string
+  roots: readonly PageTreeNode[] | undefined
+  pageId: string
+}): boolean {
+  return (
+    slugify(options.title) !== slugify(options.placeholderTitle) &&
+    !treePageHasChildren(options.roots ?? [], options.pageId) &&
+    isPlaceholderSlug(pageSlug(options.path), options.placeholderTitle)
   )
 }
 

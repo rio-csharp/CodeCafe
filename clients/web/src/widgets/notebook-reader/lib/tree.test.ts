@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { PageTreeNode } from '@/entities/notebook'
-import { pageNeighbours, visibleTree } from './tree'
+import { pageNeighbours, treePageHasChildren, visibleTree } from './tree'
 
 function node(
   id: string,
@@ -48,6 +48,32 @@ const PAGES = [
   { path: '/guide/setup', title: 'Setup' },
   { path: '/brew', title: 'Brew' },
 ]
+
+describe('treePageHasChildren', () => {
+  const roots: PageTreeNode[] = [
+    node('guide', '/guide', false, [node('setup', '/guide/setup')]),
+    node('loose', '/loose'),
+    node('stash', '/stash', true, [node('hidden', '/stash/hidden')]),
+  ]
+
+  it('finds a parent below the root level', () => {
+    expect(treePageHasChildren(roots, 'guide')).toBe(true)
+  })
+
+  it('reports a leaf as childless', () => {
+    expect(treePageHasChildren(roots, 'setup')).toBe(false)
+  })
+
+  it('counts an archived child: the URL move would still break it', () => {
+    expect(treePageHasChildren(roots, 'stash')).toBe(true)
+  })
+
+  it('treats a page the tree does not know yet as childless', () => {
+    // A page created moments ago is missing from the tree until the refetch lands, and a
+    // fresh page cannot have children.
+    expect(treePageHasChildren(roots, 'brand-new')).toBe(false)
+  })
+})
 
 describe('pageNeighbours', () => {
   it('points at the linear neighbours of the open page', () => {

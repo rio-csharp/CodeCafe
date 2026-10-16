@@ -22,6 +22,8 @@ export interface ReaderChromeProps {
   onExportPage?: () => void
   /** Page-level sharing dialog; writers only, so undefined hides the pill. */
   onSharePage?: () => void
+  /** Rewrites the page's own URL segment; writers only, like sharing. */
+  onChangeUrl?: () => void
 }
 
 /**
@@ -30,7 +32,7 @@ export interface ReaderChromeProps {
  * link, export, share and the width preference fold into the ⋯ so the title
  * keeps the bar to itself; the writer's Edit stays out as the primary action.
  */
-export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide, canEdit = false, onEdit, favoriteAction, onExportPage, onSharePage }: ReaderChromeProps) {
+export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide, canEdit = false, onEdit, favoriteAction, onExportPage, onSharePage, onChangeUrl }: ReaderChromeProps) {
   const { t } = useTranslation()
   const copyLink = useCopyLink()
   const barRef = useChromeOffset()
@@ -62,6 +64,18 @@ export function ReaderChrome({ title, refreshing, onRefresh, wide, onToggleWide,
               <path d="M10.5 13.5v-1a2.5 2.5 0 0 0-2.5-2.5H5a2.5 2.5 0 0 0-2.5 2.5v1M6.5 7.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM13.5 13.5v-1a2.5 2.5 0 0 0-1.25-2.16M10.75 3.6a2 2 0 1 1 0 3.8" />
             ),
             onSelect: onSharePage,
+          },
+        ]
+      : []),
+    ...(onChangeUrl !== undefined
+      ? [
+          {
+            id: 'url',
+            label: t('reader.changeUrl'),
+            icon: (
+              <path d="M6.6 9.4a2.6 2.6 0 0 1 0-3.7l1.4-1.4a2.6 2.6 0 0 1 3.7 3.7M9.4 6.6a2.6 2.6 0 0 1 0 3.7l-1.4 1.4a2.6 2.6 0 0 1-3.7-3.7" />
+            ),
+            onSelect: onChangeUrl,
           },
         ]
       : []),

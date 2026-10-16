@@ -53,6 +53,8 @@ export interface NotebookReaderLayoutProps {
   onDeletePage?: (node: PageTreeNode) => void
   /** Page-level sharing dialog; writers only, so undefined hides the pill. */
   onSharePage?: () => void
+  /** Rewrites the page's own URL segment; writers only, like sharing. */
+  onChangeUrl?: () => void
   refreshing?: boolean
   onRefresh?: () => void
   /** Linear reading order neighbours; the mobile toolbar shows them. */
@@ -87,6 +89,7 @@ export function NotebookReaderLayout({
   onToggleArchive,
   onDeletePage,
   onSharePage,
+  onChangeUrl,
   refreshing = false,
   onRefresh,
   prevPage = null,
@@ -335,6 +338,7 @@ export function NotebookReaderLayout({
               favoriteAction={favoriteAction}
               onExportPage={onExportPage}
               onSharePage={onSharePage}
+              onChangeUrl={onChangeUrl}
             />
           ) : null}
           {children}
