@@ -12,7 +12,8 @@ internal static class HealthCheckExtensions
                 "self",
                 () => HealthCheckResult.Healthy("The host process is running."),
                 tags: ["live"])
-            .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"]);
+            .AddCheck<PostgresHealthCheck>("postgres", tags: ["ready"])
+            .AddCheck<ServerDrainReadinessHealthCheck>("drain", tags: ["ready"]);
         return services;
     }
 

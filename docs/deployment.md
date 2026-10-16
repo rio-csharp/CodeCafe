@@ -65,6 +65,20 @@ test database, so a preview never migrates anything.
 The application still migrates on start-up by default (`Database:MigrateOnStartup`), which is what
 local development and the non-Kubernetes path rely on.
 
+## Rollouts and draining
+
+`api.preStopSleepSeconds` (15) and `api.terminationGracePeriodSeconds` (60) are one half of a
+protocol whose other half lives in `ServerDrainHostedService`. The chart's `preStop` hook sends
+**SIGUSR1** and then sleeps; the application catches it, suppresses the default action (which is to
+terminate), and marks itself unready. Kubernetes stops routing to the pod while the process is
+still serving, and the sleep covers the time that takes to propagate; SIGTERM follows, and
+`Shutdown:TimeoutSeconds` is computed as the grace period minus the sleep so the graceful shutdown
+fits in what is left.
+
+SIGUSR1 is the load-bearing part and it is a user-defined signal, so nothing else would fail if the
+handler went missing: the hook would still run, the sleep would still happen, and only the early
+readiness flip would be gone. `ServerDrainTests` raises the signal to keep the two halves joined.
+
 ## Configuration the deployment owns
 
 `scripts/cd/deploy-helm.sh` builds a `<release>-api-config` Secret from the database connection

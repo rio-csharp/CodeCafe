@@ -55,6 +55,10 @@ internal static class ServiceCollectionExtensions
         services.AddCodeCafeForwardedHeaders(configuration);
         services.AddCodeCafeShutdown(configuration);
         services.AddCodeCafeHealthChecks();
+        // The drain state is shared by the signal handler, the shutdown hook and the readiness
+        // probe, so it has to be the same instance for all three.
+        services.AddSingleton<ServerDrainState>();
+        services.AddHostedService<ServerDrainHostedService>();
         services.AddCodeCafeMcp(configuration);
         return services;
     }
