@@ -17,6 +17,7 @@ public sealed class OpenApiContractTests(CodeCafeFactory factory)
 
         ("post", "/api/notebooks"),
         ("post", "/api/notebooks/import"),
+        ("post", "/api/notebooks/import/upload"),
         ("patch", "/api/notebooks/{idOrSlug}"),
         ("delete", "/api/notebooks/{idOrSlug}"),
         ("post", "/api/notebooks/{idOrSlug}/slug"),
@@ -33,6 +34,7 @@ public sealed class OpenApiContractTests(CodeCafeFactory factory)
         ("get", "/api/notebooks/{idOrSlug}/export"),
 
         ("post", "/api/notebooks/{idOrSlug}/pages"),
+        ("post", "/api/notebooks/{idOrSlug}/pages/import/upload"),
         ("get", "/api/notebooks/{idOrSlug}/pages/by-path"),
 
         ("get", "/api/pages/{pageId}"),

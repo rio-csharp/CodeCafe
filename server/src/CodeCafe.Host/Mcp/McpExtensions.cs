@@ -19,7 +19,16 @@ internal static class McpExtensions
                 "Mcp:EndpointPath must start with '/'.")
             .ValidateOnStart();
 
-        services.AddMcpServer()
+        services.AddMcpServer(options =>
+            // Sent once per session, so the rule is in context before the first import rather
+            // than buried in one tool description the model may never read.
+            options.ServerInstructions =
+                "CodeCafe keeps notebooks, pages, and blocks. Importing markdown through a tool "
+                + "argument makes the model read and re-emit every byte, so for anything larger than a "
+                + "few pages call codecafe_get_import_recipe and POST the file to the given endpoint "
+                + "with the same bearer token this client authenticates with. The import tools refuse "
+                + "oversized inline payloads and return that recipe."
+        )
             .WithHttpTransport()
             .WithTools<NotebooksMcpTools>()
             .WithTools<PagesMcpTools>()
@@ -27,6 +36,7 @@ internal static class McpExtensions
             .WithTools<RevisionsMcpTools>()
             .WithTools<SearchMcpTools>()
             .WithTools<TrashMcpTools>()
+            .WithTools<ImportMcpTools>()
             .WithTools<AiMcpTools>()
             .WithResources<NotebookMcpResources>();
 

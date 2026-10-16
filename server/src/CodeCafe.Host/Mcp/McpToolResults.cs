@@ -49,4 +49,15 @@ internal static class McpToolResults
         StructuredContent = JsonSerializer.SerializeToElement(
             new { kind = error.Kind, code = error.Code, message = error.Message }, JsonOptions)
     };
+
+    // A failure whose fix is a different call rather than a retry: the details ride along in
+    // structured content so the way forward is machine-readable, not prose the model has to
+    // reconstruct from the message.
+    public static CallToolResult Failure(Error error, object details)
+    {
+        var result = Failure(error);
+        result.StructuredContent = JsonSerializer.SerializeToElement(
+            new { kind = error.Kind, code = error.Code, message = error.Message, details }, JsonOptions);
+        return result;
+    }
 }

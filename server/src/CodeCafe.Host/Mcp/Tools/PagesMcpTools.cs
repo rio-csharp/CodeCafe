@@ -15,6 +15,7 @@ using CodeCafe.Application.Pages.UpdatePage;
 using CodeCafe.Domain.Revisions;
 using CodeCafe.Domain.Sharing;
 using MediatR;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -52,16 +53,28 @@ public sealed class PagesMcpTools
         => McpToolResults.From(await sender.Send(new ExportPageQuery(pageId, accessCode), cancellationToken));
 
     [McpServerTool(Name = "codecafe_import_page")]
-    [Description("Import a markdown file as a new page in a notebook, optionally under a parent page path.")]
+    [Description(
+        "Import a markdown file as a new page in a notebook, optionally under a parent page path. "
+            + "Small files only: for anything larger, call codecafe_get_import_recipe and upload the "
+            + "file over HTTP instead, so the content never has to pass through the conversation."
+    )]
     public static async Task<CallToolResult> ImportPage(
         ISender sender,
         IChangeSourceAccessor changeSource,
+        IHttpContextAccessor httpContextAccessor,
+        IOptions<McpOptions> mcpOptions,
         string notebookIdOrSlug,
         string fileName,
         string markdown,
         CancellationToken cancellationToken,
         string? parentPath = null)
     {
+        var recipe = ImportGuidance.Recipe(httpContextAccessor.HttpContext, mcpOptions.Value);
+        if (ImportGuidance.TooLarge(markdown, recipe) is { } refusal)
+        {
+            return refusal;
+        }
+
         changeSource.Source = RevisionSource.Ai;
         return McpToolResults.From(await sender.Send(
             new ImportPageCommand(notebookIdOrSlug, new PageExportDto(fileName, markdown), parentPath),

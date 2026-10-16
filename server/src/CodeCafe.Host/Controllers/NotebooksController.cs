@@ -43,9 +43,27 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     // Markdown payloads can be large, but not unbounded.
     [HttpPost("notebooks/import")]
-    [RequestSizeLimit(5 * 1024 * 1024)]
+    [RequestSizeLimit(RequestLimits.ImportBytes)]
     public Task<Result<NotebookDetailsDto>> Import(NotebookExportDto export, CancellationToken cancellationToken)
         => sender.Send(new ImportNotebookCommand(export), cancellationToken);
+
+    // The same import for clients that hold the markdown in a file: no JSON escaping, so the
+    // bytes can go straight from disk to the API without passing through a shell pipeline. This
+    // is the endpoint the MCP import recipe points at.
+    [HttpPost("notebooks/import/upload")]
+    [RequestSizeLimit(RequestLimits.ImportBytes)]
+    [Consumes("multipart/form-data")]
+    public async Task<Result<NotebookDetailsDto>> ImportUpload(
+        IFormFile file,
+        [FromForm] string? fileName,
+        CancellationToken cancellationToken)
+    {
+        var content = await file.ReadMarkdownAsync(cancellationToken);
+        return await sender.Send(
+            new ImportNotebookCommand(new NotebookExportDto(fileName ?? file.FileName, content)),
+            cancellationToken
+        );
+    }
 
     // Own + shared notebooks; the public catalog lives at notebooks/public.
     [HttpGet("notebooks")]
@@ -146,12 +164,31 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
 
     // Markdown payloads can be large, but not unbounded.
     [HttpPost("notebooks/{idOrSlug}/pages/import")]
-    [RequestSizeLimit(5 * 1024 * 1024)]
+    [RequestSizeLimit(RequestLimits.ImportBytes)]
     public Task<Result<PageDetailsDto>> ImportPage(string idOrSlug, ImportPageRequest request, CancellationToken cancellationToken)
         => sender.Send(
             new ImportPageCommand(idOrSlug, new PageExportDto(request.FileName, request.Markdown), request.ParentPath),
             cancellationToken
         );
+
+    // The file-holding counterpart of the import above; see notebooks/import/upload. This is the
+    // endpoint the MCP import recipe points at for pages.
+    [HttpPost("notebooks/{idOrSlug}/pages/import/upload")]
+    [RequestSizeLimit(RequestLimits.ImportBytes)]
+    [Consumes("multipart/form-data")]
+    public async Task<Result<PageDetailsDto>> ImportPageUpload(
+        string idOrSlug,
+        IFormFile file,
+        [FromForm] string? fileName,
+        CancellationToken cancellationToken,
+        [FromForm] string? parentPath = null)
+    {
+        var content = await file.ReadMarkdownAsync(cancellationToken);
+        return await sender.Send(
+            new ImportPageCommand(idOrSlug, new PageExportDto(fileName ?? file.FileName, content), parentPath),
+            cancellationToken
+        );
+    }
 
     [AllowAnonymous]
     [HttpGet("notebooks/{idOrSlug}/pages/by-path")]
