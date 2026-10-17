@@ -149,6 +149,8 @@ api:
     maxToolIterations: 16
     maxProviderRetries: 5
     providerRetryBaseDelayMs: 1000
+  # Served stateless (docs/deployment.md): stateful MCP sessions would need session affinity across
+  # api.replicaCount pods, and MCP clients carry no cookie to stick on.
   mcp:
     enabled: true
     endpointPath: /mcp
