@@ -79,6 +79,21 @@ SIGUSR1 is the load-bearing part and it is a user-defined signal, so nothing els
 handler went missing: the hook would still run, the sleep would still happen, and only the early
 readiness flip would be gone. `ServerDrainTests` raises the signal to keep the two halves joined.
 
+## MCP
+
+`/mcp` runs stateless (`HttpServerTransportOptions.Stateless`, set in `McpExtensions`). The default
+stateful mode keeps a session in the memory of the pod that answered `initialize`, so with the
+chart's two replicas any later request Traefik routed to the other pod came back as
+`404 {"error":{"code":-32001,"message":"Session not found"}}` — MCP clients read that as an expired
+session and drop the connection, which made the endpoint unusable through the ingress. Sticky
+routing is not a workaround: Traefik's affinity is a cookie, and MCP clients do not carry cookies.
+CodeCafe has nothing to keep per session — every request carries its own bearer token and every
+tool is a static MediatR call — so stateless mode costs only server-to-client features no client
+uses here (resource subscriptions, server-initiated sampling/logging, the `GET /mcp` stream).
+Turning it back on would re-introduce the requirement that a client reach one specific pod, so
+change it only together with `api.replicaCount`. `McpStatelessTransportTests` drives the real
+endpoint to keep that from regressing silently.
+
 ## Configuration the deployment owns
 
 `scripts/cd/deploy-helm.sh` builds a `<release>-api-config` Secret from the database connection
