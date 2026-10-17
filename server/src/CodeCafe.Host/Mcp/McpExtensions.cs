@@ -20,8 +20,8 @@ internal static class McpExtensions
             .ValidateOnStart();
 
         services.AddMcpServer(options =>
-            // Sent once per session, so the rule is in context before the first import rather
-            // than buried in one tool description the model may never read.
+            // Sent with every initialize, so the rule is in context before the first import
+            // rather than buried in one tool description the model may never read.
             options.ServerInstructions =
                 "CodeCafe keeps notebooks, pages, and blocks. Importing markdown through a tool "
                 + "argument makes the model read and re-emit every byte, so for anything larger than a "
@@ -29,7 +29,13 @@ internal static class McpExtensions
                 + "with the same bearer token this client authenticates with. The import tools refuse "
                 + "oversized inline payloads and return that recipe."
         )
-            .WithHttpTransport()
+            // Sessions live in process memory, so in the default stateful mode every request after
+            // initialize has to reach the pod that created the session; behind more than one replica
+            // without session affinity the rest come back as 404 "Session not found" and clients
+            // abort the connection. Nothing here keeps per-session state — each request carries its
+            // own bearer token and every tool is a static MediatR call — so stateless mode removes
+            // the affinity requirement instead of buying sticky routing that MCP clients cannot honour.
+            .WithHttpTransport(options => options.Stateless = true)
             .WithTools<NotebooksMcpTools>()
             .WithTools<PagesMcpTools>()
             .WithTools<BlocksMcpTools>()
