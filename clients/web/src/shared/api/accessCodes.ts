@@ -21,6 +21,12 @@ export function clearAccessCode(slug: string): void {
   storage()?.removeItem(KEY_PREFIX + slug)
 }
 
+/** Headers for page-id endpoints, which do not encode the notebook slug in their path. */
+export function accessCodeHeaderFor(slug: string): Record<string, string> {
+  const code = getAccessCode(slug)
+  return code === null ? {} : { [ACCESS_CODE_HEADER]: code }
+}
+
 /**
  * The stored code for the notebook a request path targets, if any. The slug
  * is the first segment after `/api/notebooks/`; anything else (the catalog,

@@ -6,6 +6,8 @@ const DEFAULT_TIMEOUT_MS = 30_000
 
 export interface JsonRequestInit extends Omit<RequestInit, 'signal'> {
   signal?: AbortSignal | null
+  /** Overrides the default 30s budget (large imports need more). */
+  timeoutMs?: number
 }
 
 /**
@@ -14,7 +16,7 @@ export interface JsonRequestInit extends Omit<RequestInit, 'signal'> {
  * calls it directly so a refresh can never recurse into the 401 retry logic.
  */
 export async function requestJson<T>(path: string, init: JsonRequestInit = {}): Promise<T> {
-  const { signal, headers, ...rest } = init
+  const { signal, headers, timeoutMs, ...rest } = init
 
   // ASP.NET refuses a body it cannot identify (415); a JSON gateway declares
   // JSON the moment a body is present. Callers may still override.
@@ -23,7 +25,7 @@ export async function requestJson<T>(path: string, init: JsonRequestInit = {}): 
 
   const response = await fetch(apiUrl(path), {
     ...rest,
-    signal: withTimeout(signal),
+    signal: withTimeout(signal, timeoutMs),
     headers: mergeHeader(withContentType, 'Accept', 'application/json'),
   })
 
@@ -43,8 +45,11 @@ export function mergeHeader(
   return merged
 }
 
-function withTimeout(callerSignal: AbortSignal | null | undefined): AbortSignal {
-  const timeout = AbortSignal.timeout(DEFAULT_TIMEOUT_MS)
+function withTimeout(
+  callerSignal: AbortSignal | null | undefined,
+  timeoutMs: number | undefined,
+): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs ?? DEFAULT_TIMEOUT_MS)
   return callerSignal ? AbortSignal.any([callerSignal, timeout]) : timeout
 }
 

@@ -33,6 +33,9 @@ export interface NotebookReaderLayoutProps {
   pageTitle?: string | null
   /** Edit affordance in the chrome; hidden while null. */
   canEdit?: boolean
+  /** Notebook-level writes (tree restructure, page creation, trash); page-share editors do not
+   *  get these even when they can edit the shared page's content. Defaults to canEdit. */
+  canManageNotebook?: boolean
   onEdit?: () => void
   /** Page-favorite toggle rendered in the chrome; hidden while undefined. */
   favoriteAction?: ReactNode
@@ -78,6 +81,7 @@ export function NotebookReaderLayout({
   rightTabs = [],
   pageTitle = null,
   canEdit = false,
+  canManageNotebook,
   onEdit,
   favoriteAction,
   onExportPage,
@@ -98,6 +102,7 @@ export function NotebookReaderLayout({
 }: NotebookReaderLayoutProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const manageNotebook = canManageNotebook ?? canEdit
   const [mobilePanel, setMobilePanel] = useState<MobilePanel>('none')
   // Narrow reads better; the chrome's pill widens when wanted. Not persisted.
   const [contentWide, setContentWide] = useState(false)
@@ -157,7 +162,7 @@ export function NotebookReaderLayout({
           },
         ]
       : []),
-    ...(canEdit && onAddPage !== undefined
+    ...(manageNotebook && onAddPage !== undefined
       ? [
           {
             id: 'add-page',
@@ -169,7 +174,7 @@ export function NotebookReaderLayout({
           },
         ]
       : []),
-    ...(canEdit && onImportPage !== undefined
+    ...(manageNotebook && onImportPage !== undefined
       ? [
           {
             id: 'import-page',
@@ -181,7 +186,7 @@ export function NotebookReaderLayout({
           },
         ]
       : []),
-    ...(canEdit
+    ...(manageNotebook
       ? [
           {
             id: 'toggle-archived',
@@ -193,7 +198,7 @@ export function NotebookReaderLayout({
           },
         ]
       : []),
-    ...(canEdit
+    ...(manageNotebook
       ? [
           {
             id: 'page-trash',
@@ -285,26 +290,26 @@ export function NotebookReaderLayout({
             roots={roots}
             activePath={activePath}
             filter={treeQuery}
-            canWrite={canEdit}
-            includeArchived={canEdit && includeArchived}
-            onMovePage={canEdit ? onMovePage : undefined}
-            onToggleArchive={canEdit ? onToggleArchive : undefined}
+            canWrite={manageNotebook}
+            includeArchived={manageNotebook && includeArchived}
+            onMovePage={manageNotebook ? onMovePage : undefined}
+            onToggleArchive={manageNotebook ? onToggleArchive : undefined}
             onImportSubpage={
-              canEdit && onImportPage !== undefined
+              manageNotebook && onImportPage !== undefined
                 ? (node) => {
                     onImportPage(node.path)
                   }
                 : undefined
             }
             onDeletePage={
-              canEdit && onDeletePage !== undefined
+              manageNotebook && onDeletePage !== undefined
                 ? (node) => {
                     setPendingDelete(node)
                   }
                 : undefined
             }
             onAddChild={
-              canEdit && onAddPage !== undefined
+              manageNotebook && onAddPage !== undefined
                 ? (parentPath) => {
                     onAddPage(parentPath)
                   }
@@ -408,7 +413,7 @@ export function NotebookReaderLayout({
         </div>
       </div>
 
-      {canEdit && trashOpen ? (
+      {manageNotebook && trashOpen ? (
         <PageTrashDialog
           slug={notebook.slug}
           onClose={() => {
@@ -417,7 +422,7 @@ export function NotebookReaderLayout({
         />
       ) : null}
 
-      {canEdit && pendingDelete !== null ? (
+      {manageNotebook && pendingDelete !== null ? (
         <PageDeleteDialog
           node={pendingDelete}
           onCancel={() => {

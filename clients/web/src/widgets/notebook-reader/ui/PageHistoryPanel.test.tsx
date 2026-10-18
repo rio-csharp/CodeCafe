@@ -59,6 +59,7 @@ function renderPanel({ canWrite = true, onRestored = vi.fn() } = {}) {
     <QueryClientProvider client={client}>
       <PageHistoryPanel
         pageId="page-1"
+        slug="nb"
         currentBlocks={CURRENT}
         canWrite={canWrite}
         onRestored={onRestored}
@@ -155,6 +156,7 @@ describe('PageHistoryPanel', () => {
       'page-1',
       '2026-01-07T12:00:00.000Z',
       expect.anything(),
+      'nb',
     )
     // Current block is an addition, the past one a removal.
     expect(screen.getByText('history.diffAdded')).toBeInTheDocument()

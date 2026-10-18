@@ -105,7 +105,7 @@ export function NotebookGrid({
             cornerAction={
               <span className="absolute top-2 right-2 flex items-center gap-0.5">
                 <FavoriteNotebookButton notebookId={notebook.id} isFavorite={notebook.isFavorite} />
-                {showOwnership && onOpenSettings !== undefined && onShareNotebook !== undefined ? (
+                {showOwnership && notebook.isOwner !== false && onOpenSettings !== undefined && onShareNotebook !== undefined ? (
                   <NotebookCardMenu
                     notebookId={notebook.id}
                     title={notebook.title}

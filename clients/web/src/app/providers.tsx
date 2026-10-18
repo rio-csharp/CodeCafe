@@ -2,7 +2,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { I18nextProvider, useTranslation } from 'react-i18next'
 import { RouterProvider } from 'react-router/dom'
-import { notebookKeys } from '@/entities/notebook'
 import { bootstrapSession } from '@/entities/session'
 import { FALLBACK_LANGUAGE, i18n } from '@/shared/i18n'
 import { onSessionCleared } from '@/shared/api'
@@ -45,7 +44,9 @@ function SessionBootstrap() {
   useEffect(() => {
     const unsubscribe = bootstrapSession()
     const unsubscribeCache = onSessionCleared(() => {
-      void queryClient.removeQueries({ queryKey: notebookKeys.mine() })
+      // Every cached read can carry one user's private data; a browser shared by two accounts
+      // must not hand A's notebook/page payloads to B while a refetch is in flight.
+      queryClient.clear()
     })
 
     return () => {

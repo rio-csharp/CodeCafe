@@ -50,8 +50,14 @@ function ShareBody({ slug }: { slug: string }) {
   return (
     <div className="flex flex-col gap-6">
       <SharesSection slug={slug} notebook={details.data} />
-      <div aria-hidden="true" className="h-px bg-line" />
-      <AccessCodeSection slug={slug} notebook={details.data} />
+      {/* Access codes only gate Unlisted notebooks; showing the control elsewhere would promise
+          protection the read path does not provide. */}
+      {details.data.visibility === 'Unlisted' ? (
+        <>
+          <div aria-hidden="true" className="h-px bg-line" />
+          <AccessCodeSection slug={slug} notebook={details.data} />
+        </>
+      ) : null}
     </div>
   )
 }

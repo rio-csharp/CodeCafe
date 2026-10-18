@@ -25,7 +25,10 @@ export const zh = {
     sortCreated: '最新创建',
     sortTitle: '按名称',
     emptyMine: '还没有笔记本，新建一本吧。',
+    emptyMineHint: '新建一个笔记本，或从 Markdown 文件导入。',
     emptyFavorites: '还没有收藏的笔记本。',
+    emptyFavoritesHint: '给笔记本点个星标，它就会出现在这里。',
+    emptySearch: '没有匹配“{{query}}”的笔记本。',
     emptyPublic: '暂时没有公开的笔记本。',
   },
   visibility: {

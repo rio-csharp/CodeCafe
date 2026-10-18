@@ -9,7 +9,8 @@ import { flattenPages, getNotebookDetails, getNotebookTree, notebookKeys } from 
 import type { PageTreeNode } from '@/entities/notebook'
 import { createPage, changePageSlug, deletePage, exportPage, getPageByPath, importPage, isPlaceholderSlug, movePage, pageKeys, pageSlug, slugify, updatePage } from '@/entities/page'
 import type { MovePageData, PageDetails } from '@/entities/page'
-import { ApiError, clearAccessCode, setAccessCode } from '@/shared/api'
+import { useSessionStore } from '@/entities/session'
+import { ApiError, accessCodeHeaderFor, clearAccessCode, setAccessCode } from '@/shared/api'
 import { MARKDOWN_FILE_ACCEPT, readMarkdownFile } from '@/shared/lib'
 import { PageEditor } from '@/widgets/page-editor'
 import { AiChatPanel } from '@/features/ai-chat'
@@ -43,6 +44,7 @@ export function NotebookReaderPage() {
   const params = useParams()
   const location = useLocation()
   const slug = params.slug ?? ''
+  const authenticated = useSessionStore((state) => state.status === 'authenticated')
 
   /** The splat is the page path, already decoded by the router. */
   const pagePath = useMemo(() => {
@@ -328,7 +330,7 @@ export function NotebookReaderPage() {
     if (page.data === undefined) {
       return
     }
-    exportPage(page.data.id).catch(() => {
+    exportPage(page.data.id, { headers: accessCodeHeaderFor(slug) }).catch(() => {
       setActionError(t('reader.exportFailed'))
     })
   }
@@ -451,6 +453,7 @@ export function NotebookReaderPage() {
         notebook={notebook}
         roots={roots}
         canEdit={notebook.canWrite}
+        canManageNotebook={notebook.canWrite}
         onAddPage={notebook.canWrite ? handleAddPage : undefined}
         onImportPage={notebook.canWrite ? handleImportPage : undefined}
         onRefreshTree={() => {
@@ -479,21 +482,25 @@ export function NotebookReaderPage() {
             : undefined
         }
         rightTabs={[
-          {
-            id: 'ai',
-            label: t('ai.title'),
-            icon: (
-              <path d="M8 2.5 9.3 6l3.5 1.3L9.3 8.6 8 12.1 6.7 8.6 3.2 7.3 6.7 6zM12.5 10.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
-            ),
-            content: (
-              <AiChatPanel
-                slug={notebook.slug}
-                onAiChanged={() => {
-                  void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
-                }}
-              />
-            ),
-          },
+          ...(authenticated
+            ? [
+                {
+                  id: 'ai',
+                  label: t('ai.title'),
+                  icon: (
+                    <path d="M8 2.5 9.3 6l3.5 1.3L9.3 8.6 8 12.1 6.7 8.6 3.2 7.3 6.7 6zM12.5 10.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
+                  ),
+                  content: (
+                    <AiChatPanel
+                      slug={notebook.slug}
+                      onAiChanged={() => {
+                        void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
+                      }}
+                    />
+                  ),
+                },
+              ]
+            : []),
         ]}
       >
         {importUi}
@@ -515,22 +522,26 @@ export function NotebookReaderPage() {
           icon: <path d="M2.5 4h11M2.5 8h7M2.5 11.5h9" />,
           content: <PageOutline headings={outline} />,
         },
-        {
-          id: 'ai',
-          label: t('ai.title'),
-          icon: (
-            <path d="M8 2.5 9.3 6l3.5 1.3L9.3 8.6 8 12.1 6.7 8.6 3.2 7.3 6.7 6zM12.5 10.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
-          ),
-          content: (
-            <AiChatPanel
-              slug={notebook.slug}
-              onAiChanged={() => {
-                void queryClient.invalidateQueries({ queryKey: pageKeys.all })
-                void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
-              }}
-            />
-          ),
-        },
+        ...(authenticated
+          ? [
+              {
+                id: 'ai',
+                label: t('ai.title'),
+                icon: (
+                  <path d="M8 2.5 9.3 6l3.5 1.3L9.3 8.6 8 12.1 6.7 8.6 3.2 7.3 6.7 6zM12.5 10.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" />
+                ),
+                content: (
+                  <AiChatPanel
+                    slug={notebook.slug}
+                    onAiChanged={() => {
+                      void queryClient.invalidateQueries({ queryKey: pageKeys.all })
+                      void queryClient.invalidateQueries({ queryKey: notebookKeys.tree(slug) })
+                    }}
+                  />
+                ),
+              },
+            ]
+          : []),
         // The history is page-scoped and read-only while editing (restoring
         // under an open draft would silently discard it).
         ...(page.data !== undefined && !editing
@@ -544,8 +555,9 @@ export function NotebookReaderPage() {
                 content: (
                   <PageHistoryPanel
                     pageId={page.data.id}
+                    slug={slug}
                     currentBlocks={page.data.blocks}
-                    canWrite={notebook.canWrite}
+                    canWrite={page.data.canWrite === true}
                     onRestored={() => {
                       void queryClient.invalidateQueries({ queryKey: pageKeys.all })
                     }}
@@ -556,7 +568,8 @@ export function NotebookReaderPage() {
           : []),
       ]}
       pageTitle={editing ? null : (page.data?.title ?? null)}
-      canEdit={notebook.canWrite}
+      canEdit={notebook.canWrite || page.data?.canWrite === true}
+      canManageNotebook={notebook.canWrite}
       onEdit={() => {
         if (page.data !== undefined) {
           setEditingSession({ slug, page: page.data, locationKey: location.key })
@@ -625,6 +638,7 @@ export function NotebookReaderPage() {
           {importUi}
           <PageEditor
           page={editingSession.page}
+          slug={slug}
           saving={savePage.isPending}
           error={
             savePage.isError

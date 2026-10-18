@@ -27,7 +27,7 @@ export function FavoritePageButton({ pageId, slug, isFavorite }: FavoritePageBut
   const errorId = useId()
 
   const mutation = useMutation({
-    mutationFn: (next: boolean) => setPageFavorite(pageId, next),
+    mutationFn: (next: boolean) => setPageFavorite(pageId, next, slug),
     onSuccess: () => {
       // The star is echoed by the page details, the tree node and every
       // favorites list, so all three namespaces refetch.

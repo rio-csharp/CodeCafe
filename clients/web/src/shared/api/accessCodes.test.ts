@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import {
   ACCESS_CODE_HEADER,
   accessCodeForPath,
+  accessCodeHeaderFor,
   clearAccessCode,
   getAccessCode,
   setAccessCode,
@@ -39,6 +40,15 @@ describe('access code store', () => {
 
   it('exports the wire header name the server reads', () => {
     expect(ACCESS_CODE_HEADER).toBe('X-CodeCafe-Access-Code')
+  })
+
+  it('builds explicit headers for page-id endpoints', () => {
+    setAccessCode('espresso-notes', 'let-me-in')
+
+    expect(accessCodeHeaderFor('espresso-notes')).toEqual({
+      [ACCESS_CODE_HEADER]: 'let-me-in',
+    })
+    expect(accessCodeHeaderFor('other')).toEqual({})
   })
 })
 

@@ -197,13 +197,8 @@ function SettingsForm({ slug, notebook }: { slug: string; notebook: NotebookDeta
   const save = useMutation({
     mutationFn: async () => {
       let activeSlug = slug
-      if (slugDirty) {
-        // The rename moves the address; every other patch must follow it,
-        // or they would 404 on the old slug.
-        const renamed = await changeNotebookSlug(slug, normalizedSlug)
-        activeSlug = renamed.slug
-      }
-      // Only the touched halves ride out; unchanged halves stay put.
+      // Apply the content changes FIRST: they still address the old slug, so a failure here
+      // leaves a usable dialog instead of a notebook that already moved.
       await Promise.all([
         basicsDirty
           ? updateNotebook(activeSlug, {
@@ -214,6 +209,13 @@ function SettingsForm({ slug, notebook }: { slug: string; notebook: NotebookDeta
           : Promise.resolve(null),
         tagsDirty ? setNotebookTags(activeSlug, tags) : Promise.resolve(null),
       ])
+
+      // The rename moves the address, so it goes last; every earlier patch used the old one.
+      if (slugDirty) {
+        const renamed = await changeNotebookSlug(slug, normalizedSlug)
+        activeSlug = renamed.slug
+      }
+
       return activeSlug
     },
     onSuccess: (activeSlug) => {

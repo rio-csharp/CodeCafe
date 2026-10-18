@@ -794,8 +794,8 @@ describe('PageEditor', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'editor.save' }))
       const [, ops] = onSave.mock.calls[0] as [string, Record<string, unknown>[]]
-      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'block-1' }))
-      expect(ops).toContainEqual(expect.objectContaining({ kind: 'Delete', blockId: 'child-1' }))
+      // Only the subtree root is deleted; the server cascades the child.
+      expect(ops).toEqual([{ kind: 'Delete', blockId: 'block-1' }])
     })
 
     it('Enter on a selected block returns to editing it', () => {
