@@ -121,10 +121,12 @@ public sealed class NotebooksController(ISender sender) : ControllerBase
         => sender.Send(new SetNotebookFavoriteCommand(idOrSlug, request.IsFavorite), cancellationToken);
 
     [HttpPost("notebooks/{idOrSlug}/shares")]
+    [EnableRateLimiting(RateLimiterExtensions.SharePolicy)]
     public Task<Result> Share(string idOrSlug, ShareRequest request, CancellationToken cancellationToken)
         => sender.Send(new ShareNotebookCommand(idOrSlug, request.Email, request.Role), cancellationToken);
 
     [HttpDelete("notebooks/{idOrSlug}/shares/{userId:guid}")]
+    [EnableRateLimiting(RateLimiterExtensions.SharePolicy)]
     public Task<Result> RevokeShare(string idOrSlug, Guid userId, CancellationToken cancellationToken)
         => sender.Send(new RevokeNotebookShareCommand(idOrSlug, userId), cancellationToken);
 

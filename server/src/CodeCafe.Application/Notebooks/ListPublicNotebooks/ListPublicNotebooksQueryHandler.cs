@@ -62,7 +62,8 @@ public sealed class ListPublicNotebooksQueryHandler(
                 notebook.Tags.ToList(),
                 pageCounts.GetValueOrDefault(notebook.Id),
                 notebook.UpdatedAtUtc,
-                ownerNames.GetValueOrDefault(notebook.OwnerId, string.Empty)
+                ownerNames.GetValueOrDefault(notebook.OwnerId, string.Empty),
+                IsOwner: notebook.OwnerId == currentUserAccessor.User?.Id
             ))
             .ToList();
 

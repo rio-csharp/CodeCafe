@@ -25,6 +25,14 @@ public static class NotebookErrors
         ErrorKind.Forbidden
     );
 
+    // Access codes only gate Unlisted notebooks; a code on a Public notebook would be a promise
+    // the read path never keeps.
+    public static readonly Error AccessCodeRequiresUnlisted = new(
+        "access_code_requires_unlisted",
+        "An access code can only be set on an Unlisted notebook.",
+        ErrorKind.Validation
+    );
+
     public static readonly Error ShareTargetNotFound = new(
         "share_target_not_found",
         "No registered user has this email address.",

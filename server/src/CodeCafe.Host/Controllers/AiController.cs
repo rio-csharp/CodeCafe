@@ -24,7 +24,7 @@ public sealed class AiController(ISender sender) : ControllerBase
     [ProducesResponseType(typeof(Result), StatusCodes.Status429TooManyRequests)]
     public IResult Chat(string idOrSlug, AiChatRequest request)
         => new SseResult<AiChatEvent>(
-            sender.CreateStream(new StartAiChatCommand(idOrSlug, request.Messages)),
+            sender.CreateStream(new StartAiChatCommand(idOrSlug, request.Messages, AccessCodeHeader.Read(Request))),
             aiEvent => aiEvent.Kind,
             failureEvent: _ => new AiChatErrorEvent(AiErrors.StreamFailed.Code, AiErrors.StreamFailed.Message)
         );

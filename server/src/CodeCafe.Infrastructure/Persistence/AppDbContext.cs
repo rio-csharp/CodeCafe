@@ -54,6 +54,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options, IPublis
     async Task<ITransaction> IUnitOfWork.BeginTransactionAsync(CancellationToken cancellationToken)
         => new EfTransaction(await Database.BeginTransactionAsync(cancellationToken));
 
+    void IUnitOfWork.DiscardChanges() => ChangeTracker.Clear();
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var domainEvents = ChangeTracker

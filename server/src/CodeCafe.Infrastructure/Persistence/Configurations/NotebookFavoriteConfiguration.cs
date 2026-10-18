@@ -13,6 +13,9 @@ public sealed class NotebookFavoriteConfiguration : IEntityTypeConfiguration<Not
 
         builder.HasKey(favorite => new { favorite.NotebookId, favorite.UserId });
 
+        // The user's favorites read filters by UserId alone; the primary key starts at NotebookId.
+        builder.HasIndex(favorite => new { favorite.UserId, favorite.NotebookId });
+
         builder
             .HasOne<Notebook>()
             .WithMany()

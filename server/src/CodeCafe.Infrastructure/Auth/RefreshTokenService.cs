@@ -13,6 +13,9 @@ public sealed class RefreshTokenService(AppDbContext dbContext, IOptions<AuthOpt
 {
     private const int TokenByteCount = 64;
 
+    // Two tabs refreshing at once is a benign race; a replay minutes later is not.
+    private static readonly TimeSpan ReuseGrace = TimeSpan.FromSeconds(30);
+
     public Task<IssuedRefreshToken> IssueAsync(Guid userId, CancellationToken cancellationToken)
     {
         var bytes = RandomNumberGenerator.GetBytes(TokenByteCount);
@@ -27,21 +30,33 @@ public sealed class RefreshTokenService(AppDbContext dbContext, IOptions<AuthOpt
         return Task.FromResult(new IssuedRefreshToken(Base64Url.EncodeToString(bytes), expiresAtUtc));
     }
 
-    public async Task<Guid?> ConsumeAsync(string token, CancellationToken cancellationToken)
+    public async Task<RefreshTokenConsumption> ConsumeAsync(string token, CancellationToken cancellationToken)
     {
         var hash = TryComputeHash(token);
         if (hash is null)
         {
-            return null;
+            return new RefreshTokenConsumption(null);
         }
 
-        var userId = await dbContext
-            .RefreshTokens.Where(candidate => candidate.TokenHash == hash)
-            .Select(candidate => (Guid?)candidate.UserId)
+        var stored = await dbContext
+            .RefreshTokens
+            .Where(candidate => candidate.TokenHash == hash)
+            .Select(candidate => new { candidate.UserId, candidate.RevokedAtUtc, candidate.ExpiresAtUtc })
             .SingleOrDefaultAsync(cancellationToken);
-        if (userId is null)
+        if (stored is null)
         {
-            return null;
+            return new RefreshTokenConsumption(null);
+        }
+
+        var nowUtc = DateTimeOffset.UtcNow;
+
+        // A revoked token presented again is either a stolen-token replay or two tabs racing to
+        // refresh. The short grace window keeps the benign race from logging the user out; a
+        // reuse after it revokes the whole family, so a thief cannot keep rotating.
+        if (stored.RevokedAtUtc is { } revokedAtUtc && nowUtc - revokedAtUtc > ReuseGrace)
+        {
+            await RevokeAllForUserAsync(stored.UserId, cancellationToken);
+            return new RefreshTokenConsumption(null, FamilyRevoked: true);
         }
 
         // The conditional UPDATE is the race judge: rotation depends on single use, and a
@@ -49,7 +64,6 @@ public sealed class RefreshTokenService(AppDbContext dbContext, IOptions<AuthOpt
         // Exactly one consumer rewrites an active row; the rest affect 0 rows and lose. Runs
         // inside the caller's transaction, so the winner's row lock is held until commit and
         // losers re-evaluate the predicate after waiting on the lock.
-        var nowUtc = DateTimeOffset.UtcNow;
         var consumed = await dbContext
             .RefreshTokens.Where(candidate =>
                 candidate.TokenHash == hash
@@ -60,7 +74,7 @@ public sealed class RefreshTokenService(AppDbContext dbContext, IOptions<AuthOpt
                 update => update.SetProperty(candidate => candidate.RevokedAtUtc, nowUtc),
                 cancellationToken
             );
-        return consumed == 1 ? userId : null;
+        return new RefreshTokenConsumption(consumed == 1 ? stored.UserId : null);
     }
 
     public async Task RevokeAsync(string token, CancellationToken cancellationToken)

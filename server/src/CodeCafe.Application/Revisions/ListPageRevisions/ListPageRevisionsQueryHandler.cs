@@ -36,7 +36,7 @@ public sealed class ListPageRevisionsQueryHandler(
     {
         var context = await PageAccess.RequireReadAsync(
             query.PageId,
-            accessCode: null,
+            query.AccessCode,
             currentUserAccessor,
             notebooks,
             pages,

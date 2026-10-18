@@ -16,6 +16,10 @@ public interface IPageRepository
     // Non-trashed pages of the notebook, ordered by SortKey; tree assembly happens in memory.
     Task<IReadOnlyList<Page>> ListByNotebookAsync(Guid notebookId, CancellationToken cancellationToken);
 
+    // True when the user holds a page-level share anywhere in the notebook. Notebook details use
+    // it to let a page-share recipient reach the reader, mirroring the tree's shared-subtree view.
+    Task<bool> HasSharedPageAsync(Guid notebookId, Guid userId, CancellationToken cancellationToken);
+
     // Trashed pages are invisible to normal queries; these two see past the filter.
     Task<Page?> FindTrashedByIdAsync(Guid pageId, CancellationToken cancellationToken);
 

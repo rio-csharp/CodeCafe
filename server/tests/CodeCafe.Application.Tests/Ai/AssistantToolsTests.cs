@@ -82,7 +82,13 @@ public sealed class AssistantToolsTests
             tools,
             tool => tool.Name is "purge_notebook" or "purge_trashed_notebooks" or "purge_page"
                 or "share_notebook" or "share_page" or "revoke_notebook_share" or "revoke_page_share"
-                or "set_notebook_access_code" or "ai_chat"
+                or "set_notebook_access_code" or "ai_chat" or "create_notebook" or "change_notebook_slug"
+        );
+        // Publishing is a sharing decision: update_notebook must not accept visibility.
+        Assert.DoesNotContain(
+            "visibility",
+            Find(tools, "update_notebook").Description ?? string.Empty,
+            StringComparison.OrdinalIgnoreCase
         );
     }
 

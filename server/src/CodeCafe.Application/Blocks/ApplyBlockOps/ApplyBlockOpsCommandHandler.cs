@@ -31,6 +31,15 @@ public sealed class ApplyBlockOpsCommandHandler(
 {
     public async Task<Result<IReadOnlyList<BlockOpResultDto>>> Handle(ApplyBlockOpsCommand command, CancellationToken cancellationToken)
     {
+        // Lock the page row first, then authorize and read the chain, inside one explicit
+        // transaction so the lock survives until commit. Even a payload-only or empty batch takes
+        // the lock: making it conditional on the op mix would couple the caller's batch
+        // composition to lock ordering, and one FOR UPDATE is cheap. Loading the page after the
+        // lock matters: EF returns the tracked instance as-is, so a pre-lock read would hand the
+        // chain helpers stale pointers.
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await blocks.LockPageAsync(command.PageId, cancellationToken);
+
         var context = await PageAccess.RequireWriteAsync(command.PageId, currentUserAccessor, notebooks, pages, cancellationToken);
         if (context.Error is { } error)
         {
@@ -46,14 +55,11 @@ public sealed class ApplyBlockOpsCommandHandler(
             return Result.Success<IReadOnlyList<BlockOpResultDto>>([]);
         }
 
-        // Every non-empty batch locks the page row, even a payload-only one: making the lock
-        // conditional on the op mix would couple the caller's batch composition to lock ordering,
-        // and one FOR UPDATE per batch is cheap. Lock FIRST, then read the chain, inside one
-        // explicit transaction so the lock survives until commit.
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
-        await blocks.LockPageAsync(command.PageId, cancellationToken);
         var working = (await blocks.ListByPageAsync(command.PageId, cancellationToken)).ToList();
         var tempIds = new Dictionary<string, Block>(StringComparer.Ordinal);
+        // Blocks removed earlier in this batch: a later Delete naming one of them is redundant
+        // (the subtree delete already cascaded), not an error.
+        var removed = new HashSet<Guid>();
 
         // One batch id for the whole run: the page history shows the batch as a single group.
         var batchId = Guid.CreateVersion7();
@@ -66,13 +72,15 @@ public sealed class ApplyBlockOpsCommandHandler(
                 BlockOpKind.Insert => ApplyInsert(op, page, working, tempIds, recorded, batchId, command.DryRun),
                 BlockOpKind.Update => ApplyUpdate(op, working, tempIds, recorded, batchId),
                 BlockOpKind.Move => ApplyMove(op, page, working, tempIds, recorded, batchId),
-                BlockOpKind.Delete => ApplyDelete(op, page, working, tempIds, recorded, batchId, command.DryRun),
+                BlockOpKind.Delete => ApplyDelete(op, page, working, tempIds, removed, recorded, batchId, command.DryRun),
                 _ => Result.Failure<BlockOpResultDto>(BlockErrors.InvalidBlockPayload),
             };
             if (!outcome.IsSuccess)
             {
                 // All-or-nothing: the transaction is disposed without a commit, rolling back every
-                // op that already ran.
+                // op that already ran. The tracked mutations must go too, because this scoped
+                // context can survive the handler (AI tool calls share one request scope).
+                unitOfWork.DiscardChanges();
                 return Result.Failure<IReadOnlyList<BlockOpResultDto>>(outcome.Error!);
             }
 
@@ -86,8 +94,13 @@ public sealed class ApplyBlockOpsCommandHandler(
             await unitOfWork.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
-        // DryRun: no SaveChanges and no commit — the transaction rolls back on dispose and the
-        // tracked-entity mutations are discarded with the context, so the run leaves no trace.
+        else
+        {
+            // DryRun: no SaveChanges and no commit — the transaction rolls back on dispose, and
+            // the in-memory mutations are dropped explicitly so a later SaveChanges in the same
+            // request scope cannot flush them.
+            unitOfWork.DiscardChanges();
+        }
 
         return Result.Success<IReadOnlyList<BlockOpResultDto>>(results);
     }
@@ -217,6 +230,7 @@ public sealed class ApplyBlockOpsCommandHandler(
         Page page,
         List<Block> working,
         Dictionary<string, Block> tempIds,
+        HashSet<Guid> removed,
         List<BlockRevision> recorded,
         Guid batchId,
         bool dryRun
@@ -224,13 +238,18 @@ public sealed class ApplyBlockOpsCommandHandler(
     {
         if (op.BlockId is null || BlockPositions.ResolveReference(op.BlockId, working, tempIds) is not { } block)
         {
-            return Result.Failure<BlockOpResultDto>(BlockErrors.NotFound);
+            // A Delete of a block an earlier Delete in the same batch already cascaded is a
+            // no-op, not a failure: the client diff and an AI agent both naturally emit both.
+            return Guid.TryParse(op.BlockId, out var alreadyRemoved) && removed.Contains(alreadyRemoved)
+                ? Result.Success(new BlockOpResultDto(null, alreadyRemoved, null))
+                : Result.Failure<BlockOpResultDto>(BlockErrors.NotFound);
         }
 
         var doomed = BlockChain.DeleteSubtree(block, page, working);
         foreach (var dead in doomed)
         {
             working.Remove(dead);
+            removed.Add(dead.Id);
         }
 
         // TempIds minted for now-deleted blocks must stop resolving, so a later op referencing

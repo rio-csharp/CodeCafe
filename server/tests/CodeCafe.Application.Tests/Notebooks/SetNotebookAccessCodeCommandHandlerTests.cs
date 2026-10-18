@@ -1,4 +1,5 @@
 using CodeCafe.Application.Common.Security;
+using CodeCafe.Application.Notebooks;
 using CodeCafe.Application.Notebooks.SetNotebookAccessCode;
 using CodeCafe.Domain.Identity;
 using CodeCafe.Domain.Notebooks;
@@ -11,7 +12,7 @@ public sealed class SetNotebookAccessCodeCommandHandlerTests
     public async Task Handle_StoresHashOnly()
     {
         var owner = SeedOwner();
-        var notebook = SeedNotebook(owner);
+        var notebook = SeedNotebook(owner, NotebookVisibility.Unlisted);
         var handler = CreateHandler(owner, notebook);
 
         var result = await handler.Handle(
@@ -25,10 +26,27 @@ public sealed class SetNotebookAccessCodeCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RejectsAccessCode_OnNonUnlistedNotebook()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner, NotebookVisibility.Public);
+        var handler = CreateHandler(owner, notebook);
+
+        var result = await handler.Handle(
+            new SetNotebookAccessCodeCommand(notebook.Slug, "secret-code"),
+            CancellationToken.None
+        );
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(NotebookErrors.AccessCodeRequiresUnlisted, result.Error);
+        Assert.Null(notebook.AccessCodeHash);
+    }
+
+    [Fact]
     public async Task Handle_ClearsAccessCode_WithNull()
     {
         var owner = SeedOwner();
-        var notebook = SeedNotebook(owner);
+        var notebook = SeedNotebook(owner, NotebookVisibility.Private);
         notebook.SetAccessCodeHash("hashed:old-code");
         var handler = CreateHandler(owner, notebook);
 
@@ -43,8 +61,8 @@ public sealed class SetNotebookAccessCodeCommandHandlerTests
 
     private static User SeedOwner() => User.Create("owner@example.com", "owner@example.com", "Owner", "hash");
 
-    private static Notebook SeedNotebook(User owner)
-        => Notebook.Create(owner.Id, "Title", null, "some-slug", NotebookVisibility.Private);
+    private static Notebook SeedNotebook(User owner, NotebookVisibility visibility)
+        => Notebook.Create(owner.Id, "Title", null, "some-slug", visibility);
 
     private static SetNotebookAccessCodeCommandHandler CreateHandler(User currentUser, Notebook notebook)
         => new(

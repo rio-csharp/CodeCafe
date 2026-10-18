@@ -32,6 +32,12 @@ public sealed class RestorePageToRevisionCommandHandler(
 {
     public async Task<Result> Handle(RestorePageToRevisionCommand command, CancellationToken cancellationToken)
     {
+        // Restoring rewrites structure, so it follows the same order as the block writers: lock
+        // the page, then authorize and read. Authorizing first would leave the tracked Page entity
+        // stale once the lock is acquired.
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await blocks.LockPageAsync(command.PageId, cancellationToken);
+
         var context = await PageAccess.RequireWriteAsync(command.PageId, currentUserAccessor, notebooks, pages, cancellationToken);
         if (context.Error is { } error)
         {
@@ -40,8 +46,6 @@ public sealed class RestorePageToRevisionCommandHandler(
 
         var (_, page, _, _) = context.Value!;
 
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
-        await blocks.LockPageAsync(command.PageId, cancellationToken);
         var current = (await blocks.ListByPageAsync(command.PageId, cancellationToken)).ToList();
         // Reads the page's ENTIRE history to reconstruct the target state — the spot the
         // retention/compaction strategies on BlockRevision would shrink for long-lived pages.

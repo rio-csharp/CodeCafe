@@ -183,6 +183,8 @@ internal sealed class StubUnitOfWork(Exception? saveFailure = null) : IUnitOfWor
 
     public int SaveChangesCallCount { get; private set; }
 
+    public int DiscardChangesCallCount { get; private set; }
+
     public int FailuresRemaining
     {
         get => _failuresRemaining;
@@ -203,6 +205,8 @@ internal sealed class StubUnitOfWork(Exception? saveFailure = null) : IUnitOfWor
 
     public Task<ITransaction> BeginTransactionAsync(CancellationToken cancellationToken)
         => Task.FromResult<ITransaction>(StubTransaction.Instance);
+
+    public void DiscardChanges() => DiscardChangesCallCount++;
 }
 
 // No database, no transaction: commit and dispose are no-ops.

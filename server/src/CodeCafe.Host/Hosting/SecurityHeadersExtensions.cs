@@ -15,6 +15,13 @@ internal static class SecurityHeadersExtensions
                 headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'";
             }
 
+            // API reads carry per-user state (favorites, shares, page bodies). A shared proxy or
+            // CDN must never replay one caller's response to another.
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.Headers.CacheControl = "no-store";
+            }
+
             await next(context);
         });
 }

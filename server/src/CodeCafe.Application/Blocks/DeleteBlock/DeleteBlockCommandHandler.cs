@@ -25,6 +25,12 @@ public sealed class DeleteBlockCommandHandler(
 {
     public async Task<Result> Handle(DeleteBlockCommand command, CancellationToken cancellationToken)
     {
+        // Structural mutation: lock the page row FIRST, then authorize and read the chain.
+        // RequireWriteAsync loads the page, and EF returns an already-tracked instance unchanged,
+        // so authorizing before the lock would hand BlockChain stale pointers.
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await blocks.LockPageAsync(command.PageId, cancellationToken);
+
         var context = await PageAccess.RequireWriteAsync(command.PageId, currentUserAccessor, notebooks, pages, cancellationToken);
         if (context.Error is { } error)
         {
@@ -39,10 +45,6 @@ public sealed class DeleteBlockCommandHandler(
             return Result.Failure(BlockErrors.NotFound);
         }
 
-        // Structural mutation: lock the page row before reading the chain, inside one explicit
-        // transaction so the FOR UPDATE survives until the delete commits.
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
-        await blocks.LockPageAsync(command.PageId, cancellationToken);
         var pageBlocks = await blocks.ListByPageAsync(command.PageId, cancellationToken);
 
         // DeleteSubtree repairs the external chain and clears every intra-subtree pointer before

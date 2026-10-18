@@ -136,10 +136,12 @@ public sealed class RefreshTokenCommandHandlerTests
             return Task.FromResult(new IssuedRefreshToken("refresh-token", DateTimeOffset.UtcNow.AddDays(30)));
         }
 
-        public Task<Guid?> ConsumeAsync(string token, CancellationToken cancellationToken)
+        public Task<RefreshTokenConsumption> ConsumeAsync(string token, CancellationToken cancellationToken)
         {
             ConsumedTokens.Add(token);
-            return Task.FromResult(UserIdForToken.TryGetValue(token, out var userId) ? userId : (Guid?)null);
+            return Task.FromResult(
+                new RefreshTokenConsumption(UserIdForToken.TryGetValue(token, out var userId) ? userId : null)
+            );
         }
 
         public Task RevokeAsync(string token, CancellationToken cancellationToken) => Task.CompletedTask;

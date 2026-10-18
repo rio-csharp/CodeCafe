@@ -6,6 +6,7 @@ using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.GetNotebookDetails;
 using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Notebooks.UpdateNotebook;
 
@@ -34,6 +35,15 @@ public sealed class UpdateNotebookCommandHandler(
             : command.Description.Trim() is { Length: > 0 } newDescription ? newDescription : null;
 
         notebook.UpdateDetails(title, description, command.Visibility ?? notebook.Visibility);
+
+        // The access code only gates Unlisted notebooks (see NotebookAccess.CheckRead). Leaving a
+        // stale hash on a Public/Private notebook would make the share dialog claim a protection
+        // that does not exist, so publishing or privatizing drops it.
+        if (notebook.Visibility != NotebookVisibility.Unlisted)
+        {
+            notebook.SetAccessCodeHash(null);
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Result.Success(await NotebookDetailsMapping.ToDtoAsync(notebook, context.Value!.UserId, users, cancellationToken));

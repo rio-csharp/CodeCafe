@@ -133,6 +133,7 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         Assert.False(result.IsSuccess);
         Assert.Equal(BlockErrors.NotFound, result.Error);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+        Assert.Equal(1, unitOfWork.DiscardChangesCallCount);
     }
 
     [Fact]
@@ -169,6 +170,38 @@ public sealed class ApplyBlockOpsCommandHandlerTests
         Assert.Equal(1, a.Version);
         Assert.Null(a.NextSiblingId);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+        // The shared scoped context must not keep the previewed mutations.
+        Assert.Equal(1, unitOfWork.DiscardChangesCallCount);
+    }
+
+    [Fact]
+    public async Task Handle_DeletingAParentAndItsChildInOneBatch_IsIdempotent()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var page = SeedPage(notebook);
+        var parent = NewBlock(page, "a");
+        var child = NewBlock(page, "a", parent);
+        BlockChain.Link(parent, page, parent: null, after: null);
+        BlockChain.Link(child, page, parent, after: null);
+        var (handler, blocks, unitOfWork) = CreateHandler(owner.Id, notebook, page, parent, child);
+
+        var result = await handler.Handle(
+            new ApplyBlockOpsCommand(
+                page.Id,
+                [
+                    new BlockOp(BlockOpKind.Delete, parent.Id.ToString(), null, null, null, null, null),
+                    // The first delete already cascaded the child; the client diff emits both.
+                    new BlockOp(BlockOpKind.Delete, child.Id.ToString(), null, null, null, null, null),
+                ]
+            ),
+            CancellationToken.None
+        );
+
+        Assert.True(result.IsSuccess, result.Error?.Code);
+        Assert.Empty(blocks);
+        Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+        Assert.Equal(0, unitOfWork.DiscardChangesCallCount);
     }
 
     [Fact]

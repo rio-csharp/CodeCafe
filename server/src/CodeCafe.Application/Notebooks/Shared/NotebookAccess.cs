@@ -2,6 +2,7 @@ using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Common;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
+using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Sharing;
 
@@ -94,6 +95,7 @@ public static class NotebookAccess
         string notebookIdOrSlug,
         ICurrentUserAccessor currentUserAccessor,
         INotebookRepository notebooks,
+        IPageRepository pages,
         CancellationToken cancellationToken
     )
     {
@@ -103,9 +105,21 @@ public static class NotebookAccess
         }
 
         var notebook = await notebooks.FindByIdOrSlugAsync(notebookIdOrSlug, cancellationToken);
-        return notebook is null || (notebook.Visibility != NotebookVisibility.Public && notebook.OwnerId != userId && !notebook.IsSharedWith(userId))
-            ? Result.Failure<NotebookAccessContext>(NotebookErrors.NotFound)
-            : Result.Success(new NotebookAccessContext(notebook, userId));
+        if (notebook is null)
+        {
+            return Result.Failure<NotebookAccessContext>(NotebookErrors.NotFound);
+        }
+
+        // Mirrors the reader's visibility rule: a page share surfaces the notebook card, so the
+        // card's favorite action has to be allowed too.
+        var reachable = notebook.Visibility == NotebookVisibility.Public
+            || notebook.OwnerId == userId
+            || notebook.IsSharedWith(userId)
+            || await pages.HasSharedPageAsync(notebook.Id, userId, cancellationToken);
+
+        return reachable
+            ? Result.Success(new NotebookAccessContext(notebook, userId))
+            : Result.Failure<NotebookAccessContext>(NotebookErrors.NotFound);
     }
 
     // Read-side answer for DTOs: the same rule RequireWriterAsync enforces on the write path.

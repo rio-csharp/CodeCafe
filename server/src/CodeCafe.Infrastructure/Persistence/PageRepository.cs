@@ -44,6 +44,12 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
             .OrderBy(page => page.SortKey)
             .ToListAsync(cancellationToken);
 
+    public Task<bool> HasSharedPageAsync(Guid notebookId, Guid userId, CancellationToken cancellationToken)
+        => dbContext.Pages.AnyAsync(
+            page => page.NotebookId == notebookId && page.Shares.Any(share => share.UserId == userId),
+            cancellationToken
+        );
+
     public async Task<Page?> FindTrashedByIdAsync(Guid pageId, CancellationToken cancellationToken)
         => await dbContext.Pages
             .IgnoreQueryFilters()
@@ -73,6 +79,7 @@ public sealed class PageRepository(AppDbContext dbContext) : IPageRepository
         var matches =
             from page in dbContext.Pages
             join notebook in dbContext.Notebooks on page.NotebookId equals notebook.Id
+            where !page.IsArchived
             where notebook.OwnerId == userId || notebook.Shares.Any(share => share.UserId == userId)
             where EF.Functions.ILike(page.Title, pattern, LikePatterns.EscapeCharacter)
                 || dbContext.Blocks.Any(

@@ -10,21 +10,25 @@ using CodeCafe.Application.Notebooks;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.GetNotebookTree;
 using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Domain.Notebooks;
 using CodeCafe.Domain.Revisions;
 using MediatR;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CodeCafe.Application.Ai.StartAiChat;
 
 public sealed class StartAiChatCommandHandler(
     ICurrentUserAccessor currentUserAccessor,
     INotebookRepository notebooks,
+    IPageRepository pages,
     IPasswordHasher passwordHasher,
     ISender sender,
     IAiChatClientFactory chatClientFactory,
     IChangeSourceAccessor changeSource,
-    AiOptions options
+    AiOptions options,
+    IServiceScopeFactory? scopeFactory = null
 ) : IStreamCommandHandler<StartAiChatCommand, AiChatEvent>
 {
     public async IAsyncEnumerable<AiChatEvent> Handle(
@@ -56,11 +60,17 @@ public sealed class StartAiChatCommandHandler(
             yield break;
         }
 
-        // Same existence-hiding rule as every other read endpoint.
-        if (NotebookAccess.CheckRead(notebook, userId, accessCode: null, passwordHasher) is { } accessError)
+        // Same existence-hiding rule as every other read endpoint. A page-share recipient reaches
+        // the notebook through the shared subtree, just as they do in the reader.
+        if (NotebookAccess.CheckRead(notebook, userId, request.AccessCode, passwordHasher) is { } accessError)
         {
-            yield return ErrorEvent(accessError);
-            yield break;
+            var hasSharedPage = userId is { } sharedUserId
+                && await pages.HasSharedPageAsync(notebook.Id, sharedUserId, cancellationToken);
+            if (!hasSharedPage)
+            {
+                yield return ErrorEvent(accessError);
+                yield break;
+            }
         }
 
         if (request.Messages.Sum(message => message.Content.Length) > options.MaxHistoryChars)
@@ -75,7 +85,9 @@ public sealed class StartAiChatCommandHandler(
         var outline = await LoadOutline(request, cancellationToken);
         var chatOptions = new ChatOptions
         {
-            Tools = [.. AssistantTools.Create(sender, notebook, options)],
+            // Each tool call gets a fresh scope so dry runs and failed batches cannot leak tracked
+            // mutations into the next tool through a shared DbContext.
+            Tools = [.. AssistantTools.Create(scopeFactory is null ? sender : new ScopedSender(scopeFactory), notebook, options)],
             MaxOutputTokens = options.MaxOutputTokens,
         };
 

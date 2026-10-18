@@ -11,6 +11,7 @@ internal static class RateLimiterExtensions
     public const string AiPolicy = "ai";
     public const string McpPolicy = "mcp";
     public const string AccessCodePolicy = "access-code";
+    public const string SharePolicy = "share";
 
     public static IServiceCollection AddCodeCafeRateLimiter(this IServiceCollection services)
         => services.AddRateLimiter(options =>
@@ -32,6 +33,13 @@ internal static class RateLimiterExtensions
                 RateLimitPartition.GetFixedWindowLimiter(
                     PartitionKey(context),
                     _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+
+            // Share endpoints answer "does this email exist?". The error still does, but a tight
+            // per-user window makes bulk enumeration impractical.
+            options.AddPolicy(SharePolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    PartitionKey(context),
+                    _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1) }));
 
             options.AddPolicy(AccessCodePolicy, context =>
                 context.Request.Headers.ContainsKey(AccessCodeHeader.Name)

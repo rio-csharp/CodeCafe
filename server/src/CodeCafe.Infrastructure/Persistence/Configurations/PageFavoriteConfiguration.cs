@@ -13,6 +13,9 @@ public sealed class PageFavoriteConfiguration : IEntityTypeConfiguration<PageFav
 
         builder.HasKey(favorite => new { favorite.PageId, favorite.UserId });
 
+        // The user's favorites read filters by UserId alone; the primary key starts at PageId.
+        builder.HasIndex(favorite => new { favorite.UserId, favorite.PageId });
+
         builder
             .HasOne<Page>()
             .WithMany()

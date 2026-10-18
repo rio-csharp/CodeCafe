@@ -12,4 +12,7 @@ public sealed record NotebookSummaryDto(
     int PageCount,
     DateTimeOffset UpdatedAtUtc,
     // Attribution matters on a sharing product: every card shows whose book this is.
-    string OwnerDisplayName);
+    string OwnerDisplayName,
+    // Owner-only actions (settings, sharing, trash) must not be offered on a shared card.
+    bool IsOwner = false
+);
