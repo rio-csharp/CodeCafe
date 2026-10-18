@@ -79,4 +79,6 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 - **M3 — auth** ✅: login/register, token plumbing, logged-in homepage (own + shared alongside the public catalog).
 - **M4 — notebook reader** ✅ (see `frontend-m4-reader.md`): read-only notebook browsing —
   routing, page tree, block rendering.
-- **M5+** — editor, creation, trash, search, AI. Planned later.
+- **M5 — editor / creation** ✅: inline block editor, slash menu, paste, undo/redo, revisions.
+- **M6 — trash / search / AI** ✅: notebook and page trash, full-text page search, the streamed AI
+  panel with tool activity.
