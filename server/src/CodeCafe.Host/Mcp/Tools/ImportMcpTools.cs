@@ -1,7 +1,7 @@
 using System.ComponentModel;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
-using Microsoft.Extensions.Options;
 
 namespace CodeCafe.Host.Mcp.Tools;
 

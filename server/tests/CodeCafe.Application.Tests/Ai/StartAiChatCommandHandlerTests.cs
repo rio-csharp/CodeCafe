@@ -244,6 +244,7 @@ public sealed class StartAiChatCommandHandlerTests
             new StartAiChatCommandHandler(
                 new StubCurrentUserAccessor(currentUserId is { } id ? new CurrentUser(id) : null),
                 notebooks,
+                new StubPageRepository(notebooks),
                 new StubPasswordHasher(),
                 sender,
                 new StubAiChatClientFactory(chatClient),

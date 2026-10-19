@@ -48,6 +48,8 @@ import { BlockHistoryDialog } from './BlockHistoryDialog'
 
 export interface PageEditorProps {
   page: PageDetails
+  /** Notebook slug, forwarded to page-id history reads for access-code notebooks. */
+  slug?: string
   saving: boolean
   /** Set when the last save attempt failed; shown inline in the editor bar. */
   error?: string | null
@@ -84,7 +86,7 @@ function spansOf(block: EditorBlock): SpanDto[] {
  * from parentBlockId and rendered recursively. Other types render read-only
  * from the untouched source tree. Escape cancels, Ctrl/Cmd+Enter saves.
  */
-export function PageEditor({ page, saving, error = null, onSave, onCancel, onBlockRestored }: PageEditorProps) {
+export function PageEditor({ page, slug, saving, error = null, onSave, onCancel, onBlockRestored }: PageEditorProps) {
   const { t } = useTranslation()
   const [title, setTitle] = useState(page.title)
   // An empty page still needs somewhere to type: start from one fresh paragraph.
@@ -259,6 +261,12 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel, onBlo
       }
 
       if (event.key === 'Escape') {
+        // A dialog opened from the editor owns Escape; the editor must not also cancel and throw
+        // away the draft. DialogShell is a sibling document listener, so it cannot stop this one.
+        if (historyBlockId !== null) {
+          return
+        }
+
         // Selection mode eats the first Escape; the page-level cancel is next.
         if (blockSelection !== null) {
           event.preventDefault()
@@ -340,7 +348,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel, onBlo
     return () => {
       document.removeEventListener('keydown', handler)
     }
-  }, [blockSelection, selectedIds, visibleBlocks, draft, canSave, onCancel, save])
+  }, [blockSelection, selectedIds, visibleBlocks, draft, canSave, onCancel, save, historyBlockId])
 
   const splitBlock = (id: string, offset: number) => {
     const source = draft.find((entry) => entry.id === id)
@@ -841,6 +849,7 @@ export function PageEditor({ page, saving, error = null, onSave, onCancel, onBlo
       {historyBlockId !== null ? (
         <BlockHistoryDialog
           pageId={page.id}
+          slug={slug}
           blockId={historyBlockId}
           onClose={() => {
             setHistoryBlockId(null)

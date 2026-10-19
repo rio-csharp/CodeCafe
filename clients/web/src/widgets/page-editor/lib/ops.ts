@@ -168,8 +168,15 @@ export function diffToOps(
 
   ops.push(...movesEarly, ...inserts, ...movesLate)
 
+  // Only the TOPMOST doomed blocks get a Delete: the server cascades a subtree, so emitting a
+  // Delete for a child whose ancestor is already deleted makes the batch fail with block_not_found.
+  const doomedWithDoomedParent = new Set(
+    original
+      .filter((block) => block.parentBlockId !== null && doomedIds.has(block.parentBlockId))
+      .map((block) => block.id),
+  )
   for (const block of original) {
-    if (doomedIds.has(block.id)) {
+    if (doomedIds.has(block.id) && !doomedWithDoomedParent.has(block.id)) {
       ops.push({ kind: 'Delete', blockId: block.id })
     }
   }

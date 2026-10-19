@@ -726,7 +726,7 @@ describe('NotebookReaderPage', () => {
     await user.click(await screen.findByRole('button', { name: 'More actions' }))
     await user.click(screen.getByRole('menuitem', { name: 'Export page' }))
 
-    expect(vi.mocked(exportPage)).toHaveBeenCalledWith('page-1')
+    expect(vi.mocked(exportPage)).toHaveBeenCalledWith('page-1', { headers: {} })
   })
 
   it('surfaces a themed error when the export fails', async () => {

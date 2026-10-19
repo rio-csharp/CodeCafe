@@ -13,6 +13,8 @@ import { RevisionRestoreButton } from './RevisionRestoreButton'
 
 export interface RevisionPreviewDialogProps {
   pageId: string
+  /** Notebook slug: page-id reads need it to carry the access code. */
+  slug: string
   /** The batch whose END state is being previewed. */
   atUtc: string
   /** The page's live blocks; the diff compares the snapshot against these. */
@@ -29,6 +31,7 @@ export interface RevisionPreviewDialogProps {
  */
 export function RevisionPreviewDialog({
   pageId,
+  slug,
   atUtc,
   currentBlocks,
   canWrite,
@@ -39,7 +42,7 @@ export function RevisionPreviewDialog({
 
   const snapshot = useQuery({
     queryKey: [...pageKeys.revisions(pageId), 'at', atUtc],
-    queryFn: ({ signal }) => getPageAtRevision(pageId, atUtc, signal),
+    queryFn: ({ signal }) => getPageAtRevision(pageId, atUtc, signal, slug),
   })
 
   const restore = useRestoreRevision(pageId, () => {

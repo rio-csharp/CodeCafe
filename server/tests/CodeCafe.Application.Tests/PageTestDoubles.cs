@@ -36,6 +36,11 @@ internal sealed class StubPageRepository(StubNotebookRepository? notebooks = nul
         );
     }
 
+    public Task<bool> HasSharedPageAsync(Guid notebookId, Guid userId, CancellationToken cancellationToken)
+        => Task.FromResult(
+            Live.Any(page => page.NotebookId == notebookId && page.IsSharedWith(userId))
+        );
+
     public Task<IReadOnlyList<Page>> ListChildrenAsync(Guid notebookId, Guid? parentId, CancellationToken cancellationToken)
         => Task.FromResult<IReadOnlyList<Page>>(
             Live.Where(page => page.NotebookId == notebookId && page.ParentId == parentId)

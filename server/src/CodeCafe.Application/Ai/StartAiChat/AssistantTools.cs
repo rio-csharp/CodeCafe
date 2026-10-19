@@ -7,8 +7,6 @@ using CodeCafe.Application.Blocks.MoveBlock;
 using CodeCafe.Application.Blocks.Shared;
 using CodeCafe.Application.Blocks.UpdateBlock;
 using CodeCafe.Application.Common;
-using CodeCafe.Application.Notebooks.ChangeNotebookSlug;
-using CodeCafe.Application.Notebooks.CreateNotebook;
 using CodeCafe.Application.Notebooks.DeleteNotebook;
 using CodeCafe.Application.Notebooks.ExportNotebook;
 using CodeCafe.Application.Notebooks.GetNotebookDetails;
@@ -46,12 +44,12 @@ namespace CodeCafe.Application.Ai.StartAiChat;
 // The assistant's tool surface. Each tool delegates to the real handler, so permission checks and
 // Ai revision attribution apply exactly as for a human caller.
 //
-// Three capabilities are deliberately absent, and the omission is the enforcement:
+// The omission of a capability is the enforcement:
 //   - permanent deletion (purge_*): unrecoverable, and the UI's confirmation dialog has no
 //     equivalent here;
-//   - sharing and access codes (share_*, revoke_*_share, set_notebook_access_code): these change
-//     who else can see the data, so a page carrying a prompt injection would gain a path to
-//     exfiltrate the notebook;
+//   - anything that changes who can see the data (share_*, revoke_*_share,
+//     set_notebook_access_code, create_notebook, visibility changes, slug changes): a page
+//     carrying a prompt injection would otherwise gain a path to publish or expose the notebook;
 //   - ai_chat: the assistant calling itself recurses without bound.
 // Trashing (delete_page / delete_notebook) stays available -- it is recoverable, and the matching
 // restore_* tools are here too.
@@ -88,28 +86,14 @@ public static class AssistantTools
                 "List notebooks visible to the current user, with optional free-text search, tag and favorite filters."
             ),
             AIFunctionFactory.Create(
-                async (string title, string? description, string? slug, NotebookVisibility visibility, CancellationToken cancellationToken) =>
+                async (string? title, string? description, CancellationToken cancellationToken) =>
                     ToolResult(
-                        await sender.Send(new CreateNotebookCommand(title, description, slug, visibility), cancellationToken),
-                        options
-                    ),
-                "create_notebook",
-                "Create a new notebook, separate from the one being discussed."
-            ),
-            AIFunctionFactory.Create(
-                async (string? title, string? description, NotebookVisibility? visibility, CancellationToken cancellationToken) =>
-                    ToolResult(
-                        await sender.Send(new UpdateNotebookCommand(notebookIdOrSlug, title, description, visibility), cancellationToken),
+                        // Visibility is deliberately not exposed: publishing is a sharing decision.
+                        await sender.Send(new UpdateNotebookCommand(notebookIdOrSlug, title, description, null), cancellationToken),
                         options
                     ),
                 "update_notebook",
-                "Update this notebook's title, description or visibility."
-            ),
-            AIFunctionFactory.Create(
-                async (string slug, CancellationToken cancellationToken) =>
-                    ToolResult(await sender.Send(new ChangeNotebookSlugCommand(notebookIdOrSlug, slug), cancellationToken), options),
-                "change_notebook_slug",
-                "Change this notebook's URL slug. Existing links to the old slug stop working."
+                "Update this notebook's title or description."
             ),
             AIFunctionFactory.Create(
                 async (bool isFavorite, CancellationToken cancellationToken) =>

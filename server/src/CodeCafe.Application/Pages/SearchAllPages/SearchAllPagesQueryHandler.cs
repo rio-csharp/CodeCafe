@@ -6,6 +6,7 @@ using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Pages.Shared;
+using CodeCafe.Domain.Pages;
 
 namespace CodeCafe.Application.Pages.SearchAllPages;
 
@@ -53,9 +54,19 @@ public sealed class SearchAllPagesQueryHandler(
 
         var page = matches.Take(pageSize).ToList();
         var items = new List<PageSearchHitDto>(page.Count);
+        // Paths need the ancestor chain; load each notebook's pages at most once instead of
+        // walking one ancestor query per hit.
+        var pagesByNotebook = new Dictionary<Guid, IReadOnlyDictionary<Guid, Page>>();
         foreach (var match in page)
         {
-            items.Add(await BuildHitAsync(match, trimmedQuery, cancellationToken));
+            if (!pagesByNotebook.TryGetValue(match.Page.NotebookId, out var notebookPages))
+            {
+                notebookPages = (await pages.ListByNotebookAsync(match.Page.NotebookId, cancellationToken))
+                    .ToDictionary(candidate => candidate.Id);
+                pagesByNotebook.Add(match.Page.NotebookId, notebookPages);
+            }
+
+            items.Add(BuildHit(match, trimmedQuery, notebookPages));
         }
 
         // The cursor format is opaque to callers: base64 of "{updatedAtUtc:o}|{id}". It stays
@@ -67,25 +78,25 @@ public sealed class SearchAllPagesQueryHandler(
         return Result.Success(new CursorPage<PageSearchHitDto>(items, nextCursor));
     }
 
-    // Paths are derived from the parent chain, so each hit walks its ancestors; the page size
-    // cap (50) and shallow trees keep the extra reads bounded. Title-only matches carry an empty
-    // snippet: the DTO's Snippet is non-nullable, and fetching a first-block preview would cost
-    // a second round trip per hit.
-    private async Task<PageSearchHitDto> BuildHitAsync(PageSearchMatch match, string query, CancellationToken cancellationToken)
-    {
-        var ancestors = await PageHierarchy.LoadAncestorsAsync(match.Page, pages, cancellationToken);
-        return new PageSearchHitDto(
+    // Paths are derived from the parent chain; the caller supplies the notebook's page map it
+    // already loaded. Title-only matches carry an empty snippet: the DTO's Snippet is
+    // non-nullable, and fetching a first-block preview would cost a second round trip per hit.
+    private static PageSearchHitDto BuildHit(
+        PageSearchMatch match,
+        string query,
+        IReadOnlyDictionary<Guid, Page> notebookPages
+    )
+        => new(
             match.Page.Id,
             match.Page.NotebookId,
             match.NotebookSlug,
             match.NotebookTitle,
             match.Page.Title,
-            PageHierarchy.PathOf(match.Page, ancestors),
+            PageHierarchy.PathOf(match.Page, notebookPages),
             match.MatchedBlockPlainText is null
                 ? string.Empty
                 : SearchSnippet.Build(match.MatchedBlockPlainText, query)
         );
-    }
 
     private static string EncodeCursor(DateTimeOffset updatedAtUtc, Guid id)
         => Convert.ToBase64String(Encoding.UTF8.GetBytes($"{updatedAtUtc:o}|{id}"));

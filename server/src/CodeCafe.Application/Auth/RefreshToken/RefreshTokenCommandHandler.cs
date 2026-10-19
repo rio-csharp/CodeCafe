@@ -19,10 +19,19 @@ public sealed class RefreshTokenCommandHandler(
         // held until the replacement token is committed, hence the explicit transaction.
         await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
 
-        var userId = await refreshTokens.ConsumeAsync(command.RefreshToken, cancellationToken);
-        var user = userId is { } id ? await users.FindByIdAsync(id, cancellationToken) : null;
+        var consumption = await refreshTokens.ConsumeAsync(command.RefreshToken, cancellationToken);
+        var user = consumption.UserId is { } id ? await users.FindByIdAsync(id, cancellationToken) : null;
         if (user is null)
         {
+            // A replayed token may have staged a family revocation; commit that intent instead
+            // of letting the early return roll it back. Any other failure is an empty commit and
+            // changes nothing.
+            if (consumption.FamilyRevoked)
+            {
+                await unitOfWork.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            }
+
             return Result.Failure<AuthSessionDto>(AuthErrors.InvalidRefreshToken);
         }
 

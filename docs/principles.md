@@ -2,8 +2,8 @@
 
 The rules this codebase lives by.
 
-> Verified against the `server/` working tree on top of `78bb1d3`. If this file and the code
-> disagree, **the code is right** — fix this file in the same commit that changes the code.
+> Verified against the `server/` working tree. If this file and the code disagree, **the code is
+> right** — fix this file in the same commit that changes the code.
 
 ## 1. Working agreements
 

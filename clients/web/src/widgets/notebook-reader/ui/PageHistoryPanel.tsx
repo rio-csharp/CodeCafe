@@ -9,6 +9,8 @@ import { RevisionPreviewDialog } from './RevisionPreviewDialog'
 
 export interface PageHistoryPanelProps {
   pageId: string
+  /** Notebook slug: page-id reads need it to carry the access code. */
+  slug: string
   /** The live blocks; the preview dialog diffs against them. */
   currentBlocks: readonly BlockDto[]
   /** Writers get the restore button; readers only browse. */
@@ -29,13 +31,13 @@ const KIND_LABEL: Record<RevisionChangeKind, string> = {
  * (time + change summary), newest-first. Clicking a batch opens the preview
  * dialog — historical content, a diff against now, and the restore button.
  */
-export function PageHistoryPanel({ pageId, currentBlocks, canWrite, onRestored }: PageHistoryPanelProps) {
+export function PageHistoryPanel({ pageId, slug, currentBlocks, canWrite, onRestored }: PageHistoryPanelProps) {
   const { t, i18n } = useTranslation()
   const [viewingAt, setViewingAt] = useState<string | null>(null)
 
   const history = useInfiniteQuery({
     queryKey: pageKeys.revisions(pageId),
-    queryFn: ({ pageParam, signal }) => listPageRevisions({ pageId, cursor: pageParam, signal }),
+    queryFn: ({ pageParam, signal }) => listPageRevisions({ pageId, slug, cursor: pageParam, signal }),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
   })
@@ -120,6 +122,7 @@ export function PageHistoryPanel({ pageId, currentBlocks, canWrite, onRestored }
       {viewingAt !== null ? (
         <RevisionPreviewDialog
           pageId={pageId}
+          slug={slug}
           atUtc={viewingAt}
           currentBlocks={currentBlocks}
           canWrite={canWrite}

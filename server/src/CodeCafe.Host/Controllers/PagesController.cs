@@ -69,14 +69,17 @@ public sealed class PagesController(ISender sender) : ControllerBase
         => sender.Send(new ListFavoritePagesQuery(notebookId), cancellationToken);
 
     [HttpPost("pages/{pageId:guid}/favorite")]
+    [EnableRateLimiting(RateLimiterExtensions.AccessCodePolicy)]
     public Task<Result> SetFavorite(Guid pageId, SetFavoriteRequest request, CancellationToken cancellationToken)
-        => sender.Send(new SetPageFavoriteCommand(pageId, request.IsFavorite), cancellationToken);
+        => sender.Send(new SetPageFavoriteCommand(pageId, request.IsFavorite, AccessCodeHeader.Read(Request)), cancellationToken);
 
     [HttpPost("pages/{pageId:guid}/shares")]
+    [EnableRateLimiting(RateLimiterExtensions.SharePolicy)]
     public Task<Result> Share(Guid pageId, ShareRequest request, CancellationToken cancellationToken)
         => sender.Send(new SharePageCommand(pageId, request.Email, request.Role), cancellationToken);
 
     [HttpDelete("pages/{pageId:guid}/shares/{userId:guid}")]
+    [EnableRateLimiting(RateLimiterExtensions.SharePolicy)]
     public Task<Result> RevokeShare(Guid pageId, Guid userId, CancellationToken cancellationToken)
         => sender.Send(new RevokePageShareCommand(pageId, userId), cancellationToken);
 }

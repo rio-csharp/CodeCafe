@@ -33,6 +33,12 @@ public sealed class RestoreBlockRevisionCommandHandler(
 {
     public async Task<Result> Handle(RestoreBlockRevisionCommand command, CancellationToken cancellationToken)
     {
+        // Restoring rewrites structure (re-created blocks splice into chains), so it plays by
+        // the same rules as the other structural mutations: lock first, then authorize and read
+        // the chain. Loading the page only after the lock keeps EF from reusing a stale instance.
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await blocks.LockPageAsync(command.PageId, cancellationToken);
+
         var context = await PageAccess.RequireWriteAsync(command.PageId, currentUserAccessor, notebooks, pages, cancellationToken);
         if (context.Error is { } error)
         {
@@ -41,10 +47,6 @@ public sealed class RestoreBlockRevisionCommandHandler(
 
         var (_, page, _, _) = context.Value!;
 
-        // Restoring rewrites structure (re-created blocks splice into chains), so it plays by
-        // the same rules as the other structural mutations: lock first, then read the chain.
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
-        await blocks.LockPageAsync(command.PageId, cancellationToken);
         var working = (await blocks.ListByPageAsync(command.PageId, cancellationToken)).ToList();
 
         // The newest row carrying the requested block version wins: re-created blocks restart

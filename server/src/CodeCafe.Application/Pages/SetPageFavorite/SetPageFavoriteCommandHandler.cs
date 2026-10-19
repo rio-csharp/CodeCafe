@@ -23,7 +23,7 @@ public sealed class SetPageFavoriteCommandHandler(
         // Setting one requires sign-in, hence no access-code bypass.
         var context = await PageAccess.RequireReadAsync(
             command.PageId,
-            accessCode: null,
+            command.AccessCode,
             currentUserAccessor,
             notebooks,
             pages,

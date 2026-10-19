@@ -25,6 +25,12 @@ public sealed class MoveBlockCommandHandler(
 {
     public async Task<Result> Handle(MoveBlockCommand command, CancellationToken cancellationToken)
     {
+        // Structural mutation: lock the page row FIRST, then authorize and read the chain.
+        // RequireWriteAsync loads the page, and EF returns an already-tracked instance unchanged,
+        // so authorizing before the lock would hand BlockChain stale pointers.
+        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
+        await blocks.LockPageAsync(command.PageId, cancellationToken);
+
         var context = await PageAccess.RequireWriteAsync(command.PageId, currentUserAccessor, notebooks, pages, cancellationToken);
         if (context.Error is { } error)
         {
@@ -39,11 +45,6 @@ public sealed class MoveBlockCommandHandler(
             return Result.Failure(BlockErrors.NotFound);
         }
 
-        // Structural mutation: lock the page row FIRST, then read the chain — computing
-        // positions before locking is no lock. The explicit transaction keeps the FOR UPDATE
-        // held until commit.
-        await using var transaction = await unitOfWork.BeginTransactionAsync(cancellationToken);
-        await blocks.LockPageAsync(command.PageId, cancellationToken);
         var pageBlocks = await blocks.ListByPageAsync(command.PageId, cancellationToken);
 
         // The moving block is excluded from the target group; its descendants are not — they

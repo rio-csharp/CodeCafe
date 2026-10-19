@@ -50,6 +50,22 @@ public sealed class GetNotebookDetailsQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ReturnsPrivateNotebook_ForPageShareRecipient()
+    {
+        var owner = SeedOwner();
+        var shared = User.Create("shared@example.com", "shared@example.com", "Shared", "hash");
+        var notebook = SeedNotebook(owner, NotebookVisibility.Private);
+        var page = CodeCafe.Domain.Pages.Page.Create(notebook.Id, null, "Shared page", "shared-page", "a");
+        page.Share(shared.Id, CollaboratorRole.Viewer);
+        var pages = new StubPageRepository { page };
+        var handler = CreateHandler(new CurrentUser(shared.Id), notebook, pages);
+
+        var result = await handler.Handle(new GetNotebookDetailsQuery(notebook.Slug), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
     public async Task Handle_ReturnsNotFound_ForPrivateNotebook_WhenStranger()
     {
         var owner = SeedOwner();
@@ -262,6 +278,13 @@ public sealed class GetNotebookDetailsQueryHandlerTests
         CurrentUser? currentUser,
         Notebook notebook,
         params User[] users
+    ) => CreateHandler(currentUser, notebook, new StubPageRepository(), users);
+
+    private static GetNotebookDetailsQueryHandler CreateHandler(
+        CurrentUser? currentUser,
+        Notebook notebook,
+        StubPageRepository pages,
+        params User[] users
     )
     {
         var usersStub = new StubUserRepository();
@@ -270,7 +293,7 @@ public sealed class GetNotebookDetailsQueryHandlerTests
             new StubCurrentUserAccessor(currentUser),
             usersStub,
             new StubNotebookRepository { notebook },
-            new StubPageRepository(),
+            pages,
             new StubPasswordHasher()
         );
     }

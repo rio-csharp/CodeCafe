@@ -1,6 +1,7 @@
 export {
   ACCESS_CODE_HEADER,
   accessCodeForPath,
+  accessCodeHeaderFor,
   clearAccessCode,
   getAccessCode,
   setAccessCode,

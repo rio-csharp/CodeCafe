@@ -15,7 +15,8 @@ export interface NotebookSummary {
   updatedAtUtc: string
   /** Attribution for the shelf: whose notebook this is. */
   ownerDisplayName: string
-
+  /** True when the caller owns it, so owner-only card actions can be offered. */
+  isOwner?: boolean
 }
 
 export interface NotebookListFilters {

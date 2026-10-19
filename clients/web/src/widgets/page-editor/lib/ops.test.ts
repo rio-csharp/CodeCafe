@@ -80,6 +80,14 @@ describe('diffToOps', () => {
     ])
   })
 
+  it('emits only the topmost Delete when a parent and its child disappear', () => {
+    const parent = source('p', 'parent')
+    const child: BlockDto = { ...source('c', 'child'), parentBlockId: 'p' }
+
+    // The server cascades the subtree; a second Delete for the child would fail the batch.
+    expect(diffToOps([parent, child], [])).toEqual([{ kind: 'Delete', blockId: 'p' }])
+  })
+
   it('anchors each insert at the nearest preceding sibling', () => {
     const original = [source('a', 'one')]
     const draft = [edit(original[0]!, 'one'), fresh('temp-1', 'two'), fresh('temp-2', 'three')]

@@ -24,20 +24,29 @@ public sealed class GetNotebookDetailsQueryHandler(
             return Result.Failure<NotebookDetailsDto>(NotebookErrors.NotFound);
         }
 
+        var userId = currentUserAccessor.User?.Id;
         var denied = NotebookAccess.CheckRead(
             notebook,
-            currentUserAccessor.User?.Id,
+            userId,
             query.AccessCode,
             passwordHasher
         );
         if (denied is not null)
         {
-            return Result.Failure<NotebookDetailsDto>(denied);
+            // A page-share recipient reaches the notebook through the shared subtree (the tree
+            // already exposes exactly that subset), so the details shell must open for them too;
+            // otherwise the shared page link lands on "notebook not found".
+            var hasSharedPage = userId is { } sharedUserId
+                && await pages.HasSharedPageAsync(notebook.Id, sharedUserId, cancellationToken);
+            if (!hasSharedPage)
+            {
+                return Result.Failure<NotebookDetailsDto>(denied);
+            }
         }
 
         var dto = await NotebookDetailsMapping.ToDtoAsync(
             notebook,
-            currentUserAccessor.User?.Id,
+            userId,
             users,
             cancellationToken
         );

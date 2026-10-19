@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -17,18 +17,68 @@ export interface DialogShellProps {
  */
 export function DialogShell({ title, onClose, wide = false, children }: DialogShellProps) {
   const { t } = useTranslation()
+  const panelRef = useRef<HTMLDivElement>(null)
+  const restoreFocusRef = useRef<HTMLElement | null>(null)
+  // A fresh arrow-function prop per render must not re-run the focus setup.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
+    restoreFocusRef.current = document.activeElement as HTMLElement | null
+    const panel = panelRef.current
+    const focusables = (): HTMLElement[] =>
+      Array.from(
+        panel?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      )
+
+    // The panel itself takes focus when it has no controls, so Escape and Tab still work.
+    const firstFocusable = focusables()[0]
+    if (firstFocusable !== undefined) {
+      firstFocusable.focus()
+    } else {
+      panel?.focus()
+    }
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose()
+        // Keep a page-level Escape handler (the editor's cancel) from also firing.
+        event.stopPropagation()
+        onCloseRef.current()
+        return
+      }
+
+      if (event.key !== 'Tab' || panel === null) {
+        return
+      }
+
+      const items = focusables()
+      if (items.length === 0) {
+        event.preventDefault()
+        panel.focus()
+        return
+      }
+
+      const first = items[0]!
+      const last = items[items.length - 1]!
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
       }
     }
+
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
+      restoreFocusRef.current?.focus()
     }
-  }, [onClose])
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
@@ -39,10 +89,12 @@ export function DialogShell({ title, onClose, wide = false, children }: DialogSh
       />
 
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`relative my-8 w-full rounded-2xl border border-line bg-card shadow-2xl ${
+        tabIndex={-1}
+        className={`relative my-8 w-full rounded-2xl border border-line bg-card shadow-2xl focus:outline-none ${
           wide ? 'max-w-xl' : 'max-w-md'
         }`}
       >

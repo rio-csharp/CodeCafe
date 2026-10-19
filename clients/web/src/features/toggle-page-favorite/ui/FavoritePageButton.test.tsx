@@ -49,7 +49,7 @@ describe('FavoritePageButton', () => {
     await user.click(screen.getByRole('button', { name: 'Favorite' }))
 
     await waitFor(() => {
-      expect(setPageFavorite).toHaveBeenCalledWith('page-1', true)
+      expect(setPageFavorite).toHaveBeenCalledWith('page-1', true, 'espresso-notes')
     })
     await waitFor(() => {
       // ['pages'] prefix-matches the favorites lists too.
@@ -68,7 +68,7 @@ describe('FavoritePageButton', () => {
     await user.click(toggle)
 
     await waitFor(() => {
-      expect(setPageFavorite).toHaveBeenCalledWith('page-1', false)
+      expect(setPageFavorite).toHaveBeenCalledWith('page-1', false, 'espresso-notes')
     })
   })
 

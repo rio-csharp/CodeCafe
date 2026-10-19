@@ -131,5 +131,10 @@ public sealed class SetNotebookFavoriteCommandHandlerTests
         Guid currentUserId,
         StubNotebookRepository notebooks,
         StubUnitOfWork unitOfWork
-    ) => new(new StubCurrentUserAccessor(new CurrentUser(currentUserId)), notebooks, unitOfWork);
+    ) => new(
+        new StubCurrentUserAccessor(new CurrentUser(currentUserId)),
+        notebooks,
+        new StubPageRepository(notebooks),
+        unitOfWork
+    );
 }

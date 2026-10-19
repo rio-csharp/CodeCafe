@@ -25,7 +25,10 @@ export const en = {
     sortCreated: 'Recently created',
     sortTitle: 'By title',
     emptyMine: 'No notebooks yet — create your first one.',
+    emptyMineHint: 'Create a notebook, or import one from a Markdown file.',
     emptyFavorites: 'No favorites yet.',
+    emptyFavoritesHint: 'Star a notebook and it will show up here.',
+    emptySearch: 'No notebooks match “{{query}}”.',
     emptyPublic: 'No public notebooks yet.',
   },
   visibility: {

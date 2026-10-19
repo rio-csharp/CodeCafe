@@ -6,9 +6,11 @@ public interface IRefreshTokenService
     Task<IssuedRefreshToken> IssueAsync(Guid userId, CancellationToken cancellationToken);
 
     // Validates and revokes atomically: refresh tokens are single-use (rotation), so under
-    // concurrency exactly one caller wins and the rest get null. Runs inside the caller's
-    // transaction.
-    Task<Guid?> ConsumeAsync(string token, CancellationToken cancellationToken);
+    // concurrency exactly one caller wins and the rest get UserId = null. FamilyRevoked is true
+    // when a replayed token made the service revoke every active session for that user; the
+    // caller must commit that change even though the request itself fails. Runs inside the
+    // caller's transaction.
+    Task<RefreshTokenConsumption> ConsumeAsync(string token, CancellationToken cancellationToken);
 
     // Idempotent: unknown or already-revoked tokens are a no-op.
     Task RevokeAsync(string token, CancellationToken cancellationToken);
@@ -22,3 +24,5 @@ public sealed record IssuedRefreshToken(string Value, DateTimeOffset ExpiresAtUt
     // Records are the type most likely to get logged verbatim — keep the token out of ToString().
     public override string ToString() => $"IssuedRefreshToken(Value = ***, ExpiresAtUtc = {ExpiresAtUtc:O})";
 }
+
+public sealed record RefreshTokenConsumption(Guid? UserId, bool FamilyRevoked = false);

@@ -18,6 +18,9 @@ export interface PageDetails {
   shares: PageShare[]
   /** A flat list — `assembleBlockTree` turns it into the render tree. */
   blocks: BlockDto[]
+  /** Server-computed page-level write access. Always present from the API; optional here so
+   *  older fixtures and cached payloads stay assignable. */
+  canWrite?: boolean
   createdAtUtc: string
   updatedAtUtc: string
 }

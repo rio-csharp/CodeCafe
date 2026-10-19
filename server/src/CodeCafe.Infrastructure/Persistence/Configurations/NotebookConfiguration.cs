@@ -24,6 +24,9 @@ public sealed class NotebookConfiguration : IEntityTypeConfiguration<Notebook>
         // slug as free, so a create could never recover from the conflict.
         builder.HasIndex(notebook => notebook.Slug).IsUnique().HasFilter("\"DeletedAtUtc\" IS NULL");
 
+        // The public catalog is "visibility = Public, newest first"; without this it scans.
+        builder.HasIndex(notebook => new { notebook.Visibility, notebook.UpdatedAtUtc });
+
         // Search matches with ILIKE '%q%', which only stays index-backed through trigrams.
         builder.HasIndex(notebook => notebook.Title).HasMethod("gin").HasOperators("gin_trgm_ops");
         builder.HasIndex(notebook => notebook.Description).HasMethod("gin").HasOperators("gin_trgm_ops");

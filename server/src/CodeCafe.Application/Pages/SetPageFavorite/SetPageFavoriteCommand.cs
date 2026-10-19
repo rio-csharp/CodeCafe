@@ -3,4 +3,4 @@ using CodeCafe.Application.Common.Messaging;
 
 namespace CodeCafe.Application.Pages.SetPageFavorite;
 
-public sealed record SetPageFavoriteCommand(Guid PageId, bool IsFavorite) : ICommand<Result>;
+public sealed record SetPageFavoriteCommand(Guid PageId, bool IsFavorite, string? AccessCode = null) : ICommand<Result>;

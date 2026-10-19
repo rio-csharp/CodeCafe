@@ -174,8 +174,8 @@ public sealed class RegisterCommandHandlerTests
             return Task.FromResult(new IssuedRefreshToken("refresh-token", DateTimeOffset.UtcNow.AddDays(30)));
         }
 
-        public Task<Guid?> ConsumeAsync(string token, CancellationToken cancellationToken)
-            => Task.FromResult<Guid?>(null);
+        public Task<RefreshTokenConsumption> ConsumeAsync(string token, CancellationToken cancellationToken)
+            => Task.FromResult(new RefreshTokenConsumption(null));
 
         public Task RevokeAsync(string token, CancellationToken cancellationToken) => Task.CompletedTask;
 

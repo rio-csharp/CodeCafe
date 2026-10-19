@@ -5,6 +5,7 @@ using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Domain.Notebooks;
 
 namespace CodeCafe.Application.Notebooks.SetNotebookAccessCode;
 
@@ -24,6 +25,11 @@ public sealed class SetNotebookAccessCodeCommandHandler(
         }
 
         var notebook = context.Value!.Notebook;
+
+        if (command.AccessCode is not null && notebook.Visibility != NotebookVisibility.Unlisted)
+        {
+            return Result.Failure(NotebookErrors.AccessCodeRequiresUnlisted);
+        }
 
         // Null clears the code; only the hash is ever stored.
         var hash = command.AccessCode is not null ? passwordHasher.Hash(command.AccessCode) : null;

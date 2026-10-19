@@ -28,7 +28,7 @@ public sealed class ListBlockRevisionsQueryHandler(
         // notebook's edit history never leaks to someone who merely has the link.
         var context = await PageAccess.RequireReadAsync(
             query.PageId,
-            accessCode: null,
+            query.AccessCode,
             currentUserAccessor,
             notebooks,
             pages,

@@ -4,18 +4,26 @@ using CodeCafe.Application.Common.Messaging;
 using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Notebooks.Shared;
+using CodeCafe.Application.Pages.Abstractions;
 
 namespace CodeCafe.Application.Notebooks.SetNotebookFavorite;
 
 public sealed class SetNotebookFavoriteCommandHandler(
     ICurrentUserAccessor currentUserAccessor,
     INotebookRepository notebooks,
+    IPageRepository pages,
     IUnitOfWork unitOfWork
 ) : ICommandHandler<SetNotebookFavoriteCommand, Result>
 {
     public async Task<Result> Handle(SetNotebookFavoriteCommand command, CancellationToken cancellationToken)
     {
-        var context = await NotebookAccess.RequireFavoritableAsync(command.NotebookIdOrSlug, currentUserAccessor, notebooks, cancellationToken);
+        var context = await NotebookAccess.RequireFavoritableAsync(
+            command.NotebookIdOrSlug,
+            currentUserAccessor,
+            notebooks,
+            pages,
+            cancellationToken
+        );
         if (context.Error is { } error)
         {
             return Result.Failure(error);

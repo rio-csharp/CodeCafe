@@ -8,6 +8,8 @@ import { DialogShell } from '@/shared/ui'
 
 export interface BlockHistoryDialogProps {
   pageId: string
+  /** Notebook slug: page-id reads need it to carry the access code. */
+  slug?: string
   blockId: string
   onClose: () => void
   /**
@@ -29,7 +31,7 @@ const KIND_LABEL: Record<RevisionChangeKind, string> = {
  * reader's PageHistoryPanel; unlike it, this opens on top of the editor, so
  * the restore contract (exit edit mode, refetch) is the caller's job.
  */
-export function BlockHistoryDialog({ pageId, blockId, onClose, onRestored }: BlockHistoryDialogProps) {
+export function BlockHistoryDialog({ pageId, slug, blockId, onClose, onRestored }: BlockHistoryDialogProps) {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const [restoreFailed, setRestoreFailed] = useState(false)
@@ -37,7 +39,7 @@ export function BlockHistoryDialog({ pageId, blockId, onClose, onRestored }: Blo
   const history = useInfiniteQuery({
     queryKey: pageKeys.blockRevisions(pageId, blockId),
     queryFn: ({ pageParam, signal }) =>
-      listBlockRevisions({ pageId, blockId, cursor: pageParam, signal }),
+      listBlockRevisions({ pageId, blockId, slug, cursor: pageParam, signal }),
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
   })
