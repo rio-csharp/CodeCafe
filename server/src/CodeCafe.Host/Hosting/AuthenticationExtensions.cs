@@ -12,6 +12,11 @@ internal static class AuthenticationExtensions
         services.AddAuthentication(CodeCafeAuthenticationHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, CodeCafeAuthenticationHandler>(
                 CodeCafeAuthenticationHandler.SchemeName,
+                _ => { })
+            // Separate scheme: only the upload controller opts into it, and it accepts only the
+            // short-lived capability prefix, never a PAT or an access token.
+            .AddScheme<AuthenticationSchemeOptions, ImportUploadAuthenticationHandler>(
+                ImportUploadAuthenticationHandler.SchemeName,
                 _ => { });
         // Deny by default: endpoints opt into anonymous access via [AllowAnonymous].
         services.AddAuthorization(options =>

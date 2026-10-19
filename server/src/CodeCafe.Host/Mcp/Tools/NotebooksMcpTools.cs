@@ -94,8 +94,8 @@ public sealed class NotebooksMcpTools
     [McpServerTool(Name = "codecafe_import_notebook")]
     [Description(
         "Import a notebook from a previously exported markdown payload. Small payloads only: for "
-            + "anything larger, call codecafe_get_import_recipe and upload the file over HTTP instead, "
-            + "so the content never has to pass through the conversation."
+            + "anything larger, call codecafe_prepare_notebook_import and upload the file with the "
+            + "returned short-lived token, so the content never has to pass through the conversation."
     )]
     public static async Task<CallToolResult> ImportNotebook(
         ISender sender,

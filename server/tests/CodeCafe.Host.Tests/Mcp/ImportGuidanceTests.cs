@@ -21,9 +21,9 @@ public sealed class ImportGuidanceTests
     {
         var recipe = ImportGuidance.Recipe(Request(), Options);
 
-        Assert.Equal("https://api.codes.cafe/api/notebooks/import/upload", recipe.Notebook.Url);
+        Assert.Equal("https://api.codes.cafe/api/import-uploads/notebooks", recipe.Notebook.Url);
         Assert.Equal(
-            "https://api.codes.cafe/api/notebooks/{notebookIdOrSlug}/pages/import/upload",
+            "https://api.codes.cafe/api/import-uploads/pages",
             recipe.Page.Url
         );
         Assert.Equal(1024, recipe.InlineContentLimitBytes);
@@ -39,7 +39,7 @@ public sealed class ImportGuidanceTests
         // than render an empty origin.
         var recipe = ImportGuidance.Recipe(null, Options);
 
-        Assert.Contains("api/notebooks/import/upload", recipe.Notebook.Url, StringComparison.Ordinal);
+        Assert.Contains("api/import-uploads/notebooks", recipe.Notebook.Url, StringComparison.Ordinal);
         Assert.DoesNotContain(":///", recipe.Notebook.Url, StringComparison.Ordinal);
     }
 
@@ -64,13 +64,18 @@ public sealed class ImportGuidanceTests
         Assert.Equal("content_too_large_for_tool_argument", structured.GetProperty("code").GetString());
         Assert.Equal("Validation", structured.GetProperty("kind").GetString());
         Assert.Equal(
-            "https://api.codes.cafe/api/notebooks/import/upload",
+            "https://api.codes.cafe/api/import-uploads/notebooks",
             structured
                 .GetProperty("details")
                 .GetProperty("recipe")
                 .GetProperty("notebook")
                 .GetProperty("url")
                 .GetString()
+        );
+        Assert.Contains(
+            "codecafe_prepare_page_import",
+            structured.GetProperty("message").GetString()!,
+            StringComparison.Ordinal
         );
     }
 

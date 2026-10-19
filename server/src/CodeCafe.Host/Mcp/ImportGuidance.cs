@@ -7,9 +7,9 @@ namespace CodeCafe.Host.Mcp;
 
 internal sealed record ImportEndpoint(string Method, string Url, string Body, string Example);
 
-// Everything a client needs to move content over HTTP instead of through the model's context:
-// the import endpoints already accept the same markdown the MCP tools do, so an oversized
-// payload is never actually stuck, it just has to change transport.
+// Everything a client needs to move content over HTTP instead of through the model's context.
+// The upload endpoints take a short-lived token issued by codecafe_prepare_*_import; the MCP
+// client's authenticated bearer is deliberately not part of this flow.
 internal sealed record ImportRecipe(
     string Authorization,
     int InlineContentLimitBytes,
@@ -25,7 +25,8 @@ internal static class ImportGuidance
     public static ImportRecipe Recipe(HttpContext? httpContext, McpOptions options)
     {
         var origin = Origin(httpContext);
-        const string authorization = "Authorization: Bearer <the token this MCP client authenticates with>";
+        const string authorization =
+            "Authorization: Bearer <temporary upload token from codecafe_prepare_page_import or codecafe_prepare_notebook_import>";
 
         return new ImportRecipe(
             authorization,
@@ -33,15 +34,15 @@ internal static class ImportGuidance
             RequestLimits.ImportBytes,
             new ImportEndpoint(
                 "POST",
-                $"{origin}/api/notebooks/import/upload",
-                "multipart/form-data with a `fileName` field and a `file` field holding the markdown",
-                $"curl -sS -X POST -H '{authorization}' -F fileName=notes.md -F file=@notes.md {origin}/api/notebooks/import/upload"
+                $"{origin}/api/import-uploads/notebooks",
+                "multipart/form-data with a `file` field; the token binds the file name",
+                $"curl.exe -sS -X POST -H '{authorization}' -F file=@notes.md {origin}/api/import-uploads/notebooks"
             ),
             new ImportEndpoint(
                 "POST",
-                $"{origin}/api/notebooks/{{notebookIdOrSlug}}/pages/import/upload",
-                "multipart/form-data with `fileName`, `file`, and an optional `parentPath`",
-                $"curl -sS -X POST -H '{authorization}' -F fileName=note.md -F file=@note.md {origin}/api/notebooks/my-notebook/pages/import/upload"
+                $"{origin}/api/import-uploads/pages",
+                "multipart/form-data with a `file` field; the token binds the notebook, parent path, and file name",
+                $"curl.exe -sS -X POST -H '{authorization}' -F file=@note.md {origin}/api/import-uploads/pages"
             )
         );
     }
@@ -58,7 +59,8 @@ internal static class ImportGuidance
         var error = new Error(
             "content_too_large_for_tool_argument",
             $"{bytes} bytes of markdown exceeds the {recipe.InlineContentLimitBytes} byte inline limit. "
-                + "Upload the file to the HTTP endpoint below with the bearer token you already use, "
+                + "Call codecafe_prepare_page_import (pages) or codecafe_prepare_notebook_import "
+                + "(notebooks) to get a short-lived upload token, POST the file to the returned URL, "
                 + "then report the result; do not pass the content through a tool argument.",
             ErrorKind.Validation
         );
@@ -68,7 +70,7 @@ internal static class ImportGuidance
         return McpToolResults.Failure(error, new { recipe });
     }
 
-    private static string Origin(HttpContext? httpContext)
+    internal static string Origin(HttpContext? httpContext)
     {
         if (httpContext?.Request.Host is not { HasValue: true } host)
         {
