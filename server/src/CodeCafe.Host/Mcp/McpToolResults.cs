@@ -40,7 +40,7 @@ internal static class McpToolResults
         return result;
     }
 
-    private static CallToolResult Failure(Error error) => new()
+    public static CallToolResult Failure(Error error) => new()
     {
         IsError = true,
         Content = [new TextContentBlock { Text = $"{error.Kind}: {error.Code}: {error.Message}" }],

@@ -3,6 +3,7 @@ using CodeCafe.Application.Ai;
 using CodeCafe.Application.Auth.Abstractions;
 using CodeCafe.Application.Blocks.Abstractions;
 using CodeCafe.Application.Common.Abstractions;
+using CodeCafe.Application.Common.Security;
 using CodeCafe.Application.Notebooks.Abstractions;
 using CodeCafe.Application.Pages.Abstractions;
 using CodeCafe.Application.Revisions.Abstractions;
@@ -35,6 +36,10 @@ public static class DependencyInjection
                 "Auth:AccessTokenLifetimeMinutes must be greater than zero."
             )
             .Validate(
+                options => options.ImportUploadLifetimeMinutes > 0,
+                "Auth:ImportUploadLifetimeMinutes must be greater than zero."
+            )
+            .Validate(
                 options => options.RefreshTokenLifetimeDays > 0,
                 "Auth:RefreshTokenLifetimeDays must be greater than zero."
             )
@@ -58,6 +63,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(provider => provider.GetRequiredService<AppDbContext>());
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IAccessTokenService, JwtAccessTokenService>();
+        services.AddSingleton<IImportUploadTokenService, JwtImportUploadTokenService>();
         services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
         return services;

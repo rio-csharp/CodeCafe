@@ -10,6 +10,10 @@ public sealed class AuthOptions
 
     public int AccessTokenLifetimeMinutes { get; init; } = 15;
 
+    // The upload hop is one short-lived capability, not a session. A short life limits what a
+    // token leaked into a model context or a log can do.
+    public int ImportUploadLifetimeMinutes { get; init; } = 10;
+
     public int RefreshTokenLifetimeDays { get; init; } = 30;
 
     public JwtOptions Jwt { get; init; } = new();

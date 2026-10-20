@@ -1,3 +1,4 @@
+using CodeCafe.Application.Common.Security;
 using CodeCafe.Host.Mcp;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +22,8 @@ public sealed class McpToolSurfaceTests(CodeCafeFactory factory) : IClassFixture
             .ToList();
 
         Assert.Contains("codecafe_get_import_recipe", names);
+        Assert.Contains("codecafe_prepare_page_import", names);
+        Assert.Contains("codecafe_prepare_notebook_import", names);
         Assert.Contains("codecafe_import_notebook", names);
         Assert.Contains("codecafe_import_page", names);
     }
@@ -34,6 +37,7 @@ public sealed class McpToolSurfaceTests(CodeCafeFactory factory) : IClassFixture
         // the schema the model sees.
         Assert.True(isService.IsService(typeof(IHttpContextAccessor)));
         Assert.True(isService.IsService(typeof(IOptions<McpOptions>)));
+        Assert.True(isService.IsService(typeof(IImportUploadTokenService)));
 
         // The recipe is built from configuration the deployment owns, so the bound value has to
         // be there for the advertised limit to match what the tools enforce.

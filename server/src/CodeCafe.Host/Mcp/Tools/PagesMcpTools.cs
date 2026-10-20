@@ -55,8 +55,9 @@ public sealed class PagesMcpTools
     [McpServerTool(Name = "codecafe_import_page")]
     [Description(
         "Import a markdown file as a new page in a notebook, optionally under a parent page path. "
-            + "Small files only: for anything larger, call codecafe_get_import_recipe and upload the "
-            + "file over HTTP instead, so the content never has to pass through the conversation."
+            + "Small files only: for anything larger, call codecafe_prepare_page_import and upload "
+            + "the file with the returned short-lived token, so the content never has to pass through "
+            + "the conversation."
     )]
     public static async Task<CallToolResult> ImportPage(
         ISender sender,

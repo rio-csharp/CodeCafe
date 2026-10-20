@@ -25,9 +25,10 @@ internal static class McpExtensions
             options.ServerInstructions =
                 "CodeCafe keeps notebooks, pages, and blocks. Importing markdown through a tool "
                 + "argument makes the model read and re-emit every byte, so for anything larger than a "
-                + "few pages call codecafe_get_import_recipe and POST the file to the given endpoint "
-                + "with the same bearer token this client authenticates with. The import tools refuse "
-                + "oversized inline payloads and return that recipe."
+                + "few pages call codecafe_prepare_page_import or codecafe_prepare_notebook_import "
+                + "first. It returns a short-lived upload URL and a temporary token scoped to one "
+                + "target; POST the file there, then report the result. Never print the token and never "
+                + "pass the file contents through a tool argument."
         )
             // Sessions live in process memory, so in the default stateful mode every request after
             // initialize has to reach the pod that created the session; behind more than one replica

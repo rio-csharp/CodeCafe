@@ -18,6 +18,8 @@ public sealed class OpenApiContractTests(CodeCafeFactory factory)
         ("post", "/api/notebooks"),
         ("post", "/api/notebooks/import"),
         ("post", "/api/notebooks/import/upload"),
+        ("post", "/api/import-uploads/pages"),
+        ("post", "/api/import-uploads/notebooks"),
         ("patch", "/api/notebooks/{idOrSlug}"),
         ("delete", "/api/notebooks/{idOrSlug}"),
         ("post", "/api/notebooks/{idOrSlug}/slug"),

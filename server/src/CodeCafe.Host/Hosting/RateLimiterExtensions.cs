@@ -10,6 +10,7 @@ internal static class RateLimiterExtensions
     public const string AuthPolicy = "auth";
     public const string AiPolicy = "ai";
     public const string McpPolicy = "mcp";
+    public const string ImportUploadPolicy = "import-upload";
     public const string AccessCodePolicy = "access-code";
     public const string SharePolicy = "share";
 
@@ -33,6 +34,13 @@ internal static class RateLimiterExtensions
                 RateLimitPartition.GetFixedWindowLimiter(
                     PartitionKey(context),
                     _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1) }));
+
+            // The upload token is already scoped and short-lived; this only stops a holder from
+            // turning one token into a page-spam loop.
+            options.AddPolicy(ImportUploadPolicy, context =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    PartitionKey(context),
+                    _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1) }));
 
             // Share endpoints answer "does this email exist?". The error still does, but a tight
             // per-user window makes bulk enumeration impractical.
