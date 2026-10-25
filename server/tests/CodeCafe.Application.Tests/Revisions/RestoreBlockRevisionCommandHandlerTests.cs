@@ -12,6 +12,8 @@ namespace CodeCafe.Application.Tests.Revisions;
 
 public sealed class RestoreBlockRevisionCommandHandlerTests
 {
+    private static readonly DateTimeOffset T1 = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public async Task Handle_LiveBlock_RestoresTheSnapshotPayload_AndRecordsIt()
     {
@@ -112,6 +114,29 @@ public sealed class RestoreBlockRevisionCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_BlockVersionReusedByALaterEra_TakesTheNewestRow()
+    {
+        var owner = SeedOwner();
+        var notebook = SeedNotebook(owner);
+        var page = SeedPage(notebook);
+        var block = NewBlock(page, """{"spans":[{"text":"current","marks":[]}]}""", "current");
+        BlockChain.Link(block, page, parent: null, after: null);
+        var revisions = new StubBlockRevisionRepository
+        {
+            Row(page, block, 1, BlockChangeKind.Added, """{"spans":[{"text":"first era","marks":[]}]}""", "first era", T1),
+            Row(page, block, 1, BlockChangeKind.Added, """{"spans":[{"text":"later era","marks":[]}]}""", "later era", T1.AddDays(1)),
+        };
+        var (handler, _) = CreateHandler(owner.Id, notebook, page, revisions, block);
+
+        var result = await handler.Handle(new RestoreBlockRevisionCommand(page.Id, block.Id, 1), CancellationToken.None);
+
+        // A restored block restarts its counter at 1, so (BlockId, BlockVersion) repeats across
+        // eras and the lookup must resolve the collision, not return whichever row came first.
+        Assert.True(result.IsSuccess);
+        Assert.Equal("later era", block.PlainText);
+    }
+
+    [Fact]
     public async Task Handle_UnknownBlockVersion_ReturnsNotFound()
     {
         var owner = SeedOwner();
@@ -140,7 +165,15 @@ public sealed class RestoreBlockRevisionCommandHandlerTests
         Assert.Equal(PageErrors.NotFound, result.Error);
     }
 
-    private static BlockRevision Row(Page page, Block block, long blockVersion, BlockChangeKind kind, string contentJson, string plainText)
+    private static BlockRevision Row(
+        Page page,
+        Block block,
+        long blockVersion,
+        BlockChangeKind kind,
+        string contentJson,
+        string plainText,
+        DateTimeOffset? atUtc = null
+    )
         => BlockRevision.Record(
             page.Id,
             block.Id,
@@ -152,7 +185,8 @@ public sealed class RestoreBlockRevisionCommandHandlerTests
             block.SortKey,
             block.Type,
             contentJson,
-            plainText
+            plainText,
+            atUtc: atUtc
         );
 
     private static User SeedOwner() => User.Create("owner@example.com", "owner@example.com", "Owner", "hash");
