@@ -7,6 +7,7 @@ namespace CodeCafe.Application.Auth.PersonalAccessTokens.Shared;
 // ever stored. The authentication handler recomputes it for lookup, so both sides share this.
 public static class PersonalAccessTokenHash
 {
+    // ccp_ = CodeCafe Personal (access token).
     public const string Prefix = "ccp_";
 
     public static bool IsPersonalAccessToken(string token)

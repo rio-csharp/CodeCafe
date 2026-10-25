@@ -5,6 +5,7 @@ namespace CodeCafe.Application.Common.Security;
 // personal access token, and it carries everything the upload endpoint needs.
 public static class ImportUploadTokens
 {
+    // ccu_ = CodeCafe Upload (temporary import-upload token).
     public const string Prefix = "ccu_";
 
     public const string Audience = "codecafe-import";
