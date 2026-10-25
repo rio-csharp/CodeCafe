@@ -100,9 +100,14 @@ public sealed class ImportPageCommandHandler(
             revisions,
             changeSource.Source
         );
+        if (imported.Error is { } blockError)
+        {
+            return Result.Failure<PageDetailsDto>(blockError);
+        }
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        MarkdownBlockImporter.LinkChains(page, imported, parent: null);
+        MarkdownBlockImporter.LinkChains(page, imported.Value!, parent: null);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);

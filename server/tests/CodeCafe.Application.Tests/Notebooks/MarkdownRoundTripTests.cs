@@ -155,6 +155,53 @@ public sealed class MarkdownRoundTripTests
             BlockTypes.Table,
             """{"alignments":["left"],"header":[[{"text":"Name","marks":[]}]],"rows":[[[{"text":"apples","marks":[]}]]]}"""
         );
+        AddBlock(
+            page,
+            all,
+            null,
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"- not a list, first line","marks":[]}]}"""
+        );
+        AddBlock(
+            page,
+            all,
+            null,
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"> not a quote, first line","marks":[]}]}"""
+        );
+        AddBlock(
+            page,
+            all,
+            null,
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"1. not ordered, first line","marks":[]}]}"""
+        );
+        AddBlock(page, all, null, BlockTypes.BulletedList, """{"spans":[{"text":"- looks nested","marks":[]}]}""");
+        // Literal code: the renderer must not escape inside the fence, and the fence has to grow
+        // past the backtick the text contains.
+        AddBlock(
+            page,
+            all,
+            null,
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"a *b*","marks":[{"kind":"code"}]},{"text":" ","marks":[]},{"text":"c`d","marks":[{"kind":"code"}]}]}"""
+        );
+        AddBlock(
+            page,
+            all,
+            null,
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"x","marks":[{"kind":"bold"},{"kind":"code"}]}]}"""
+        );
+        // Headerless tables cannot be expressed in GFM, so the exporter emits an empty header row
+        // and the importer has to read it back as none.
+        AddBlock(
+            page,
+            all,
+            null,
+            BlockTypes.Table,
+            """{"alignments":["right"],"header":null,"rows":[[[{"text":"42","marks":[]}]]]}"""
+        );
 
         var markdown = MarkdownPageExporter.Render(page, all);
         var parsed = MarkdownPageParser.Parse("page.md", markdown);
