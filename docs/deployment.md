@@ -105,7 +105,8 @@ session. It is not a GitHub secret on purpose: a fresh environment needs no manu
 Repository-level configuration the workflows expect (already present):
 
 - environments `test` and `production`;
-- variables `IMAGE_NAMESPACE`, `PREVIEW_BASE_DOMAIN`, `AI_MODEL`, `AI_BASE_URL`, and the
+- variables `IMAGE_NAMESPACE`, `PREVIEW_BASE_DOMAIN`, `AI_MODEL`, `AI_BASE_URL`, the optional
+  `AI_WIRE_FORMAT` (unset keeps the chart default `OpenAiChatCompletions`), and the
   `TEST_*` / `PRODUCTION_*` host, port and user pairs;
 - the optional `REGISTRATION_ENABLED` variable, which turns self-service sign-up on for the
   environment it is set in. It is off in the application and in the chart, so registration
