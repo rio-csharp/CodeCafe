@@ -628,6 +628,7 @@ export function NotebookReaderPage() {
       }
       prevPage={prevPage}
       nextPage={nextPage}
+      showNavigation={!editing}
       refreshing={page.isRefetching}
       onRefresh={() => {
         void page.refetch()
