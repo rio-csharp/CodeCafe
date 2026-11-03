@@ -222,6 +222,14 @@ export function NotebookReaderPage() {
     void queryClient.invalidateQueries({ queryKey: pageKeys.all })
   }
 
+  // The tree header prints the count that rides on the details query, so a manual
+  // refresh has to fetch both: pages added elsewhere (API, MCP) would otherwise
+  // show up in the tree while the count kept saying zero.
+  const refreshTree = () => {
+    void details.refetch()
+    void tree.refetch()
+  }
+
   const movePageMutation = useMutation({
     mutationFn: ({ pageId, data }: { pageId: string; data: MovePageData }) =>
       movePage(pageId, data),
@@ -456,10 +464,8 @@ export function NotebookReaderPage() {
         canManageNotebook={notebook.canWrite}
         onAddPage={notebook.canWrite ? handleAddPage : undefined}
         onImportPage={notebook.canWrite ? handleImportPage : undefined}
-        onRefreshTree={() => {
-          void tree.refetch()
-        }}
-        refreshingTree={tree.isFetching}
+        onRefreshTree={refreshTree}
+        refreshingTree={tree.isFetching || details.isFetching}
         onMovePage={
           notebook.canWrite
             ? (pageId, data) => {
@@ -601,10 +607,8 @@ export function NotebookReaderPage() {
       }
       onAddPage={notebook.canWrite ? handleAddPage : undefined}
       onImportPage={notebook.canWrite ? handleImportPage : undefined}
-      onRefreshTree={() => {
-        void tree.refetch()
-      }}
-      refreshingTree={tree.isFetching}
+      onRefreshTree={refreshTree}
+      refreshingTree={tree.isFetching || details.isFetching}
       onMovePage={
         notebook.canWrite
           ? (pageId, data) => {

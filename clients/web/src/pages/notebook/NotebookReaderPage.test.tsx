@@ -700,6 +700,41 @@ describe('NotebookReaderPage', () => {
     })
   })
 
+  it('refreshes the header page count along with the tree', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getPageByPath).mockResolvedValue(page('Grinding', '/grinding'))
+
+    renderReader('/notebooks/espresso-notes/grinding')
+    await screen.findByRole('heading', { level: 1, name: 'Grinding' })
+    expect(screen.getByText('2 pages')).toBeInTheDocument()
+
+    // Pages added out of band (the API, the MCP server) reach the reader only
+    // when both reads are refreshed: the tree carries the nodes, the details
+    // query carries the count the header prints.
+    vi.mocked(getNotebookDetails).mockResolvedValue({ ...NOTEBOOK, pageCount: 5 })
+    vi.mocked(getNotebookTree).mockResolvedValue({
+      notebookId: NOTEBOOK.id,
+      roots: [
+        ...ROOTS,
+        {
+          id: 'page-3',
+          title: 'Latte art',
+          path: '/latte-art',
+          sortOrder: 2,
+          isArchived: false,
+          isFavorite: false,
+          children: [],
+        },
+      ],
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Notebook actions' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Refresh tree' }))
+
+    expect(await screen.findByText('5 pages')).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: /Latte art/ })).toBeInTheDocument()
+  })
+
   it('skips archived pages when picking the first page', async () => {
     vi.mocked(getNotebookTree).mockResolvedValue({
       notebookId: NOTEBOOK.id,
