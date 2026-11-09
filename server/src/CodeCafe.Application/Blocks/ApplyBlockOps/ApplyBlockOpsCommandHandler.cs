@@ -48,8 +48,8 @@ public sealed class ApplyBlockOpsCommandHandler(
 
         var (_, page, _, _) = context.Value!;
 
-        // The pipeline validator requires 1..100 ops; a direct caller with an empty batch gets a
-        // no-op success rather than a pointless lock.
+        // The pipeline validator requires 1..100 ops; a direct caller that bypasses it gets a no-op
+        // success. The lock is taken either way — see the ordering rule above.
         if (command.Ops.Count == 0)
         {
             return Result.Success<IReadOnlyList<BlockOpResultDto>>([]);
@@ -154,12 +154,14 @@ public sealed class ApplyBlockOpsCommandHandler(
             tempIds.Add(op.TempId, block);
         }
 
-        // DryRun runs the identical pipeline but issues no repository writes.
+        // DryRun suppresses the repository call only: the change tracker must stay untouched, while
+        // `recorded` is dropped wholesale by the caller's dry-run branch, like every other op.
         if (!dryRun)
         {
             blocks.Add(block);
-            recorded.Add(RevisionRecording.Added(block, batchId, changeSource.Source));
         }
+
+        recorded.Add(RevisionRecording.Added(block, batchId, changeSource.Source));
 
         return Result.Success(new BlockOpResultDto(op.TempId, block.Id, block.Version, CanonicalContent(normalized.Value!)));
     }

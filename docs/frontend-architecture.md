@@ -55,6 +55,12 @@ API with a crossfade fallback. See also `frontend-m2-foundations.md`.
 - Bearer JWT (15 min) + refresh token (30 days, rotates every refresh), both in the response body.
 - Access token: memory only. Refresh token: `localStorage` (accepted trade-off — XSS-readable, no cookie option under current CORS).
 - Refresh must be single-flight with a queue-and-replay for concurrent 401s.
+- The access token being memory-only means every hard load starts anonymous while the refresh
+  token is exchanged, so `app/providers.tsx` mounts the router only once the session is known
+  (`unknown` → boot splash). A route that queried earlier would ask anonymously, and a private
+  notebook answers an anonymous caller with 404 — the owner would inherit "doesn't exist".
+- Cached reads belong to one identity: sign-out clears the cache, sign-in invalidates it, so an
+  anonymous 404 can never answer the user who just signed in.
 
 ## Anonymous access
 

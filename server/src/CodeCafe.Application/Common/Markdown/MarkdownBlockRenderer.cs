@@ -10,6 +10,10 @@ namespace CodeCafe.Application.Common.Markdown;
 // headingHashOffset shifts block heading levels up to markdown hashes: 2 for notebook files
 // (# = notebook, ## = page), 1 for page files (# = page title). The importers' matching
 // headingLevelOffset round-trips the level.
+//
+// Children are emitted as indented lines. Only list nesting has a markdown shape the importer can
+// rebuild; a child of any other block re-imports as continuation text of its parent, and marks
+// that only exist as HTML tags (underline, kbd, sup/sub, abbr) lose their marking to tag stripping.
 internal static class MarkdownBlockRenderer
 {
     public static void RenderBlocks(StringBuilder output, Page page, IReadOnlyList<Block> blocks, int headingHashOffset)
@@ -65,18 +69,8 @@ internal static class MarkdownBlockRenderer
         switch (block.Type)
         {
             case BlockTypes.Paragraph:
-                {
-                    var line = RenderMultiline(GetPayload<ParagraphPayload>(block).Spans);
-                    // A line starting with '#' would re-import as a heading — splitting a notebook
-                    // file into pages — so escape it to keep the paragraph intact on round trips.
-                    if (line.StartsWith('#'))
-                    {
-                        line = "\\" + line;
-                    }
-
-                    output.Append(indent).AppendLine(line);
-                    break;
-                }
+                output.Append(indent).AppendLine(RenderMultiline(GetPayload<ParagraphPayload>(block).Spans));
+                break;
             case BlockTypes.Heading:
                 {
                     var payload = GetPayload<HeadingPayload>(block);
@@ -204,19 +198,21 @@ internal static class MarkdownBlockRenderer
     {
         var text = RenderSpans(spans).Replace("\n", "\\\n");
         var lines = text.Split('\n');
-        for (var i = 1; i < lines.Length; i++)
+        for (var i = 0; i < lines.Length; i++)
         {
-            lines[i] = EscapeContinuationStart(lines[i]);
+            lines[i] = EscapeLineStart(lines[i]);
         }
 
         return string.Join('\n', lines);
     }
 
-    // A continuation line re-imports as a lazy continuation of the same block —
-    // unless it opens with a block-level marker, which would interrupt the block
-    // and change the tree. EscapeText already neutralizes '*' and backticks;
-    // handle the rest.
-    private static string EscapeContinuationStart(string line)
+    // Any line — the first included — re-imports as a lazy continuation of the same block unless
+    // it opens with a block-level marker, which would interrupt the block and change its type: a
+    // paragraph starting "- " becomes a list, "> " a quote, "# " a heading, and inside a notebook
+    // file a stray "#" line even re-splits the document. EscapeText already neutralizes '*' and
+    // backticks; handle the rest. The backslash is a CommonMark escape before punctuation, so the
+    // reader sees the original characters.
+    private static string EscapeLineStart(string line)
     {
         if (line.Length == 0)
         {
@@ -239,18 +235,26 @@ internal static class MarkdownBlockRenderer
         return line;
     }
 
+    // Marks arrive in the domain's canonical order, which is outside-in (link, code, sup/sub,
+    // then styles), so the content is built inside-out: the last mark wraps the raw text and each
+    // earlier one wraps the result. Applying them front to back would invert the nesting and, for
+    // a code span, fence the emphasis syntax instead of the text.
     private static string RenderSpan(Span span)
     {
-        var text = EscapeText(span.Text);
-        foreach (var mark in span.Marks)
+        // A code span is a literal context: markdown escapes mean nothing inside it, so its text
+        // is fenced raw. Markdown can only nest code *inside* other marks, so the fence is always
+        // the innermost layer whatever the canonical position of the code mark.
+        var hasCode = span.Marks.Any(mark => mark is CodeMark);
+        var text = hasCode ? RenderCodeSpan(span.Text) : EscapeText(span.Text);
+        for (var index = span.Marks.Count - 1; index >= 0; index--)
         {
-            text = mark switch
+            text = span.Marks[index] switch
             {
+                CodeMark => text,
                 BoldMark => $"**{text}**",
                 ItalicMark => $"*{text}*",
                 UnderlineMark => $"<u>{text}</u>",
                 StrikeMark => $"~~{text}~~",
-                CodeMark => $"`{text}`",
                 LinkMark link => $"[{text}]({EscapeUrl(link.Href)})",
                 KbdMark => $"<kbd>{text}</kbd>",
                 SupMark => $"<sup>{text}</sup>",
@@ -262,6 +266,29 @@ internal static class MarkdownBlockRenderer
         }
 
         return text;
+    }
+
+    // A code span's fence has to be longer than any backtick run inside it, and content that
+    // starts or ends with a backtick needs a space on both sides so it cannot touch the fence
+    // (CommonMark strips that pair again, so the text survives unchanged).
+    private static string RenderCodeSpan(string text)
+    {
+        if (text.Length == 0)
+        {
+            return text;
+        }
+
+        var longestRun = 0;
+        var run = 0;
+        foreach (var character in text)
+        {
+            run = character == '`' ? run + 1 : 0;
+            longestRun = Math.Max(longestRun, run);
+        }
+
+        var fence = new string('`', longestRun + 1);
+        var pad = text[0] == '`' || text[^1] == '`' ? " " : string.Empty;
+        return $"{fence}{pad}{text}{pad}{fence}";
     }
 
     private static TPayload GetPayload<TPayload>(Block block)

@@ -2,17 +2,10 @@ using CodeCafe.Domain.Pages;
 
 namespace CodeCafe.Domain.Blocks;
 
-// The sibling chains are a cross-entity structure: the head lives on the page (FirstBlockId) at
-// the top level or on the parent block (FirstChildId) when nested, and each link is a
-// neighbour's NextSiblingId. These operations keep that structure consistent, so handlers never
-// fix up chain pointers themselves. Mirrors PageChain.
 public static class BlockChain
 {
-    // True when newParent is the block itself or sits in the block's subtree, so moving the
-    // block under it would create a cycle. Walks ParentBlockId over the page's blocks.
     public static bool IsSelfOrDescendant(Block block, Block newParent, IReadOnlyList<Block> pageBlocks)
     {
-        // The visited set keeps a corrupted (cyclic) data set from hanging the walk.
         var visited = new HashSet<Guid>();
         for (Block? current = newParent; current is not null && visited.Add(current.Id);)
         {
@@ -27,10 +20,6 @@ public static class BlockChain
         return false;
     }
 
-    // Detaches the block from its current chain: the predecessor skips over it, or the chain
-    // head (Page.FirstBlockId at the top level, the parent's FirstChildId when nested) passes
-    // to the block's next sibling. Any list containing the old chain (e.g. every block of the
-    // page) locates the predecessor.
     public static void Unlink(Block block, Page page, IReadOnlyList<Block> pageBlocks)
     {
         var predecessor = pageBlocks.FirstOrDefault(candidate => candidate.NextSiblingId == block.Id);
@@ -55,8 +44,6 @@ public static class BlockChain
         }
     }
 
-    // Attaches the block into a chain: right after `after`, or at the head when `after` is null.
-    // The head lives on the parent (FirstChildId) or the page (FirstBlockId).
     public static void Link(Block block, Page page, Block? parent, Block? after)
     {
         if (after is not null)
@@ -73,11 +60,6 @@ public static class BlockChain
         }
     }
 
-    // The sibling group of parentId (null = the page's top level) in chain order, walked from
-    // the head pointer (Page.FirstBlockId at the top level, the parent's FirstChildId when
-    // nested) along NextSiblingId. Reads order by SortKey; this walk exists for writes, which
-    // must take their positions from the structural truth. The visited set keeps a corrupted
-    // (cyclic) chain from hanging the walk, mirroring IsSelfOrDescendant.
     public static IReadOnlyList<Block> OrderByChain(Page page, IReadOnlyList<Block> pageBlocks, Guid? parentId)
     {
         var headId = parentId is null
@@ -96,21 +78,12 @@ public static class BlockChain
         return ordered;
     }
 
-    // Splices a fresh block into a chain: the head pointer (or the predecessor's NextSiblingId)
-    // takes the block, and the block takes `next`. Fresh blocks need no Unlink — they are not in
-    // any chain yet. Callers must go through here rather than the internal setters, keeping
-    // BlockChain the single writer of the chains.
     public static void Insert(Block block, Page page, Block? parent, Block? after, Block? next)
     {
         Link(block, page, parent, after);
         block.SetNextSibling(next?.Id);
     }
 
-    // Restore-only restructure: every block first takes its historical (parent, sortKey) from a
-    // revision snapshot, then this re-deals EVERY chain pointer from scratch — the opposite of
-    // the incremental Unlink/Link dance, justified because a page restore rewrites arbitrary
-    // parts of the tree at once. A placement whose parent is not among the blocks (corrupt or
-    // partial history) falls back to the top level instead of failing the whole restore.
     public static void RebuildStructure(
         Page page,
         IReadOnlyList<Block> blocks,
@@ -118,7 +91,6 @@ public static class BlockChain
     )
     {
         var ids = new HashSet<Guid>(blocks.Select(block => block.Id));
-        // Guid.Empty keys the top-level group: a Dictionary refuses null keys.
         var childrenOf = new Dictionary<Guid, List<Block>>();
         foreach (var block in blocks)
         {
@@ -147,12 +119,6 @@ public static class BlockChain
         }
     }
 
-    // Full move: detach from the old chain, attach into the new one at insertIndex, re-key, and
-    // bump the moved block's Version. Blocks never leave their page and never move under
-    // themselves or a descendant — enforced here even though callers check first. Unlinking
-    // comes first so that, for a same-parent move where the two chains are one, the pointer
-    // fixup stays correct. The block's own FirstChildId is untouched: the child chain moves
-    // with it. `newSiblings` excludes the moving block.
     public static void Move(
         Block block,
         Page page,
@@ -179,18 +145,10 @@ public static class BlockChain
         Link(block, page, newParent, insertIndex > 0 ? newSiblings[insertIndex - 1] : null);
 
         var next = insertIndex < newSiblings.Count ? newSiblings[insertIndex] : null;
-        // KeyForInsert (not a bare Between) keeps the rebalance threshold discipline, mirroring
-        // PageChain.Move: tight keys re-deal the whole level instead of growing without bound.
         block.MoveTo(newParent?.Id, BlockSiblingSortKeys.KeyForInsert(newSiblings, insertIndex), next?.Id);
         block.MarkMoved();
     }
 
-    // Prepares a hard delete of the subtree rooted at `root`. FirstChildId/NextSiblingId FKs are
-    // ON DELETE RESTRICT, so every chain pointer referencing or inside the subtree must be
-    // cleared before any row goes away: the root is unlinked from its external chain, then
-    // every doomed node loses its own pointers. ParentBlockId cascades, but the cascade never
-    // repairs sibling pointers — that is what this pass is for. Returns the doomed blocks in
-    // BFS order, root first.
     public static IReadOnlyList<Block> DeleteSubtree(Block root, Page page, IReadOnlyList<Block> pageBlocks)
     {
         var doomed = new List<Block>();

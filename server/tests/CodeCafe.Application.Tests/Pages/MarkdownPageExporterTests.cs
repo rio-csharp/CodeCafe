@@ -49,6 +49,66 @@ public sealed class MarkdownPageExporterTests
         Assert.Contains("\n\\# not a heading\n", markdown);
     }
 
+    // The first line is as load-bearing as a continuation: unescaped, a "- " paragraph re-imports
+    // as a bullet list, "> " as a quote and "1. " as an ordered list.
+    [Fact]
+    public void Paragraph_FirstLineBlockMarkers_AreEscaped()
+    {
+        var markdown = Render((
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"- not a list\n> not a quote\n1. not ordered","marks":[]}]}"""
+        ));
+
+        Assert.Contains("\n\\- not a list\\\n\\> not a quote\\\n1\\. not ordered\n", markdown);
+    }
+
+    [Fact]
+    public void ListItem_LeadingDash_IsEscaped()
+    {
+        var markdown = Render((BlockTypes.BulletedList, """{"spans":[{"text":"- looks nested","marks":[]}]}"""));
+
+        Assert.Contains("\n- \\- looks nested\n", markdown);
+    }
+
+    // A code span is literal: no markdown escaping, and the fence has to outgrow any backtick run.
+    [Fact]
+    public void CodeSpan_KeepsLiteralText()
+    {
+        var markdown = Render((BlockTypes.Paragraph, """{"spans":[{"text":"a *b*","marks":[{"kind":"code"}]}]}"""));
+
+        Assert.Contains("`a *b*`", markdown);
+        Assert.DoesNotContain("\\*", markdown);
+    }
+
+    [Fact]
+    public void CodeSpan_ContainingBacktick_UsesLongerFence()
+    {
+        var markdown = Render((BlockTypes.Paragraph, """{"spans":[{"text":"a`tick","marks":[{"kind":"code"}]}]}"""));
+
+        Assert.Contains("``a`tick``", markdown);
+    }
+
+    [Fact]
+    public void CodeSpan_EndingWithBacktick_IsPadded()
+    {
+        var markdown = Render((BlockTypes.Paragraph, """{"spans":[{"text":"a`","marks":[{"kind":"code"}]}]}"""));
+
+        Assert.Contains("`` a` ``", markdown);
+    }
+
+    // Marks arrive outermost-first; applying them front to back would fence the emphasis syntax
+    // instead of the text.
+    [Fact]
+    public void BoldAroundCodeSpan_NestsCodeInsideEmphasis()
+    {
+        var markdown = Render((
+            BlockTypes.Paragraph,
+            """{"spans":[{"text":"x","marks":[{"kind":"bold"},{"kind":"code"}]}]}"""
+        ));
+
+        Assert.Contains("**`x`**", markdown);
+    }
+
     [Fact]
     public void Paragraph_MarkerCharacters_AreEscaped()
     {
