@@ -106,20 +106,21 @@ public sealed class ImportNotebookCommandHandler(
             var trees = new List<(Page Page, IReadOnlyList<ImportedBlock> Blocks)>(importedPages.Count);
             foreach (var (page, parsedPage) in importedPages.Zip(parsed.Pages))
             {
-                trees.Add(
-                    (
-                        page,
-                        MarkdownBlockImporter.CreateBlocks(
-                            page,
-                            parsedPage.Blocks,
-                            parent: null,
-                            batchId,
-                            blocks,
-                            revisions,
-                            changeSource.Source
-                        )
-                    )
+                var tree = MarkdownBlockImporter.CreateBlocks(
+                    page,
+                    parsedPage.Blocks,
+                    parent: null,
+                    batchId,
+                    blocks,
+                    revisions,
+                    changeSource.Source
                 );
+                if (tree.Error is { } blockError)
+                {
+                    return Result.Failure<NotebookDetailsDto>(blockError);
+                }
+
+                trees.Add((page, tree.Value!));
             }
 
             // (2) the block rows, each with its page and parent — Block.FirstChildId (parent ->

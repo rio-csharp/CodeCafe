@@ -40,22 +40,25 @@ internal static class PageHierarchy
     // In-memory variant for callers that already hold every page of the notebook. The visited
     // set guards against a corrupted cycle.
     public static string PathOf(Page page, IReadOnlyDictionary<Guid, Page> allById)
-    {
-        var segments = new List<string>();
-        var current = page;
-        var visited = new HashSet<Guid>();
-        while (visited.Add(current.Id))
-        {
-            segments.Insert(0, current.Slug);
-            if (current.ParentId is not { } parentId || !allById.TryGetValue(parentId, out var parent))
-            {
-                break;
-            }
+        => PathOf(page, AncestorsOf(page, allById));
 
+    // Same walk as LoadAncestorsAsync, against a map instead of the repository. The visited set
+    // guards against a corrupted cycle.
+    public static IReadOnlyList<Page> AncestorsOf(Page page, IReadOnlyDictionary<Guid, Page> allById)
+    {
+        var ancestors = new List<Page>();
+        var visited = new HashSet<Guid> { page.Id };
+        var current = page;
+
+        while (current.ParentId is { } parentId
+            && visited.Add(parentId)
+            && allById.TryGetValue(parentId, out var parent))
+        {
+            ancestors.Insert(0, parent);
             current = parent;
         }
 
-        return PagePath.Build(segments);
+        return ancestors;
     }
 
     // The last segment names the page (slugs are unique per notebook); the prefix is verified

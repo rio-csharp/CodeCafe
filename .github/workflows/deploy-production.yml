@@ -107,10 +107,9 @@ jobs:
           AI_ENABLED: 'true'
           AI_MODEL: ${{ vars.AI_MODEL }}
           AI_BASE_URL: ${{ vars.AI_BASE_URL }}
-          # The deployed endpoint is a new-api relay, which needs the system
-          # prompt moved into ChatOptions.Instructions; drop this line if the
-          # provider moves to a first-party endpoint.
-          AI_RELAY: NewApi
+          # Unset leaves the chart default (OpenAiChatCompletions) in place; relays whose
+          # /responses endpoint is the supported one set OpenAiResponses here.
+          AI_WIRE_FORMAT: ${{ vars.AI_WIRE_FORMAT }}
           # `vars` resolves to the `production` environment's variable first, then the
           # repository's. Unset means the script passes no override and the chart default
           # (off) applies.

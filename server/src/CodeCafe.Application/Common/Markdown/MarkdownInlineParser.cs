@@ -75,8 +75,8 @@ internal static class MarkdownInlineParser
                 segments[^1].Add(new Span(" ", marks));
                 break;
             case EmphasisInline emphasis:
-                var mark = MarkFor(emphasis);
-                AppendChildren(segments, emphasis, mark is null ? marks : [.. marks, mark]);
+                var emphasisMarks = MarksFor(emphasis);
+                AppendChildren(segments, emphasis, emphasisMarks.Count == 0 ? marks : [.. marks, .. emphasisMarks]);
                 break;
             case LinkInline { IsImage: true } image:
                 // An inline image loses its visual shape; its alt text survives as plain text.
@@ -153,18 +153,21 @@ internal static class MarkdownInlineParser
     }
 
     // EmphasisExtras gives us ~~strike~~, ~sub~, ^sup^, ==highlight== and ++inserted++ on top
-    // of the standard *italic* and **bold**. Nesting falls out of the recursion.
-    private static Mark? MarkFor(EmphasisInline emphasis)
+    // of the standard *italic* and **bold**. Nesting falls out of the recursion; the delimiter
+    // count picks the mark, and three delimiters (***bold italic***) is both at once — bold
+    // outside, italic inside, the order the renderer needs to nest them back.
+    private static IReadOnlyList<Mark> MarksFor(EmphasisInline emphasis)
         => (emphasis.DelimiterChar, emphasis.DelimiterCount) switch
         {
-            ('*' or '_', 2) => new BoldMark(),
-            ('*' or '_', 1) => new ItalicMark(),
-            ('~', 2) => new StrikeMark(),
-            ('~', 1) => new SubMark(),
-            ('^', _) => new SupMark(),
+            ('*' or '_', 2) => [new BoldMark()],
+            ('*' or '_', 1) => [new ItalicMark()],
+            ('*' or '_', 3) => [new BoldMark(), new ItalicMark()],
+            ('~', 2) => [new StrikeMark()],
+            ('~', 1) => [new SubMark()],
+            ('^', _) => [new SupMark()],
             // No color information exists in markdown; warning (yellow) is the default highlight.
-            ('=', 2) => new HighlightMark(PaletteColor.Warning),
-            ('+', 2) => new UnderlineMark(),
-            _ => null,
+            ('=', 2) => [new HighlightMark(PaletteColor.Warning)],
+            ('+', 2) => [new UnderlineMark()],
+            _ => [],
         };
 }

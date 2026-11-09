@@ -41,11 +41,8 @@ internal static class SlugAvailability
         return free;
     }
 
-    // Four digits: short enough to stay readable, wide enough that a handful of draws rarely
-    // collide. Invariant digits so the slug never picks up a locale's numeral shapes.
-    // Capacity: 9000 variants per base slug, shared globally for notebooks (unique slug index).
-    // Fallback titles all draw from the same pool ("notebook-1234"); with 50 bounded attempts
-    // this only degrades near exhaustion (~8000 taken). If that ever becomes a real limit,
-    // widen the range here (e.g. six digits) - WithSuffix already makes room for longer suffixes.
+    // 9000 variants per base slug, shared globally: the unique slug index means every notebook with
+    // the same fallback title draws from one pool, so exhaustion is reachable — widen the range
+    // here if it ever is. Invariant digits keep the slug ASCII whatever the server's locale.
     private static string NextSuffix() => Random.Shared.Next(1000, 10000).ToString(CultureInfo.InvariantCulture);
 }

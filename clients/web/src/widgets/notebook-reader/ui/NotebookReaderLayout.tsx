@@ -9,6 +9,7 @@ import type { OverflowMenuItem } from '@/shared/ui'
 import { ContentSkeleton, TreeSkeleton } from './ReaderSkeletons'
 import { FavoritePagesSection } from './FavoritePagesSection'
 import { PageDeleteDialog } from './PageDeleteDialog'
+import { PagePager } from './PagePager'
 import { PageTrashDialog } from './PageTrashDialog'
 import { PageTree } from './PageTree'
 import { ReaderChrome } from './ReaderChrome'
@@ -63,6 +64,9 @@ export interface NotebookReaderLayoutProps {
   /** Linear reading order neighbours; the mobile toolbar shows them. */
   prevPage?: ReaderPageRef | null
   nextPage?: ReaderPageRef | null
+  /** The phone toolbar (contents / prev / next / outline) and the desktop foot pager. Turned off
+   *  while a draft is open, so a stray tap cannot walk away from unsaved work. */
+  showNavigation?: boolean
   children: ReactNode
 }
 
@@ -72,7 +76,9 @@ type MobilePanel = 'none' | 'tree' | 'right'
  * The reading surface in the 3.4 mold: no top bar at all — the tree panel's
  * header carries the way home and the notebook's name. Three fixed columns
  * on desktop (tree / text / tabbed panel); on phones the columns become
- * drawers above a floating bottom toolbar. <main> is the only scroller.
+ * drawers above a floating bottom toolbar that carries the prev/next pills,
+ * while desktop reads them as a pager at the foot of the article. While a
+ * draft is open both step aside. <main> is the only scroller.
  */
 export function NotebookReaderLayout({
   notebook,
@@ -98,6 +104,7 @@ export function NotebookReaderLayout({
   onRefresh,
   prevPage = null,
   nextPage = null,
+  showNavigation = true,
   children,
 }: NotebookReaderLayoutProps) {
   const { t } = useTranslation()
@@ -347,6 +354,11 @@ export function NotebookReaderLayout({
             />
           ) : null}
           {children}
+          {showNavigation && (prevPage !== null || nextPage !== null) ? (
+            <div className="hidden lg:block">
+              <PagePager slug={notebook.slug} prev={prevPage} next={nextPage} />
+            </div>
+          ) : null}
         </div>
       </main>
 
@@ -367,51 +379,53 @@ export function NotebookReaderLayout({
       </aside>
 
       {/* Mobile: panel toggles pinned to the corners, prev/next in the middle. */}
-      <div className="pointer-events-none fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-2 lg:hidden">
-        <div className="pointer-events-auto">
-          <ToolbarPill
-            label={t('reader.contents')}
-            pressed={mobilePanel === 'tree'}
-            onClick={() => {
-              setMobilePanel((panel) => (panel === 'tree' ? 'none' : 'tree'))
-            }}
-            icon={<path d="M3 3.5h10M3 8h10M3 12.5h10" />}
-          />
-        </div>
-        <div className="pointer-events-auto flex items-center gap-2">
-          {prevPage !== null ? (
+      {showNavigation ? (
+        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-30 flex items-center justify-between gap-2 lg:hidden">
+          <div className="pointer-events-auto">
             <ToolbarPill
-              label={t('reader.previousPage', { title: prevPage.title })}
+              label={t('reader.contents')}
+              pressed={mobilePanel === 'tree'}
               onClick={() => {
-                void navigate(toPageHref(notebook.slug, prevPage.path))
+                setMobilePanel((panel) => (panel === 'tree' ? 'none' : 'tree'))
               }}
-              icon={<path d="M9.5 3.5 5.5 8l4 4.5" />}
-              text={prevPage.title}
+              icon={<path d="M3 3.5h10M3 8h10M3 12.5h10" />}
             />
-          ) : null}
-          {nextPage !== null ? (
+          </div>
+          <div className="pointer-events-auto flex items-center gap-2">
+            {prevPage !== null ? (
+              <ToolbarPill
+                label={t('reader.previousPage', { title: prevPage.title })}
+                onClick={() => {
+                  void navigate(toPageHref(notebook.slug, prevPage.path))
+                }}
+                icon={<path d="M9.5 3.5 5.5 8l4 4.5" />}
+                text={prevPage.title}
+              />
+            ) : null}
+            {nextPage !== null ? (
+              <ToolbarPill
+                label={t('reader.nextPage', { title: nextPage.title })}
+                onClick={() => {
+                  void navigate(toPageHref(notebook.slug, nextPage.path))
+                }}
+                icon={<path d="m6.5 3.5 4 4.5-4 4.5" />}
+                text={nextPage.title}
+                iconLast
+              />
+            ) : null}
+          </div>
+          <div className="pointer-events-auto">
             <ToolbarPill
-              label={t('reader.nextPage', { title: nextPage.title })}
+              label={t('reader.outline')}
+              pressed={mobilePanel === 'right'}
               onClick={() => {
-                void navigate(toPageHref(notebook.slug, nextPage.path))
+                setMobilePanel((panel) => (panel === 'right' ? 'none' : 'right'))
               }}
-              icon={<path d="m6.5 3.5 4 4.5-4 4.5" />}
-              text={nextPage.title}
-              iconLast
+              icon={<path d="M13 3.5v9M3 3.5h6M3 8h6M3 12.5h6" />}
             />
-          ) : null}
+          </div>
         </div>
-        <div className="pointer-events-auto">
-          <ToolbarPill
-            label={t('reader.outline')}
-            pressed={mobilePanel === 'right'}
-            onClick={() => {
-              setMobilePanel((panel) => (panel === 'right' ? 'none' : 'right'))
-            }}
-            icon={<path d="M13 3.5v9M3 3.5h6M3 8h6M3 12.5h6" />}
-          />
-        </div>
-      </div>
+      ) : null}
 
       {manageNotebook && trashOpen ? (
         <PageTrashDialog

@@ -152,6 +152,8 @@ public sealed class BlockChainTests
         BlockChain.Link(parent, page, parent: null, after: a);
         BlockChain.Link(tail, page, parent: null, after: parent);
         BlockChain.Link(mover, page, parent, after: null);
+        var tailUpdatedAt = tail.UpdatedAtUtc;
+        AwaitNextClockTick(tailUpdatedAt);
 
         // Appending after a 60-char key leaves Between no room; like PageChain.Move, the move
         // re-deals the whole target level evenly instead of growing keys without bound.
@@ -166,6 +168,55 @@ public sealed class BlockChainTests
         Assert.Null(parent.FirstChildId); // the old chain was repaired too
         Assert.Equal(2, mover.Version);
         Assert.Equal(1, tail.Version); // re-keyed neighbours are not "updated"
+        Assert.Equal(tailUpdatedAt, tail.UpdatedAtUtc);
+    }
+
+    [Fact]
+    public void PointerWrites_LeaveNeighbourTimestampsAndVersionsAlone()
+    {
+        var page = NewPage();
+        var a = NewBlock(page);
+        var b = NewBlock(page);
+        BlockChain.Link(a, page, parent: null, after: null);
+        BlockChain.Link(b, page, parent: null, after: a);
+        var aUpdatedAt = a.UpdatedAtUtc;
+        var bUpdatedAt = b.UpdatedAtUtc;
+        AwaitNextClockTick(aUpdatedAt);
+
+        BlockChain.Unlink(b, page, [a, b]);
+        BlockChain.Insert(b, page, parent: null, after: a, next: null);
+
+        // Re-linking is bookkeeping, not editing: a Touch() here would surface every sibling in a
+        // Recently-updated list after a single drag.
+        Assert.Equal(aUpdatedAt, a.UpdatedAtUtc);
+        Assert.Equal(bUpdatedAt, b.UpdatedAtUtc);
+        Assert.Equal(1, a.Version);
+        Assert.Equal(1, b.Version);
+    }
+
+    [Fact]
+    public void Move_KeepsTheMovedBlocksOwnChildChain()
+    {
+        var page = NewPage();
+        var p = NewBlock(page, sortKey: "a");
+        var q = NewBlock(page, sortKey: "b");
+        var child = NewBlock(page, p, "a");
+        var grandchild = NewBlock(page, child, "a");
+        BlockChain.Link(p, page, parent: null, after: null);
+        BlockChain.Link(q, page, parent: null, after: p);
+        BlockChain.Link(child, page, p, after: null);
+        BlockChain.Link(grandchild, page, child, after: null);
+
+        // Move p (and therefore its subtree) under q.
+        BlockChain.Move(p, page, q, pageBlocks: [p, q, child, grandchild], newSiblings: [], insertIndex: 0);
+
+        Assert.Equal(q.Id, p.ParentBlockId);
+        Assert.Equal(q.Id, page.FirstBlockId); // the vacated head passes to the former successor
+        Assert.Equal(child.Id, p.FirstChildId); // the child chain travels with the block
+        Assert.Equal(p.Id, child.ParentBlockId);
+        Assert.Equal(grandchild.Id, child.FirstChildId);
+        Assert.Equal(1, child.Version); // descendants are not "moved"
+        Assert.Equal(1, grandchild.Version);
     }
 
     [Fact]
@@ -213,6 +264,25 @@ public sealed class BlockChainTests
         Assert.True(BlockChain.IsSelfOrDescendant(block, block, [block]));
         Assert.True(BlockChain.IsSelfOrDescendant(block, child, [block, child]));
         Assert.False(BlockChain.IsSelfOrDescendant(block, unrelated, [block, child, unrelated]));
+    }
+
+    [Fact]
+    public void IsSelfOrDescendant_CorruptedParentCycle_TerminatesInsteadOfHanging()
+    {
+        var page = NewPage();
+        var unrelated = NewBlock(page);
+        var a = NewBlock(page);
+        var b = NewBlock(page);
+
+        // Corrupt data: a and b are each other's parent, so walking up from a never reaches a root.
+        BlockChain.RebuildStructure(page, [unrelated, a, b], new Dictionary<Guid, BlockPlacement>
+        {
+            [unrelated.Id] = new(null, "a"),
+            [a.Id] = new(b.Id, "b"),
+            [b.Id] = new(a.Id, "c"),
+        });
+
+        Assert.False(BlockChain.IsSelfOrDescendant(unrelated, a, [unrelated, a, b]));
     }
 
     [Fact]
@@ -424,5 +494,18 @@ public sealed class BlockChainTests
 
         Assert.Null(orphan.ParentBlockId);
         Assert.Equal(orphan.Id, page.FirstBlockId);
+    }
+
+    // UtcNow advances in coarse system ticks, so a stray Touch() inside the operation under test
+    // would otherwise be invisible: the whole assertion would fit inside one tick.
+    private static void AwaitNextClockTick(DateTimeOffset now)
+    {
+        var deadline = now.AddSeconds(2);
+        while (DateTimeOffset.UtcNow <= now && DateTimeOffset.UtcNow < deadline)
+        {
+            Thread.Sleep(1);
+        }
+
+        Assert.True(DateTimeOffset.UtcNow > now, "The system clock did not advance.");
     }
 }

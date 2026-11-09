@@ -166,6 +166,16 @@ public sealed class MarkdownDocumentParserTests
     }
 
     [Fact]
+    public void HtmlBlock_LoneAngleBracket_KeepsFollowingText()
+    {
+        var blocks = Parse("<div>a < b</div>");
+
+        // A '<' only opens a tag when a name or '/' follows it, so prose with a bare '<' keeps
+        // everything after it.
+        Assert.Equal("a < b", Payload<ParagraphPayload>(Assert.Single(blocks)).Spans.ToPlainText());
+    }
+
+    [Fact]
     public void Paragraph_SoftBreak_CollapsesToSpace()
     {
         var blocks = Parse("one line\ncontinues here");
@@ -634,6 +644,18 @@ public sealed class MarkdownDocumentParserTests
 
         var table = Payload<TablePayload>(Assert.Single(blocks));
         Assert.Equal([TableColumnAlignment.None], table.Alignments);
+    }
+
+    // The exporter has to synthesize a header row for a headerless table; reading it back as "no
+    // header" is what keeps headerless tables round-tripping.
+    [Fact]
+    public void PipeTable_EmptyHeaderRow_BecomesHeaderless()
+    {
+        var blocks = Parse("|  |\n| --- |\n| a |");
+
+        var table = Payload<TablePayload>(Assert.Single(blocks));
+        Assert.Null(table.Header);
+        Assert.Equal("a", Assert.Single(Assert.Single(table.Rows)).ToPlainText());
     }
 
     [Fact]

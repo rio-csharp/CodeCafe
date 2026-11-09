@@ -40,6 +40,7 @@ public sealed class ListFavoritePagesQueryHandler(
 
         var visible = new List<Domain.Pages.Page>(favorites.Count);
         var pagesByNotebook = new Dictionary<Guid, IReadOnlyDictionary<Guid, Domain.Pages.Page>>();
+
         foreach (var page in favorites)
         {
             if (!notebooksById.TryGetValue(page.NotebookId, out var notebook))
@@ -53,14 +54,10 @@ public sealed class ListFavoritePagesQueryHandler(
                 continue;
             }
 
-            if (!pagesByNotebook.TryGetValue(notebook.Id, out var notebookPages))
-            {
-                notebookPages = (await pages.ListByNotebookAsync(notebook.Id, cancellationToken))
-                    .ToDictionary(candidate => candidate.Id);
-                pagesByNotebook.Add(notebook.Id, notebookPages);
-            }
-
-            var ancestors = AncestorsOf(page, notebookPages);
+            var ancestors = PageHierarchy.AncestorsOf(
+                page,
+                await PagesOfAsync(notebook.Id, pagesByNotebook, cancellationToken)
+            );
             if (PageAccess.CheckRead(notebook, page, ancestors, userId, accessCode: null, passwordHasher) is null)
             {
                 visible.Add(page);
@@ -72,13 +69,7 @@ public sealed class ListFavoritePagesQueryHandler(
         var dtos = new List<FavoritePageDto>(visible.Count);
         foreach (var page in visible)
         {
-            if (!pagesByNotebook.TryGetValue(page.NotebookId, out var notebookPages))
-            {
-                notebookPages = (await pages.ListByNotebookAsync(page.NotebookId, cancellationToken))
-                    .ToDictionary(candidate => candidate.Id);
-                pagesByNotebook.Add(page.NotebookId, notebookPages);
-            }
-
+            var notebookPages = await PagesOfAsync(page.NotebookId, pagesByNotebook, cancellationToken);
             var notebook = notebooksById[page.NotebookId];
             dtos.Add(new FavoritePageDto(
                 page.Id,
@@ -98,21 +89,22 @@ public sealed class ListFavoritePagesQueryHandler(
         return Result.Success<IReadOnlyList<FavoritePageDto>>(ordered);
     }
 
-    private static IReadOnlyList<Domain.Pages.Page> AncestorsOf(
-        Domain.Pages.Page page,
-        IReadOnlyDictionary<Guid, Domain.Pages.Page> pagesById)
+    // The per-notebook page map is needed twice — for the ancestor-scoped share check and again
+    // for paths — so it is loaded at most once per notebook and cached for the rest of the read.
+    private async Task<IReadOnlyDictionary<Guid, Domain.Pages.Page>> PagesOfAsync(
+        Guid notebookId,
+        Dictionary<Guid, IReadOnlyDictionary<Guid, Domain.Pages.Page>> cache,
+        CancellationToken cancellationToken
+    )
     {
-        var ancestors = new List<Domain.Pages.Page>();
-        var visited = new HashSet<Guid> { page.Id };
-        var current = page;
-        while (current.ParentId is { } parentId
-            && visited.Add(parentId)
-            && pagesById.TryGetValue(parentId, out var parent))
+        if (cache.TryGetValue(notebookId, out var cached))
         {
-            ancestors.Insert(0, parent);
-            current = parent;
+            return cached;
         }
 
-        return ancestors;
+        var loaded = (await pages.ListByNotebookAsync(notebookId, cancellationToken))
+            .ToDictionary(candidate => candidate.Id);
+        cache.Add(notebookId, loaded);
+        return loaded;
     }
 }

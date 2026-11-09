@@ -1,4 +1,6 @@
 using CodeCafe.Application.Blocks.Abstractions;
+using CodeCafe.Application.Blocks.Shared;
+using CodeCafe.Application.Common;
 using CodeCafe.Application.Revisions.Abstractions;
 using CodeCafe.Application.Revisions.Shared;
 using CodeCafe.Domain.Blocks;
@@ -14,7 +16,7 @@ namespace CodeCafe.Application.Common.Markdown;
 // pointers) and the caller saves them, after which LinkChains sets every pointer as an UPDATE.
 internal static class MarkdownBlockImporter
 {
-    public static IReadOnlyList<ImportedBlock> CreateBlocks(
+    public static Result<IReadOnlyList<ImportedBlock>> CreateBlocks(
         Page page,
         IReadOnlyList<ParsedMarkdownBlock> parsed,
         Block? parent,
@@ -28,26 +30,37 @@ internal static class MarkdownBlockImporter
         var siblings = new List<Block>();
         foreach (var parsedBlock in parsed)
         {
+            // Markdown is user input, and this is the one path that builds payloads itself, so it
+            // goes through the write-side authority like every other writer instead of trusting
+            // the parser's serialization.
+            var normalized = BlockPayloads.ValidateAndNormalize(parsedBlock.Type, parsedBlock.Content);
+            if (!normalized.IsSuccess)
+            {
+                return Result.Failure<IReadOnlyList<ImportedBlock>>(normalized.Error!);
+            }
+
             var block = Block.Create(
                 page.Id,
                 parent?.Id,
                 parsedBlock.Type,
-                parsedBlock.Content.GetRawText(),
-                parsedBlock.PlainText,
+                normalized.Value!.CanonicalJson,
+                normalized.Value.PlainText,
                 BlockSiblingSortKeys.KeyForInsert(siblings, siblings.Count)
             );
             siblings.Add(block);
             blocks.Add(block);
             revisions.Add(RevisionRecording.Added(block, batchId, source));
-            created.Add(
-                new ImportedBlock(
-                    block,
-                    CreateBlocks(page, parsedBlock.Children, block, batchId, blocks, revisions, source)
-                )
-            );
+
+            var children = CreateBlocks(page, parsedBlock.Children, block, batchId, blocks, revisions, source);
+            if (children.Error is { } childError)
+            {
+                return Result.Failure<IReadOnlyList<ImportedBlock>>(childError);
+            }
+
+            created.Add(new ImportedBlock(block, children.Value!));
         }
 
-        return created;
+        return Result.Success<IReadOnlyList<ImportedBlock>>(created);
     }
 
     // The second pass runs once the rows exist, so every chain pointer is an UPDATE and the FK

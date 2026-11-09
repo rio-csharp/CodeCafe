@@ -336,6 +336,14 @@ internal static class MarkdownDocumentParser
             }
         }
 
+        // GFM pipe tables must have a header row, so the exporter synthesizes an empty one for a
+        // headerless table. Reading an all-empty header back as "no header" is what makes that
+        // round trip: the two are indistinguishable in markdown anyway.
+        if (header is not null && header.All(cell => string.IsNullOrWhiteSpace(cell.ToPlainText())))
+        {
+            header = null;
+        }
+
         var payload = new TablePayload { Alignments = alignments, Header = header, Rows = rows };
         var plainText = string.Join(
             ' ',
@@ -421,28 +429,23 @@ internal static class MarkdownDocumentParser
         return builder.ToString();
     }
 
+    // Drops tags and keeps the text between them. A '<' only opens a tag when a letter, '/' or
+    // '!' follows, so prose like "a < b" survives instead of swallowing the rest of the block.
     private static string StripTags(string html)
     {
         var builder = new StringBuilder(html.Length);
-        var depth = 0;
-        foreach (var character in html)
+        for (var index = 0; index < html.Length; index++)
         {
-            switch (character)
+            if (html[index] == '<'
+                && index + 1 < html.Length
+                && (char.IsLetter(html[index + 1]) || html[index + 1] is '/' or '!'))
             {
-                case '<':
-                    depth++;
-                    break;
-                case '>':
-                    depth = Math.Max(0, depth - 1);
-                    break;
-                default:
-                    if (depth == 0)
-                    {
-                        builder.Append(character);
-                    }
-
-                    break;
+                var close = html.IndexOf('>', index + 1);
+                index = close < 0 ? html.Length - 1 : close;
+                continue;
             }
+
+            builder.Append(html[index]);
         }
 
         return builder.ToString();

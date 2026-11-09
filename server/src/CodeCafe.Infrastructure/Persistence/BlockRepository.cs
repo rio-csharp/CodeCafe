@@ -16,11 +16,14 @@ public sealed class BlockRepository(AppDbContext dbContext) : IBlockRepository
             .Where(block => block.PageId == pageId)
             .ToListAsync(cancellationToken);
 
+    // Untracked: the only caller is notebook export, which reads and discards. Tracking here would
+    // attach every block in the notebook to the context for no reason.
     public async Task<IReadOnlyList<Block>> ListByPageIdsAsync(
         IReadOnlyCollection<Guid> pageIds,
         CancellationToken cancellationToken
     )
         => await dbContext.Blocks
+            .AsNoTracking()
             .Where(block => pageIds.Contains(block.PageId))
             .ToListAsync(cancellationToken);
 
